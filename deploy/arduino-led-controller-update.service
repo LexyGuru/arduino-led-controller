@@ -1,0 +1,8 @@
+[Unit]
+Description=Arduino LED Controller GitHub frissítés ellenőrzése
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/arduino-led-controller/deploy/update.sh

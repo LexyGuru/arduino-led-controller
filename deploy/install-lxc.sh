@@ -14,7 +14,7 @@ ARDUINO_IP="${ARDUINO_IP:-10.0.0.117}"
 
 echo "==> Alapcsomagok telepítése"
 apt-get update
-apt-get install -y ca-certificates curl gnupg rsync
+apt-get install -y ca-certificates curl git gnupg rsync
 
 if ! command -v node >/dev/null 2>&1 || [[ "$(node -p 'process.versions.node.split(".")[0]')" -lt 20 ]]; then
   echo "==> Node.js 22 telepítése"
@@ -47,12 +47,17 @@ if [[ ! -f /etc/arduino-led-controller.env ]]; then
 fi
 
 install -m 644 "${APP_DIR}/deploy/arduino-led-controller.service" "/etc/systemd/system/${SERVICE_NAME}.service"
+chmod 755 "${APP_DIR}/deploy/update.sh"
+install -m 644 "${APP_DIR}/deploy/arduino-led-controller-update.service" "/etc/systemd/system/${SERVICE_NAME}-update.service"
+install -m 644 "${APP_DIR}/deploy/arduino-led-controller-update.timer" "/etc/systemd/system/${SERVICE_NAME}-update.timer"
 systemctl daemon-reload
 systemctl enable --now "${SERVICE_NAME}"
+systemctl enable --now "${SERVICE_NAME}-update.timer"
 
 echo
 echo "Telepítés kész."
 echo "Állapot: systemctl status ${SERVICE_NAME}"
 echo "Napló:    journalctl -u ${SERVICE_NAME} -f"
+echo "Frissítő: systemctl status ${SERVICE_NAME}-update.timer"
 echo "Web:      http://<LXC-IP>:3000"
 echo "Arduino IP beállítás: /etc/arduino-led-controller.env"

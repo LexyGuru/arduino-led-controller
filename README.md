@@ -38,7 +38,25 @@ journalctl -u arduino-led-controller -f
 systemctl restart arduino-led-controller
 ```
 
-## Frissítés GitHubról
+## Automatikus frissítés GitHubról
+
+A telepítő bekapcsol egy óránként futó frissítés-ellenőrzőt. Ha a GitHub `main`
+ágán új verzió van, előbb külön munkakönyvtárban ellenőrzi a Node kódot és
+telepíti a szükséges csomagokat. Csak sikeres ellenőrzés után frissíti az
+alkalmazást és indítja újra a szolgáltatást.
+
+Ellenőrzés és kézi indítás:
+
+```bash
+systemctl status arduino-led-controller-update.timer
+systemctl start arduino-led-controller-update.service
+journalctl -u arduino-led-controller-update.service -n 50
+```
+
+Ha a konténerben valaki kézzel módosította a program fájljait, a frissítő
+biztonságból nem írja felül őket.
+
+## Kézi frissítés GitHubról
 
 ```bash
 cd /opt/arduino-led-controller
