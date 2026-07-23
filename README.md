@@ -1,12 +1,7 @@
 # Arduino LED Controller – Proxmox LXC
 
-Arduino UNO R4 WiFi LED-vezérlő és heti időzítő. Az ütemezéseket a szerver tárolja, ezért SD-kártya nélkül is működik.
-
-## Arduino Wi-Fi beállítás
-
-A GitHubra nem kerül Wi-Fi jelszó. Az Arduino IDE-ben másold át a
-`secrets.example.h` fájlt `secrets.h` néven, majd írd bele a saját Wi-Fi nevet
-és jelszót. A helyi `secrets.h` fájl automatikusan kimarad a Gitből.
+Node.js alapú Arduino LED-vezérlő és heti időzítő webszerver. Az ütemezéseket
+a szerver tárolja, ezért SD-kártya nélkül is működik.
 
 ## Proxmox LXC előkészítése
 
