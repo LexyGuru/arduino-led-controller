@@ -17,7 +17,7 @@ A Proxmox felületén hozz létre egy **Debian 12** LXC konténert az alábbi ja
 
 ```bash
 apt-get update && apt-get install -y git
-git clone https://github.com/SAJAT_FELHASZNALONEV/arduino-led-controller.git /opt/arduino-led-controller
+git clone https://github.com/LexyGuru/arduino-led-controller.git /opt/arduino-led-controller
 cd /opt/arduino-led-controller
 ARDUINO_IP=10.0.0.117 bash deploy/install-lxc.sh
 ```
