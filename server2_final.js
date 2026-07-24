@@ -288,6 +288,9 @@ class ArduinoAPI {
     this.timeout = Number(process.env.ARDUINO_TIMEOUT_MS) || 30000;
     this.maxRetries = Number(process.env.ARDUINO_RETRY_COUNT) || 3;
     this.retryDelay = Number(process.env.ARDUINO_RETRY_DELAY) || 2000;
+    // Az UNO R4 WiFi HTTP-kiszolgálója egyszerre egy kapcsolatot kezel
+    // stabilan. Minden szerveroldali kérés ezen a láncon fut át.
+    this.requestQueue = Promise.resolve();
   }
 
   setTarget(ip, port) {
@@ -330,7 +333,15 @@ class ArduinoAPI {
     try { return JSON.parse(body); } catch (_) { return body; }
   }
 
-  async request(method, endpoint, data = null, retryCount = 0) {
+  request(method, endpoint, data = null) {
+    const execute = () => this.requestDirect(method, endpoint, data);
+    const queuedRequest = this.requestQueue.then(execute, execute);
+    // Egy sikertelen kérés se állíthassa meg a következőket.
+    this.requestQueue = queuedRequest.catch(() => undefined);
+    return queuedRequest;
+  }
+
+  async requestDirect(method, endpoint, data = null, retryCount = 0) {
     const options = {
       method,
       timeout: this.timeout,
@@ -357,13 +368,16 @@ class ArduinoAPI {
       logger.info(`Arduino ${method} ${endpoint}: ✅ Success`);
       return response.data;
     } catch (error) {
+      const transportFailed = ['ECONNREFUSED', 'EHOSTUNREACH', 'ECONNRESET', 'ETIMEDOUT', 'ECONNABORTED'].includes(error.code)
+        || error.message.includes('macOS natív HTTP hiba');
+      if ((transportFailed || error.response?.status >= 500) && retryCount < this.maxRetries) {
+        logger.warn(`Arduino ${method} ${endpoint}: átmeneti hiba, újrapróbálás ${retryCount + 1}/${this.maxRetries}`);
+        await this.sleep(this.retryDelay);
+        return this.requestDirect(method, endpoint, data, retryCount + 1);
+      }
+
       logger.error(`Arduino ${method} ${endpoint} ❌ error: ${error.message}`);
-      
       if (error.response) {
-        if (error.response.status >= 500 && retryCount < this.maxRetries) {
-          await this.sleep(this.retryDelay);
-          return this.request(method, endpoint, data, retryCount + 1);
-        }
         const errorMsg = error.response.data?.error || 
                         error.response.data?.message || 
                         `Arduino ${method} hiba: ${error.response.status}`;
@@ -415,56 +429,19 @@ class LEDAPI {
     this.baseURL = `http://${ip}:${port}`;
   }
 
-  async setLed(id, params, retryCount = 0) {
-    try {
-      // LED API: GET /api/led/:id?param1=value1&param2=value2
-      // Az Arduino firmware nem dekódolja a URL-kódolt vesszőket, ezért az
-      // ellenőrzött RGB értékeket változatlanul kell továbbítani.
-      const queryString = Object.entries(params)
-        .map(([key, value]) => `${key}=${value}`)
-        .join('&');
-      const url = `${this.baseURL}/api/led/${id}?${queryString}`;
-      
-      logger.debug(`LED ${id} API: ${url}`);
-      
-      const response = await axios.get(url, {
-        timeout: this.timeout
-      });
-      
-      logger.info(`LED ${id} SET: ✅ Success`);
-      return response.data;
-    } catch (error) {
-      logger.error(`LED ${id} SET ❌ error: ${error.message}`);
-      
-      if (error.response) {
-        if (error.response.status >= 500 && retryCount < this.maxRetries) {
-          await this.sleep(this.retryDelay);
-          return this.setLed(id, params, retryCount + 1);
-        }
-        const errorMsg = error.response.data?.error || 
-                        error.response.data?.message || 
-                        `LED vezérlési hiba: ${error.response.status}`;
-        throw new Error(errorMsg);
-      }
-      
-      if (error.code === 'ECONNABORTED') {
-        throw new Error('LED API timeout');
-      } else if (error.code === 'ECONNREFUSED') {
-        throw new Error(`Arduino nem elérhető: ${config.arduinoIP}:${config.arduinoPort}`);
-      }
-      
-      throw error;
-    }
+  async setLed(id, params) {
+    // Ugyanazt a sorba állított kapcsolatot használjuk, mint a státusz- és
+    // konzolkéréseknél. Így egy LED-módosítás nem ütközik a háttérlekéréssel.
+    const queryString = Object.entries(params).map(([key, value]) => `${key}=${value}`).join('&');
+    const result = await arduino.get(`/api/led/${id}?${queryString}`);
+    logger.info(`LED ${id} SET: ✅ Success`);
+    return result;
   }
 
-  async getLedStatus(id, retryCount = 0) {
+  async getLedStatus(id) {
     try {
-      const url = `${this.baseURL}/api/led/status`;
-      const response = await axios.get(url, {
-        timeout: this.timeout
-      });
-      
-      const leds = response.data.leds || [];
+      const response = await arduino.get('/api/led/status');
+      const leds = response.leds || response.strips || [];
       
       if (id !== -1) {
         const led = leds.find(l => l.id === id);
