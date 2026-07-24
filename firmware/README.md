@@ -4,6 +4,11 @@ Ez az SD-kartya nelkuli, egyszerusitett UNO R4 WiFi firmware. A heti
 idözitesek a Proxmoxon futó webszerveren maradnak; az Arduino csak a LED-eket,
 a PIR szenzorokat, a helyi API-t, a naplot es az OTA fogadast kezeli.
 
+Alapbol a PIR szenzorok es a fizikai gombok ki vannak kapcsolva. Ez fontos,
+mert szenzor nelkul a bemenetek zajt olvasnak, ami teves „mozgas erzekelve"
+uzeneteket okozhat. Ha kesobb bekotod ezeket, a sajat `secrets.h` fajlodban
+allitsd az `ENABLE_PIR_SENSORS` vagy `ENABLE_PHYSICAL_BUTTONS` erteket `1`-re.
+
 ## Elso telepites USB-n
 
 1. Telepitsd az **Adafruit NeoPixel** es **ArduinoOTA** konyvtarakat az Arduino

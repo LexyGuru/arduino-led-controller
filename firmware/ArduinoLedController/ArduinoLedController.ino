@@ -10,8 +10,14 @@
 #include <ArduinoOTA.h>
 #include "secrets.h"
 
-#define FIRMWARE_VERSION "3.0.0"
+#define FIRMWARE_VERSION "3.0.1"
 #define DEVICE_NAME "arduino-led-controller"
+#ifndef ENABLE_PIR_SENSORS
+#define ENABLE_PIR_SENSORS 0
+#endif
+#ifndef ENABLE_PHYSICAL_BUTTONS
+#define ENABLE_PHYSICAL_BUTTONS 0
+#endif
 constexpr uint8_t STRIP_COUNT = 3;
 constexpr uint16_t PIXELS = 300;
 constexpr uint8_t LED_PINS[STRIP_COUNT] = {6, 7, 8};
@@ -29,7 +35,7 @@ Adafruit_NeoPixel strip[STRIP_COUNT] = {
 };
 WiFiServer server(80);
 Led leds[STRIP_COUNT]; Log logs[50];
-bool pirRaw[STRIP_COUNT] = {}, pirActive[STRIP_COUNT] = {}, otaReady = false, timeSynced = false;
+bool pirRaw[STRIP_COUNT] = {}, pirActive[STRIP_COUNT] = {}, otaReady = false, timeSynced = false, wifiReported = false;
 unsigned long pirChanged[STRIP_COUNT] = {}, lastMotion[STRIP_COUNT] = {}, lastWifi = 0, lastFrame = 0, lastTimeCheck = 0;
 uint8_t logStart = 0, logSize = 0;
 
@@ -43,6 +49,25 @@ void logEvent(const char* type, const char* message) {
 }
 
 void connectWifi() { if (WiFi.status() != WL_CONNECTED) { WiFi.begin(WIFI_SSID, WIFI_PASSWORD); lastWifi = millis(); logEvent("info", "WiFi kapcsolodas inditva"); } }
+void reportWifiConnected() {
+  if (WiFi.status() != WL_CONNECTED) { wifiReported = false; return; }
+  if (wifiReported) return;
+  wifiReported = true;
+  IPAddress ip = WiFi.localIP();
+  char message[88];
+  snprintf(message, sizeof(message), "WiFi kesz: %u.%u.%u.%u, jel: %d dBm", ip[0], ip[1], ip[2], ip[3], WiFi.RSSI());
+  logEvent("success", message);
+  Serial.println("==========================================");
+  Serial.print("Eszkoz: "); Serial.println(DEVICE_NAME);
+  Serial.print("Firmware: "); Serial.println(FIRMWARE_VERSION);
+  Serial.print("WiFi modul firmware: "); Serial.println(WiFi.firmwareVersion());
+  Serial.print("IP cim: "); Serial.println(ip);
+  Serial.print("Jelerosseg: "); Serial.print(WiFi.RSSI()); Serial.println(" dBm");
+  Serial.print("PIR figyeles: "); Serial.println(ENABLE_PIR_SENSORS ? "BE" : "KI (nincs szenzor)");
+  Serial.print("Fizikai gombok: "); Serial.println(ENABLE_PHYSICAL_BUTTONS ? "BE" : "KI");
+  Serial.println("Web API: http://<IP>/api/status");
+  Serial.println("==========================================");
+}
 void startOta() {
   if (WiFi.status() == WL_CONNECTED && !otaReady) {
     ArduinoOTA.begin(WiFi.localIP(), DEVICE_NAME, OTA_PASSWORD, InternalStorage);
@@ -70,6 +95,9 @@ void renderAll(bool force = false) {
 }
 
 void handlePir() {
+#if !ENABLE_PIR_SENSORS
+  return;
+#else
   unsigned long now = millis();
   for (uint8_t i = 0; i < STRIP_COUNT; i++) {
     bool raw = digitalRead(PIR_PINS[i]) == HIGH;
@@ -77,8 +105,12 @@ void handlePir() {
     if (pirRaw[i] && now - pirChanged[i] >= PIR_DEBOUNCE) { lastMotion[i] = now; if (!pirActive[i]) { pirActive[i] = true; leds[i].enabled = true; logEvent("info", "PIR mozgas erzekelve"); renderAll(true); } }
     if (pirActive[i] && now - lastMotion[i] > PIR_TIMEOUT) { pirActive[i] = false; leds[i].enabled = false; logEvent("info", "PIR idotullepes, LED kikapcsolva"); renderAll(true); }
   }
+#endif
 }
 void handleButtons() {
+#if !ENABLE_PHYSICAL_BUTTONS
+  return;
+#else
   static bool lastMode = HIGH, lastUp = HIGH, lastDown = HIGH; static unsigned long lastCheck = 0;
   if (millis() - lastCheck < 50) return; lastCheck = millis();
   bool mode = digitalRead(BUTTON_MODE), up = digitalRead(BUTTON_UP), down = digitalRead(BUTTON_DOWN);
@@ -86,12 +118,13 @@ void handleButtons() {
   if (up == LOW && lastUp == HIGH) { for (uint8_t i = 0; i < STRIP_COUNT; i++) leds[i].brightness = min(255, leds[i].brightness + 25); renderAll(true); }
   if (down == LOW && lastDown == HIGH) { for (uint8_t i = 0; i < STRIP_COUNT; i++) leds[i].brightness = max(0, leds[i].brightness - 25); renderAll(true); }
   lastMode = mode; lastUp = up; lastDown = down;
+#endif
 }
 
 String escapeJson(const char* source) { String out; while (*source) { if (*source == '"' || *source == '\\') out += '\\'; out += *source++; } return out; }
 String statusJson() {
   String out = "{\"connected\":" + String(WiFi.status() == WL_CONNECTED ? "true" : "false") + ",\"timesynced\":" + String(timeSynced ? "true" : "false");
-  out += ",\"scheduler\":\"server\",\"firmwareVersion\":\"" FIRMWARE_VERSION "\",\"otaEnabled\":" + String(otaReady ? "true" : "false") + ",\"uptime\":" + String(millis() / 1000) + ",\"rssi\":" + String(WiFi.status() == WL_CONNECTED ? WiFi.RSSI() : 0) + ",\"strips\":[";
+  out += ",\"scheduler\":\"server\",\"firmwareVersion\":\"" FIRMWARE_VERSION "\",\"otaEnabled\":" + String(otaReady ? "true" : "false") + ",\"pirSensorsEnabled\":" + String(ENABLE_PIR_SENSORS ? "true" : "false") + ",\"physicalButtonsEnabled\":" + String(ENABLE_PHYSICAL_BUTTONS ? "true" : "false") + ",\"uptime\":" + String(millis() / 1000) + ",\"rssi\":" + String(WiFi.status() == WL_CONNECTED ? WiFi.RSSI() : 0) + ",\"strips\":[";
   for (uint8_t i = 0; i < STRIP_COUNT; i++) { if (i) out += ','; out += "{\"id\":" + String(i + 1) + ",\"enabled\":" + String(leds[i].enabled ? "true" : "false") + ",\"brightness\":" + String(leds[i].brightness) + ",\"effect\":" + String(leds[i].effect) + ",\"color\":[" + String(leds[i].red) + ',' + String(leds[i].green) + ',' + String(leds[i].blue) + "]}"; }
   return out + "]}";
 }
@@ -124,12 +157,28 @@ void handleHttp() {
   delay(20); c.stop();
 }
 void setup() {
-  Serial.begin(115200); delay(300); for (uint8_t i = 0; i < STRIP_COUNT; i++) { strip[i].begin(); strip[i].clear(); strip[i].show(); leds[i] = {false, 60, STATIC, 0, 0, 255}; pinMode(PIR_PINS[i], INPUT); }
-  pinMode(BUTTON_MODE, INPUT_PULLUP); pinMode(BUTTON_UP, INPUT_PULLUP); pinMode(BUTTON_DOWN, INPUT_PULLUP); logEvent("success", "Arduino LED Controller Lite indul"); connectWifi(); server.begin();
+  Serial.begin(115200); delay(300);
+  for (uint8_t i = 0; i < STRIP_COUNT; i++) {
+    strip[i].begin(); strip[i].clear(); strip[i].show(); leds[i] = {false, 60, STATIC, 0, 0, 255};
+#if ENABLE_PIR_SENSORS
+    pinMode(PIR_PINS[i], INPUT);
+#endif
+  }
+#if ENABLE_PHYSICAL_BUTTONS
+  pinMode(BUTTON_MODE, INPUT_PULLUP); pinMode(BUTTON_UP, INPUT_PULLUP); pinMode(BUTTON_DOWN, INPUT_PULLUP);
+#endif
+  logEvent("success", "Arduino LED Controller Lite indul");
+  logEvent("info", ENABLE_PIR_SENSORS ? "PIR figyeles bekapcsolva" : "PIR figyeles kikapcsolva (nincs szenzor)");
+  logEvent("info", ENABLE_PHYSICAL_BUTTONS ? "Fizikai gombok bekapcsolva" : "Fizikai gombok kikapcsolva");
+  connectWifi(); server.begin();
 }
 void loop() {
-  if (WiFi.status() != WL_CONNECTED && millis() - lastWifi > WIFI_RETRY) { otaReady = false; connectWifi(); }
+  if (WiFi.status() != WL_CONNECTED) {
+    wifiReported = false;
+    if (millis() - lastWifi > WIFI_RETRY) { otaReady = false; connectWifi(); }
+  }
   if (WiFi.status() == WL_CONNECTED) {
+    reportWifiConnected();
     startOta(); ArduinoOTA.poll();
     if (millis() - lastTimeCheck > 60000) { lastTimeCheck = millis(); timeSynced = WiFi.getTime() > 0; }
   }
