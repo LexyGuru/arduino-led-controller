@@ -3,6 +3,7 @@
 set -euo pipefail
 
 APP_DIR="${APP_DIR:-/opt/arduino-led-controller}"
+STATE_DIR="${STATE_DIR:-/var/lib/arduino-led-controller}"
 BRANCH="${UPDATE_BRANCH:-main}"
 LOG_TAG="arduino-led-updater"
 
@@ -13,15 +14,15 @@ log() { logger -t "${LOG_TAG}" -- "$*"; echo "$*"; }
 cd "${APP_DIR}"
 
 # Kézzel a konténerben módosított fájlokat nem írunk felül.
-if ! git diff --quiet || ! git diff --cached --quiet; then
+if ! git -c safe.directory="${APP_DIR}" diff --quiet || ! git -c safe.directory="${APP_DIR}" diff --cached --quiet; then
   log "Frissítés kihagyva: helyi, nem mentett módosítás található."
   exit 0
 fi
 
-git fetch --quiet origin "${BRANCH}"
+git -c safe.directory="${APP_DIR}" fetch --quiet origin "${BRANCH}"
 REMOTE_REF="origin/${BRANCH}"
 
-if git merge-base --is-ancestor "${REMOTE_REF}" HEAD; then
+if git -c safe.directory="${APP_DIR}" merge-base --is-ancestor "${REMOTE_REF}" HEAD; then
   log "Nincs új GitHub-frissítés."
   exit 0
 fi
@@ -34,13 +35,17 @@ cleanup() {
 trap cleanup EXIT
 
 log "Új verzió található; ellenőrzés külön munkakönyvtárban."
-git worktree add --detach "${CHECK_DIR}" "${REMOTE_REF}" >/dev/null
+git -c safe.directory="${APP_DIR}" worktree add --detach "${CHECK_DIR}" "${REMOTE_REF}" >/dev/null
 node --check "${CHECK_DIR}/server2_final.js"
 (cd "${CHECK_DIR}" && npm install --omit=dev --no-audit --no-fund --ignore-scripts >/dev/null)
 
 log "Ellenőrzés sikeres; frissítés telepítése."
-git pull --ff-only origin "${BRANCH}"
-runuser -u arduino-led -- npm install --omit=dev --no-audit --no-fund
+git -c safe.directory="${APP_DIR}" pull --ff-only origin "${BRANCH}"
+install -d -o arduino-led -g arduino-led -m 0750 "${STATE_DIR}/npm-cache"
+runuser -u arduino-led -- env \
+  HOME="${STATE_DIR}" \
+  npm_config_cache="${STATE_DIR}/npm-cache" \
+  npm install --omit=dev --no-audit --no-fund
 node --check server2_final.js
 systemctl restart arduino-led-controller.service
 log "Frissítés sikeresen befejeződött."

@@ -39,6 +39,11 @@ rsync -a --delete \
 
 mkdir -p "${APP_DIR}/data" "${APP_DIR}/config" "${APP_DIR}/schedules"
 chown -R arduino-led:arduino-led "${APP_DIR}"
+# A Git munkakönyvtárat a root kezeli (a frissítő szolgáltatás is rootként fut).
+# Így a kézi `git pull` nem akad el a Git tulajdonosi biztonsági ellenőrzésén.
+if [[ -d "${APP_DIR}/.git" ]]; then
+  chown -R root:root "${APP_DIR}/.git"
+fi
 
 echo "==> Arduino OTA feltöltőeszköz telepítése"
 chmod 755 "${APP_DIR}/deploy/install-ota-tool.sh"
