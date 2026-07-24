@@ -1227,6 +1227,13 @@ function renderConfiguredDashboard() {
     section.id = 'settings';
     section.innerHTML = '<div class="panel scheduler"><div class="panel-head"><div><h2>Kapcsolati beállítások</h2><div class="muted">Itt állíthatod át, melyik Arduino vezérlőt használja a szerver.</div></div></div><div class="line"><label>Arduino IP-címe vagy neve</label><input id="settingsArduinoIP" type="text" inputmode="url" placeholder="például: 10.0.0.117"></div><div class="line"><label>Arduino port</label><input id="settingsArduinoPort" type="number" min="1" max="65535" value="80"></div><button id="saveArduinoSettings" class="primary" style="width:100%;margin-top:10px">Kapcsolat mentése</button><p id="settingsConnection" class="muted">A mentett cím betöltése…</p><div class="schedule-led"><div class="panel-head"><div><h2>Arduino firmware</h2><div class="muted">A GitHubon sikeresen lefordított firmware biztonságos OTA telepítése.</div></div></div><button id="checkFirmware" class="ghost">Frissítés ellenőrzése</button><button id="startFirmwareUpdate" class="primary" style="margin-left:8px">Firmware telepítése</button><p id="firmwareState" class="muted">Firmware állapot betöltése…</p></div></div>';
     main.append(section);
+
+    const controlSection = document.getElementById('control');
+    const testPanel = document.createElement('div');
+    testPanel.className = 'panel';
+    testPanel.style.marginBottom = '18px';
+    testPanel.innerHTML = '<div class="panel-head"><div><h2>LED teszt és effektek</h2><div class="muted">Gyors ellenőrzés mindhárom szalagon. A teszt ideiglenesen felülírja az aktuális kézi LED-beállítást.</div></div></div><div class="section-actions"><button class="ghost" data-led-preset="night">🌙 Éjszakai kék</button><button class="ghost" data-led-preset="rainbow">🌈 Szivárvány teszt</button><button class="ghost" data-led-preset="pulse">✨ Lélegző teszt</button><button class="danger" data-led-preset="off">■ Teszt leállítása</button></div><p id="ledTestState" class="muted" style="margin:14px 0 0">Válassz egy mintát a LED-ek és a kapcsolat gyors ellenőrzéséhez.</p>';
+    if (controlSection) controlSection.prepend(testPanel);
     const accessPanel = document.createElement('div');
     accessPanel.className = 'panel scheduler';
     accessPanel.style.marginTop = '18px';
@@ -1306,6 +1313,38 @@ function renderConfiguredDashboard() {
       }
     }
 
+    const ledPresets = {
+      night: { label: 'Éjszakai kék', enabled: true, brightness: 18, effect: 0, color: [0, 25, 255] },
+      rainbow: { label: 'Szivárvány teszt', enabled: true, brightness: 70, effect: 3, color: [255, 255, 255] },
+      pulse: { label: 'Lélegző teszt', enabled: true, brightness: 85, effect: 2, color: [75, 130, 255] }
+    };
+    async function runLedPreset(name) {
+      const state = document.getElementById('ledTestState');
+      const buttons = Array.from(testPanel.querySelectorAll('button'));
+      buttons.forEach(function (button) { button.disabled = true; });
+      try {
+        if (name === 'off') {
+          await request('/api/arduino/all-off', { method: 'POST' });
+          state.textContent = 'Teszt leállítva: mindhárom LED kikapcsolva.';
+          msg('LED teszt leállítva');
+        } else {
+          const preset = ledPresets[name];
+          state.textContent = preset.label + ' elküldése mindhárom LED-re…';
+          for (let id = 1; id <= 3; id++) {
+            await request('/api/arduino/led/' + id, { method: 'POST', body: JSON.stringify(preset) });
+          }
+          state.textContent = '✓ ' + preset.label + ' aktív mindhárom LED-en.';
+          msg(preset.label + ' elindítva');
+        }
+        loadStatus();
+      } catch (error) {
+        state.textContent = 'Teszt hiba: ' + error.message;
+        msg(error.message, true);
+      } finally {
+        buttons.forEach(function (button) { button.disabled = false; });
+      }
+    }
+
     function displayAudit(entries) {
       const root = document.getElementById('auditList');
       root.replaceChildren();
@@ -1355,6 +1394,9 @@ function renderConfiguredDashboard() {
     document.getElementById('createUser').addEventListener('click', createUser);
     document.getElementById('loadAudit').addEventListener('click', loadAccess);
     document.getElementById('logout').addEventListener('click', logout);
+    testPanel.querySelectorAll('[data-led-preset]').forEach(function (button) {
+      button.addEventListener('click', function () { runLedPreset(button.dataset.ledPreset); });
+    });
   }());
   </script></body>`);
 }

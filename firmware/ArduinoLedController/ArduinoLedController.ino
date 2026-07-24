@@ -11,7 +11,7 @@
 #include <EEPROM.h>
 #include "secrets.h"
 
-#define FIRMWARE_VERSION "3.1.0"
+#define FIRMWARE_VERSION "3.1.1"
 #define DEVICE_NAME "arduino-led-controller"
 #ifndef ENABLE_PIR_SENSORS
 #define ENABLE_PIR_SENSORS 0
@@ -136,8 +136,32 @@ void reportWifiConnected() {
   Serial.println("Web API: http://<IP>/api/status");
   Serial.println("==========================================");
 }
+void showOtaIndicator(uint8_t red, uint8_t green, uint8_t blue, uint8_t brightness = 80) {
+  for (uint8_t i = 0; i < STRIP_COUNT; i++) {
+    strip[i].setBrightness(brightness);
+    strip[i].fill(strip[i].Color(red, green, blue));
+    strip[i].show();
+  }
+}
+void otaTransferStarted() {
+  logEvent("info", "OTA atvitel elindult - kek fenyes jelzes");
+  showOtaIndicator(0, 70, 255);
+}
+void otaBeforeApply() {
+  logEvent("success", "OTA kesz - zold jelzes, ujrainditas");
+  showOtaIndicator(0, 255, 60);
+}
+void otaTransferError(int code, const char*) {
+  char message[88];
+  snprintf(message, sizeof(message), "OTA hiba: %d - piros jelzes", code);
+  logEvent("error", message);
+  showOtaIndicator(255, 0, 0);
+}
 void startOta() {
   if (WiFi.status() == WL_CONNECTED && !otaReady) {
+    ArduinoOTA.onStart(otaTransferStarted);
+    ArduinoOTA.beforeApply(otaBeforeApply);
+    ArduinoOTA.onError(otaTransferError);
     ArduinoOTA.begin(WiFi.localIP(), DEVICE_NAME, networkSettings.otaPassword, InternalStorage);
     otaReady = true; logEvent("success", "OTA frissites fogado szolgaltatas aktiv");
   }
