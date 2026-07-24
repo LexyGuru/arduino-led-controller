@@ -57,10 +57,19 @@ jobs:
         with:
           path: desktop-release
           merge-multiple: true
-      - name: Kiadás létrehozása és fájlok feltöltése
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ github.event_name == 'workflow_dispatch' && format('desktop-v{0}', inputs.version) || github.ref_type == 'tag' && github.ref_name || format('desktop-v1.0.{0}', github.run_number) }}
-          name: Arduino LED Controller ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_type == 'tag' && github.ref_name || format('1.0.{0}', github.run_number) }}
-          generate_release_notes: true
-          files: desktop-release/**/*
+      - name: Kiadás létrehozása és fájlok feltöltése (újrapróbálással)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && format('desktop-v{0}', inputs.version) || github.ref_type == 'tag' && github.ref_name || format('desktop-v1.0.{0}', github.run_number) }}
+          RELEASE_NAME: Arduino LED Controller ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_type == 'tag' && github.ref_name || format('1.0.{0}', github.run_number) }}
+        run: |
+          for attempt in 1 2 3 4 5; do
+            if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+              gh release upload "$RELEASE_TAG" desktop-release/**/* --clobber && exit 0
+            else
+              gh release create "$RELEASE_TAG" desktop-release/**/* --title "$RELEASE_NAME" --generate-notes && exit 0
+            fi
+            echo "A GitHub kiadás feltöltése sikertelen, újrapróbálás: $attempt/5"
+            sleep $((attempt * 10))
+          done
+          exit 1
