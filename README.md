@@ -27,8 +27,20 @@ Az `ARDUINO_IP` értékét az Arduino tényleges IP-címére cseréld.
 Ezután a kezelőfelület címe:
 
 ```text
-http://LXC_KONTENER_IP:3000
+https://LXC_KONTENER_IP
 ```
+
+Az első megnyitásnál minden eszközön fogadd el/telepítsd a Caddy helyi
+tanúsítványát. A tanúsítvány a konténerben itt található:
+
+```text
+/var/lib/caddy/.local/share/caddy/pki/authorities/local/root.crt
+```
+
+Így a belépési és OTA-jelszavak HTTPS-en, titkosítva közlekednek a helyi
+hálózaton. Az első látogatáskor a felület adminisztrátori fiók létrehozását
+kéri; további felhasználókat és a szervernaplót a Konfiguráció menüben kezelhet
+az adminisztrátor.
 
 ## Hasznos parancsok
 

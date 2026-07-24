@@ -19,6 +19,7 @@ require('dotenv').config();
 
 const config = {
   port: process.env.PORT || 3000,
+  bindHost: process.env.BIND_HOST || '0.0.0.0',
   arduinoIP: process.env.ARDUINO_IP || '10.0.0.117',
   arduinoPort: process.env.ARDUINO_PORT || 80,
   consolePort: process.env.CONSOLE_PORT || 81,
@@ -30,6 +31,9 @@ const config = {
   firmwareReleaseTag: process.env.FIRMWARE_RELEASE_TAG || 'firmware-latest',
   otaToolPath: process.env.OTA_TOOL_PATH || path.join(__dirname, 'tools', 'arduinoOTA', 'arduinoOTA'),
   otaPassword: process.env.OTA_PASSWORD || '',
+  cookieSecure: process.env.COOKIE_SECURE === '1',
+  authFile: process.env.AUTH_FILE || path.join(__dirname, 'config', 'users.json'),
+  auditFile: process.env.AUDIT_FILE || path.join(__dirname, 'data', 'audit-log.jsonl'),
   version: getAppVersion()
 };
 
@@ -175,6 +179,91 @@ function validateCSRFToken(token) {
   }
   
   return tokenEntry.token === token;
+}
+
+// ========================= FELHASZNÁLÓK ÉS NAPLÓ =========================
+
+let authData = { sessionSecret: crypto.randomBytes(32).toString('hex'), users: [] };
+
+function loadAuthData() {
+  try {
+    if (fs.existsSync(config.authFile)) {
+      const stored = fs.readJsonSync(config.authFile);
+      if (typeof stored.sessionSecret === 'string' && Array.isArray(stored.users)) authData = stored;
+    }
+  } catch (error) {
+    console.warn('Felhasználói adatok betöltése sikertelen:', error.message);
+  }
+}
+function saveAuthData() {
+  fs.writeJsonSync(config.authFile, authData, { spaces: 2, mode: 0o600 });
+  try { fs.chmodSync(config.authFile, 0o600); } catch (error) { /* platformfüggő */ }
+}
+loadAuthData();
+
+function readCookie(req, name) {
+  const cookies = String(req.headers.cookie || '').split(';').map((part) => part.trim());
+  const item = cookies.find((part) => part.startsWith(`${name}=`));
+  return item ? decodeURIComponent(item.slice(name.length + 1)) : null;
+}
+function signSession(payload) {
+  const encoded = Buffer.from(JSON.stringify(payload)).toString('base64url');
+  const signature = crypto.createHmac('sha256', authData.sessionSecret).update(encoded).digest('base64url');
+  return `${encoded}.${signature}`;
+}
+function sessionUser(req) {
+  try {
+    const token = readCookie(req, 'led_session');
+    if (!token) return null;
+    const [encoded, signature] = token.split('.');
+    const expected = crypto.createHmac('sha256', authData.sessionSecret).update(encoded).digest('base64url');
+    if (!signature || !crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) return null;
+    const payload = JSON.parse(Buffer.from(encoded, 'base64url').toString('utf8'));
+    if (!payload || payload.exp < Date.now()) return null;
+    const user = authData.users.find((candidate) => candidate.username === payload.username && candidate.sessionVersion === payload.sessionVersion && candidate.enabled !== false);
+    return user ? { username: user.username, role: user.role, displayName: user.displayName || user.username } : null;
+  } catch (error) { return null; }
+}
+function setSession(res, user) {
+  const token = signSession({ username: user.username, sessionVersion: user.sessionVersion, exp: Date.now() + 12 * 60 * 60 * 1000 });
+  res.cookie('led_session', token, { httpOnly: true, sameSite: 'strict', secure: config.cookieSecure, maxAge: 12 * 60 * 60 * 1000, path: '/' });
+}
+function clearSession(res) { res.clearCookie('led_session', { httpOnly: true, sameSite: 'strict', secure: config.cookieSecure, path: '/' }); }
+function scryptPassword(password, salt) {
+  return new Promise((resolve, reject) => crypto.scrypt(password, salt, 64, (error, derived) => error ? reject(error) : resolve(derived.toString('hex'))));
+}
+async function createUserRecord({ username, password, displayName, role = 'operator' }) {
+  const normalized = String(username || '').trim().toLowerCase();
+  if (!/^[a-z0-9._-]{3,32}$/.test(normalized)) throw new Error('A felhasználónév 3–32 karakteres, kisbetűs betűkből, számokból és . _ - jelekből álljon.');
+  if (typeof password !== 'string' || password.length < 12) throw new Error('A jelszó legalább 12 karakter legyen.');
+  if (!['admin', 'operator', 'viewer'].includes(role)) throw new Error('Ismeretlen jogosultsági szint.');
+  if (authData.users.some((user) => user.username === normalized)) throw new Error('Ez a felhasználónév már létezik.');
+  const salt = crypto.randomBytes(16).toString('hex');
+  const passwordHash = await scryptPassword(password, salt);
+  const user = { username: normalized, displayName: String(displayName || normalized).trim().slice(0, 64), role, salt, passwordHash, sessionVersion: 1, enabled: true, createdAt: new Date().toISOString() };
+  authData.users.push(user); saveAuthData();
+  return user;
+}
+async function verifyPassword(user, password) {
+  const hash = await scryptPassword(String(password || ''), user.salt);
+  return crypto.timingSafeEqual(Buffer.from(hash, 'hex'), Buffer.from(user.passwordHash, 'hex'));
+}
+function audit(req, action, details = {}) {
+  const entry = { timestamp: new Date().toISOString(), user: req.user ? req.user.username : 'anonymous', role: req.user ? req.user.role : null, ip: req.ip, action, details };
+  fs.appendFile(config.auditFile, `${JSON.stringify(entry)}\n`).catch((error) => logger.error(`Audit napló hiba: ${error.message}`));
+}
+function requireApiUser(req, res, next) {
+  if (req.path.startsWith('/auth/')) return next();
+  const user = sessionUser(req);
+  if (!user) return res.status(401).json({ error: 'Bejelentkezés szükséges.', code: 'AUTH_REQUIRED' });
+  req.user = user;
+  if (req.method !== 'GET' && req.method !== 'HEAD' && user.role === 'viewer') return res.status(403).json({ error: 'Ehhez a művelethez nincs jogosultságod.', code: 'FORBIDDEN' });
+  if (user.role !== 'admin' && (req.path.startsWith('/settings') || req.path.startsWith('/firmware'))) return res.status(403).json({ error: 'Ezt a rendszerbeállítást csak adminisztrátor módosíthatja.', code: 'ADMIN_REQUIRED' });
+  next();
+}
+function requireAdmin(req, res, next) {
+  if (!req.user || req.user.role !== 'admin') return res.status(403).json({ error: 'Adminisztrátori jogosultság szükséges.', code: 'ADMIN_REQUIRED' });
+  next();
 }
 
 // ========================= ARDUINO API WRAPPER =========================
@@ -433,6 +522,78 @@ const upload = multer({
       cb(new Error('Csak .js és .json fájlok engedélyezettek!'));
     }
   }
+});
+
+// ========================= BELÉPÉS ÉS HOZZÁFÉRÉS =========================
+
+app.get('/api/auth/status', (req, res) => {
+  const user = sessionUser(req);
+  res.json({ authenticated: Boolean(user), user, setupNeeded: authData.users.length === 0, cookieSecure: config.cookieSecure });
+});
+
+app.post('/api/auth/setup', async (req, res) => {
+  if (authData.users.length > 0) return res.status(409).json({ error: 'Az első adminisztrátor már létre lett hozva.' });
+  try {
+    const user = await createUserRecord({ ...req.body, role: 'admin' });
+    setSession(res, user);
+    req.user = { username: user.username, role: user.role, displayName: user.displayName };
+    audit(req, 'Első adminisztrátor létrehozva');
+    res.status(201).json({ success: true, user: req.user });
+  } catch (error) { res.status(400).json({ error: error.message }); }
+});
+
+app.post('/api/auth/login', async (req, res) => {
+  const username = String(req.body?.username || '').trim().toLowerCase();
+  const user = authData.users.find((candidate) => candidate.username === username && candidate.enabled !== false);
+  if (!user || !(await verifyPassword(user, req.body?.password))) {
+    audit(req, 'Sikertelen bejelentkezés', { username });
+    return res.status(401).json({ error: 'Hibás felhasználónév vagy jelszó.' });
+  }
+  setSession(res, user);
+  req.user = { username: user.username, role: user.role, displayName: user.displayName };
+  audit(req, 'Sikeres bejelentkezés');
+  res.json({ success: true, user: req.user });
+});
+
+app.post('/api/auth/logout', (req, res) => {
+  req.user = sessionUser(req);
+  if (req.user) audit(req, 'Kijelentkezés');
+  clearSession(res); res.json({ success: true });
+});
+
+function adminUser(req, res) {
+  req.user = sessionUser(req);
+  if (!req.user) { res.status(401).json({ error: 'Bejelentkezés szükséges.' }); return false; }
+  if (req.user.role !== 'admin') { res.status(403).json({ error: 'Adminisztrátori jogosultság szükséges.' }); return false; }
+  return true;
+}
+app.get('/api/auth/users', (req, res) => {
+  if (!adminUser(req, res)) return;
+  res.json({ users: authData.users.map(({ username, displayName, role, enabled, createdAt }) => ({ username, displayName, role, enabled, createdAt })) });
+});
+app.post('/api/auth/users', async (req, res) => {
+  if (!adminUser(req, res)) return;
+  try {
+    const user = await createUserRecord(req.body || {});
+    audit(req, 'Felhasználó létrehozva', { username: user.username, role: user.role });
+    res.status(201).json({ success: true, user: { username: user.username, displayName: user.displayName, role: user.role } });
+  } catch (error) { res.status(400).json({ error: error.message }); }
+});
+app.get('/api/auth/audit', async (req, res) => {
+  if (!adminUser(req, res)) return;
+  try {
+    if (!fs.existsSync(config.auditFile)) return res.json({ entries: [] });
+    const entries = (await fs.readFile(config.auditFile, 'utf8')).trim().split('\n').filter(Boolean).slice(-500).map((line) => JSON.parse(line)).reverse();
+    res.json({ entries });
+  } catch (error) { res.status(500).json({ error: 'A szervernapló nem olvasható.' }); }
+});
+
+app.use('/api', requireApiUser);
+app.use('/api', (req, res, next) => {
+  res.once('finish', () => {
+    if (req.user && req.method !== 'GET' && req.method !== 'HEAD' && !req.path.startsWith('/auth/')) audit(req, `${req.method} ${req.path}`, { status: res.statusCode });
+  });
+  next();
 });
 
 // ========================= ARDUINO API ROUTES =========================
@@ -1055,6 +1216,11 @@ function renderConfiguredDashboard() {
     section.id = 'settings';
     section.innerHTML = '<div class="panel scheduler"><div class="panel-head"><div><h2>Kapcsolati beállítások</h2><div class="muted">Itt állíthatod át, melyik Arduino vezérlőt használja a szerver.</div></div></div><div class="line"><label>Arduino IP-címe vagy neve</label><input id="settingsArduinoIP" type="text" inputmode="url" placeholder="például: 10.0.0.117"></div><div class="line"><label>Arduino port</label><input id="settingsArduinoPort" type="number" min="1" max="65535" value="80"></div><button id="saveArduinoSettings" class="primary" style="width:100%;margin-top:10px">Kapcsolat mentése</button><p id="settingsConnection" class="muted">A mentett cím betöltése…</p><div class="schedule-led"><div class="panel-head"><div><h2>Arduino firmware</h2><div class="muted">A GitHubon sikeresen lefordított firmware biztonságos OTA telepítése.</div></div></div><button id="checkFirmware" class="ghost">Frissítés ellenőrzése</button><button id="startFirmwareUpdate" class="primary" style="margin-left:8px">Firmware telepítése</button><p id="firmwareState" class="muted">Firmware állapot betöltése…</p></div></div>';
     main.append(section);
+    const accessPanel = document.createElement('div');
+    accessPanel.className = 'panel scheduler';
+    accessPanel.style.marginTop = '18px';
+    accessPanel.innerHTML = '<div class="panel-head"><div><h2>Felhasználók és szervernapló</h2><div id="currentUser" class="muted">Felhasználói adatok betöltése…</div></div><button id="logout" class="danger">Kijelentkezés</button></div><div id="adminArea" hidden><div class="schedule-led"><b>Új felhasználó</b><div class="line"><label>Név</label><input id="newUserName" type="text" placeholder="például: anna"></div><div class="line"><label>Jelszó</label><input id="newUserPassword" type="password" minlength="12"></div><div class="line"><label>Jogosultság</label><select id="newUserRole"><option value="viewer">Megtekintő</option><option value="operator" selected>Kezelő</option><option value="admin">Adminisztrátor</option></select></div><button id="createUser" class="primary">Felhasználó létrehozása</button><div id="userList" class="schedule-list"></div></div><div class="schedule-led"><div class="panel-head"><div><b>Szervernapló</b><div class="muted">Belépések és végrehajtott műveletek.</div></div><button id="loadAudit" class="ghost">Napló frissítése</button></div><div id="auditList" class="console" style="min-height:160px;max-height:340px">Adminisztrátori jogosultság szükséges.</div></div></div>';
+    section.append(accessPanel);
 
     async function loadSettings() {
       const state = document.getElementById('settingsConnection');
@@ -1129,6 +1295,38 @@ function renderConfiguredDashboard() {
       }
     }
 
+    function displayAudit(entries) {
+      const root = document.getElementById('auditList');
+      root.replaceChildren();
+      if (!entries.length) { root.textContent = 'Még nincs naplóbejegyzés.'; return; }
+      entries.forEach(function (entry) {
+        const row = document.createElement('div'); row.className = 'log info';
+        const time = document.createElement('time'), user = document.createElement('span'), text = document.createElement('span');
+        time.textContent = entry.timestamp ? new Date(entry.timestamp).toLocaleString('hu-HU') : '—';
+        user.className = 'log-type'; user.textContent = entry.user || '—';
+        text.textContent = entry.action + (entry.details && entry.details.status ? ' · HTTP ' + entry.details.status : '');
+        row.append(time, user, text); root.append(row);
+      });
+    }
+    async function loadAccess() {
+      try {
+        const status = await request('/api/auth/status');
+        document.getElementById('currentUser').textContent = 'Bejelentkezve: ' + status.user.displayName + ' · ' + status.user.role;
+        const admin = status.user.role === 'admin'; document.getElementById('adminArea').hidden = !admin;
+        if (!admin) return;
+        const users = await request('/api/auth/users'), list = document.getElementById('userList'); list.replaceChildren();
+        users.users.forEach(function (user) { const item = document.createElement('div'); item.className = 'schedule-item'; item.textContent = user.displayName + ' (' + user.username + ') · ' + user.role; list.append(item); });
+        const auditData = await request('/api/auth/audit'); displayAudit(auditData.entries);
+      } catch (error) { document.getElementById('currentUser').textContent = 'A belépési adatok nem tölthetők be.'; }
+    }
+    async function createUser() {
+      try {
+        const data = await request('/api/auth/users', { method: 'POST', body: JSON.stringify({ username:document.getElementById('newUserName').value, displayName:document.getElementById('newUserName').value, password:document.getElementById('newUserPassword').value, role:document.getElementById('newUserRole').value }) });
+        document.getElementById('newUserPassword').value = ''; msg('Felhasználó létrehozva: ' + data.user.username); loadAccess();
+      } catch (error) { msg(error.message, true); }
+    }
+    async function logout() { await request('/api/auth/logout', { method: 'POST' }); location.reload(); }
+
     function showSettings() {
       document.querySelectorAll('.view').forEach(function (view) { view.classList.toggle('active', view.id === 'settings'); });
       document.querySelectorAll('.nav button').forEach(function (button) { button.classList.toggle('active', button === navButton); });
@@ -1136,18 +1334,29 @@ function renderConfiguredDashboard() {
       document.getElementById('pageTitle').textContent = 'Kapcsolati beállítások';
       loadSettings();
       loadFirmwareStatus();
+      loadAccess();
     }
 
     navButton.addEventListener('click', showSettings);
     document.getElementById('saveArduinoSettings').addEventListener('click', saveSettings);
     document.getElementById('checkFirmware').addEventListener('click', loadFirmwareStatus);
     document.getElementById('startFirmwareUpdate').addEventListener('click', startFirmwareUpdate);
+    document.getElementById('createUser').addEventListener('click', createUser);
+    document.getElementById('loadAudit').addEventListener('click', loadAccess);
+    document.getElementById('logout').addEventListener('click', logout);
   }());
   </script></body>`);
 }
 
+function renderLoginPage(setupNeeded) {
+  const title = setupNeeded ? 'Első adminisztrátor létrehozása' : 'Bejelentkezés';
+  const helper = setupNeeded ? 'Ez lesz a rendszer adminisztrátori fiókja.' : 'Jelentkezz be a LED vezérlő használatához.';
+  return `<!doctype html><html lang="hu"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title} · LED Control</title><style>:root{font-family:Inter,system-ui,sans-serif;color:#f4f5f6;background:#15181c}*{box-sizing:border-box}body{min-height:100vh;margin:0;display:grid;place-items:center;background:radial-gradient(circle at 75% 0,#553d36,transparent 35rem),#15181c}.card{width:min(430px,calc(100vw - 32px));padding:30px;border:1px solid #ffffff18;border-radius:20px;background:#24272dee;box-shadow:0 24px 70px #0008}.mark{font-size:2rem}h1{margin:12px 0 6px;font-size:1.45rem}.muted{color:#a8aeb7;line-height:1.5}label{display:grid;gap:7px;margin-top:16px;font-size:.9rem}input,select{padding:12px;border:1px solid #ffffff25;border-radius:10px;background:#15181c;color:#fff;font:inherit}button{width:100%;margin-top:22px;padding:12px;border:0;border-radius:10px;background:linear-gradient(135deg,#ff6b43,#f45b3e);color:#fff;font-weight:800;cursor:pointer}.message{min-height:1.3em;margin-top:14px;color:#ffb0a0;font-size:.88rem}.secure{margin-top:20px;color:#8e96a1;font-size:.78rem}</style></head><body><main class="card"><div class="mark">💡</div><h1>${title}</h1><p class="muted">${helper}</p><form id="authForm"><label>Felhasználónév<input id="username" autocomplete="username" required minlength="3" pattern="[A-Za-z0-9._-]+"></label>${setupNeeded ? '<label>Megjelenő név<input id="displayName" autocomplete="name"></label>' : ''}<label>Jelszó<input id="password" type="password" autocomplete="${setupNeeded ? 'new-password' : 'current-password'}" required minlength="12"></label>${setupNeeded ? '<label>Jelszó ismétlése<input id="passwordConfirm" type="password" autocomplete="new-password" required minlength="12"></label>' : ''}<button>${setupNeeded ? 'Adminisztrátor létrehozása' : 'Belépés'}</button><div id="message" class="message"></div></form><p class="secure">A munkamenet 12 óráig érvényes. HTTPS használata ajánlott.</p></main><script>const setup=${setupNeeded ? 'true' : 'false'};document.getElementById('authForm').addEventListener('submit',async function(event){event.preventDefault();const message=document.getElementById('message'),password=document.getElementById('password').value;if(setup&&password!==document.getElementById('passwordConfirm').value){message.textContent='A két jelszó nem egyezik.';return}try{const response=await fetch(setup?'/api/auth/setup':'/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:document.getElementById('username').value,password:password,displayName:setup?document.getElementById('displayName').value:undefined})}),data=await response.json();if(!response.ok)throw new Error(data.error||'Sikertelen művelet');location.reload()}catch(error){message.textContent=error.message}});</script></body></html>`;
+}
+
 // Main dashboard
 app.get('/', async (req, res) => {
+  if (!sessionUser(req)) return res.type('html').send(renderLoginPage(authData.users.length === 0));
   // A kezelőfelület azonnal töltődjön be akkor is, ha az Arduino épp lassan
   // válaszol. Az állapotot a böngésző külön kéréssel frissíti.
   return res.type('html').send(renderConfiguredDashboard());
@@ -1638,7 +1847,7 @@ app.use((err, req, res, next) => {
 
 // ========================= START SERVER =========================
 
-server.listen(config.port, '0.0.0.0', () => {
+server.listen(config.port, config.bindHost, () => {
   logger.info('🚀 Arduino LED Controller started!');
   logger.info(`📍 Web interface: http://0.0.0.0:${config.port}`);
   logger.info(`🤖 Arduino: ${config.arduinoIP}:${config.arduinoPort}`);

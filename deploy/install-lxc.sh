@@ -50,19 +50,24 @@ if [[ ! -f /etc/arduino-led-controller.env ]]; then
   chown root:arduino-led /etc/arduino-led-controller.env
 fi
 
+grep -q '^BIND_HOST=' /etc/arduino-led-controller.env || echo 'BIND_HOST=127.0.0.1' >> /etc/arduino-led-controller.env
+grep -q '^COOKIE_SECURE=' /etc/arduino-led-controller.env || echo 'COOKIE_SECURE=1' >> /etc/arduino-led-controller.env
+
 install -m 644 "${APP_DIR}/deploy/arduino-led-controller.service" "/etc/systemd/system/${SERVICE_NAME}.service"
 chmod 755 "${APP_DIR}/deploy/update.sh"
+chmod 755 "${APP_DIR}/deploy/install-https.sh"
 install -m 644 "${APP_DIR}/deploy/arduino-led-controller-update.service" "/etc/systemd/system/${SERVICE_NAME}-update.service"
 install -m 644 "${APP_DIR}/deploy/arduino-led-controller-update.timer" "/etc/systemd/system/${SERVICE_NAME}-update.timer"
 systemctl daemon-reload
 systemctl enable --now "${SERVICE_NAME}"
 systemctl enable --now "${SERVICE_NAME}-update.timer"
+HTTPS_HOST="${HTTPS_HOST:-}" PORT="${PORT:-3000}" "${APP_DIR}/deploy/install-https.sh"
 
 echo
 echo "Telepítés kész."
 echo "Állapot: systemctl status ${SERVICE_NAME}"
 echo "Napló:    journalctl -u ${SERVICE_NAME} -f"
 echo "Frissítő: systemctl status ${SERVICE_NAME}-update.timer"
-echo "Web:      http://<LXC-IP>:3000"
+echo "Web:      https://<LXC-IP>"
 echo "Arduino IP beállítás: /etc/arduino-led-controller.env"
 echo "OTA jelszó: add meg az OTA_PASSWORD értéket ugyanebben a fájlban."
