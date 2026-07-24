@@ -1,0 +1,36 @@
+name: Build Arduino firmware
+
+on:
+  push:
+    paths:
+      - 'firmware/**'
+      - '.github/workflows/firmware-build.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: arduino/setup-arduino-cli@v2
+      - name: Install board core and libraries
+        run: |
+          arduino-cli core update-index
+          arduino-cli core install arduino:renesas_uno
+          arduino-cli lib install "Adafruit NeoPixel"
+          arduino-cli lib install ArduinoOTA
+      - name: Create non-secret CI configuration
+        run: cp firmware/ArduinoLedController/secrets.example.h firmware/ArduinoLedController/secrets.h
+      - name: Compile UNO R4 WiFi firmware
+        run: |
+          mkdir -p build/firmware
+          arduino-cli compile --fqbn arduino:renesas_uno:unor4wifi --output-dir build/firmware firmware/ArduinoLedController
+      - name: Publish firmware artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ArduinoLedController-UNO-R4-WiFi
+          path: build/firmware/*
+          if-no-files-found: error

@@ -14,3 +14,5 @@ server2_fixed.js
 2026_MAX_LED.txt
 SD_Diagnostic/
 secrets.example.h
+firmware/**/secrets.h
+!firmware/**/secrets.example.h
