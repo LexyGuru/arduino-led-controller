@@ -1,5 +1,5 @@
 /*
- * Arduino LED Controller Lite 3.0
+ * Arduino LED Controller Lite 3.1
  * UNO R4 WiFi: LED, PIR, helyi API, OTA. SD kartya es Arduino-oldali
  * utemezes nincs: az utemezeseket a Proxmox webszerver kezeli.
  *
@@ -8,9 +8,10 @@
 #include <WiFiS3.h>
 #include <Adafruit_NeoPixel.h>
 #include <ArduinoOTA.h>
+#include <EEPROM.h>
 #include "secrets.h"
 
-#define FIRMWARE_VERSION "3.0.1"
+#define FIRMWARE_VERSION "3.1.0"
 #define DEVICE_NAME "arduino-led-controller"
 #ifndef ENABLE_PIR_SENSORS
 #define ENABLE_PIR_SENSORS 0
@@ -24,10 +25,20 @@ constexpr uint8_t LED_PINS[STRIP_COUNT] = {6, 7, 8};
 constexpr uint8_t PIR_PINS[STRIP_COUNT] = {2, 3, 4};
 constexpr uint8_t BUTTON_MODE = A0, BUTTON_UP = A1, BUTTON_DOWN = A2;
 constexpr unsigned long PIR_TIMEOUT = 60000, PIR_DEBOUNCE = 200, WIFI_RETRY = 15000, EFFECT_FRAME = 50;
+constexpr uint32_t NETWORK_SETTINGS_MAGIC = 0x4C454431UL; // "LED1"
+constexpr uint16_t NETWORK_SETTINGS_VERSION = 1;
 enum Effect : uint8_t { STATIC = 0, BLINK, BREATHE, RAINBOW, CHASE };
 
 struct Led { bool enabled; uint8_t brightness, effect, red, green, blue; };
 struct Log { unsigned long timestamp; const char* type; char message[88]; };
+struct NetworkSettings {
+  uint32_t magic;
+  uint16_t version;
+  char ssid[33];
+  char password[65];
+  char otaPassword[65];
+  uint32_t checksum;
+};
 Adafruit_NeoPixel strip[STRIP_COUNT] = {
   Adafruit_NeoPixel(PIXELS, LED_PINS[0], NEO_GRB + NEO_KHZ800),
   Adafruit_NeoPixel(PIXELS, LED_PINS[1], NEO_GRB + NEO_KHZ800),
@@ -38,6 +49,8 @@ Led leds[STRIP_COUNT]; Log logs[50];
 bool pirRaw[STRIP_COUNT] = {}, pirActive[STRIP_COUNT] = {}, otaReady = false, timeSynced = false, wifiReported = false;
 unsigned long pirChanged[STRIP_COUNT] = {}, lastMotion[STRIP_COUNT] = {}, lastWifi = 0, lastFrame = 0, lastTimeCheck = 0;
 uint8_t logStart = 0, logSize = 0;
+NetworkSettings networkSettings = {};
+bool networkSettingsStored = false;
 
 void logEvent(const char* type, const char* message) {
   uint8_t position = (logStart + logSize) % 50;
@@ -48,7 +61,62 @@ void logEvent(const char* type, const char* message) {
   Serial.print('['); Serial.print(type); Serial.print("] "); Serial.println(message);
 }
 
-void connectWifi() { if (WiFi.status() != WL_CONNECTED) { WiFi.begin(WIFI_SSID, WIFI_PASSWORD); lastWifi = millis(); logEvent("info", "WiFi kapcsolodas inditva"); } }
+uint32_t settingsChecksum(const NetworkSettings& settings) {
+  const uint8_t* bytes = reinterpret_cast<const uint8_t*>(&settings);
+  uint32_t result = 2166136261UL;
+  for (size_t i = 0; i < sizeof(NetworkSettings) - sizeof(settings.checksum); i++) result = (result ^ bytes[i]) * 16777619UL;
+  return result;
+}
+void copyText(char* target, size_t targetSize, const char* source) {
+  if (!targetSize) return;
+  strncpy(target, source ? source : "", targetSize - 1);
+  target[targetSize - 1] = 0;
+}
+bool isPlaceholder(const char* value) {
+  return !value || !value[0] || strcmp(value, "YOUR_WIFI_NAME") == 0 || strcmp(value, "YOUR_WIFI_PASSWORD") == 0 || strcmp(value, "CHANGE_THIS_TO_A_LONG_RANDOM_PASSWORD") == 0;
+}
+bool compiledNetworkSettingsUsable() { return !isPlaceholder(WIFI_SSID) && !isPlaceholder(WIFI_PASSWORD) && !isPlaceholder(OTA_PASSWORD); }
+bool settingsValid(const NetworkSettings& settings) {
+  return settings.magic == NETWORK_SETTINGS_MAGIC && settings.version == NETWORK_SETTINGS_VERSION && settings.checksum == settingsChecksum(settings) && !isPlaceholder(settings.ssid) && !isPlaceholder(settings.password) && !isPlaceholder(settings.otaPassword);
+}
+bool compiledSettingsDiffer(const NetworkSettings& settings) {
+  return strcmp(settings.ssid, WIFI_SSID) != 0 || strcmp(settings.password, WIFI_PASSWORD) != 0 || strcmp(settings.otaPassword, OTA_PASSWORD) != 0;
+}
+void saveCompiledNetworkSettings() {
+  memset(&networkSettings, 0, sizeof(networkSettings));
+  networkSettings.magic = NETWORK_SETTINGS_MAGIC;
+  networkSettings.version = NETWORK_SETTINGS_VERSION;
+  copyText(networkSettings.ssid, sizeof(networkSettings.ssid), WIFI_SSID);
+  copyText(networkSettings.password, sizeof(networkSettings.password), WIFI_PASSWORD);
+  copyText(networkSettings.otaPassword, sizeof(networkSettings.otaPassword), OTA_PASSWORD);
+  networkSettings.checksum = settingsChecksum(networkSettings);
+  EEPROM.put(0, networkSettings);
+  networkSettingsStored = true;
+}
+void loadNetworkSettings() {
+  EEPROM.get(0, networkSettings);
+  const bool storedIsValid = settingsValid(networkSettings);
+  if (compiledNetworkSettingsUsable() && (!storedIsValid || compiledSettingsDiffer(networkSettings))) {
+    saveCompiledNetworkSettings();
+    logEvent("success", "WiFi es OTA beallitas EEPROM-be mentve");
+    return;
+  }
+  if (storedIsValid) {
+    networkSettingsStored = true;
+    logEvent("success", "WiFi es OTA beallitas EEPROM-bol betoltve");
+    return;
+  }
+  // A publikus GitHub-build csak mintaadatokat tartalmaz. Ilyenkor szandekosan
+  // nem irunk semmit az EEPROM-be, hogy egy kesobbi USB-s kezdeti feltoltes
+  // biztonsagosan el tudja menteni a valodi halozati adatokat.
+  memset(&networkSettings, 0, sizeof(networkSettings));
+  copyText(networkSettings.ssid, sizeof(networkSettings.ssid), WIFI_SSID);
+  copyText(networkSettings.password, sizeof(networkSettings.password), WIFI_PASSWORD);
+  copyText(networkSettings.otaPassword, sizeof(networkSettings.otaPassword), OTA_PASSWORD);
+  logEvent("error", "Nincs ervenyes WiFi beallitas; USB-s kezdeti feltoltes kell");
+}
+
+void connectWifi() { if (WiFi.status() != WL_CONNECTED) { WiFi.begin(networkSettings.ssid, networkSettings.password); lastWifi = millis(); logEvent("info", "WiFi kapcsolodas inditva"); } }
 void reportWifiConnected() {
   if (WiFi.status() != WL_CONNECTED) { wifiReported = false; return; }
   if (wifiReported) return;
@@ -70,7 +138,7 @@ void reportWifiConnected() {
 }
 void startOta() {
   if (WiFi.status() == WL_CONNECTED && !otaReady) {
-    ArduinoOTA.begin(WiFi.localIP(), DEVICE_NAME, OTA_PASSWORD, InternalStorage);
+    ArduinoOTA.begin(WiFi.localIP(), DEVICE_NAME, networkSettings.otaPassword, InternalStorage);
     otaReady = true; logEvent("success", "OTA frissites fogado szolgaltatas aktiv");
   }
 }
@@ -124,6 +192,7 @@ void handleButtons() {
 String escapeJson(const char* source) { String out; while (*source) { if (*source == '"' || *source == '\\') out += '\\'; out += *source++; } return out; }
 String statusJson() {
   String out = "{\"connected\":" + String(WiFi.status() == WL_CONNECTED ? "true" : "false") + ",\"timesynced\":" + String(timeSynced ? "true" : "false");
+  out += ",\"networkConfigStored\":" + String(networkSettingsStored ? "true" : "false");
   out += ",\"scheduler\":\"server\",\"firmwareVersion\":\"" FIRMWARE_VERSION "\",\"otaEnabled\":" + String(otaReady ? "true" : "false") + ",\"pirSensorsEnabled\":" + String(ENABLE_PIR_SENSORS ? "true" : "false") + ",\"physicalButtonsEnabled\":" + String(ENABLE_PHYSICAL_BUTTONS ? "true" : "false") + ",\"uptime\":" + String(millis() / 1000) + ",\"rssi\":" + String(WiFi.status() == WL_CONNECTED ? WiFi.RSSI() : 0) + ",\"strips\":[";
   for (uint8_t i = 0; i < STRIP_COUNT; i++) { if (i) out += ','; out += "{\"id\":" + String(i + 1) + ",\"enabled\":" + String(leds[i].enabled ? "true" : "false") + ",\"brightness\":" + String(leds[i].brightness) + ",\"effect\":" + String(leds[i].effect) + ",\"color\":[" + String(leds[i].red) + ',' + String(leds[i].green) + ',' + String(leds[i].blue) + "]}"; }
   return out + "]}";
@@ -170,6 +239,7 @@ void setup() {
   logEvent("success", "Arduino LED Controller Lite indul");
   logEvent("info", ENABLE_PIR_SENSORS ? "PIR figyeles bekapcsolva" : "PIR figyeles kikapcsolva (nincs szenzor)");
   logEvent("info", ENABLE_PHYSICAL_BUTTONS ? "Fizikai gombok bekapcsolva" : "Fizikai gombok kikapcsolva");
+  loadNetworkSettings();
   connectWifi(); server.begin();
 }
 void loop() {

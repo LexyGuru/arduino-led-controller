@@ -82,6 +82,12 @@ GitHub kiadásba kerül. A **Konfiguráció → Arduino firmware** részen a sze
 onnan tölti le, ellenőrzi, majd az Arduino saját, jelszavas OTA szolgáltatására
 küldi. GitHub token nem szükséges.
 
+Mielőtt az OTA gomb használható, USB-n egyszer fel kell tölteni a 3.1.0 vagy
+újabb firmware-t a saját, nem GitHubra feltöltött `secrets.h` fájloddal. Ez az
+Arduino EEPROM memóriájába menti a WiFi- és OTA-beállításokat; a későbbi
+nyilvános GitHub-bináris ezeket használja, ezért nem választhatja le az
+eszközt a WiFi-ről.
+
 Egyszeri beállításként csak az Arduino `secrets.h` fájljában lévő OTA jelszót
 add hozzá a Proxmox titkos környezeti fájljához:
 

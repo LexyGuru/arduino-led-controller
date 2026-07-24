@@ -840,11 +840,13 @@ async function getLatestFirmwareArtifact() {
 async function getFirmwareStatus() {
   let installedVersion = null;
   let arduinoOnline = false;
+  let networkConfigStored = false;
   let availableFirmware = null;
   let firmwareLookupError = null;
   try {
     const status = await arduino.get('/api/status');
     installedVersion = status.firmwareVersion || null;
+    networkConfigStored = status.networkConfigStored === true;
     arduinoOnline = true;
   } catch (error) {
     logger.warn(`Firmware állapot: Arduino nem elérhető: ${error.message}`);
@@ -859,9 +861,10 @@ async function getFirmwareStatus() {
     ...firmwareUpdate,
     installedVersion,
     arduinoOnline,
-    otaConfigured: toolReady,
+    otaConfigured: toolReady && networkConfigStored,
     otaToolInstalled: fs.existsSync(config.otaToolPath),
     otaPasswordConfigured: Boolean(config.otaPassword),
+    networkConfigStored,
     availableFirmware,
     firmwareLookupError,
     repository: config.firmwareRepo,
@@ -927,6 +930,14 @@ app.post('/api/firmware/update', async (req, res) => {
   }
   if (!config.otaPassword || !fs.existsSync(config.otaToolPath)) {
     return res.status(503).json({ error: 'Az OTA frissítés nincs teljesen beállítva. Ellenőrizd az OTA_PASSWORD értéket, majd futtasd az install-lxc.sh telepítőt.' });
+  }
+  try {
+    const status = await arduino.get('/api/status');
+    if (status.networkConfigStored !== true) {
+      return res.status(409).json({ error: 'Az Arduino még nem mentette el a WiFi- és OTA-beállításait. USB-n töltsd fel egyszer a 3.1.0 vagy újabb firmware-t a saját secrets.h fájloddal.' });
+    }
+  } catch (error) {
+    return res.status(503).json({ error: `Az Arduino nem érhető el a biztonságos OTA ellenőrzéséhez: ${error.message}` });
   }
   res.status(202).json({ success: true, message: 'A firmware-frissítés elindult.' });
   downloadAndApplyFirmware().catch((error) => {
@@ -1266,7 +1277,7 @@ function renderConfiguredDashboard() {
       const busy = ['checking', 'downloading', 'uploading', 'restarting'].indexOf(data.state) >= 0;
       button.disabled = busy || !data.otaConfigured;
       if (!data.otaConfigured) {
-        const reason = !data.otaPasswordConfigured ? 'hiányzik az OTA jelszó a Proxmox beállításaiból.' : 'hiányzik az OTA feltöltőeszköz.';
+        const reason = !data.otaPasswordConfigured ? 'hiányzik az OTA jelszó a Proxmox beállításaiból.' : !data.otaToolInstalled ? 'hiányzik az OTA feltöltőeszköz.' : !data.arduinoOnline ? 'az Arduino nem érhető el.' : 'előbb USB-n töltsd fel a 3.1.0 vagy újabb firmware-t a saját secrets.h fájloddal, hogy az Arduino elmentse a hálózati beállításait.';
         state.textContent = installed + available + 'Az OTA frissítés még nincs kész: ' + reason;
         return;
       }

@@ -17,10 +17,11 @@ allitsd az `ENABLE_PIR_SENSORS` vagy `ENABLE_PHYSICAL_BUTTONS` erteket `1`-re.
 3. Ird be a WiFi adataidat es egy hosszu, egyedi OTA jelszot.
 4. Valaszd ki: **Arduino UNO R4 WiFi**, majd toltsd fel USB-n.
 
-Az elso USB-s feltoltes kotelezo: a korabbi firmware nem tud OTA-frissitest
-fogadni. A sikeres inditas utan a `/api/status` valaszban az
-`"otaEnabled":true` mező jelzi, hogy a keszulek keszen all a halozati
-frissitesre.
+Az elso USB-s feltoltes kotelezo. A 3.1.0 vagy ujabb firmware ilyenkor a WiFi
+nevet, WiFi jelszot es OTA jelszot az UNO R4 sajat EEPROM memoriajaba menti.
+Ez a memoria az OTA firmware-frissitesek utan is megmarad. A sikeres inditas
+utan a `/api/status` valaszban mind az `"otaEnabled":true`, mind a
+`"networkConfigStored":true` mezőnek szerepelnie kell.
 
 ## OTA frissites Proxmoxrol
 
@@ -30,6 +31,11 @@ UNO R4-re. A Proxmox `/etc/arduino-led-controller.env` fajljaba ugyanazt az
 `OTA_PASSWORD` erteket kell beirni, mint ami az Arduino sajat `secrets.h`
 fajljaban van. A firmware-kiadas nyilvanos, ezert GitHub hozzáférési kulcs
 nem szükséges.
+
+A publikus GitHub-bináris szándékosan nem tartalmaz WiFi- vagy OTA-jelszót.
+Ehelyett az első USB-s feltöltéskor elmentett EEPROM-beállításokat használja.
+Ezért a webfelület automatikusan letiltja az OTA gombot addig, amíg az egyszeri
+USB-s előkészítés nem történt meg.
 
 ## API kompatibilitas
 
