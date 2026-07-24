@@ -39,6 +39,11 @@ jobs:
           FIRMWARE_FILE="$(find build/firmware -type f -name '*.ino.bin' | head -n 1)"
           test -n "${FIRMWARE_FILE}"
           sha256sum "${FIRMWARE_FILE}" > "${FIRMWARE_FILE}.sha256"
+      - name: Read firmware version
+        run: |
+          VERSION="$(sed -nE 's/^#define FIRMWARE_VERSION "([^"]+)"/\1/p' firmware/ArduinoLedController/ArduinoLedController.ino)"
+          test -n "${VERSION}"
+          echo "FIRMWARE_VERSION=${VERSION}" >> "$GITHUB_ENV"
       - name: Publish latest public firmware release
         uses: softprops/action-gh-release@v2
         with:
@@ -46,6 +51,7 @@ jobs:
           name: Arduino LED Controller firmware (latest)
           body: |
             Automatikusan készített UNO R4 WiFi firmware.
+            Firmware verzió: ${{ env.FIRMWARE_VERSION }}
             Forrás commit: ${{ github.sha }}
           prerelease: true
           make_latest: false

@@ -831,13 +831,17 @@ async function getLatestFirmwareArtifact() {
   const binary = (release.assets || []).find((asset) => asset.name.endsWith('.ino.bin'));
   const checksum = (release.assets || []).find((asset) => asset.name.endsWith('.ino.bin.sha256'));
   if (!binary || !checksum) throw new Error('A nyilvános firmware-kiadás még nem tartalmaz teljes firmware-csomagot.');
+  const releaseBody = String(release.body || '');
+  const versionMatch = releaseBody.match(/Firmware verzió:\s*([0-9]+(?:\.[0-9]+){1,3})/i);
+  const commitMatch = releaseBody.match(/Forrás commit:\s*([a-f0-9]{7,40})/i);
   return {
     id: release.id,
     name: binary.name,
     digest: binary.digest || '',
     downloadUrl: binary.browser_download_url,
     checksumUrl: checksum.browser_download_url,
-    commit: release.target_commitish,
+    commit: commitMatch ? commitMatch[1] : release.target_commitish,
+    firmwareVersion: versionMatch ? versionMatch[1] : null,
     createdAt: release.published_at || release.created_at,
     tag: release.tag_name
   };
@@ -1288,7 +1292,8 @@ function renderConfiguredDashboard() {
       const state = document.getElementById('firmwareState');
       const button = document.getElementById('startFirmwareUpdate');
       const installed = data.installedVersion ? 'Telepített verzió: ' + data.installedVersion + '. ' : '';
-      const available = data.availableFirmware ? 'GitHub csomag: ' + data.availableFirmware.commit.slice(0, 7) + '. ' : '';
+      const available = data.availableFirmware ? 'GitHub csomag: ' + (data.availableFirmware.firmwareVersion ? 'v' + data.availableFirmware.firmwareVersion + ' · ' : '') + data.availableFirmware.commit.slice(0, 7) + '. ' : '';
+      const updateAvailable = Boolean(data.availableFirmware && data.availableFirmware.firmwareVersion && data.installedVersion && data.availableFirmware.firmwareVersion !== data.installedVersion);
       const busy = ['checking', 'downloading', 'uploading', 'restarting'].indexOf(data.state) >= 0;
       button.disabled = busy || !data.otaConfigured;
       if (!data.otaConfigured) {
@@ -1296,7 +1301,8 @@ function renderConfiguredDashboard() {
         state.textContent = installed + available + 'Az OTA frissítés még nincs kész: ' + reason;
         return;
       }
-      state.textContent = installed + available + (data.message || data.firmwareLookupError || 'Készen áll a frissítésre.');
+      const idleMessage = updateAvailable ? 'Új firmware érhető el, telepítésre kész.' : 'A telepített firmware naprakész.';
+      state.textContent = installed + available + (data.state === 'idle' ? idleMessage : data.message || data.firmwareLookupError || 'Készen áll a frissítésre.');
       if (busy) window.setTimeout(loadFirmwareStatus, 3000);
     }
 
