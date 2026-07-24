@@ -27,10 +27,9 @@ const config = {
   schedulesDir: process.env.SCHEDULES_DIR || path.join(__dirname, 'schedules'),
   firmwareDir: process.env.FIRMWARE_DIR || path.join(__dirname, 'data', 'firmware'),
   firmwareRepo: process.env.FIRMWARE_REPOSITORY || 'LexyGuru/arduino-led-controller',
-  firmwareBranch: process.env.FIRMWARE_BRANCH || 'main',
+  firmwareReleaseTag: process.env.FIRMWARE_RELEASE_TAG || 'firmware-latest',
   otaToolPath: process.env.OTA_TOOL_PATH || path.join(__dirname, 'tools', 'arduinoOTA', 'arduinoOTA'),
   otaPassword: process.env.OTA_PASSWORD || '',
-  githubToken: process.env.GITHUB_TOKEN || '',
   version: getAppVersion()
 };
 
@@ -621,7 +620,6 @@ function githubHeaders() {
     Accept: 'application/vnd.github+json',
     'User-Agent': 'arduino-led-controller'
   };
-  if (config.githubToken) headers.Authorization = `Bearer ${config.githubToken}`;
   return headers;
 }
 
@@ -661,23 +659,20 @@ function runProgram(command, args, timeout = 180000, binary = false) {
 async function getLatestFirmwareArtifact() {
   if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(config.firmwareRepo)) throw new Error('A firmware-tároló neve hibás.');
   const base = `https://api.github.com/repos/${config.firmwareRepo}`;
-  const runs = await axios.get(`${base}/actions/workflows/firmware-build.yml/runs`, {
-    headers: githubHeaders(),
-    params: { branch: config.firmwareBranch, status: 'success', per_page: 20 },
-    timeout: 20000
-  });
-  const run = (runs.data.workflow_runs || []).find((item) => item.conclusion === 'success');
-  if (!run) throw new Error('Még nincs sikeresen lefordított firmware a GitHubon.');
-  const artifacts = await axios.get(`${base}/actions/runs/${run.id}/artifacts`, { headers: githubHeaders(), timeout: 20000 });
-  const artifact = (artifacts.data.artifacts || []).find((item) => item.name === 'ArduinoLedController-UNO-R4-WiFi' && !item.expired);
-  if (!artifact) throw new Error('A sikeres fordításhoz nem található firmware-csomag.');
+  const response = await axios.get(`${base}/releases/tags/${encodeURIComponent(config.firmwareReleaseTag)}`, { headers: githubHeaders(), timeout: 20000 });
+  const release = response.data;
+  const binary = (release.assets || []).find((asset) => asset.name.endsWith('.ino.bin'));
+  const checksum = (release.assets || []).find((asset) => asset.name.endsWith('.ino.bin.sha256'));
+  if (!binary || !checksum) throw new Error('A nyilvános firmware-kiadás még nem tartalmaz teljes firmware-csomagot.');
   return {
-    id: artifact.id,
-    name: artifact.name,
-    digest: artifact.digest || '',
-    downloadUrl: artifact.archive_download_url,
-    commit: run.head_sha,
-    createdAt: artifact.created_at
+    id: release.id,
+    name: binary.name,
+    digest: binary.digest || '',
+    downloadUrl: binary.browser_download_url,
+    checksumUrl: checksum.browser_download_url,
+    commit: release.target_commitish,
+    createdAt: release.published_at || release.created_at,
+    tag: release.tag_name
   };
 }
 
@@ -698,7 +693,7 @@ async function getFirmwareStatus() {
   } catch (error) {
     firmwareLookupError = error.message;
   }
-  const toolReady = Boolean(config.otaPassword) && Boolean(config.githubToken) && fs.existsSync(config.otaToolPath);
+  const toolReady = Boolean(config.otaPassword) && fs.existsSync(config.otaToolPath);
   return {
     ...firmwareUpdate,
     installedVersion,
@@ -706,11 +701,10 @@ async function getFirmwareStatus() {
     otaConfigured: toolReady,
     otaToolInstalled: fs.existsSync(config.otaToolPath),
     otaPasswordConfigured: Boolean(config.otaPassword),
-    githubTokenConfigured: Boolean(config.githubToken),
     availableFirmware,
     firmwareLookupError,
     repository: config.firmwareRepo,
-    branch: config.firmwareBranch
+    releaseTag: config.firmwareReleaseTag
   };
 }
 
@@ -718,54 +712,43 @@ async function downloadAndApplyFirmware() {
   const startedAt = new Date().toISOString();
   setFirmwareUpdate('checking', 'A GitHub firmware-csomag ellenőrzése…', { startedAt, finishedAt: null, artifact: null });
   if (!config.otaPassword) throw new Error('Hiányzik az OTA_PASSWORD a Proxmox környezeti beállításaiból.');
-  if (!config.githubToken) throw new Error('Hiányzik a GITHUB_TOKEN a Proxmox környezeti beállításaiból.');
   if (!fs.existsSync(config.otaToolPath)) throw new Error('Az OTA feltöltőeszköz nincs telepítve. Futtasd újra az install-lxc.sh telepítőt.');
 
   const artifact = await getLatestFirmwareArtifact();
   setFirmwareUpdate('downloading', 'A sikeresen lefordított firmware letöltése…', { artifact });
   await fs.ensureDir(config.firmwareDir);
-  const workId = `${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
-  const archivePath = path.join(config.firmwareDir, `${workId}.zip`);
   const binaryPath = path.join(config.firmwareDir, 'latest-arduino-firmware.bin');
 
-  try {
-    const download = await axios.get(artifact.downloadUrl, {
-      headers: githubHeaders(), responseType: 'arraybuffer', maxRedirects: 5, timeout: 60000, maxContentLength: 16 * 1024 * 1024
-    });
-    const archive = Buffer.from(download.data);
-    if (artifact.digest.startsWith('sha256:')) {
-      const actual = crypto.createHash('sha256').update(archive).digest('hex');
-      if (actual !== artifact.digest.slice(7)) throw new Error('A GitHub firmware-csomag ellenőrzőösszege hibás.');
-    }
-    await fs.writeFile(archivePath, archive, { mode: 0o600 });
-    const entries = await runProgram('unzip', ['-Z1', archivePath], 30000);
-    const firmwareEntry = entries.split(/\r?\n/).find((entry) => /^[-A-Za-z0-9_./]+\.bin$/.test(entry) && entry.endsWith('.ino.bin'));
-    if (!firmwareEntry) throw new Error('A firmware-csomag nem tartalmaz UNO R4 .ino.bin fájlt.');
-    const firmware = await runProgram('unzip', ['-p', archivePath, firmwareEntry], 30000, true);
-    if (firmware.length < 1024) throw new Error('A firmware-fájl túl kicsi vagy sérült.');
-    await fs.writeFile(binaryPath, firmware, { mode: 0o600 });
+  const download = await axios.get(artifact.downloadUrl, {
+    headers: githubHeaders(), responseType: 'arraybuffer', maxRedirects: 5, timeout: 60000, maxContentLength: 16 * 1024 * 1024
+  });
+  const firmware = Buffer.from(download.data);
+  if (firmware.length < 1024) throw new Error('A firmware-fájl túl kicsi vagy sérült.');
+  const actual = crypto.createHash('sha256').update(firmware).digest('hex');
+  const checksumResponse = await axios.get(artifact.checksumUrl, { headers: githubHeaders(), responseType: 'text', timeout: 20000 });
+  const expected = String(checksumResponse.data).trim().split(/\s+/)[0];
+  if (!/^[a-f0-9]{64}$/i.test(expected) || actual.toLowerCase() !== expected.toLowerCase()) throw new Error('A nyilvános firmware ellenőrzőösszege hibás.');
+  if (artifact.digest.startsWith('sha256:') && actual.toLowerCase() !== artifact.digest.slice(7).toLowerCase()) throw new Error('A GitHub firmware-digest ellenőrzése hibás.');
+  await fs.writeFile(binaryPath, firmware, { mode: 0o600 });
 
-    setFirmwareUpdate('uploading', 'Firmware átvitele az Arduino OTA szolgáltatására…', { artifact });
-    await runProgram(config.otaToolPath, [
-      '-address', String(config.arduinoIP), '-port', '65280', '-username', 'arduino',
-      '-password', config.otaPassword, '-sketch', binaryPath, '-upload', '/sketch', '-b'
-    ], 240000);
-    setFirmwareUpdate('restarting', 'Az Arduino újraindul; várakozás az új firmware-re…', { artifact });
-    setTimeout(async () => {
-      try {
-        const status = await arduino.get('/api/status');
-        setFirmwareUpdate('success', `Firmware sikeresen telepítve: ${status.firmwareVersion || 'új verzió'}.`, {
-          artifact, installedVersion: status.firmwareVersion || null, finishedAt: new Date().toISOString()
-        });
-      } catch (error) {
-        setFirmwareUpdate('success', 'A feltöltés sikeres. Az Arduino még újraindulhat; frissítsd az állapotot rövidesen.', {
-          artifact, finishedAt: new Date().toISOString()
-        });
-      }
-    }, 8000);
-  } finally {
-    await fs.remove(archivePath).catch(() => {});
-  }
+  setFirmwareUpdate('uploading', 'Firmware átvitele az Arduino OTA szolgáltatására…', { artifact });
+  await runProgram(config.otaToolPath, [
+    '-address', String(config.arduinoIP), '-port', '65280', '-username', 'arduino',
+    '-password', config.otaPassword, '-sketch', binaryPath, '-upload', '/sketch', '-b'
+  ], 240000);
+  setFirmwareUpdate('restarting', 'Az Arduino újraindul; várakozás az új firmware-re…', { artifact });
+  setTimeout(async () => {
+    try {
+      const status = await arduino.get('/api/status');
+      setFirmwareUpdate('success', `Firmware sikeresen telepítve: ${status.firmwareVersion || 'új verzió'}.`, {
+        artifact, installedVersion: status.firmwareVersion || null, finishedAt: new Date().toISOString()
+      });
+    } catch (error) {
+      setFirmwareUpdate('success', 'A feltöltés sikeres. Az Arduino még újraindulhat; frissítsd az állapotot rövidesen.', {
+        artifact, finishedAt: new Date().toISOString()
+      });
+    }
+  }, 8000);
 }
 
 app.get('/api/firmware/status', async (req, res) => {
@@ -781,8 +764,8 @@ app.post('/api/firmware/update', async (req, res) => {
   if (['checking', 'downloading', 'uploading', 'restarting'].includes(firmwareUpdate.state)) {
     return res.status(409).json({ error: 'Már folyamatban van firmware-frissítés.', state: firmwareUpdate.state });
   }
-  if (!config.otaPassword || !config.githubToken || !fs.existsSync(config.otaToolPath)) {
-    return res.status(503).json({ error: 'Az OTA frissítés nincs teljesen beállítva. Ellenőrizd az OTA_PASSWORD és GITHUB_TOKEN értékeket, majd futtasd az install-lxc.sh telepítőt.' });
+  if (!config.otaPassword || !fs.existsSync(config.otaToolPath)) {
+    return res.status(503).json({ error: 'Az OTA frissítés nincs teljesen beállítva. Ellenőrizd az OTA_PASSWORD értéket, majd futtasd az install-lxc.sh telepítőt.' });
   }
   res.status(202).json({ success: true, message: 'A firmware-frissítés elindult.' });
   downloadAndApplyFirmware().catch((error) => {
@@ -1117,7 +1100,7 @@ function renderConfiguredDashboard() {
       const busy = ['checking', 'downloading', 'uploading', 'restarting'].indexOf(data.state) >= 0;
       button.disabled = busy || !data.otaConfigured;
       if (!data.otaConfigured) {
-        const reason = !data.otaPasswordConfigured ? 'hiányzik az OTA jelszó a Proxmox beállításaiból.' : (!data.githubTokenConfigured ? 'hiányzik a csak olvasási GitHub hozzáférési kulcs.' : 'hiányzik az OTA feltöltőeszköz.');
+        const reason = !data.otaPasswordConfigured ? 'hiányzik az OTA jelszó a Proxmox beállításaiból.' : 'hiányzik az OTA feltöltőeszköz.';
         state.textContent = installed + available + 'Az OTA frissítés még nincs kész: ' + reason;
         return;
       }

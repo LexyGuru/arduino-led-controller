@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -34,3 +34,22 @@ jobs:
           name: ArduinoLedController-UNO-R4-WiFi
           path: build/firmware/*
           if-no-files-found: error
+      - name: Create public firmware package
+        run: |
+          FIRMWARE_FILE="$(find build/firmware -type f -name '*.ino.bin' | head -n 1)"
+          test -n "${FIRMWARE_FILE}"
+          sha256sum "${FIRMWARE_FILE}" > "${FIRMWARE_FILE}.sha256"
+      - name: Publish latest public firmware release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: firmware-latest
+          name: Arduino LED Controller firmware (latest)
+          body: |
+            Automatikusan készített UNO R4 WiFi firmware.
+            Forrás commit: ${{ github.sha }}
+          prerelease: true
+          make_latest: false
+          overwrite_files: true
+          files: |
+            build/firmware/*.ino.bin
+            build/firmware/*.ino.bin.sha256
