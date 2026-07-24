@@ -8,6 +8,7 @@ let backend;
 let mainWindow;
 
 function desktopSecretPath() { return path.join(app.getPath('userData'), 'desktop-secret.bin'); }
+function desktopLogPath() { return path.join(app.getPath('userData'), 'backend.log'); }
 function readOtaPassword() {
   try { return fs.existsSync(desktopSecretPath()) ? safeStorage.decryptString(fs.readFileSync(desktopSecretPath())) : ''; }
   catch (_) { return ''; }
@@ -43,7 +44,10 @@ async function waitForBackend(url, tries = 40) {
 async function startDesktopApp() {
   const port = await findFreePort();
   const userData = app.getPath('userData');
-  const sourceRoot = app.isPackaged ? process.resourcesPath : path.join(__dirname, '..');
+  // electron-builder asar:false esetén az alkalmazás saját fájljai itt vannak:
+  // Resources/app. A Resources gyökérből induló keresés csomagolt Macen/Windowson
+  // nem találta a szervert, ezért jelenhetett meg az általános indítási hiba.
+  const sourceRoot = app.isPackaged ? path.join(process.resourcesPath, 'app') : path.join(__dirname, '..');
   const otaPassword = readOtaPassword();
   backend = fork(path.join(sourceRoot, 'server2_final.js'), [], {
     env: {
@@ -61,8 +65,11 @@ async function startDesktopApp() {
       // Az OTA jelszó szándékosan nincs a desktop alkalmazásban.
       OTA_PASSWORD: otaPassword
     },
-    stdio: 'ignore'
+    stdio: ['ignore', 'pipe', 'pipe', 'ipc']
   });
+  const backendLog = fs.createWriteStream(desktopLogPath(), { flags: 'a' });
+  backend.stdout.pipe(backendLog); backend.stderr.pipe(backendLog);
+  backend.on('error', (error) => backendLog.write(`Backend indítási hiba: ${error.stack}\n`));
   backend.on('exit', (code) => { if (code && mainWindow) dialog.showErrorBox('LED Controller hiba', `A helyi szolgáltatás leállt (kód: ${code}).`); });
   const url = `http://127.0.0.1:${port}`;
   await waitForBackend(url);
