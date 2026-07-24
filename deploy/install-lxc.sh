@@ -14,7 +14,7 @@ ARDUINO_IP="${ARDUINO_IP:-10.0.0.117}"
 
 echo "==> Alapcsomagok telepítése"
 apt-get update
-apt-get install -y ca-certificates curl git gnupg rsync
+apt-get install -y ca-certificates curl git gnupg rsync unzip bzip2
 
 if ! command -v node >/dev/null 2>&1 || [[ "$(node -p 'process.versions.node.split(".")[0]')" -lt 20 ]]; then
   echo "==> Node.js 22 telepítése"
@@ -34,6 +34,10 @@ rsync -a --delete \
 
 mkdir -p "${APP_DIR}/data" "${APP_DIR}/config" "${APP_DIR}/schedules"
 chown -R arduino-led:arduino-led "${APP_DIR}"
+
+echo "==> Arduino OTA feltöltőeszköz telepítése"
+chmod 755 "${APP_DIR}/deploy/install-ota-tool.sh"
+APP_DIR="${APP_DIR}" "${APP_DIR}/deploy/install-ota-tool.sh"
 
 echo "==> Node függőségek telepítése"
 cd "${APP_DIR}"
@@ -61,3 +65,4 @@ echo "Napló:    journalctl -u ${SERVICE_NAME} -f"
 echo "Frissítő: systemctl status ${SERVICE_NAME}-update.timer"
 echo "Web:      http://<LXC-IP>:3000"
 echo "Arduino IP beállítás: /etc/arduino-led-controller.env"
+echo "OTA jelszó: add meg az OTA_PASSWORD értéket ugyanebben a fájlban."

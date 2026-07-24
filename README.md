@@ -56,6 +56,37 @@ journalctl -u arduino-led-controller-update.service -n 50
 Ha a konténerben valaki kézzel módosította a program fájljait, a frissítő
 biztonságból nem írja felül őket.
 
+## Arduino firmware frissítése a webfelületről
+
+A firmware fordítása GitHub Actionsben történik. A **Konfiguráció → Arduino
+firmware** részen a szerver letölti a legutóbbi sikeresen lefordított csomagot,
+ellenőrzi azt, majd az Arduino saját, jelszavas OTA szolgáltatására küldi.
+
+Egyszeri beállításként hozz létre GitHubon egy finomhangolt, csak olvasási
+hozzáférési kulcsot a `LexyGuru/arduino-led-controller` tárolóhoz. Az
+**Actions: Read-only** jogosultság szükséges. A Proxmox konténerben add hozzá
+ezt, valamint az Arduino `secrets.h` fájljában lévő OTA jelszót a titkos
+környezeti fájlhoz:
+
+```bash
+nano /etc/arduino-led-controller.env
+```
+
+```text
+OTA_PASSWORD=az_Arduino_secrets_h_fajljaban_levo_jelszo
+GITHUB_TOKEN=github_pat_...
+```
+
+Ezután indítsd újra a szolgáltatást:
+
+```bash
+systemctl restart arduino-led-controller
+```
+
+A két titok csak a Proxmox konténerben marad; nem kerül GitHubra és a
+webfelület sem jeleníti meg. Firmware-t csak a **Firmware telepítése** gomb
+indít el, a szerver saját magától nem írja át az Arduino programját.
+
 ## Kézi frissítés GitHubról
 
 ```bash

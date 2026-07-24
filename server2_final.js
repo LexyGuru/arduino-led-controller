@@ -9,6 +9,7 @@ const fs = require('fs-extra');
 const path = require('path');
 const axios = require('axios');
 const crypto = require('crypto');
+const { spawn } = require('child_process');
 const { v4: uuidv4 } = require('uuid');
 const cron = require('node-cron');
 const winston = require('winston');
@@ -24,6 +25,12 @@ const config = {
   dataDir: process.env.DATA_DIR || path.join(__dirname, 'data'),
   configDir: process.env.CONFIG_DIR || path.join(__dirname, 'config'),
   schedulesDir: process.env.SCHEDULES_DIR || path.join(__dirname, 'schedules'),
+  firmwareDir: process.env.FIRMWARE_DIR || path.join(__dirname, 'data', 'firmware'),
+  firmwareRepo: process.env.FIRMWARE_REPOSITORY || 'LexyGuru/arduino-led-controller',
+  firmwareBranch: process.env.FIRMWARE_BRANCH || 'main',
+  otaToolPath: process.env.OTA_TOOL_PATH || path.join(__dirname, 'tools', 'arduinoOTA', 'arduinoOTA'),
+  otaPassword: process.env.OTA_PASSWORD || '',
+  githubToken: process.env.GITHUB_TOKEN || '',
   version: getAppVersion()
 };
 
@@ -46,6 +53,7 @@ function ensureDirectories() {
     if (!fs.existsSync(config.dataDir)) fs.mkdirSync(config.dataDir);
     if (!fs.existsSync(config.configDir)) fs.mkdirSync(config.configDir);
     if (!fs.existsSync(config.schedulesDir)) fs.mkdirSync(config.schedulesDir);
+    if (!fs.existsSync(config.firmwareDir)) fs.mkdirSync(config.firmwareDir, { recursive: true });
     console.log('✅ Konfigurációs könyvtárak létrehozva');
   } catch (error) {
     console.warn('Directory creation warning:', error.message);
@@ -597,6 +605,192 @@ app.put('/api/settings/arduino', (req, res) => {
   }
 });
 
+// ========================= ARDUINO OTA FIRMWARE =========================
+
+const firmwareUpdate = {
+  state: 'idle',
+  message: 'Nincs folyamatban firmware-frissítés.',
+  startedAt: null,
+  finishedAt: null,
+  artifact: null,
+  installedVersion: null
+};
+
+function githubHeaders() {
+  const headers = {
+    Accept: 'application/vnd.github+json',
+    'User-Agent': 'arduino-led-controller'
+  };
+  if (config.githubToken) headers.Authorization = `Bearer ${config.githubToken}`;
+  return headers;
+}
+
+function setFirmwareUpdate(state, message, extra = {}) {
+  Object.assign(firmwareUpdate, { state, message, ...extra });
+  logger.info(`Firmware OTA: ${state} - ${message}`);
+}
+
+function runProgram(command, args, timeout = 180000, binary = false) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, args, { shell: false });
+    const chunks = [];
+    let outputSize = 0;
+    const append = (chunk) => {
+      if (outputSize >= 65536) return;
+      const part = Buffer.from(chunk).subarray(0, 65536 - outputSize);
+      chunks.push(part);
+      outputSize += part.length;
+    };
+    child.stdout.on('data', append);
+    child.stderr.on('data', append);
+    const timer = setTimeout(() => child.kill('SIGTERM'), timeout);
+    child.on('error', (error) => {
+      clearTimeout(timer);
+      reject(error);
+    });
+    child.on('close', (code, signal) => {
+      clearTimeout(timer);
+      const output = Buffer.concat(chunks);
+      if (code === 0) return resolve(binary ? output : output.toString('utf8'));
+      const detail = output.toString('utf8').trim() || `kilépési kód: ${code}${signal ? ` (${signal})` : ''}`;
+      reject(new Error(detail.slice(0, 2000)));
+    });
+  });
+}
+
+async function getLatestFirmwareArtifact() {
+  if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(config.firmwareRepo)) throw new Error('A firmware-tároló neve hibás.');
+  const base = `https://api.github.com/repos/${config.firmwareRepo}`;
+  const runs = await axios.get(`${base}/actions/workflows/firmware-build.yml/runs`, {
+    headers: githubHeaders(),
+    params: { branch: config.firmwareBranch, status: 'success', per_page: 20 },
+    timeout: 20000
+  });
+  const run = (runs.data.workflow_runs || []).find((item) => item.conclusion === 'success');
+  if (!run) throw new Error('Még nincs sikeresen lefordított firmware a GitHubon.');
+  const artifacts = await axios.get(`${base}/actions/runs/${run.id}/artifacts`, { headers: githubHeaders(), timeout: 20000 });
+  const artifact = (artifacts.data.artifacts || []).find((item) => item.name === 'ArduinoLedController-UNO-R4-WiFi' && !item.expired);
+  if (!artifact) throw new Error('A sikeres fordításhoz nem található firmware-csomag.');
+  return {
+    id: artifact.id,
+    name: artifact.name,
+    digest: artifact.digest || '',
+    downloadUrl: artifact.archive_download_url,
+    commit: run.head_sha,
+    createdAt: artifact.created_at
+  };
+}
+
+async function getFirmwareStatus() {
+  let installedVersion = null;
+  let arduinoOnline = false;
+  let availableFirmware = null;
+  let firmwareLookupError = null;
+  try {
+    const status = await arduino.get('/api/status');
+    installedVersion = status.firmwareVersion || null;
+    arduinoOnline = true;
+  } catch (error) {
+    logger.warn(`Firmware állapot: Arduino nem elérhető: ${error.message}`);
+  }
+  try {
+    availableFirmware = await getLatestFirmwareArtifact();
+  } catch (error) {
+    firmwareLookupError = error.message;
+  }
+  const toolReady = Boolean(config.otaPassword) && Boolean(config.githubToken) && fs.existsSync(config.otaToolPath);
+  return {
+    ...firmwareUpdate,
+    installedVersion,
+    arduinoOnline,
+    otaConfigured: toolReady,
+    otaToolInstalled: fs.existsSync(config.otaToolPath),
+    otaPasswordConfigured: Boolean(config.otaPassword),
+    githubTokenConfigured: Boolean(config.githubToken),
+    availableFirmware,
+    firmwareLookupError,
+    repository: config.firmwareRepo,
+    branch: config.firmwareBranch
+  };
+}
+
+async function downloadAndApplyFirmware() {
+  const startedAt = new Date().toISOString();
+  setFirmwareUpdate('checking', 'A GitHub firmware-csomag ellenőrzése…', { startedAt, finishedAt: null, artifact: null });
+  if (!config.otaPassword) throw new Error('Hiányzik az OTA_PASSWORD a Proxmox környezeti beállításaiból.');
+  if (!config.githubToken) throw new Error('Hiányzik a GITHUB_TOKEN a Proxmox környezeti beállításaiból.');
+  if (!fs.existsSync(config.otaToolPath)) throw new Error('Az OTA feltöltőeszköz nincs telepítve. Futtasd újra az install-lxc.sh telepítőt.');
+
+  const artifact = await getLatestFirmwareArtifact();
+  setFirmwareUpdate('downloading', 'A sikeresen lefordított firmware letöltése…', { artifact });
+  await fs.ensureDir(config.firmwareDir);
+  const workId = `${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
+  const archivePath = path.join(config.firmwareDir, `${workId}.zip`);
+  const binaryPath = path.join(config.firmwareDir, 'latest-arduino-firmware.bin');
+
+  try {
+    const download = await axios.get(artifact.downloadUrl, {
+      headers: githubHeaders(), responseType: 'arraybuffer', maxRedirects: 5, timeout: 60000, maxContentLength: 16 * 1024 * 1024
+    });
+    const archive = Buffer.from(download.data);
+    if (artifact.digest.startsWith('sha256:')) {
+      const actual = crypto.createHash('sha256').update(archive).digest('hex');
+      if (actual !== artifact.digest.slice(7)) throw new Error('A GitHub firmware-csomag ellenőrzőösszege hibás.');
+    }
+    await fs.writeFile(archivePath, archive, { mode: 0o600 });
+    const entries = await runProgram('unzip', ['-Z1', archivePath], 30000);
+    const firmwareEntry = entries.split(/\r?\n/).find((entry) => /^[-A-Za-z0-9_./]+\.bin$/.test(entry) && entry.endsWith('.ino.bin'));
+    if (!firmwareEntry) throw new Error('A firmware-csomag nem tartalmaz UNO R4 .ino.bin fájlt.');
+    const firmware = await runProgram('unzip', ['-p', archivePath, firmwareEntry], 30000, true);
+    if (firmware.length < 1024) throw new Error('A firmware-fájl túl kicsi vagy sérült.');
+    await fs.writeFile(binaryPath, firmware, { mode: 0o600 });
+
+    setFirmwareUpdate('uploading', 'Firmware átvitele az Arduino OTA szolgáltatására…', { artifact });
+    await runProgram(config.otaToolPath, [
+      '-address', String(config.arduinoIP), '-port', '65280', '-username', 'arduino',
+      '-password', config.otaPassword, '-sketch', binaryPath, '-upload', '/sketch', '-b'
+    ], 240000);
+    setFirmwareUpdate('restarting', 'Az Arduino újraindul; várakozás az új firmware-re…', { artifact });
+    setTimeout(async () => {
+      try {
+        const status = await arduino.get('/api/status');
+        setFirmwareUpdate('success', `Firmware sikeresen telepítve: ${status.firmwareVersion || 'új verzió'}.`, {
+          artifact, installedVersion: status.firmwareVersion || null, finishedAt: new Date().toISOString()
+        });
+      } catch (error) {
+        setFirmwareUpdate('success', 'A feltöltés sikeres. Az Arduino még újraindulhat; frissítsd az állapotot rövidesen.', {
+          artifact, finishedAt: new Date().toISOString()
+        });
+      }
+    }, 8000);
+  } finally {
+    await fs.remove(archivePath).catch(() => {});
+  }
+}
+
+app.get('/api/firmware/status', async (req, res) => {
+  try {
+    const status = await getFirmwareStatus();
+    res.json(status);
+  } catch (error) {
+    res.status(500).json({ error: error.message || 'A firmware állapota nem kérhető le.' });
+  }
+});
+
+app.post('/api/firmware/update', async (req, res) => {
+  if (['checking', 'downloading', 'uploading', 'restarting'].includes(firmwareUpdate.state)) {
+    return res.status(409).json({ error: 'Már folyamatban van firmware-frissítés.', state: firmwareUpdate.state });
+  }
+  if (!config.otaPassword || !config.githubToken || !fs.existsSync(config.otaToolPath)) {
+    return res.status(503).json({ error: 'Az OTA frissítés nincs teljesen beállítva. Ellenőrizd az OTA_PASSWORD és GITHUB_TOKEN értékeket, majd futtasd az install-lxc.sh telepítőt.' });
+  }
+  res.status(202).json({ success: true, message: 'A firmware-frissítés elindult.' });
+  downloadAndApplyFirmware().catch((error) => {
+    logger.error(`Firmware OTA hiba: ${error.message}`);
+    setFirmwareUpdate('error', `A frissítés nem sikerült: ${error.message}`, { finishedAt: new Date().toISOString() });
+  });
+});
+
 // Helyi (Macen tárolt) heti ütemezések.
 app.get('/api/local-schedules', (req, res) => {
   res.json({ schedules: localSchedules });
@@ -876,7 +1070,7 @@ function renderConfiguredDashboard() {
     const section = document.createElement('section');
     section.className = 'view';
     section.id = 'settings';
-    section.innerHTML = '<div class="panel scheduler"><div class="panel-head"><div><h2>Kapcsolati beállítások</h2><div class="muted">Itt állíthatod át, melyik Arduino vezérlőt használja a szerver.</div></div></div><div class="line"><label>Arduino IP-címe vagy neve</label><input id="settingsArduinoIP" type="text" inputmode="url" placeholder="például: 10.0.0.117"></div><div class="line"><label>Arduino port</label><input id="settingsArduinoPort" type="number" min="1" max="65535" value="80"></div><button id="saveArduinoSettings" class="primary" style="width:100%;margin-top:10px">Kapcsolat mentése</button><p id="settingsConnection" class="muted">A mentett cím betöltése…</p></div>';
+    section.innerHTML = '<div class="panel scheduler"><div class="panel-head"><div><h2>Kapcsolati beállítások</h2><div class="muted">Itt állíthatod át, melyik Arduino vezérlőt használja a szerver.</div></div></div><div class="line"><label>Arduino IP-címe vagy neve</label><input id="settingsArduinoIP" type="text" inputmode="url" placeholder="például: 10.0.0.117"></div><div class="line"><label>Arduino port</label><input id="settingsArduinoPort" type="number" min="1" max="65535" value="80"></div><button id="saveArduinoSettings" class="primary" style="width:100%;margin-top:10px">Kapcsolat mentése</button><p id="settingsConnection" class="muted">A mentett cím betöltése…</p><div class="schedule-led"><div class="panel-head"><div><h2>Arduino firmware</h2><div class="muted">A GitHubon sikeresen lefordított firmware biztonságos OTA telepítése.</div></div></div><button id="checkFirmware" class="ghost">Frissítés ellenőrzése</button><button id="startFirmwareUpdate" class="primary" style="margin-left:8px">Firmware telepítése</button><p id="firmwareState" class="muted">Firmware állapot betöltése…</p></div></div>';
     main.append(section);
 
     async function loadSettings() {
@@ -915,16 +1109,56 @@ function renderConfiguredDashboard() {
       }
     }
 
+    function showFirmwareState(data) {
+      const state = document.getElementById('firmwareState');
+      const button = document.getElementById('startFirmwareUpdate');
+      const installed = data.installedVersion ? 'Telepített verzió: ' + data.installedVersion + '. ' : '';
+      const available = data.availableFirmware ? 'GitHub csomag: ' + data.availableFirmware.commit.slice(0, 7) + '. ' : '';
+      const busy = ['checking', 'downloading', 'uploading', 'restarting'].indexOf(data.state) >= 0;
+      button.disabled = busy || !data.otaConfigured;
+      if (!data.otaConfigured) {
+        const reason = !data.otaPasswordConfigured ? 'hiányzik az OTA jelszó a Proxmox beállításaiból.' : (!data.githubTokenConfigured ? 'hiányzik a csak olvasási GitHub hozzáférési kulcs.' : 'hiányzik az OTA feltöltőeszköz.');
+        state.textContent = installed + available + 'Az OTA frissítés még nincs kész: ' + reason;
+        return;
+      }
+      state.textContent = installed + available + (data.message || data.firmwareLookupError || 'Készen áll a frissítésre.');
+      if (busy) window.setTimeout(loadFirmwareStatus, 3000);
+    }
+
+    async function loadFirmwareStatus() {
+      try {
+        showFirmwareState(await request('/api/firmware/status'));
+      } catch (error) {
+        document.getElementById('firmwareState').textContent = 'A firmware állapota nem kérhető le: ' + error.message;
+      }
+    }
+
+    async function startFirmwareUpdate() {
+      if (!window.confirm('Biztosan telepíted a GitHubon lévő legutóbbi, sikeresen lefordított firmware-t az Arduino eszközre?')) return;
+      try {
+        await request('/api/firmware/update', { method: 'POST' });
+        document.getElementById('firmwareState').textContent = 'A firmware-frissítés elindult…';
+        msg('Firmware-frissítés elindítva');
+        window.setTimeout(loadFirmwareStatus, 1000);
+      } catch (error) {
+        msg(error.message, true);
+        loadFirmwareStatus();
+      }
+    }
+
     function showSettings() {
       document.querySelectorAll('.view').forEach(function (view) { view.classList.toggle('active', view.id === 'settings'); });
       document.querySelectorAll('.nav button').forEach(function (button) { button.classList.toggle('active', button === navButton); });
       document.getElementById('viewName').textContent = 'Konfiguráció';
       document.getElementById('pageTitle').textContent = 'Kapcsolati beállítások';
       loadSettings();
+      loadFirmwareStatus();
     }
 
     navButton.addEventListener('click', showSettings);
     document.getElementById('saveArduinoSettings').addEventListener('click', saveSettings);
+    document.getElementById('checkFirmware').addEventListener('click', loadFirmwareStatus);
+    document.getElementById('startFirmwareUpdate').addEventListener('click', startFirmwareUpdate);
   }());
   </script></body>`);
 }

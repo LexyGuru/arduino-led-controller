@@ -22,6 +22,15 @@ fogadni. A sikeres inditas utan a `/api/status` valaszban az
 `"otaEnabled":true` mező jelzi, hogy a keszulek keszen all a halozati
 frissitesre.
 
+## OTA frissites Proxmoxrol
+
+A webszerver a GitHub Actions altal sikeresen leforditott `.bin` firmware-t
+tolti le, ellenorzi az ellenorzoosszeget, majd a helyi halozaton telepiti az
+UNO R4-re. A Proxmox `/etc/arduino-led-controller.env` fajljaba ugyanazt az
+`OTA_PASSWORD` erteket kell beirni, mint ami az Arduino sajat `secrets.h`
+fajljaban van, valamint egy csak olvasasi `GITHUB_TOKEN` kulcsot a GitHub
+Actions csomag letoltesehez. Egyik titok sem kerul GitHubra.
+
 ## API kompatibilitas
 
 A Lite firmware megtartja a webalkalmazas altal hasznalt vegpontokat:
