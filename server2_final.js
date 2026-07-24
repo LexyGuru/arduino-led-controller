@@ -860,6 +860,39 @@ function setFirmwareUpdate(state, message, extra = {}) {
   logger.info(`Firmware OTA: ${state} - ${message}`);
 }
 
+function wait(milliseconds) {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+// Az UNO R4 OTA tárolója a firmware alkalmazásakor maga indítja újra a
+// vezérlőt. Itt nem resetet küldünk (az megszakíthatná a flash-műveletet),
+// hanem addig várunk, amíg az új firmware ténylegesen vissza nem jelentkezik.
+async function confirmFirmwareRestart(artifact) {
+  const deadline = Date.now() + 90000;
+  let lastError = null;
+  let attempt = 0;
+  while (Date.now() < deadline) {
+    await wait(attempt++ === 0 ? 3000 : 2000);
+    try {
+      const status = await arduino.get('/api/status');
+      const installed = status.firmwareVersion || null;
+      if (artifact.firmwareVersion && installed && installed !== artifact.firmwareVersion) {
+        setFirmwareUpdate('restarting', `Az Arduino még újraindul vagy a régi firmware fut (${installed})…`, { artifact });
+        continue;
+      }
+      setFirmwareUpdate('success', `Firmware sikeresen telepítve és újraindítva: ${installed || 'új verzió'}.`, {
+        artifact, installedVersion: installed, finishedAt: new Date().toISOString()
+      });
+      return;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  setFirmwareUpdate('error', `A firmware átadása sikeres volt, de az Arduino 90 másodpercen belül nem jelentkezett vissza: ${lastError?.message || 'ismeretlen hiba'}`, {
+    artifact, finishedAt: new Date().toISOString()
+  });
+}
+
 function runProgram(command, args, timeout = 180000, binary = false) {
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, { shell: false });
@@ -976,18 +1009,7 @@ async function downloadAndApplyFirmware() {
     '-password', config.otaPassword, '-sketch', binaryPath, '-upload', '/sketch', '-b'
   ], 240000);
   setFirmwareUpdate('restarting', 'Az Arduino újraindul; várakozás az új firmware-re…', { artifact });
-  setTimeout(async () => {
-    try {
-      const status = await arduino.get('/api/status');
-      setFirmwareUpdate('success', `Firmware sikeresen telepítve: ${status.firmwareVersion || 'új verzió'}.`, {
-        artifact, installedVersion: status.firmwareVersion || null, finishedAt: new Date().toISOString()
-      });
-    } catch (error) {
-      setFirmwareUpdate('success', 'A feltöltés sikeres. Az Arduino még újraindulhat; frissítsd az állapotot rövidesen.', {
-        artifact, finishedAt: new Date().toISOString()
-      });
-    }
-  }, 8000);
+  void confirmFirmwareRestart(artifact);
 }
 
 app.get('/api/firmware/status', async (req, res) => {
