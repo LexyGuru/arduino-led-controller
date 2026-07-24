@@ -15,6 +15,12 @@ const cron = require('node-cron');
 const winston = require('winston');
 require('dotenv').config();
 
+// Az Electron alkalmazás futó háttérfolyamata biztonságosan, csak memóriában
+// adhatja át a rendszer titkosított tárhelyéből kiolvasott OTA-jelszót.
+process.on('message', (message) => {
+  if (message && message.type === 'set-ota-password' && typeof message.password === 'string') config.otaPassword = message.password;
+});
+
 // ========================= KONFIGURÁCIÓ =========================
 
 const config = {
@@ -923,8 +929,8 @@ async function getFirmwareStatus() {
 async function downloadAndApplyFirmware() {
   const startedAt = new Date().toISOString();
   setFirmwareUpdate('checking', 'A GitHub firmware-csomag ellenőrzése…', { startedAt, finishedAt: null, artifact: null });
-  if (!config.otaPassword) throw new Error('Hiányzik az OTA_PASSWORD a Proxmox környezeti beállításaiból.');
-  if (!fs.existsSync(config.otaToolPath)) throw new Error('Az OTA feltöltőeszköz nincs telepítve. Futtasd újra az install-lxc.sh telepítőt.');
+  if (!config.otaPassword) throw new Error('Hiányzik az OTA jelszó a helyi beállításokból.');
+  if (!fs.existsSync(config.otaToolPath)) throw new Error('Az OTA feltöltőeszköz nincs telepítve ezen a rendszeren.');
 
   const artifact = await getLatestFirmwareArtifact();
   setFirmwareUpdate('downloading', 'A sikeresen lefordított firmware letöltése…', { artifact });
@@ -977,7 +983,7 @@ app.post('/api/firmware/update', async (req, res) => {
     return res.status(409).json({ error: 'Már folyamatban van firmware-frissítés.', state: firmwareUpdate.state });
   }
   if (!config.otaPassword || !fs.existsSync(config.otaToolPath)) {
-    return res.status(503).json({ error: 'Az OTA frissítés nincs teljesen beállítva. Ellenőrizd az OTA_PASSWORD értéket, majd futtasd az install-lxc.sh telepítőt.' });
+    return res.status(503).json({ error: 'Az OTA frissítés nincs teljesen beállítva. Ellenőrizd az OTA jelszót és az OTA feltöltőeszközt.' });
   }
   try {
     const status = await arduino.get('/api/status');
@@ -1290,6 +1296,20 @@ function renderConfiguredDashboard() {
     section.id = 'settings';
     section.innerHTML = '<div class="panel scheduler"><div class="panel-head"><div><h2>Kapcsolati beállítások</h2><div class="muted">Itt állíthatod át, melyik Arduino vezérlőt használja a szerver.</div></div></div><div class="line"><label>Arduino IP-címe vagy neve</label><input id="settingsArduinoIP" type="text" inputmode="url" placeholder="például: 10.0.0.117"></div><div class="line"><label>Arduino port</label><input id="settingsArduinoPort" type="number" min="1" max="65535" value="80"></div><button id="saveArduinoSettings" class="primary" style="width:100%;margin-top:10px">Kapcsolat mentése</button><p id="settingsConnection" class="muted">A mentett cím betöltése…</p><div class="schedule-led"><div class="panel-head"><div><h2>Arduino firmware</h2><div class="muted">A GitHubon sikeresen lefordított firmware biztonságos OTA telepítése.</div></div></div><button id="checkFirmware" class="ghost">Frissítés ellenőrzése</button><button id="startFirmwareUpdate" class="primary" style="margin-left:8px">Firmware telepítése</button><p id="firmwareState" class="muted">Firmware állapot betöltése…</p></div></div>';
     main.append(section);
+
+    if (window.desktopApp) {
+      const desktopOtaPanel = document.createElement('div');
+      desktopOtaPanel.className = 'schedule-led';
+      desktopOtaPanel.innerHTML = '<div class="panel-head"><div><h2>Asztali alkalmazás · OTA jelszó</h2><div class="muted">Az Arduino secrets.h fájljában megadott jelszó. A rendszer titkosított tárhelyén marad, nem kerül GitHubra.</div></div></div><div class="line"><label>OTA jelszó</label><input id="desktopOtaPassword" type="password" minlength="12" autocomplete="new-password" placeholder="Legalább 12 karakter"></div><button id="saveDesktopOtaPassword" class="primary">OTA jelszó biztonságos mentése</button><p id="desktopOtaState" class="muted"></p>';
+      section.querySelector('.panel.scheduler').append(desktopOtaPanel);
+      const state = desktopOtaPanel.querySelector('#desktopOtaState');
+      window.desktopApp.otaStatus().then(function (info) { state.textContent = info.configured ? '✓ OTA jelszó titkosítva mentve ezen a gépen.' : 'Az OTA firmware-frissítéshez add meg a jelszót.'; }).catch(function () { state.textContent = 'A titkosított tároló nem érhető el.'; });
+      desktopOtaPanel.querySelector('#saveDesktopOtaPassword').addEventListener('click', async function () {
+        const password = desktopOtaPanel.querySelector('#desktopOtaPassword').value;
+        try { await window.desktopApp.saveOtaPassword(password); desktopOtaPanel.querySelector('#desktopOtaPassword').value = ''; state.textContent = '✓ OTA jelszó biztonságosan elmentve.'; msg('OTA jelszó elmentve'); loadFirmwareStatus(); }
+        catch (error) { state.textContent = 'Mentési hiba: ' + error.message; msg(error.message, true); }
+      });
+    }
 
     const controlSection = document.getElementById('control');
     const testPanel = document.createElement('div');

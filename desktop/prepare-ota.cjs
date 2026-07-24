@@ -1,0 +1,13 @@
+/* Downloads the official Arduino OTA uploader and verifies its SHA-256. */
+const https = require('https'), fs = require('fs'), path = require('path'), crypto = require('crypto');
+const { spawnSync } = require('child_process');
+const root = path.join(__dirname, '..'), temp = path.join(root, '.desktop-ota-download'), out = path.join(root, 'tools', 'arduinoOTA');
+const targets = {
+  'win32-x64': ['https://downloads.arduino.cc/tools/arduinoOTA/arduinoOTA_1.4.1_Windows_64bit.zip', 'd9d14f01cbccc83a19292777cd604660e8cbe7d362f2ca972e3d0a296ab0d746', 'zip', 'arduinoOTA.exe'],
+  'darwin-x64': ['https://downloads.arduino.cc/tools/arduinoOTA/arduinoOTA_1.4.1_macOS_64bit.tar.gz', '5f824b5268b6cb56391deee81a58e9edaa3f0b247862d623c4c8e735b202ecf2', 'tar', 'arduinoOTA'],
+  'linux-x64': ['https://downloads.arduino.cc/tools/arduinoOTA/arduinoOTA_1.4.1_Linux_64bit.tar.gz', '90d9394f368fb80c512b0be89535f28ca03da64f97e39ed755d33aba63aba7dd', 'tar', 'arduinoOTA']
+};
+const target = targets[`${process.platform}-${process.arch}`]; if (!target) throw new Error(`Nem támogatott OTA célplatform: ${process.platform}-${process.arch}`);
+fs.mkdirSync(temp, { recursive: true }); fs.mkdirSync(out, { recursive: true }); const archive = path.join(temp, path.basename(target[0]));
+function download(url) { return new Promise((resolve, reject) => https.get(url, r => { if (r.statusCode !== 200) return reject(new Error(`Letöltési HTTP hiba: ${r.statusCode}`)); const file = fs.createWriteStream(archive); r.pipe(file); file.on('finish', () => file.close(resolve)); }).on('error', reject)); }
+(async () => { await download(target[0]); const actual = crypto.createHash('sha256').update(fs.readFileSync(archive)).digest('hex'); if (actual !== target[1]) throw new Error('Az Arduino OTA eszköz ellenőrzőösszege hibás.'); const args = target[2] === 'zip' ? ['-xf', archive, '-C', out] : ['-xzf', archive, '-C', out]; if (spawnSync('tar', args, { stdio: 'inherit' }).status !== 0) throw new Error('Az OTA eszköz kicsomagolása sikertelen.'); const find = dir => fs.readdirSync(dir, { withFileTypes: true }).flatMap(e => e.isDirectory() ? find(path.join(dir, e.name)) : [path.join(dir, e.name)]).find(file => path.basename(file) === target[3]); const binary = find(out); if (!binary) throw new Error('Az OTA feltöltő nem található.'); const destination = path.join(out, target[3]); if (binary !== destination) fs.renameSync(binary, destination); if (process.platform !== 'win32') fs.chmodSync(destination, 0o755); fs.rmSync(temp, { recursive: true, force: true }); console.log(`OTA eszköz előkészítve: ${destination}`); })().catch(error => { console.error(error.message); process.exit(1); });

@@ -8,6 +8,7 @@
     "start": "node server2_final.js",
     "check": "node --check server2_final.js && node --check desktop/main.cjs",
     "desktop:dev": "electron .",
+    "desktop:prepare-ota": "node desktop/prepare-ota.cjs",
     "desktop:pack": "electron-builder --dir",
     "desktop:dist": "electron-builder"
   },
@@ -21,6 +22,7 @@
     "files": [
       "server2_final.js",
       "desktop/**/*",
+      "tools/**/*",
       "package.json",
       "node_modules/**/*"
     ],
