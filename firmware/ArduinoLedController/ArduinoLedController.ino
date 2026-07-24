@@ -12,7 +12,7 @@
 #include <Arduino_LED_Matrix.h>
 #include "secrets.h"
 
-#define FIRMWARE_VERSION "3.2.0"
+#define FIRMWARE_VERSION "3.2.1"
 #define DEVICE_NAME "arduino-led-controller"
 #ifndef ENABLE_PIR_SENSORS
 #define ENABLE_PIR_SENSORS 0
@@ -140,9 +140,22 @@ void loadNetworkSettings() {
   logEvent("error", "Nincs ervenyes WiFi beallitas; USB-s kezdeti feltoltes kell");
 }
 
-void connectWifi() { if (WiFi.status() != WL_CONNECTED) { showMatrix(MATRIX_WIFI); WiFi.begin(networkSettings.ssid, networkSettings.password); lastWifi = millis(); logEvent("info", "WiFi kapcsolodas inditva"); } }
+bool wifiHasAddress() {
+  if (WiFi.status() != WL_CONNECTED) return false;
+  IPAddress ip = WiFi.localIP();
+  return ip[0] || ip[1] || ip[2] || ip[3];
+}
+
+void connectWifi() {
+  if (!wifiHasAddress()) {
+    showMatrix(MATRIX_WIFI);
+    WiFi.begin(networkSettings.ssid, networkSettings.password);
+    lastWifi = millis();
+    logEvent("info", "WiFi kapcsolodas inditva");
+  }
+}
 void reportWifiConnected() {
-  if (WiFi.status() != WL_CONNECTED) { wifiReported = false; return; }
+  if (!wifiHasAddress()) { wifiReported = false; return; }
   if (wifiReported) return;
   wifiReported = true;
   showMatrix(MATRIX_OK);
@@ -186,7 +199,7 @@ void otaTransferError(int code, const char*) {
   showOtaIndicator(255, 0, 0);
 }
 void startOta() {
-  if (WiFi.status() == WL_CONNECTED && !otaReady) {
+  if (wifiHasAddress() && !otaReady) {
     ArduinoOTA.onStart(otaTransferStarted);
     ArduinoOTA.beforeApply(otaBeforeApply);
     ArduinoOTA.onError(otaTransferError);
@@ -245,9 +258,9 @@ void handleButtons() {
 
 String escapeJson(const char* source) { String out; while (*source) { if (*source == '"' || *source == '\\') out += '\\'; out += *source++; } return out; }
 String statusJson() {
-  String out = "{\"connected\":" + String(WiFi.status() == WL_CONNECTED ? "true" : "false") + ",\"timesynced\":" + String(timeSynced ? "true" : "false");
+  String out = "{\"connected\":" + String(wifiHasAddress() ? "true" : "false") + ",\"timesynced\":" + String(timeSynced ? "true" : "false");
   out += ",\"networkConfigStored\":" + String(networkSettingsStored ? "true" : "false");
-  out += ",\"scheduler\":\"server\",\"firmwareVersion\":\"" FIRMWARE_VERSION "\",\"otaEnabled\":" + String(otaReady ? "true" : "false") + ",\"matrixEnabled\":true,\"pirSensorsEnabled\":" + String(ENABLE_PIR_SENSORS ? "true" : "false") + ",\"physicalButtonsEnabled\":" + String(ENABLE_PHYSICAL_BUTTONS ? "true" : "false") + ",\"uptime\":" + String(millis() / 1000) + ",\"rssi\":" + String(WiFi.status() == WL_CONNECTED ? WiFi.RSSI() : 0) + ",\"strips\":[";
+  out += ",\"scheduler\":\"server\",\"firmwareVersion\":\"" FIRMWARE_VERSION "\",\"otaEnabled\":" + String(otaReady ? "true" : "false") + ",\"matrixEnabled\":true,\"pirSensorsEnabled\":" + String(ENABLE_PIR_SENSORS ? "true" : "false") + ",\"physicalButtonsEnabled\":" + String(ENABLE_PHYSICAL_BUTTONS ? "true" : "false") + ",\"uptime\":" + String(millis() / 1000) + ",\"rssi\":" + String(wifiHasAddress() ? WiFi.RSSI() : 0) + ",\"strips\":[";
   for (uint8_t i = 0; i < STRIP_COUNT; i++) { if (i) out += ','; out += "{\"id\":" + String(i + 1) + ",\"enabled\":" + String(leds[i].enabled ? "true" : "false") + ",\"brightness\":" + String(leds[i].brightness) + ",\"effect\":" + String(leds[i].effect) + ",\"speed\":" + String(leds[i].speed) + ",\"color\":[" + String(leds[i].red) + ',' + String(leds[i].green) + ',' + String(leds[i].blue) + "]}"; }
   return out + "]}";
 }
@@ -266,7 +279,7 @@ void updateLed(const String& path) {
 void route(WiFiClient& c, const String& path) {
   if (path == "/api/status" || path == "/api/led/status") { sendJson(c, statusJson()); return; }
   if (path == "/api/console/logs") { sendJson(c, logsJson()); return; }
-  if (path == "/api/console/stats") { String body = "{\"logCount\":" + String(logSize) + ",\"uptime\":" + String(millis() / 1000) + ",\"wifiSignal\":" + String(WiFi.status() == WL_CONNECTED ? WiFi.RSSI() : 0) + ",\"system\":{\"wifiConnected\":" + String(WiFi.status() == WL_CONNECTED ? "true" : "false") + ",\"consoleActive\":true}}"; sendJson(c, body); return; }
+  if (path == "/api/console/stats") { String body = "{\"logCount\":" + String(logSize) + ",\"uptime\":" + String(millis() / 1000) + ",\"wifiSignal\":" + String(wifiHasAddress() ? WiFi.RSSI() : 0) + ",\"system\":{\"wifiConnected\":" + String(wifiHasAddress() ? "true" : "false") + ",\"consoleActive\":true}}"; sendJson(c, body); return; }
   if (path == "/api/console/clear") { logStart = 0; logSize = 0; sendJson(c, "{\"success\":true}"); return; }
   if (path == "/api/all-on" || path == "/api/all-off") { bool state = path == "/api/all-on"; for (uint8_t i = 0; i < STRIP_COUNT; i++) leds[i].enabled = state; logEvent("info", state ? "Minden LED bekapcsolva" : "Minden LED kikapcsolva"); renderAll(true); sendJson(c, statusJson()); return; }
   if (path.startsWith("/api/led/")) { updateLed(path); sendJson(c, statusJson()); return; }
@@ -298,11 +311,11 @@ void setup() {
   connectWifi(); server.begin();
 }
 void loop() {
-  if (WiFi.status() != WL_CONNECTED) {
+  if (!wifiHasAddress()) {
     wifiReported = false;
     if (millis() - lastWifi > WIFI_RETRY) { otaReady = false; connectWifi(); }
   }
-  if (WiFi.status() == WL_CONNECTED) {
+  if (wifiHasAddress()) {
     reportWifiConnected();
     startOta(); ArduinoOTA.poll();
     if (millis() - lastTimeCheck > 60000) { lastTimeCheck = millis(); timeSynced = WiFi.getTime() > 0; }
