@@ -13,7 +13,7 @@
 #include <time.h>
 #include "secrets.h"
 
-#define FIRMWARE_VERSION "4.0.0"
+#define FIRMWARE_VERSION "4.0.1"
 #define DEVICE_NAME "arduino-led-controller"
 #ifndef ENABLE_PIR_SENSORS
 #define ENABLE_PIR_SENSORS 0
@@ -31,6 +31,12 @@ constexpr uint32_t NETWORK_SETTINGS_MAGIC = 0x4C454431UL; // "LED1"
 constexpr uint16_t NETWORK_SETTINGS_VERSION = 1;
 constexpr uint16_t SCHEDULE_EEPROM_OFFSET = 256;
 constexpr uint8_t SCHEDULE_MAX = 60;
+// A WiFiS3 modul több rövid TCP-kapcsolatot tud várakoztatni, de a főprogram
+// csak sorban dolgozhatja fel őket. Egy körben ennyit ürítünk ki a várakozó
+// sorból, hogy a Proxmox és az asztali alkalmazás ne akadályozza egymást.
+constexpr uint8_t HTTP_CLIENTS_PER_LOOP = 4;
+constexpr unsigned long HTTP_FIRST_BYTE_TIMEOUT = 250;
+constexpr unsigned long HTTP_READ_TIMEOUT = 200;
 constexpr uint32_t SCHEDULE_MAGIC = 0x53434831UL; // "SCH1"
 enum Effect : uint8_t { STATIC = 0, BLINK, BREATHE, RAINBOW, CHASE };
 
@@ -78,6 +84,8 @@ Led leds[STRIP_COUNT]; Log logs[50];
 bool pirRaw[STRIP_COUNT] = {}, pirActive[STRIP_COUNT] = {}, otaReady = false, timeSynced = false, wifiReported = false;
 unsigned long pirChanged[STRIP_COUNT] = {}, lastMotion[STRIP_COUNT] = {}, lastWifi = 0, lastFrame = 0, lastTimeCheck = 0;
 uint8_t logStart = 0, logSize = 0;
+unsigned long httpRequests = 0, httpTimeouts = 0;
+uint8_t httpMaxBatch = 0;
 NetworkSettings networkSettings = {};
 bool networkSettingsStored = false;
 StoredSchedule schedules[SCHEDULE_MAX] = {};
@@ -338,7 +346,7 @@ String escapeJson(const char* source) { String out; while (*source) { if (*sourc
 String statusJson() {
   String out = "{\"connected\":" + String(wifiHasAddress() ? "true" : "false") + ",\"timesynced\":" + String(timeSynced ? "true" : "false");
   out += ",\"networkConfigStored\":" + String(networkSettingsStored ? "true" : "false");
-  out += ",\"scheduler\":\"arduino-eeprom\",\"scheduleCount\":" + String(scheduleCount) + ",\"firmwareVersion\":\"" FIRMWARE_VERSION "\",\"otaEnabled\":" + String(otaReady ? "true" : "false") + ",\"matrixEnabled\":true,\"pirSensorsEnabled\":" + String(ENABLE_PIR_SENSORS ? "true" : "false") + ",\"physicalButtonsEnabled\":" + String(ENABLE_PHYSICAL_BUTTONS ? "true" : "false") + ",\"uptime\":" + String(millis() / 1000) + ",\"rssi\":" + String(wifiHasAddress() ? WiFi.RSSI() : 0) + ",\"strips\":[";
+  out += ",\"scheduler\":\"arduino-eeprom\",\"scheduleCount\":" + String(scheduleCount) + ",\"firmwareVersion\":\"" FIRMWARE_VERSION "\",\"otaEnabled\":" + String(otaReady ? "true" : "false") + ",\"matrixEnabled\":true,\"pirSensorsEnabled\":" + String(ENABLE_PIR_SENSORS ? "true" : "false") + ",\"physicalButtonsEnabled\":" + String(ENABLE_PHYSICAL_BUTTONS ? "true" : "false") + ",\"uptime\":" + String(millis() / 1000) + ",\"rssi\":" + String(wifiHasAddress() ? WiFi.RSSI() : 0) + ",\"http\":{\"requests\":" + String(httpRequests) + ",\"timeouts\":" + String(httpTimeouts) + ",\"maxBatch\":" + String(httpMaxBatch) + "},\"strips\":[";
   for (uint8_t i = 0; i < STRIP_COUNT; i++) { if (i) out += ','; out += "{\"id\":" + String(i + 1) + ",\"enabled\":" + String(leds[i].enabled ? "true" : "false") + ",\"brightness\":" + String(leds[i].brightness) + ",\"effect\":" + String(leds[i].effect) + ",\"speed\":" + String(leds[i].speed) + ",\"color\":[" + String(leds[i].red) + ',' + String(leds[i].green) + ',' + String(leds[i].blue) + "]}"; }
   return out + "]}";
 }
@@ -363,18 +371,35 @@ void route(WiFiClient& c, const String& path) {
   if (base == "/api/schedules/clear") { memset(schedules, 0, sizeof(schedules)); saveSchedules(0); logEvent("info", "Arduino idozites torolve"); sendJson(c, "{\"success\":true}"); return; }
   if (path == "/api/status" || path == "/api/led/status") { sendJson(c, statusJson()); return; }
   if (path == "/api/console/logs") { sendJson(c, logsJson()); return; }
-  if (path == "/api/console/stats") { String body = "{\"logCount\":" + String(logSize) + ",\"uptime\":" + String(millis() / 1000) + ",\"wifiSignal\":" + String(wifiHasAddress() ? WiFi.RSSI() : 0) + ",\"system\":{\"wifiConnected\":" + String(wifiHasAddress() ? "true" : "false") + ",\"consoleActive\":true}}"; sendJson(c, body); return; }
+  if (path == "/api/console/stats") { String body = "{\"logCount\":" + String(logSize) + ",\"uptime\":" + String(millis() / 1000) + ",\"wifiSignal\":" + String(wifiHasAddress() ? WiFi.RSSI() : 0) + ",\"http\":{\"requests\":" + String(httpRequests) + ",\"timeouts\":" + String(httpTimeouts) + ",\"maxBatch\":" + String(httpMaxBatch) + "},\"system\":{\"wifiConnected\":" + String(wifiHasAddress() ? "true" : "false") + ",\"consoleActive\":true}}"; sendJson(c, body); return; }
   if (path == "/api/console/clear") { logStart = 0; logSize = 0; sendJson(c, "{\"success\":true}"); return; }
   if (path == "/api/all-on" || path == "/api/all-off") { bool state = path == "/api/all-on"; for (uint8_t i = 0; i < STRIP_COUNT; i++) leds[i].enabled = state; logEvent("info", state ? "Minden LED bekapcsolva" : "Minden LED kikapcsolva"); renderAll(true); sendJson(c, statusJson()); return; }
   if (path.startsWith("/api/led/")) { updateLed(path); sendJson(c, statusJson()); return; }
   sendJson(c, "{\"error\":\"Ismeretlen API vegpont\"}", 400);
 }
 void handleHttp() {
-  WiFiClient c = server.available(); if (!c) return; unsigned long started = millis(); while (c.connected() && !c.available() && millis() - started < 1500) delay(1); if (!c.available()) { c.stop(); return; }
-  String line = c.readStringUntil('\n'); line.trim(); while (c.available()) { String header = c.readStringUntil('\n'); if (header == "\r" || header.length() == 0) break; }
-  int a = line.indexOf(' '), b = line.indexOf(' ', a + 1); if (a < 0 || b < 0) { c.stop(); return; } String method = line.substring(0, a), path = line.substring(a + 1, b);
-  if (method == "OPTIONS") c.print("HTTP/1.1 204 No Content\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: GET,POST,OPTIONS\r\nAccess-Control-Allow-Headers: Content-Type\r\nConnection: close\r\n\r\n"); else if (method == "GET" || method == "POST") route(c, path); else sendJson(c, "{\"error\":\"Nem tamogatott metodus\"}", 400);
-  delay(20); c.stop();
+  uint8_t batch = 0;
+  while (batch < HTTP_CLIENTS_PER_LOOP) {
+    WiFiClient c = server.available();
+    if (!c) break;
+    batch++; httpRequests++;
+    unsigned long started = millis();
+    while (c.connected() && !c.available() && millis() - started < HTTP_FIRST_BYTE_TIMEOUT) delay(1);
+    if (!c.available()) { httpTimeouts++; c.stop(); continue; }
+
+    c.setTimeout(HTTP_READ_TIMEOUT);
+    String line = c.readStringUntil('\n'); line.trim();
+    while (c.available()) { String header = c.readStringUntil('\n'); if (header == "\r" || header.length() == 0) break; }
+    int a = line.indexOf(' '), b = line.indexOf(' ', a + 1);
+    if (a >= 0 && b >= 0) {
+      String method = line.substring(0, a), path = line.substring(a + 1, b);
+      if (method == "OPTIONS") c.print("HTTP/1.1 204 No Content\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: GET,POST,OPTIONS\r\nAccess-Control-Allow-Headers: Content-Type\r\nConnection: close\r\n\r\n"); else if (method == "GET" || method == "POST") route(c, path); else sendJson(c, "{\"error\":\"Nem tamogatott metodus\"}", 400);
+    }
+    // Rövid idő a WiFi modulnak a válasz továbbítására, majd azonnal jöhet a
+    // következő várakozó kapcsolat.
+    delay(5); c.stop();
+  }
+  if (batch > httpMaxBatch) httpMaxBatch = batch;
 }
 void setup() {
   Serial.begin(115200); delay(300);
