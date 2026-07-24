@@ -50,6 +50,11 @@ function getAppVersion() {
       const versionData = JSON.parse(fs.readFileSync(versionPath, 'utf8'));
       return versionData.version;
     }
+    const packagePath = path.join(__dirname, 'package.json');
+    if (fs.existsSync(packagePath)) {
+      const packageData = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
+      if (typeof packageData.version === 'string') return packageData.version;
+    }
   } catch (error) {
     console.warn('Cannot load version info:', error.message);
   }
