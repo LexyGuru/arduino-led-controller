@@ -45,7 +45,13 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: desktop-${{ matrix.name }}
-          path: release/*
+          # Csak a kész telepítőket adjuk át a Release feladatnak; a
+          # kicsomagolt Electron-mappa több száz belső fájlja nem kiadási asset.
+          path: |
+            release/*.exe
+            release/*.dmg
+            release/*.AppImage
+            release/*.deb
           if-no-files-found: error
 
   release:
