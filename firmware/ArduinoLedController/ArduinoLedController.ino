@@ -12,7 +12,7 @@
 #include <Arduino_LED_Matrix.h>
 #include "secrets.h"
 
-#define FIRMWARE_VERSION "3.2.1"
+#define FIRMWARE_VERSION "3.2.2"
 #define DEVICE_NAME "arduino-led-controller"
 #ifndef ENABLE_PIR_SENSORS
 #define ENABLE_PIR_SENSORS 0
@@ -204,7 +204,7 @@ void startOta() {
     ArduinoOTA.beforeApply(otaBeforeApply);
     ArduinoOTA.onError(otaTransferError);
     ArduinoOTA.begin(WiFi.localIP(), DEVICE_NAME, networkSettings.otaPassword, InternalStorage);
-    otaReady = true; logEvent("success", "OTA frissites fogado szolgaltatas aktiv");
+    otaReady = true; logEvent("success", "OTA frissites fogado szolgaltatas aktiv (3232 port)");
   }
 }
 
@@ -274,7 +274,9 @@ void updateLed(const String& path) {
   Led& led = leds[id - 1]; String query = question < 0 ? "" : path.substring(question + 1);
   led.enabled = valueBool(query, "enabled", led.enabled); led.brightness = valueInt(query, "brightness", led.brightness, 0, 255); led.effect = valueInt(query, "effect", led.effect, 0, 4); led.speed = valueInt(query, "speed", led.speed, 1, 100);
   int colorAt = query.indexOf("color="); if (colorAt >= 0) { String raw = query.substring(colorAt + 6); int stop = raw.indexOf('&'); if (stop >= 0) raw = raw.substring(0, stop); int a = raw.indexOf(','), b = raw.indexOf(',', a + 1); if (a >= 0 && b >= 0) { led.red = constrain(raw.substring(0, a).toInt(), 0, 255); led.green = constrain(raw.substring(a + 1, b).toInt(), 0, 255); led.blue = constrain(raw.substring(b + 1).toInt(), 0, 255); } }
-  logEvent("info", "LED beallitas modositva"); renderAll(true);
+  char message[112];
+  snprintf(message, sizeof(message), "LED %d: %s | fenyerő: %d | effekt: %d | sebesseg: %d | RGB: %d,%d,%d", id, led.enabled ? "BE" : "KI", led.brightness, led.effect, led.speed, led.red, led.green, led.blue);
+  logEvent("info", message); renderAll(true);
 }
 void route(WiFiClient& c, const String& path) {
   if (path == "/api/status" || path == "/api/led/status") { sendJson(c, statusJson()); return; }
@@ -305,6 +307,11 @@ void setup() {
 #endif
   matrix.begin(); showMatrix(MATRIX_BOOT);
   logEvent("success", "Arduino LED Controller Lite indul");
+  char bootInfo[112];
+  snprintf(bootInfo, sizeof(bootInfo), "Firmware: %s | Arduino UNO R4 WiFi | Matrix: BE", FIRMWARE_VERSION);
+  logEvent("info", bootInfo);
+  snprintf(bootInfo, sizeof(bootInfo), "LED szalagok: %d | PIR: %s | Gombok: %s", STRIP_COUNT, ENABLE_PIR_SENSORS ? "BE" : "KI", ENABLE_PHYSICAL_BUTTONS ? "BE" : "KI");
+  logEvent("info", bootInfo);
   logEvent("info", ENABLE_PIR_SENSORS ? "PIR figyeles bekapcsolva" : "PIR figyeles kikapcsolva (nincs szenzor)");
   logEvent("info", ENABLE_PHYSICAL_BUTTONS ? "Fizikai gombok bekapcsolva" : "Fizikai gombok kikapcsolva");
   loadNetworkSettings();
