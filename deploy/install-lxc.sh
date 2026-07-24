@@ -10,6 +10,7 @@ fi
 APP_DIR="${APP_DIR:-/opt/arduino-led-controller}"
 SOURCE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SERVICE_NAME="arduino-led-controller"
+STATE_DIR="${STATE_DIR:-/var/lib/${SERVICE_NAME}}"
 ARDUINO_IP="${ARDUINO_IP:-10.0.0.117}"
 
 echo "==> Alapcsomagok telepítése"
@@ -23,8 +24,12 @@ if ! command -v node >/dev/null 2>&1 || [[ "$(node -p 'process.versions.node.spl
 fi
 
 if ! id -u arduino-led >/dev/null 2>&1; then
-  useradd --system --home "${APP_DIR}" --shell /usr/sbin/nologin arduino-led
+  useradd --system --home "${STATE_DIR}" --shell /usr/sbin/nologin arduino-led
 fi
+
+# Az npm gyorsítótára ne az alkalmazáskód mellé kerüljön. Így az alkalmazás
+# telepítése akkor is működik, ha /opt külön csatolt kötet vagy korlátozott LXC.
+install -d -o arduino-led -g arduino-led -m 0750 "${STATE_DIR}/npm-cache"
 
 echo "==> Alkalmazás telepítése: ${APP_DIR}"
 mkdir -p "${APP_DIR}"
@@ -41,7 +46,10 @@ APP_DIR="${APP_DIR}" "${APP_DIR}/deploy/install-ota-tool.sh"
 
 echo "==> Node függőségek telepítése"
 cd "${APP_DIR}"
-runuser -u arduino-led -- npm install --omit=dev --no-audit --no-fund
+runuser -u arduino-led -- env \
+  HOME="${STATE_DIR}" \
+  npm_config_cache="${STATE_DIR}/npm-cache" \
+  npm install --omit=dev --no-audit --no-fund
 
 if [[ ! -f /etc/arduino-led-controller.env ]]; then
   cp "${APP_DIR}/.env.example" /etc/arduino-led-controller.env
