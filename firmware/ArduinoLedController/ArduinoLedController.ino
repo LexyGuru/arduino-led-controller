@@ -9,9 +9,10 @@
 #include <Adafruit_NeoPixel.h>
 #include <ArduinoOTA.h>
 #include <EEPROM.h>
+#include <Arduino_LED_Matrix.h>
 #include "secrets.h"
 
-#define FIRMWARE_VERSION "3.1.1"
+#define FIRMWARE_VERSION "3.2.0"
 #define DEVICE_NAME "arduino-led-controller"
 #ifndef ENABLE_PIR_SENSORS
 #define ENABLE_PIR_SENSORS 0
@@ -29,7 +30,7 @@ constexpr uint32_t NETWORK_SETTINGS_MAGIC = 0x4C454431UL; // "LED1"
 constexpr uint16_t NETWORK_SETTINGS_VERSION = 1;
 enum Effect : uint8_t { STATIC = 0, BLINK, BREATHE, RAINBOW, CHASE };
 
-struct Led { bool enabled; uint8_t brightness, effect, red, green, blue; };
+struct Led { bool enabled; uint8_t brightness, effect, speed, red, green, blue; };
 struct Log { unsigned long timestamp; const char* type; char message[88]; };
 struct NetworkSettings {
   uint32_t magic;
@@ -44,6 +45,27 @@ Adafruit_NeoPixel strip[STRIP_COUNT] = {
   Adafruit_NeoPixel(PIXELS, LED_PINS[1], NEO_GRB + NEO_KHZ800),
   Adafruit_NeoPixel(PIXELS, LED_PINS[2], NEO_GRB + NEO_KHZ800)
 };
+ArduinoLEDMatrix matrix;
+uint8_t MATRIX_BOOT[8][12] = {
+  {0,0,0,0,1,1,1,1,0,0,0,0},{0,0,0,1,0,0,0,0,1,0,0,0},{0,0,1,0,1,0,0,1,0,1,0,0},{0,1,0,0,0,1,1,0,0,0,1,0},
+  {0,1,0,0,0,1,1,0,0,0,1,0},{0,0,1,0,1,0,0,1,0,1,0,0},{0,0,0,1,0,0,0,0,1,0,0,0},{0,0,0,0,1,1,1,1,0,0,0,0}
+};
+uint8_t MATRIX_WIFI[8][12] = {
+  {0,0,0,0,0,1,1,0,0,0,0,0},{0,0,0,1,1,0,0,1,1,0,0,0},{0,0,1,0,0,0,0,0,0,1,0,0},{0,1,0,0,1,1,1,1,0,0,1,0},
+  {1,0,0,1,0,0,0,0,1,0,0,1},{0,0,0,0,0,1,1,0,0,0,0,0},{0,0,0,0,1,0,0,1,0,0,0,0},{0,0,0,0,0,1,1,0,0,0,0,0}
+};
+uint8_t MATRIX_OK[8][12] = {
+  {0,0,0,0,0,0,0,0,0,0,0,0},{0,0,0,0,0,0,0,0,0,0,1,0},{0,0,0,0,0,0,0,0,0,1,0,0},{0,0,0,0,0,0,0,0,1,0,0,0},
+  {1,0,0,0,0,0,0,1,0,0,0,0},{0,1,0,0,0,0,1,0,0,0,0,0},{0,0,1,0,0,1,0,0,0,0,0,0},{0,0,0,1,1,0,0,0,0,0,0,0}
+};
+uint8_t MATRIX_OTA[8][12] = {
+  {0,0,0,0,0,1,1,0,0,0,0,0},{0,0,0,0,1,1,1,1,0,0,0,0},{0,0,0,1,1,0,0,1,1,0,0,0},{0,0,1,1,1,0,0,1,1,1,0,0},
+  {0,0,0,0,1,1,1,1,0,0,0,0},{0,0,0,0,0,1,1,0,0,0,0,0},{0,0,0,0,0,1,1,0,0,0,0,0},{0,0,0,0,0,1,1,0,0,0,0,0}
+};
+uint8_t MATRIX_ERROR[8][12] = {
+  {1,0,0,0,0,0,0,0,0,0,0,1},{0,1,0,0,0,0,0,0,0,0,1,0},{0,0,1,0,0,0,0,0,0,1,0,0},{0,0,0,1,0,0,0,0,1,0,0,0},
+  {0,0,0,0,1,0,0,1,0,0,0,0},{0,0,0,0,1,0,0,1,0,0,0,0},{0,0,0,1,0,0,0,0,1,0,0,0},{0,0,1,0,0,0,0,0,0,1,0,0}
+};
 WiFiServer server(80);
 Led leds[STRIP_COUNT]; Log logs[50];
 bool pirRaw[STRIP_COUNT] = {}, pirActive[STRIP_COUNT] = {}, otaReady = false, timeSynced = false, wifiReported = false;
@@ -51,6 +73,8 @@ unsigned long pirChanged[STRIP_COUNT] = {}, lastMotion[STRIP_COUNT] = {}, lastWi
 uint8_t logStart = 0, logSize = 0;
 NetworkSettings networkSettings = {};
 bool networkSettingsStored = false;
+
+void showMatrix(uint8_t frame[8][12]) { matrix.renderBitmap(frame, 8, 12); }
 
 void logEvent(const char* type, const char* message) {
   uint8_t position = (logStart + logSize) % 50;
@@ -116,11 +140,12 @@ void loadNetworkSettings() {
   logEvent("error", "Nincs ervenyes WiFi beallitas; USB-s kezdeti feltoltes kell");
 }
 
-void connectWifi() { if (WiFi.status() != WL_CONNECTED) { WiFi.begin(networkSettings.ssid, networkSettings.password); lastWifi = millis(); logEvent("info", "WiFi kapcsolodas inditva"); } }
+void connectWifi() { if (WiFi.status() != WL_CONNECTED) { showMatrix(MATRIX_WIFI); WiFi.begin(networkSettings.ssid, networkSettings.password); lastWifi = millis(); logEvent("info", "WiFi kapcsolodas inditva"); } }
 void reportWifiConnected() {
   if (WiFi.status() != WL_CONNECTED) { wifiReported = false; return; }
   if (wifiReported) return;
   wifiReported = true;
+  showMatrix(MATRIX_OK);
   IPAddress ip = WiFi.localIP();
   char message[88];
   snprintf(message, sizeof(message), "WiFi kesz: %u.%u.%u.%u, jel: %d dBm", ip[0], ip[1], ip[2], ip[3], WiFi.RSSI());
@@ -145,16 +170,19 @@ void showOtaIndicator(uint8_t red, uint8_t green, uint8_t blue, uint8_t brightne
 }
 void otaTransferStarted() {
   logEvent("info", "OTA atvitel elindult - kek fenyes jelzes");
+  showMatrix(MATRIX_OTA);
   showOtaIndicator(0, 70, 255);
 }
 void otaBeforeApply() {
   logEvent("success", "OTA kesz - zold jelzes, ujrainditas");
+  showMatrix(MATRIX_OK);
   showOtaIndicator(0, 255, 60);
 }
 void otaTransferError(int code, const char*) {
   char message[88];
   snprintf(message, sizeof(message), "OTA hiba: %d - piros jelzes", code);
   logEvent("error", message);
+  showMatrix(MATRIX_ERROR);
   showOtaIndicator(255, 0, 0);
 }
 void startOta() {
@@ -167,15 +195,17 @@ void startOta() {
   }
 }
 
+float effectScale(uint8_t speed) { return 0.25f + (constrain(speed, 1, 100) / 100.0f) * 3.75f; }
+unsigned long effectDuration(unsigned long base, uint8_t speed) { return max(1UL, static_cast<unsigned long>(base / effectScale(speed))); }
 uint32_t color(uint8_t i, float scale = 1.0f) { return strip[i].Color(leds[i].red * scale, leds[i].green * scale, leds[i].blue * scale); }
 void render(uint8_t i) {
   if (!leds[i].enabled) { strip[i].clear(); strip[i].show(); return; }
   strip[i].setBrightness(leds[i].brightness);
   switch (leds[i].effect) {
-    case BLINK: if ((millis() / 500) % 2 == 0) strip[i].fill(color(i)); else strip[i].clear(); break;
-    case BREATHE: strip[i].fill(color(i, (sin(millis() / 900.0f) + 1.0f) / 2.0f)); break;
-    case RAINBOW: for (uint16_t p = 0; p < strip[i].numPixels(); p++) strip[i].setPixelColor(p, strip[i].gamma32(strip[i].ColorHSV(((millis() / 20) + p * 65535UL / strip[i].numPixels()) & 0xffff))); break;
-    case CHASE: { strip[i].clear(); int pos = (millis() / 90) % strip[i].numPixels(); for (int j = -3; j <= 3; j++) strip[i].setPixelColor((pos + j + strip[i].numPixels()) % strip[i].numPixels(), color(i, 1.0f - abs(j) / 4.0f)); break; }
+    case BLINK: if ((millis() / effectDuration(500, leds[i].speed)) % 2 == 0) strip[i].fill(color(i)); else strip[i].clear(); break;
+    case BREATHE: strip[i].fill(color(i, (sin(millis() / (900.0f / effectScale(leds[i].speed))) + 1.0f) / 2.0f)); break;
+    case RAINBOW: for (uint16_t p = 0; p < strip[i].numPixels(); p++) strip[i].setPixelColor(p, strip[i].gamma32(strip[i].ColorHSV(((millis() / effectDuration(20, leds[i].speed)) + p * 65535UL / strip[i].numPixels()) & 0xffff))); break;
+    case CHASE: { strip[i].clear(); int pos = (millis() / effectDuration(90, leds[i].speed)) % strip[i].numPixels(); for (int j = -3; j <= 3; j++) strip[i].setPixelColor((pos + j + strip[i].numPixels()) % strip[i].numPixels(), color(i, 1.0f - abs(j) / 4.0f)); break; }
     default: strip[i].fill(color(i)); break;
   }
   strip[i].show();
@@ -217,8 +247,8 @@ String escapeJson(const char* source) { String out; while (*source) { if (*sourc
 String statusJson() {
   String out = "{\"connected\":" + String(WiFi.status() == WL_CONNECTED ? "true" : "false") + ",\"timesynced\":" + String(timeSynced ? "true" : "false");
   out += ",\"networkConfigStored\":" + String(networkSettingsStored ? "true" : "false");
-  out += ",\"scheduler\":\"server\",\"firmwareVersion\":\"" FIRMWARE_VERSION "\",\"otaEnabled\":" + String(otaReady ? "true" : "false") + ",\"pirSensorsEnabled\":" + String(ENABLE_PIR_SENSORS ? "true" : "false") + ",\"physicalButtonsEnabled\":" + String(ENABLE_PHYSICAL_BUTTONS ? "true" : "false") + ",\"uptime\":" + String(millis() / 1000) + ",\"rssi\":" + String(WiFi.status() == WL_CONNECTED ? WiFi.RSSI() : 0) + ",\"strips\":[";
-  for (uint8_t i = 0; i < STRIP_COUNT; i++) { if (i) out += ','; out += "{\"id\":" + String(i + 1) + ",\"enabled\":" + String(leds[i].enabled ? "true" : "false") + ",\"brightness\":" + String(leds[i].brightness) + ",\"effect\":" + String(leds[i].effect) + ",\"color\":[" + String(leds[i].red) + ',' + String(leds[i].green) + ',' + String(leds[i].blue) + "]}"; }
+  out += ",\"scheduler\":\"server\",\"firmwareVersion\":\"" FIRMWARE_VERSION "\",\"otaEnabled\":" + String(otaReady ? "true" : "false") + ",\"matrixEnabled\":true,\"pirSensorsEnabled\":" + String(ENABLE_PIR_SENSORS ? "true" : "false") + ",\"physicalButtonsEnabled\":" + String(ENABLE_PHYSICAL_BUTTONS ? "true" : "false") + ",\"uptime\":" + String(millis() / 1000) + ",\"rssi\":" + String(WiFi.status() == WL_CONNECTED ? WiFi.RSSI() : 0) + ",\"strips\":[";
+  for (uint8_t i = 0; i < STRIP_COUNT; i++) { if (i) out += ','; out += "{\"id\":" + String(i + 1) + ",\"enabled\":" + String(leds[i].enabled ? "true" : "false") + ",\"brightness\":" + String(leds[i].brightness) + ",\"effect\":" + String(leds[i].effect) + ",\"speed\":" + String(leds[i].speed) + ",\"color\":[" + String(leds[i].red) + ',' + String(leds[i].green) + ',' + String(leds[i].blue) + "]}"; }
   return out + "]}";
 }
 String logsJson() { String out = "["; for (uint8_t i = 0; i < logSize; i++) { if (i) out += ','; Log& e = logs[(logStart + i) % 50]; out += "{\"timestamp\":\"" + String(e.timestamp) + "s\",\"type\":\"" + e.type + "\",\"message\":\"" + escapeJson(e.message) + "\"}"; } return out + "]"; }
@@ -229,7 +259,7 @@ bool valueBool(const String& query, const char* name, bool fallback) { int from 
 void updateLed(const String& path) {
   int question = path.indexOf('?'), end = question < 0 ? path.length() : question, id = path.substring(9, end).toInt(); if (id < 1 || id > STRIP_COUNT) return;
   Led& led = leds[id - 1]; String query = question < 0 ? "" : path.substring(question + 1);
-  led.enabled = valueBool(query, "enabled", led.enabled); led.brightness = valueInt(query, "brightness", led.brightness, 0, 255); led.effect = valueInt(query, "effect", led.effect, 0, 4);
+  led.enabled = valueBool(query, "enabled", led.enabled); led.brightness = valueInt(query, "brightness", led.brightness, 0, 255); led.effect = valueInt(query, "effect", led.effect, 0, 4); led.speed = valueInt(query, "speed", led.speed, 1, 100);
   int colorAt = query.indexOf("color="); if (colorAt >= 0) { String raw = query.substring(colorAt + 6); int stop = raw.indexOf('&'); if (stop >= 0) raw = raw.substring(0, stop); int a = raw.indexOf(','), b = raw.indexOf(',', a + 1); if (a >= 0 && b >= 0) { led.red = constrain(raw.substring(0, a).toInt(), 0, 255); led.green = constrain(raw.substring(a + 1, b).toInt(), 0, 255); led.blue = constrain(raw.substring(b + 1).toInt(), 0, 255); } }
   logEvent("info", "LED beallitas modositva"); renderAll(true);
 }
@@ -252,7 +282,7 @@ void handleHttp() {
 void setup() {
   Serial.begin(115200); delay(300);
   for (uint8_t i = 0; i < STRIP_COUNT; i++) {
-    strip[i].begin(); strip[i].clear(); strip[i].show(); leds[i] = {false, 60, STATIC, 0, 0, 255};
+    strip[i].begin(); strip[i].clear(); strip[i].show(); leds[i] = {false, 60, STATIC, 50, 0, 0, 255};
 #if ENABLE_PIR_SENSORS
     pinMode(PIR_PINS[i], INPUT);
 #endif
@@ -260,6 +290,7 @@ void setup() {
 #if ENABLE_PHYSICAL_BUTTONS
   pinMode(BUTTON_MODE, INPUT_PULLUP); pinMode(BUTTON_UP, INPUT_PULLUP); pinMode(BUTTON_DOWN, INPUT_PULLUP);
 #endif
+  matrix.begin(); showMatrix(MATRIX_BOOT);
   logEvent("success", "Arduino LED Controller Lite indul");
   logEvent("info", ENABLE_PIR_SENSORS ? "PIR figyeles bekapcsolva" : "PIR figyeles kikapcsolva (nincs szenzor)");
   logEvent("info", ENABLE_PHYSICAL_BUTTONS ? "Fizikai gombok bekapcsolva" : "Fizikai gombok kikapcsolva");

@@ -465,6 +465,7 @@ function validateLocalSchedule(schedule) {
     if (!Number.isInteger(led.id) || led.id < 1 || led.id > 3 || typeof led.enabled !== 'boolean') return 'Érvénytelen LED-beállítás.';
     if (!Number.isInteger(led.brightness) || led.brightness < 0 || led.brightness > 255) return 'A fényerő 0 és 255 közötti egész szám legyen.';
     if (!Number.isInteger(led.effect) || led.effect < 0 || led.effect > 4) return 'Az effekt 0 és 4 közötti egész szám legyen.';
+    if (led.speed !== undefined && (!Number.isInteger(led.speed) || led.speed < 1 || led.speed > 100)) return 'Az effekt sebessége 1 és 100 közötti egész szám legyen.';
     if (!Array.isArray(led.color) || led.color.length !== 3 || led.color.some(value => !Number.isInteger(value) || value < 0 || value > 255)) return 'Érvénytelen RGB szín.';
   }
   return null;
@@ -487,6 +488,7 @@ async function runLocalSchedules() {
           enabled: led.enabled ? '1' : '0',
           brightness: led.brightness,
           effect: led.effect,
+          speed: Number.isInteger(led.speed) ? led.speed : 50,
           color: led.color.join(',')
         });
         io.emit('scheduledLedUpdate', { scheduleId: schedule.id, led, result });
@@ -694,7 +696,7 @@ app.delete('/api/arduino/schedules', commandArduino('/api/schedule/clear', 'sche
 // vár. Ez az útvonal végzi el a két formátum közötti átalakítást.
 app.post('/api/arduino/led/:id', async (req, res) => {
   const id = Number(req.params.id);
-  const { enabled, brightness, effect, color } = req.body || {};
+  const { enabled, brightness, effect, speed, color } = req.body || {};
 
   if (!Number.isInteger(id) || id < 1 || id > 3) {
     return res.status(400).json({ error: 'A LED azonosítója 1, 2 vagy 3 lehet.' });
@@ -712,6 +714,10 @@ app.post('/api/arduino/led/:id', async (req, res) => {
   if (effect !== undefined) {
     if (!Number.isInteger(effect) || effect < 0 || effect > 4) return res.status(400).json({ error: 'Az effekt 0 és 4 közötti egész szám legyen.' });
     params.effect = effect;
+  }
+  if (speed !== undefined) {
+    if (!Number.isInteger(speed) || speed < 1 || speed > 100) return res.status(400).json({ error: 'Az effekt sebessége 1 és 100 közötti egész szám legyen.' });
+    params.speed = speed;
   }
   if (color !== undefined) {
     const rgb = Array.isArray(color) ? color : String(color).split(',').map(Number);
@@ -990,6 +996,7 @@ app.post('/api/local-schedules/import', (req, res) => {
         enabled: led.enabled,
         brightness: led.brightness,
         effect: led.effect,
+        speed: Number.isInteger(led.speed) ? led.speed : 50,
         color: led.color
       }))
     });
@@ -1026,6 +1033,7 @@ app.post('/api/local-schedules', (req, res) => {
         enabled: led.enabled,
         brightness: led.brightness,
         effect: led.effect,
+        speed: Number.isInteger(led.speed) ? led.speed : 50,
         color: led.color
       }))
     });
@@ -1193,8 +1201,8 @@ const effects=['Statikus','Villogás','Lélegzés','Szivárvány','Futófény'];
 function msg(text,error){notice.textContent=text;notice.className='notice'+(error?' error':'');notice.style.display='block';clearTimeout(window.noticeTimer);window.noticeTimer=setTimeout(function(){notice.style.display='none'},5000)}
 async function request(url,options){const response=await fetch(url,Object.assign({headers:{'Content-Type':'application/json'}},options||{}));const data=await response.json().catch(function(){return {}});if(!response.ok)throw new Error(data.error||'Ismeretlen szerverhiba');return data}
 function hex(color){return '#'+(color||[255,255,255]).map(function(v){return Number(v).toString(16).padStart(2,'0')}).join('')}function rgb(value){return [value.slice(1,3),value.slice(3,5),value.slice(5,7)].map(function(v){return parseInt(v,16)})}function formatUptime(seconds){seconds=Number(seconds)||0;const h=Math.floor(seconds/3600),m=Math.floor(seconds%3600/60);return h? h+' ó '+m+' p':m+' perc'}
-function ledCard(led){const el=document.createElement('article');el.className='led-card';el.dataset.id=led.id;el.innerHTML='<div class="led-title"><div><h2>LED szalag '+led.id+'</h2><span class="state">Egyedi vezérlés</span></div><span class="mini-dot '+(led.enabled?'on':'')+'"></span></div><div class="line"><label>Bekapcsolva</label><input class="switch enabled" type="checkbox"></div><div class="line"><label>Szín</label><input class="color" type="color"></div><div class="line"><label>Fényerő</label><span class="value"></span></div><input class="brightness" type="range" min="0" max="255"><div class="line"><label>Effekt</label><select class="effect"></select></div><button class="apply">Beállítások elküldése</button><div class="status"></div>';el.querySelector('.enabled').checked=!!led.enabled;el.querySelector('.color').value=hex(led.color);const slider=el.querySelector('.brightness');slider.value=led.brightness==null?100:led.brightness;el.querySelector('.value').textContent=slider.value;slider.addEventListener('input',function(){el.querySelector('.value').textContent=slider.value});effects.forEach(function(name,index){const option=new Option(name,index);option.selected=Number(led.effect)===index;el.querySelector('.effect').add(option)});el.querySelector('.apply').addEventListener('click',function(){applyLed(el)});return el}
-async function applyLed(el){const id=Number(el.dataset.id),button=el.querySelector('.apply'),status=el.querySelector('.status');button.disabled=true;status.textContent='Küldés…';try{await request('/api/arduino/led/'+id,{method:'POST',body:JSON.stringify({enabled:el.querySelector('.enabled').checked,brightness:Number(el.querySelector('.brightness').value),effect:Number(el.querySelector('.effect').value),color:rgb(el.querySelector('.color').value)})});status.textContent='✓ Beállítás elküldve';msg('LED '+id+' beállítva');loadStatus()}catch(error){status.textContent='✕ '+error.message;msg(error.message,true)}finally{button.disabled=false}}
+function ledCard(led){const el=document.createElement('article');el.className='led-card';el.dataset.id=led.id;el.innerHTML='<div class="led-title"><div><h2>LED szalag '+led.id+'</h2><span class="state">Egyedi vezérlés</span></div><span class="mini-dot '+(led.enabled?'on':'')+'"></span></div><div class="line"><label>Bekapcsolva</label><input class="switch enabled" type="checkbox"></div><div class="line"><label>Szín</label><input class="color" type="color"></div><div class="line"><label>Fényerő</label><span class="value"></span></div><input class="brightness" type="range" min="0" max="255"><div class="line"><label>Effekt</label><select class="effect"></select></div><div class="line"><label>Effekt sebessége</label><span class="speed-value"></span></div><input class="speed" type="range" min="1" max="100"><button class="apply">Beállítások elküldése</button><div class="status"></div>';el.querySelector('.enabled').checked=!!led.enabled;el.querySelector('.color').value=hex(led.color);const slider=el.querySelector('.brightness');slider.value=led.brightness==null?100:led.brightness;el.querySelector('.value').textContent=slider.value;slider.addEventListener('input',function(){el.querySelector('.value').textContent=slider.value});const speed=el.querySelector('.speed');speed.value=led.speed==null?50:led.speed;el.querySelector('.speed-value').textContent=speed.value;speed.addEventListener('input',function(){el.querySelector('.speed-value').textContent=speed.value});effects.forEach(function(name,index){const option=new Option(name,index);option.selected=Number(led.effect)===index;el.querySelector('.effect').add(option)});el.querySelector('.apply').addEventListener('click',function(){applyLed(el)});return el}
+async function applyLed(el){const id=Number(el.dataset.id),button=el.querySelector('.apply'),status=el.querySelector('.status');button.disabled=true;status.textContent='Küldés…';try{await request('/api/arduino/led/'+id,{method:'POST',body:JSON.stringify({enabled:el.querySelector('.enabled').checked,brightness:Number(el.querySelector('.brightness').value),effect:Number(el.querySelector('.effect').value),speed:Number(el.querySelector('.speed').value),color:rgb(el.querySelector('.color').value)})});status.textContent='✓ Beállítás elküldve';msg('LED '+id+' beállítva');loadStatus()}catch(error){status.textContent='✕ '+error.message;msg(error.message,true)}finally{button.disabled=false}}
 function overview(strips,status){const active=strips.filter(function(x){return x.enabled}).length;document.getElementById('activeLedCount').textContent=active+' / '+strips.length;document.getElementById('wifiSignal').textContent=status.rssi!=null?status.rssi+' dBm':'—';document.getElementById('uptime').textContent=formatUptime(status.uptime);document.getElementById('overviewLeds').replaceChildren(...strips.map(function(led){const item=document.createElement('div');item.className='mini-led';item.innerHTML='<b>LED '+led.id+'</b><span class="mini-dot '+(led.enabled?'on':'')+'"></span>'+(led.enabled?'Bekapcsolva':'Kikapcsolva')+'<div class="muted" style="margin-top:8px">Fényerő: '+(led.brightness||0)+'</div>';return item}));const chart=document.getElementById('brightnessChart');chart.replaceChildren(...strips.map(function(led){const bar=document.createElement('div');bar.className='bar';bar.style.height=Math.max(7,Math.round((Number(led.brightness)||0)/255*100))+'%';bar.title='LED '+led.id+': '+(led.brightness||0);return bar}));document.getElementById('systemBadge').textContent=status.connected?'ONLINE':'NINCS KAPCSOLAT';document.getElementById('systemStatus').innerHTML='<div class="activity-item"><div class="activity-icon">⌁</div><div><b>WiFi kapcsolat</b><div class="muted">'+(status.connected?'Stabil kapcsolat az Arduinohoz':'Az Arduino nem elérhető')+'</div></div></div><div class="activity-item"><div class="activity-icon">◷</div><div><b>Időszinkron</b><div class="muted">'+(status.timesynced?'NTP idő szinkronizálva':'Nincs időszinkron')+'</div></div></div><div class="activity-item"><div class="activity-icon">▣</div><div><b>Időzítési motor</b><div class="muted">'+(status.scheduler==='server'?'Szerveres ütemezés aktív':'Helyi szerveres ütemezés aktív')+'</div></div></div>'}
 async function loadStatus(){try{const status=await request('/api/arduino/status');latestStatus=status;const strips=status.strips||[];ledRoot.replaceChildren(...strips.map(ledCard));overview(strips,status);document.getElementById('sideConnection').textContent='Arduino elérhető'}catch(error){document.getElementById('sideConnection').textContent='Kapcsolati hiba';msg(error.message,true)}}
 function scheduleLedRow(id){const row=document.createElement('div');row.className='schedule-led';row.dataset.id=id;row.innerHTML='<b>LED '+id+'</b><div class="line"><label>Művelet</label><select class="schedule-state"><option value="ignore">Nincs módosítás</option><option value="on">Bekapcsolás</option><option value="off">Kikapcsolás</option></select></div><div class="line"><label>Szín</label><input class="schedule-color" type="color" value="#0000ff"></div><div class="line"><label>Fényerő</label><span class="schedule-value">10</span></div><input class="schedule-brightness" type="range" min="0" max="255" value="10"><div class="line"><label>Effekt</label><select class="schedule-effect"></select></div>';const slider=row.querySelector('.schedule-brightness');slider.addEventListener('input',function(){row.querySelector('.schedule-value').textContent=slider.value});effects.forEach(function(name,index){row.querySelector('.schedule-effect').add(new Option(name,index))});return row}scheduleEditor.replaceChildren(scheduleLedRow(1),scheduleLedRow(2),scheduleLedRow(3));
@@ -1314,9 +1322,9 @@ function renderConfiguredDashboard() {
     }
 
     const ledPresets = {
-      night: { label: 'Éjszakai kék', enabled: true, brightness: 18, effect: 0, color: [0, 25, 255] },
-      rainbow: { label: 'Szivárvány teszt', enabled: true, brightness: 70, effect: 3, color: [255, 255, 255] },
-      pulse: { label: 'Lélegző teszt', enabled: true, brightness: 85, effect: 2, color: [75, 130, 255] }
+      night: { label: 'Éjszakai kék', enabled: true, brightness: 18, effect: 0, speed: 50, color: [0, 25, 255] },
+      rainbow: { label: 'Szivárvány teszt', enabled: true, brightness: 70, effect: 3, speed: 65, color: [255, 255, 255] },
+      pulse: { label: 'Lélegző teszt', enabled: true, brightness: 85, effect: 2, speed: 40, color: [75, 130, 255] }
     };
     async function runLedPreset(name) {
       const state = document.getElementById('ledTestState');
