@@ -9,11 +9,14 @@ const fs = require('fs-extra');
 const path = require('path');
 const axios = require('axios');
 const crypto = require('crypto');
-const { spawn } = require('child_process');
+const { spawn, execFile } = require('child_process');
+const { promisify } = require('util');
 const { v4: uuidv4 } = require('uuid');
 const cron = require('node-cron');
 const winston = require('winston');
 require('dotenv').config();
+
+const execFileAsync = promisify(execFile);
 
 // Az Electron alkalmazás futó háttérfolyamata biztonságosan, csak memóriában
 // adhatja át a rendszer titkosított tárhelyéből kiolvasott OTA-jelszót.
@@ -291,6 +294,42 @@ class ArduinoAPI {
     this.baseURL = `http://${ip}:${port}`;
   }
 
+  // A macOS-es Electron gyermekfolyamatoknál egyes hálózatokon a Node TCP
+  // kapcsolat EHOSTUNREACH hibával elakadhat, miközben a rendszer hálózata
+  // eléri az eszközt. A desktop kiadás ilyenkor a macOS beépített curljét
+  // használja: nincs külön telepítés és nem érinti a Windows/Linux kiadást.
+  async requestWithMacNativeHttp(method, url, options) {
+    const marker = '__LED_HTTP_STATUS__:';
+    const args = [
+      '--silent', '--show-error', '--location',
+      '--connect-timeout', '5',
+      '--max-time', String(Math.max(5, Math.ceil(this.timeout / 1000))),
+      '--request', String(method).toUpperCase(),
+      '--header', 'Content-Type: application/json',
+      '--header', `X-Request-ID: ${options.headers['X-Request-ID']}`,
+      '--write-out', `\\n${marker}%{http_code}`,
+      url
+    ];
+    if (options.data) args.splice(args.length - 1, 0, '--data', JSON.stringify(options.data));
+
+    let stdout;
+    try {
+      ({ stdout } = await execFileAsync('/usr/bin/curl', args, { encoding: 'utf8', maxBuffer: 2 * 1024 * 1024 }));
+    } catch (error) {
+      throw new Error(`macOS natív HTTP hiba: ${error.stderr?.trim() || error.message}`);
+    }
+
+    const separator = stdout.lastIndexOf(`\n${marker}`);
+    const body = separator >= 0 ? stdout.slice(0, separator) : stdout;
+    const status = separator >= 0 ? Number(stdout.slice(separator + marker.length + 1).trim()) : 0;
+    if (!Number.isInteger(status) || status < 200 || status >= 300) {
+      const error = new Error(`Arduino HTTP hiba: ${status || 'ismeretlen'}`);
+      error.response = { status, data: body };
+      throw error;
+    }
+    try { return JSON.parse(body); } catch (_) { return body; }
+  }
+
   async request(method, endpoint, data = null, retryCount = 0) {
     const options = {
       method,
@@ -310,10 +349,10 @@ class ArduinoAPI {
     logger.debug(`Arduino ${method} ${endpoint}`);
 
     try {
-      const response = await axios({
-        ...options,
-        url
-      });
+      const useMacNativeHttp = process.platform === 'darwin' && process.env.ARDUINO_HTTP_TRANSPORT === 'curl';
+      const response = useMacNativeHttp
+        ? { data: await this.requestWithMacNativeHttp(method, url, options) }
+        : await axios({ ...options, url });
       
       logger.info(`Arduino ${method} ${endpoint}: ✅ Success`);
       return response.data;
@@ -2017,6 +2056,7 @@ server.listen(config.port, config.bindHost, () => {
   logger.info('🚀 Arduino LED Controller started!');
   logger.info(`📍 Web interface: http://0.0.0.0:${config.port}`);
   logger.info(`🤖 Arduino: ${config.arduinoIP}:${config.arduinoPort}`);
+  logger.info(`🌐 Arduino HTTP: ${process.platform === 'darwin' && process.env.ARDUINO_HTTP_TRANSPORT === 'curl' ? 'macOS natív kapcsolat' : 'Node kapcsolat'}`);
   logger.info(`📡 Console (WebSocket): port ${config.consolePort}`);
   logger.info(`📁 Data dir: ${config.dataDir}`);
   logger.info(`📅 Schedules dir: ${config.schedulesDir}`);

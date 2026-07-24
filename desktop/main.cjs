@@ -62,6 +62,10 @@ async function startDesktopApp() {
       OTA_TOOL_PATH: path.join(sourceRoot, 'tools', 'arduinoOTA', process.platform === 'win32' ? 'arduinoOTA.exe' : 'arduinoOTA'),
       AUTH_FILE: path.join(userData, 'config', 'users.json'),
       AUDIT_FILE: path.join(userData, 'data', 'audit-log.jsonl'),
+      // A macOS desktop kiadás az Arduino felé a rendszer saját HTTP-kliensét
+      // használja. Ez elkerüli az Electron gyermekfolyamatánál előforduló
+      // EHOSTUNREACH hibát; Windows és Linux továbbra is Axioson marad.
+      ARDUINO_HTTP_TRANSPORT: process.platform === 'darwin' ? 'curl' : 'axios',
       // Az OTA jelszó szándékosan nincs a desktop alkalmazásban.
       OTA_PASSWORD: otaPassword
     },
