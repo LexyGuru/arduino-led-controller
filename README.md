@@ -31,6 +31,23 @@ titkosított tárhelyén tárolja. Windows és Linux kiadásban a hivatalos Ardu
 OTA-feltöltő is a csomag része; az Apple Silicon OTA feltöltő natív
 megvalósítása külön fejlesztési lépés, Intel/Rosetta binárist nem használunk.
 
+### macOS első indítás
+
+A GitHub Release-ből letöltött alkalmazás jelenleg nincs Apple-tanúsítvánnyal
+notarizálva, ezért a macOS első indításkor blokkolhatja vagy „sérült”
+alkalmazásként jelezheti. Ez csak akkor fordulhat elő biztonságosan, ha a fájl
+közvetlenül ennek a projektnek a GitHub **Releases** oldaláról származik.
+
+Húzd az alkalmazást az `Applications` mappába, majd a Terminalban futtasd:
+
+```bash
+xattr -dr com.apple.quarantine "/Applications/Arduino LED Controller.app"
+```
+
+Ez csak az adott alkalmazás macOS karanténjelölését távolítja el. A végleges,
+figyelmeztetésmentes terjesztéshez Apple Developer tanúsítvány és notarizálás
+szükséges.
+
 ## Proxmox LXC előkészítése
 
 A Proxmox felületén hozz létre egy **Debian 12** LXC konténert az alábbi javasolt értékekkel:
