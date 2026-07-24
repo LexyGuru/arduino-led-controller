@@ -177,13 +177,18 @@ bool saveSchedules(uint8_t count) {
   return true;
 }
 int hexValue(char value) { if (value >= '0' && value <= '9') return value - '0'; if (value >= 'a' && value <= 'f') return value - 'a' + 10; if (value >= 'A' && value <= 'F') return value - 'A' + 10; return -1; }
-bool importSchedulesHex(const String& payload) {
+bool decodeScheduleHex(const String& payload, StoredSchedule& entry) {
   const size_t bytes = sizeof(StoredSchedule);
-  if (payload.length() % (bytes * 2) != 0) return false;
-  uint8_t count = payload.length() / (bytes * 2); if (count > SCHEDULE_MAX) return false;
-  uint8_t* target = reinterpret_cast<uint8_t*>(schedules);
+  if (payload.length() != bytes * 2) return false;
+  uint8_t* target = reinterpret_cast<uint8_t*>(&entry);
   for (size_t i = 0; i < payload.length(); i += 2) { int high = hexValue(payload[i]), low = hexValue(payload[i + 1]); if (high < 0 || low < 0) return false; target[i / 2] = (high << 4) | low; }
-  for (uint8_t i = 0; i < count; i++) if (schedules[i].day < 1 || schedules[i].day > 7 || schedules[i].hour > 23 || schedules[i].minute > 59) return false;
+  return entry.day >= 1 && entry.day <= 7 && entry.hour <= 23 && entry.minute <= 59;
+}
+bool importSchedulesHex(const String& payload) {
+  const size_t recordChars = sizeof(StoredSchedule) * 2;
+  if (payload.length() % recordChars != 0) return false;
+  uint8_t count = payload.length() / recordChars; if (count > SCHEDULE_MAX) return false;
+  for (uint8_t i = 0; i < count; i++) if (!decodeScheduleHex(payload.substring(i * recordChars, (i + 1) * recordChars), schedules[i])) return false;
   return saveSchedules(count);
 }
 bool euSummerTime(const tm& utc) {
@@ -354,6 +359,7 @@ void updateLed(const String& path) {
 void route(WiFiClient& c, const String& path) {
   int queryAt = path.indexOf('?'); String base = queryAt < 0 ? path : path.substring(0, queryAt);
   if (base == "/api/schedules/upload") { String payload = queryAt < 0 ? "" : path.substring(queryAt + 1); if (!payload.startsWith("payload=")) { sendJson(c, "{\"error\":\"Hianyzik a payload\"}", 400); return; } if (!importSchedulesHex(payload.substring(8))) { sendJson(c, "{\"error\":\"Ervenytelen idozitesi adat\"}", 400); return; } char message[64]; snprintf(message, sizeof(message), "Arduino idozites mentve: %d bejegyzes", scheduleCount); logEvent("success", message); sendJson(c, "{\"success\":true,\"count\":" + String(scheduleCount) + "}"); return; }
+  if (base == "/api/schedules/chunk") { String query = queryAt < 0 ? "" : path.substring(queryAt + 1); int index = valueInt(query, "index", -1, -1, SCHEDULE_MAX - 1), total = valueInt(query, "total", 0, 0, SCHEDULE_MAX); int payloadAt = query.indexOf("payload="); if (index < 0 || total < 1 || index >= total || payloadAt < 0 || !decodeScheduleHex(query.substring(payloadAt + 8), schedules[index])) { sendJson(c, "{\"error\":\"Ervenytelen idozitesi reszlet\"}", 400); return; } if (index + 1 == total) { saveSchedules(total); char message[64]; snprintf(message, sizeof(message), "Arduino idozites mentve: %d bejegyzes", scheduleCount); logEvent("success", message); } sendJson(c, "{\"success\":true,\"count\":" + String(index + 1 == total ? scheduleCount : 0) + "}"); return; }
   if (base == "/api/schedules/clear") { memset(schedules, 0, sizeof(schedules)); saveSchedules(0); logEvent("info", "Arduino idozites torolve"); sendJson(c, "{\"success\":true}"); return; }
   if (path == "/api/status" || path == "/api/led/status") { sendJson(c, statusJson()); return; }
   if (path == "/api/console/logs") { sendJson(c, logsJson()); return; }

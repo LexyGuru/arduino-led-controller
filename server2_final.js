@@ -479,7 +479,11 @@ function encodeArduinoSchedules(schedules) {
   return payload.toString('hex');
 }
 async function syncSchedulesToArduino() {
-  const result = await arduino.get(`/api/schedules/upload?payload=${encodeArduinoSchedules(localSchedules)}`);
+  let result = { success: true, count: 0 };
+  for (let index = 0; index < localSchedules.length; index++) {
+    result = await arduino.get(`/api/schedules/chunk?index=${index}&total=${localSchedules.length}&payload=${encodeArduinoSchedules([localSchedules[index]])}`);
+  }
+  if (result.count !== localSchedules.length) throw new Error(`Az Arduino csak ${result.count || 0}/${localSchedules.length} bejegyzést mentett el.`);
   logger.info(`Arduino EEPROM időzítés szinkronizálva: ${localSchedules.length} bejegyzés`);
   return result;
 }
