@@ -5,6 +5,7 @@ data/
 config/
 schedules/
 *.log
+release/
 .DS_Store
 Node.js Express Arduino.html
 server.js

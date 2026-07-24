@@ -3,13 +3,33 @@
   "version": "1.0.0",
   "private": true,
   "description": "Arduino UNO R4 WiFi LED controller and weekly scheduler",
-  "main": "server2_final.js",
+  "main": "desktop/main.cjs",
   "scripts": {
     "start": "node server2_final.js",
-    "check": "node --check server2_final.js"
+    "check": "node --check server2_final.js && node --check desktop/main.cjs",
+    "desktop:dev": "electron .",
+    "desktop:pack": "electron-builder --dir",
+    "desktop:dist": "electron-builder"
   },
   "engines": {
     "node": ">=20"
+  },
+  "build": {
+    "appId": "hu.lexyguru.arduinoledcontroller",
+    "productName": "Arduino LED Controller",
+    "asar": false,
+    "files": [
+      "server2_final.js",
+      "desktop/**/*",
+      "package.json",
+      "node_modules/**/*"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "win": { "target": ["nsis"] },
+    "mac": { "target": ["dmg"] },
+    "linux": { "target": ["AppImage", "deb"] }
   },
   "dependencies": {
     "axios": "^1.8.4",
@@ -24,5 +44,9 @@
     "socket.io": "^4.8.1",
     "uuid": "^11.1.0",
     "winston": "^3.17.0"
+  },
+  "devDependencies": {
+    "electron": "^37.2.6",
+    "electron-builder": "^26.0.12"
   }
 }

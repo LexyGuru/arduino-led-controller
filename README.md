@@ -3,6 +3,32 @@
 Node.js alapú Arduino LED-vezérlő és heti időzítő webszerver. Az ütemezéseket
 a szerver tárolja, ezért SD-kártya nélkül is működik.
 
+## Windows, macOS és Linux alkalmazás
+
+A `desktop/` Electron alkalmazás ugyanazt a kezelőfelületet használja, de a
+saját gépen indít helyi szolgáltatást és közvetlenül az Arduinohoz kapcsolódik.
+Így Proxmox nélkül is használható; az Arduino EEPROM-időzítője a számítógép
+kikapcsolásakor is fut. Az első indításkor a **Konfiguráció** menüben add meg
+az Arduino IP-címét.
+
+Fejlesztői indítás:
+
+```bash
+npm install
+npm run desktop:dev
+```
+
+Telepítőcsomagok készítése az adott rendszeren:
+
+```bash
+npm run desktop:dist
+```
+
+GitHubon egy `desktop-v1.0.0` formátumú tag létrehozása automatikusan legyártja
+a Windows `.exe`, macOS `.dmg`, Linux `.AppImage` és `.deb` csomagokat a
+**Actions** oldalon. A desktop alkalmazás nem tárol OTA-jelszót; firmware
+telepítésre továbbra is a Proxmox szerver használható.
+
 ## Proxmox LXC előkészítése
 
 A Proxmox felületén hozz létre egy **Debian 12** LXC konténert az alábbi javasolt értékekkel:
