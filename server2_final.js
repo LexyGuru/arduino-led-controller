@@ -54,6 +54,24 @@ function ensureDirectories() {
 
 ensureDirectories();
 
+// A kezelőfelületről módosítható Arduino-célgép. Az .env csak első indításkor
+// ad alapértéket; a mentett beállítás túléli a szerver újraindítását.
+const runtimeSettingsPath = path.join(config.configDir, 'server-settings.json');
+function loadRuntimeSettings() {
+  try {
+    if (!fs.existsSync(runtimeSettingsPath)) return;
+    const saved = fs.readJsonSync(runtimeSettingsPath);
+    if (typeof saved.arduinoIP === 'string' && saved.arduinoIP.trim()) config.arduinoIP = saved.arduinoIP.trim();
+    if (Number.isInteger(saved.arduinoPort) && saved.arduinoPort > 0 && saved.arduinoPort < 65536) config.arduinoPort = saved.arduinoPort;
+  } catch (error) {
+    console.warn('Runtime settings load warning:', error.message);
+  }
+}
+function saveRuntimeSettings() {
+  fs.writeJsonSync(runtimeSettingsPath, { arduinoIP: config.arduinoIP, arduinoPort: Number(config.arduinoPort) }, { spaces: 2 });
+}
+loadRuntimeSettings();
+
 // ========================= LOGGER =========================
 
 const logger = winston.createLogger({
@@ -150,10 +168,14 @@ function validateCSRFToken(token) {
 
 class ArduinoAPI {
   constructor(ip, port) {
-    this.baseURL = `http://${ip}:${port}`;
+    this.setTarget(ip, port);
     this.timeout = Number(process.env.ARDUINO_TIMEOUT_MS) || 30000;
     this.maxRetries = Number(process.env.ARDUINO_RETRY_COUNT) || 3;
     this.retryDelay = Number(process.env.ARDUINO_RETRY_DELAY) || 2000;
+  }
+
+  setTarget(ip, port) {
+    this.baseURL = `http://${ip}:${port}`;
   }
 
   async request(method, endpoint, data = null, retryCount = 0) {
@@ -231,10 +253,14 @@ const arduino = new ArduinoAPI(config.arduinoIP, config.arduinoPort);
 
 class LEDAPI {
   constructor(ip, port) {
-    this.baseURL = `http://${ip}:${port}`;
+    this.setTarget(ip, port);
     this.timeout = Number(process.env.ARDUINO_TIMEOUT_MS) || 30000;
     this.maxRetries = Number(process.env.ARDUINO_RETRY_COUNT) || 3;
     this.retryDelay = Number(process.env.ARDUINO_RETRY_DELAY) || 2000;
+  }
+
+  setTarget(ip, port) {
+    this.baseURL = `http://${ip}:${port}`;
   }
 
   async setLed(id, params, retryCount = 0) {
@@ -535,6 +561,36 @@ app.post('/api/arduino/led/:id', async (req, res) => {
 app.post('/api/arduino/all-on', commandArduino('/api/all-on', 'allLedsUpdate'));
 app.post('/api/arduino/all-off', commandArduino('/api/all-off', 'allLedsUpdate'));
 
+// ========================= SZERVER BEÁLLÍTÁSOK =========================
+
+app.get('/api/settings', (req, res) => {
+  res.json({ arduinoIP: config.arduinoIP, arduinoPort: Number(config.arduinoPort) });
+});
+
+app.put('/api/settings/arduino', (req, res) => {
+  const { arduinoIP, arduinoPort = 80 } = req.body || {};
+  const host = typeof arduinoIP === 'string' ? arduinoIP.trim() : '';
+  const port = Number(arduinoPort);
+  if (!/^[a-zA-Z0-9.-]+$/.test(host) || host.length > 253) {
+    return res.status(400).json({ error: 'Adj meg érvényes IP-címet vagy helyi gépnevet.' });
+  }
+  if (!Number.isInteger(port) || port < 1 || port > 65535) {
+    return res.status(400).json({ error: 'A port 1 és 65535 közötti egész szám legyen.' });
+  }
+  config.arduinoIP = host;
+  config.arduinoPort = port;
+  arduino.setTarget(host, port);
+  ledAPI.setTarget(host, port);
+  try {
+    saveRuntimeSettings();
+    logger.info(`Arduino célgép módosítva: ${host}:${port}`);
+    res.json({ success: true, arduinoIP: host, arduinoPort: port });
+  } catch (error) {
+    logger.error(`Arduino beállítás mentési hiba: ${error.message}`);
+    res.status(500).json({ error: 'A beállítás mentése nem sikerült.' });
+  }
+});
+
 // Helyi (Macen tárolt) heti ütemezések.
 app.get('/api/local-schedules', (req, res) => {
   res.json({ schedules: localSchedules });
@@ -796,11 +852,82 @@ document.querySelectorAll('.nav button').forEach(function(button){button.addEven
 </script></body></html>`;
 }
 
+// A kapcsolat célcíme a felületből bármikor átállítható.  Ezt külön, a
+// beágyazott kezelőfelület után tesszük hozzá, hogy az eredeti nagy sablon
+// áttekinthető maradjon.
+function renderConfiguredDashboard() {
+  return renderControlDashboardV2().replace('</body>', `<script>
+  (function () {
+    const nav = document.querySelector('.nav');
+    const main = document.querySelector('.main');
+    if (!nav || !main) return;
+
+    const navButton = document.createElement('button');
+    navButton.dataset.view = 'settings';
+    navButton.innerHTML = '⚙ <span>Konfiguráció</span>';
+    nav.append(navButton);
+
+    const section = document.createElement('section');
+    section.className = 'view';
+    section.id = 'settings';
+    section.innerHTML = '<div class="panel scheduler"><div class="panel-head"><div><h2>Kapcsolati beállítások</h2><div class="muted">Itt állíthatod át, melyik Arduino vezérlőt használja a szerver.</div></div></div><div class="line"><label>Arduino IP-címe vagy neve</label><input id="settingsArduinoIP" type="text" inputmode="url" placeholder="például: 10.0.0.117"></div><div class="line"><label>Arduino port</label><input id="settingsArduinoPort" type="number" min="1" max="65535" value="80"></div><button id="saveArduinoSettings" class="primary" style="width:100%;margin-top:10px">Kapcsolat mentése</button><p id="settingsConnection" class="muted">A mentett cím betöltése…</p></div>';
+    main.append(section);
+
+    async function loadSettings() {
+      const state = document.getElementById('settingsConnection');
+      try {
+        const data = await request('/api/settings');
+        document.getElementById('settingsArduinoIP').value = data.arduinoIP || '';
+        document.getElementById('settingsArduinoPort').value = data.arduinoPort || 80;
+        state.textContent = 'Jelenlegi cél: ' + data.arduinoIP + ':' + data.arduinoPort;
+      } catch (error) {
+        state.textContent = 'A beállítás nem tölthető be: ' + error.message;
+      }
+    }
+
+    async function saveSettings() {
+      const state = document.getElementById('settingsConnection');
+      const button = document.getElementById('saveArduinoSettings');
+      button.disabled = true;
+      state.textContent = 'Mentés és kapcsolatváltás…';
+      try {
+        const data = await request('/api/settings/arduino', {
+          method: 'PUT',
+          body: JSON.stringify({
+            arduinoIP: document.getElementById('settingsArduinoIP').value.trim(),
+            arduinoPort: Number(document.getElementById('settingsArduinoPort').value)
+          })
+        });
+        state.textContent = 'Mentve. Új cél: ' + data.arduinoIP + ':' + data.arduinoPort;
+        msg('Az Arduino címe elmentve');
+        loadStatus();
+      } catch (error) {
+        state.textContent = 'Mentési hiba: ' + error.message;
+        msg(error.message, true);
+      } finally {
+        button.disabled = false;
+      }
+    }
+
+    function showSettings() {
+      document.querySelectorAll('.view').forEach(function (view) { view.classList.toggle('active', view.id === 'settings'); });
+      document.querySelectorAll('.nav button').forEach(function (button) { button.classList.toggle('active', button === navButton); });
+      document.getElementById('viewName').textContent = 'Konfiguráció';
+      document.getElementById('pageTitle').textContent = 'Kapcsolati beállítások';
+      loadSettings();
+    }
+
+    navButton.addEventListener('click', showSettings);
+    document.getElementById('saveArduinoSettings').addEventListener('click', saveSettings);
+  }());
+  </script></body>`);
+}
+
 // Main dashboard
 app.get('/', async (req, res) => {
   // A kezelőfelület azonnal töltődjön be akkor is, ha az Arduino épp lassan
   // válaszol. Az állapotot a böngésző külön kéréssel frissíti.
-  return res.type('html').send(renderControlDashboardV2());
+  return res.type('html').send(renderConfiguredDashboard());
 
   try {
     const status = await arduino.get('/api/status');
