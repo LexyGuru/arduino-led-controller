@@ -46,8 +46,7 @@ if [[ -d "${APP_DIR}/.git" ]]; then
 fi
 
 echo "==> Arduino OTA feltöltőeszköz telepítése"
-chmod 755 "${APP_DIR}/deploy/install-ota-tool.sh"
-APP_DIR="${APP_DIR}" "${APP_DIR}/deploy/install-ota-tool.sh"
+APP_DIR="${APP_DIR}" bash "${APP_DIR}/deploy/install-ota-tool.sh"
 
 echo "==> Node függőségek telepítése"
 cd "${APP_DIR}"
@@ -67,14 +66,12 @@ grep -q '^BIND_HOST=' /etc/arduino-led-controller.env || echo 'BIND_HOST=127.0.0
 grep -q '^COOKIE_SECURE=' /etc/arduino-led-controller.env || echo 'COOKIE_SECURE=1' >> /etc/arduino-led-controller.env
 
 install -m 644 "${APP_DIR}/deploy/arduino-led-controller.service" "/etc/systemd/system/${SERVICE_NAME}.service"
-chmod 755 "${APP_DIR}/deploy/update.sh"
-chmod 755 "${APP_DIR}/deploy/install-https.sh"
 install -m 644 "${APP_DIR}/deploy/arduino-led-controller-update.service" "/etc/systemd/system/${SERVICE_NAME}-update.service"
 install -m 644 "${APP_DIR}/deploy/arduino-led-controller-update.timer" "/etc/systemd/system/${SERVICE_NAME}-update.timer"
 systemctl daemon-reload
 systemctl enable --now "${SERVICE_NAME}"
 systemctl enable --now "${SERVICE_NAME}-update.timer"
-HTTPS_HOST="${HTTPS_HOST:-}" PORT="${PORT:-3000}" "${APP_DIR}/deploy/install-https.sh"
+HTTPS_HOST="${HTTPS_HOST:-}" PORT="${PORT:-3000}" bash "${APP_DIR}/deploy/install-https.sh"
 
 echo
 echo "Telepítés kész."
