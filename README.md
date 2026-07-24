@@ -37,6 +37,12 @@ tanúsítványát. A tanúsítvány a konténerben itt található:
 /var/lib/caddy/.local/share/caddy/pki/authorities/local/root.crt
 ```
 
+Letölthető a telepítés után erről a címről is:
+
+```text
+https://LXC_KONTENER_IP/caddy-root-ca.crt
+```
+
 Így a belépési és OTA-jelszavak HTTPS-en, titkosítva közlekednek a helyi
 hálózaton. Az első látogatáskor a felület adminisztrátori fiók létrehozását
 kéri; további felhasználókat és a szervernaplót a Konfiguráció menüben kezelhet
