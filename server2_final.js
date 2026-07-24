@@ -457,6 +457,33 @@ function saveLocalSchedules() {
   fs.writeJsonSync(localSchedulePath, localSchedules, { spaces: 2 });
 }
 
+// Az Arduino EEPROM-os időzítőjének kompakt, hordozható formátuma.
+// Rekordonként: nap, óra, perc, majd LED-enként apply/állapot/fényerő/effekt/sebesség/RGB.
+function encodeArduinoSchedules(schedules) {
+  if (schedules.length > 60) throw new Error('Az Arduino belső időzítője legfeljebb 60 bejegyzést tárolhat.');
+  const recordSize = 27;
+  const payload = Buffer.alloc(schedules.length * recordSize);
+  schedules.forEach((schedule, index) => {
+    const offset = index * recordSize;
+    const [hour, minute] = schedule.time.split(':').map(Number);
+    payload[offset] = schedule.day; payload[offset + 1] = hour; payload[offset + 2] = minute;
+    for (let ledId = 1; ledId <= 3; ledId++) {
+      const led = schedule.leds.find((item) => item.id === ledId);
+      const at = offset + 3 + (ledId - 1) * 8;
+      if (!led) continue;
+      payload[at] = 1; payload[at + 1] = led.enabled ? 1 : 0; payload[at + 2] = led.brightness;
+      payload[at + 3] = led.effect; payload[at + 4] = Number.isInteger(led.speed) ? led.speed : 50;
+      payload[at + 5] = led.color[0]; payload[at + 6] = led.color[1]; payload[at + 7] = led.color[2];
+    }
+  });
+  return payload.toString('hex');
+}
+async function syncSchedulesToArduino() {
+  const result = await arduino.get(`/api/schedules/upload?payload=${encodeArduinoSchedules(localSchedules)}`);
+  logger.info(`Arduino EEPROM időzítés szinkronizálva: ${localSchedules.length} bejegyzés`);
+  return result;
+}
+
 function validateLocalSchedule(schedule) {
   if (!Number.isInteger(schedule.day) || schedule.day < 1 || schedule.day > 7) return 'A nap 1 (hétfő) és 7 (vasárnap) közötti szám legyen.';
   if (typeof schedule.time !== 'string' || !/^([01]\d|2[0-3]):[0-5]\d$/.test(schedule.time)) return 'Az idő formátuma HH:MM legyen.';
@@ -959,6 +986,19 @@ app.post('/api/firmware/update', async (req, res) => {
 // Helyi (Macen tárolt) heti ütemezések.
 app.get('/api/local-schedules', (req, res) => {
   res.json({ schedules: localSchedules });
+});
+
+// Kézi átvitel az Arduino belső EEPROM-jába. Siker után az ütemezés Proxmox
+// nélkül, közvetlenül az Arduino órája alapján fut tovább.
+app.post('/api/local-schedules/sync-arduino', async (req, res) => {
+  try {
+    const result = await syncSchedulesToArduino();
+    audit(req, 'local_schedules_synced_to_arduino', { count: localSchedules.length });
+    res.json({ success: true, count: localSchedules.length, result });
+  } catch (error) {
+    logger.error(`Arduino időzítés szinkron hiba: ${error.message}`);
+    res.status(503).json({ error: `Az Arduino EEPROM-időzítőjének mentése nem sikerült: ${error.message}` });
+  }
 });
 
 // Letölthető, hordozható mentés az összes heti időzítésről.

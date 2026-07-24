@@ -10,9 +10,10 @@
 #include <ArduinoOTA.h>
 #include <EEPROM.h>
 #include <Arduino_LED_Matrix.h>
+#include <time.h>
 #include "secrets.h"
 
-#define FIRMWARE_VERSION "3.2.2"
+#define FIRMWARE_VERSION "4.0.0"
 #define DEVICE_NAME "arduino-led-controller"
 #ifndef ENABLE_PIR_SENSORS
 #define ENABLE_PIR_SENSORS 0
@@ -28,6 +29,9 @@ constexpr uint8_t BUTTON_MODE = A0, BUTTON_UP = A1, BUTTON_DOWN = A2;
 constexpr unsigned long PIR_TIMEOUT = 60000, PIR_DEBOUNCE = 200, WIFI_RETRY = 15000, EFFECT_FRAME = 50;
 constexpr uint32_t NETWORK_SETTINGS_MAGIC = 0x4C454431UL; // "LED1"
 constexpr uint16_t NETWORK_SETTINGS_VERSION = 1;
+constexpr uint16_t SCHEDULE_EEPROM_OFFSET = 256;
+constexpr uint8_t SCHEDULE_MAX = 60;
+constexpr uint32_t SCHEDULE_MAGIC = 0x53434831UL; // "SCH1"
 enum Effect : uint8_t { STATIC = 0, BLINK, BREATHE, RAINBOW, CHASE };
 
 struct Led { bool enabled; uint8_t brightness, effect, speed, red, green, blue; };
@@ -40,6 +44,9 @@ struct NetworkSettings {
   char otaPassword[65];
   uint32_t checksum;
 };
+struct __attribute__((packed)) StoredLed { uint8_t apply, enabled, brightness, effect, speed, red, green, blue; };
+struct __attribute__((packed)) StoredSchedule { uint8_t day, hour, minute; StoredLed leds[STRIP_COUNT]; };
+struct __attribute__((packed)) ScheduleHeader { uint32_t magic; uint8_t version, count; uint32_t checksum; };
 Adafruit_NeoPixel strip[STRIP_COUNT] = {
   Adafruit_NeoPixel(PIXELS, LED_PINS[0], NEO_GRB + NEO_KHZ800),
   Adafruit_NeoPixel(PIXELS, LED_PINS[1], NEO_GRB + NEO_KHZ800),
@@ -73,6 +80,12 @@ unsigned long pirChanged[STRIP_COUNT] = {}, lastMotion[STRIP_COUNT] = {}, lastWi
 uint8_t logStart = 0, logSize = 0;
 NetworkSettings networkSettings = {};
 bool networkSettingsStored = false;
+StoredSchedule schedules[SCHEDULE_MAX] = {};
+uint8_t scheduleCount = 0;
+bool schedulesStored = false;
+unsigned long lastClockEpoch = 0, lastClockMillis = 0, lastScheduleMinute = 0xFFFFFFFFUL;
+
+void renderAll(bool force = false);
 
 void showMatrix(uint8_t frame[8][12]) { matrix.renderBitmap(frame, 8, 12); }
 
@@ -138,6 +151,66 @@ void loadNetworkSettings() {
   copyText(networkSettings.password, sizeof(networkSettings.password), WIFI_PASSWORD);
   copyText(networkSettings.otaPassword, sizeof(networkSettings.otaPassword), OTA_PASSWORD);
   logEvent("error", "Nincs ervenyes WiFi beallitas; USB-s kezdeti feltoltes kell");
+}
+
+uint32_t scheduleChecksum(const StoredSchedule* entries, uint8_t count) {
+  uint32_t value = 2166136261UL;
+  const uint8_t* bytes = reinterpret_cast<const uint8_t*>(entries);
+  for (size_t i = 0; i < sizeof(StoredSchedule) * count; i++) value = (value ^ bytes[i]) * 16777619UL;
+  return value;
+}
+void loadSchedules() {
+  ScheduleHeader header = {};
+  EEPROM.get(SCHEDULE_EEPROM_OFFSET, header);
+  if (header.magic != SCHEDULE_MAGIC || header.version != 1 || header.count > SCHEDULE_MAX) return;
+  EEPROM.get(SCHEDULE_EEPROM_OFFSET + sizeof(ScheduleHeader), schedules);
+  if (header.checksum != scheduleChecksum(schedules, header.count)) { logEvent("error", "Idozitesi EEPROM ellenorzes sikertelen"); return; }
+  scheduleCount = header.count; schedulesStored = true;
+  char message[64]; snprintf(message, sizeof(message), "Arduino idozites betoltve: %d bejegyzes", scheduleCount); logEvent("success", message);
+}
+bool saveSchedules(uint8_t count) {
+  if (count > SCHEDULE_MAX) return false;
+  ScheduleHeader header = { SCHEDULE_MAGIC, 1, count, scheduleChecksum(schedules, count) };
+  EEPROM.put(SCHEDULE_EEPROM_OFFSET, header);
+  EEPROM.put(SCHEDULE_EEPROM_OFFSET + sizeof(ScheduleHeader), schedules);
+  scheduleCount = count; schedulesStored = true;
+  return true;
+}
+int hexValue(char value) { if (value >= '0' && value <= '9') return value - '0'; if (value >= 'a' && value <= 'f') return value - 'a' + 10; if (value >= 'A' && value <= 'F') return value - 'A' + 10; return -1; }
+bool importSchedulesHex(const String& payload) {
+  const size_t bytes = sizeof(StoredSchedule);
+  if (payload.length() % (bytes * 2) != 0) return false;
+  uint8_t count = payload.length() / (bytes * 2); if (count > SCHEDULE_MAX) return false;
+  uint8_t* target = reinterpret_cast<uint8_t*>(schedules);
+  for (size_t i = 0; i < payload.length(); i += 2) { int high = hexValue(payload[i]), low = hexValue(payload[i + 1]); if (high < 0 || low < 0) return false; target[i / 2] = (high << 4) | low; }
+  for (uint8_t i = 0; i < count; i++) if (schedules[i].day < 1 || schedules[i].day > 7 || schedules[i].hour > 23 || schedules[i].minute > 59) return false;
+  return saveSchedules(count);
+}
+bool euSummerTime(const tm& utc) {
+  int month = utc.tm_mon + 1, day = utc.tm_mday;
+  if (month < 3 || month > 10) return false;
+  if (month > 3 && month < 10) return true;
+  int lastSunday = day + ((utc.tm_wday + 7 - 0) % 7); // only used below with month-end calculation
+  (void)lastSunday;
+  int daysInMonth = month == 3 ? 31 : 31;
+  int weekdayLast = (utc.tm_wday + (daysInMonth - day)) % 7;
+  int last = daysInMonth - weekdayLast;
+  if (month == 3) return day > last || (day == last && utc.tm_hour >= 1);
+  return day < last || (day == last && utc.tm_hour < 1);
+}
+bool localScheduleTime(uint8_t& day, uint8_t& hour, uint8_t& minute) {
+  if (!timeSynced) return false;
+  time_t utcEpoch = lastClockEpoch + (millis() - lastClockMillis) / 1000;
+  tm utc = *gmtime(&utcEpoch); utcEpoch += 3600 + (euSummerTime(utc) ? 3600 : 0);
+  tm local = *gmtime(&utcEpoch); day = local.tm_wday == 0 ? 7 : local.tm_wday; hour = local.tm_hour; minute = local.tm_min; return true;
+}
+void runArduinoSchedules() {
+  uint8_t day, hour, minute; if (!localScheduleTime(day, hour, minute)) return;
+  unsigned long key = (lastClockEpoch + (millis() - lastClockMillis) / 1000) / 60; if (key == lastScheduleMinute) return; lastScheduleMinute = key;
+  for (uint8_t s = 0; s < scheduleCount; s++) if (schedules[s].day == day && schedules[s].hour == hour && schedules[s].minute == minute) {
+    for (uint8_t i = 0; i < STRIP_COUNT; i++) { StoredLed& source = schedules[s].leds[i]; if (!source.apply) continue; leds[i] = { source.enabled != 0, source.brightness, source.effect, source.speed, source.red, source.green, source.blue }; }
+    char message[72]; snprintf(message, sizeof(message), "Arduino idozites lefutott: %d %02d:%02d", day, hour, minute); logEvent("success", message); renderAll(true);
+  }
 }
 
 bool wifiHasAddress() {
@@ -223,7 +296,7 @@ void render(uint8_t i) {
   }
   strip[i].show();
 }
-void renderAll(bool force = false) {
+void renderAll(bool force) {
   bool animated = false; for (uint8_t i = 0; i < STRIP_COUNT; i++) if (leds[i].enabled && leds[i].effect != STATIC) animated = true;
   if (!force && (!animated || millis() - lastFrame < EFFECT_FRAME)) return;
   lastFrame = millis(); for (uint8_t i = 0; i < STRIP_COUNT; i++) render(i);
@@ -260,7 +333,7 @@ String escapeJson(const char* source) { String out; while (*source) { if (*sourc
 String statusJson() {
   String out = "{\"connected\":" + String(wifiHasAddress() ? "true" : "false") + ",\"timesynced\":" + String(timeSynced ? "true" : "false");
   out += ",\"networkConfigStored\":" + String(networkSettingsStored ? "true" : "false");
-  out += ",\"scheduler\":\"server\",\"firmwareVersion\":\"" FIRMWARE_VERSION "\",\"otaEnabled\":" + String(otaReady ? "true" : "false") + ",\"matrixEnabled\":true,\"pirSensorsEnabled\":" + String(ENABLE_PIR_SENSORS ? "true" : "false") + ",\"physicalButtonsEnabled\":" + String(ENABLE_PHYSICAL_BUTTONS ? "true" : "false") + ",\"uptime\":" + String(millis() / 1000) + ",\"rssi\":" + String(wifiHasAddress() ? WiFi.RSSI() : 0) + ",\"strips\":[";
+  out += ",\"scheduler\":\"arduino-eeprom\",\"scheduleCount\":" + String(scheduleCount) + ",\"firmwareVersion\":\"" FIRMWARE_VERSION "\",\"otaEnabled\":" + String(otaReady ? "true" : "false") + ",\"matrixEnabled\":true,\"pirSensorsEnabled\":" + String(ENABLE_PIR_SENSORS ? "true" : "false") + ",\"physicalButtonsEnabled\":" + String(ENABLE_PHYSICAL_BUTTONS ? "true" : "false") + ",\"uptime\":" + String(millis() / 1000) + ",\"rssi\":" + String(wifiHasAddress() ? WiFi.RSSI() : 0) + ",\"strips\":[";
   for (uint8_t i = 0; i < STRIP_COUNT; i++) { if (i) out += ','; out += "{\"id\":" + String(i + 1) + ",\"enabled\":" + String(leds[i].enabled ? "true" : "false") + ",\"brightness\":" + String(leds[i].brightness) + ",\"effect\":" + String(leds[i].effect) + ",\"speed\":" + String(leds[i].speed) + ",\"color\":[" + String(leds[i].red) + ',' + String(leds[i].green) + ',' + String(leds[i].blue) + "]}"; }
   return out + "]}";
 }
@@ -279,6 +352,9 @@ void updateLed(const String& path) {
   logEvent("info", message); renderAll(true);
 }
 void route(WiFiClient& c, const String& path) {
+  int queryAt = path.indexOf('?'); String base = queryAt < 0 ? path : path.substring(0, queryAt);
+  if (base == "/api/schedules/upload") { String payload = queryAt < 0 ? "" : path.substring(queryAt + 1); if (!payload.startsWith("payload=")) { sendJson(c, "{\"error\":\"Hianyzik a payload\"}", 400); return; } if (!importSchedulesHex(payload.substring(8))) { sendJson(c, "{\"error\":\"Ervenytelen idozitesi adat\"}", 400); return; } char message[64]; snprintf(message, sizeof(message), "Arduino idozites mentve: %d bejegyzes", scheduleCount); logEvent("success", message); sendJson(c, "{\"success\":true,\"count\":" + String(scheduleCount) + "}"); return; }
+  if (base == "/api/schedules/clear") { memset(schedules, 0, sizeof(schedules)); saveSchedules(0); logEvent("info", "Arduino idozites torolve"); sendJson(c, "{\"success\":true}"); return; }
   if (path == "/api/status" || path == "/api/led/status") { sendJson(c, statusJson()); return; }
   if (path == "/api/console/logs") { sendJson(c, logsJson()); return; }
   if (path == "/api/console/stats") { String body = "{\"logCount\":" + String(logSize) + ",\"uptime\":" + String(millis() / 1000) + ",\"wifiSignal\":" + String(wifiHasAddress() ? WiFi.RSSI() : 0) + ",\"system\":{\"wifiConnected\":" + String(wifiHasAddress() ? "true" : "false") + ",\"consoleActive\":true}}"; sendJson(c, body); return; }
@@ -315,6 +391,7 @@ void setup() {
   logEvent("info", ENABLE_PIR_SENSORS ? "PIR figyeles bekapcsolva" : "PIR figyeles kikapcsolva (nincs szenzor)");
   logEvent("info", ENABLE_PHYSICAL_BUTTONS ? "Fizikai gombok bekapcsolva" : "Fizikai gombok kikapcsolva");
   loadNetworkSettings();
+  loadSchedules();
   connectWifi(); server.begin();
 }
 void loop() {
@@ -325,7 +402,8 @@ void loop() {
   if (wifiHasAddress()) {
     reportWifiConnected();
     startOta(); ArduinoOTA.poll();
-    if (millis() - lastTimeCheck > 60000) { lastTimeCheck = millis(); timeSynced = WiFi.getTime() > 0; }
+    if (millis() - lastTimeCheck > 60000 || !timeSynced) { lastTimeCheck = millis(); unsigned long epoch = WiFi.getTime(); if (epoch > 1700000000UL) { bool firstSync = !timeSynced; lastClockEpoch = epoch; lastClockMillis = millis(); timeSynced = true; if (firstSync) logEvent("success", "NTP ido szinkronizalva"); } }
+    runArduinoSchedules();
   }
   handleHttp(); handlePir(); handleButtons(); renderAll();
 }
