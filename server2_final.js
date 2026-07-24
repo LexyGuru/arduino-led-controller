@@ -128,12 +128,18 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Rate limiting
-const limiter = rateLimit({
+// A kezelofelulet masodpercenkent frissulo, csak olvashato Arduino-statuszt
+// es naplot ker. Ezeket nem szabad beleszamolni a vedelmi korlatba, kulonben
+// nehany perc utan a szerver sajat maga tiltja le a kijelzest. A modosito
+// API-hivasok (POST/PUT/DELETE) tovabbra is korlatozottak.
+const writeLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100
+  max: 120,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS'
 });
-app.use('/api/', limiter);
+app.use('/api/', writeLimiter);
 
 // Serve static files
 if (fs.existsSync(path.join(__dirname, 'public'))) {
