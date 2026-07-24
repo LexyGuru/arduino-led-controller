@@ -6,6 +6,9 @@ config/
 schedules/
 *.log
 release/
+desktop-tauri/dist/
+desktop-tauri/src-tauri/target/
+desktop-tauri/src-tauri/gen/
 .DS_Store
 Node.js Express Arduino.html
 server.js

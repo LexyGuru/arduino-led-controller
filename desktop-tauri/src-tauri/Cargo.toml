@@ -1,0 +1,22 @@
+[package]
+name = "arduino-led-controller"
+version = "2.0.0"
+description = "Native Arduino LED Controller"
+authors = ["LexyGuru"]
+edition = "2021"
+
+[lib]
+name = "arduino_led_controller_lib"
+crate-type = ["lib", "cdylib", "staticlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-opener = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+tokio = { version = "1", features = ["time"] }
+url = "2"
