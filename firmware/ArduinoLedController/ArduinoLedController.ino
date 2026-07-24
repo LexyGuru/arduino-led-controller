@@ -13,7 +13,7 @@
 #include <time.h>
 #include "secrets.h"
 
-#define FIRMWARE_VERSION "4.0.1"
+#define FIRMWARE_VERSION "4.0.2"
 #define DEVICE_NAME "arduino-led-controller"
 #ifndef ENABLE_PIR_SENSORS
 #define ENABLE_PIR_SENSORS 0
@@ -86,6 +86,8 @@ unsigned long pirChanged[STRIP_COUNT] = {}, lastMotion[STRIP_COUNT] = {}, lastWi
 uint8_t logStart = 0, logSize = 0;
 unsigned long httpRequests = 0, httpTimeouts = 0;
 uint8_t httpMaxBatch = 0;
+char lastHttpClientIp[16] = "-", lastHttpPath[48] = "-";
+unsigned long lastHttpClientAt = 0, lastHttpClientLog = 0;
 NetworkSettings networkSettings = {};
 bool networkSettingsStored = false;
 StoredSchedule schedules[SCHEDULE_MAX] = {};
@@ -346,12 +348,27 @@ String escapeJson(const char* source) { String out; while (*source) { if (*sourc
 String statusJson() {
   String out = "{\"connected\":" + String(wifiHasAddress() ? "true" : "false") + ",\"timesynced\":" + String(timeSynced ? "true" : "false");
   out += ",\"networkConfigStored\":" + String(networkSettingsStored ? "true" : "false");
-  out += ",\"scheduler\":\"arduino-eeprom\",\"scheduleCount\":" + String(scheduleCount) + ",\"firmwareVersion\":\"" FIRMWARE_VERSION "\",\"otaEnabled\":" + String(otaReady ? "true" : "false") + ",\"matrixEnabled\":true,\"pirSensorsEnabled\":" + String(ENABLE_PIR_SENSORS ? "true" : "false") + ",\"physicalButtonsEnabled\":" + String(ENABLE_PHYSICAL_BUTTONS ? "true" : "false") + ",\"uptime\":" + String(millis() / 1000) + ",\"rssi\":" + String(wifiHasAddress() ? WiFi.RSSI() : 0) + ",\"http\":{\"requests\":" + String(httpRequests) + ",\"timeouts\":" + String(httpTimeouts) + ",\"maxBatch\":" + String(httpMaxBatch) + "},\"strips\":[";
+  out += ",\"scheduler\":\"arduino-eeprom\",\"scheduleCount\":" + String(scheduleCount) + ",\"firmwareVersion\":\"" FIRMWARE_VERSION "\",\"otaEnabled\":" + String(otaReady ? "true" : "false") + ",\"matrixEnabled\":true,\"pirSensorsEnabled\":" + String(ENABLE_PIR_SENSORS ? "true" : "false") + ",\"physicalButtonsEnabled\":" + String(ENABLE_PHYSICAL_BUTTONS ? "true" : "false") + ",\"uptime\":" + String(millis() / 1000) + ",\"rssi\":" + String(wifiHasAddress() ? WiFi.RSSI() : 0) + ",\"http\":{\"requests\":" + String(httpRequests) + ",\"timeouts\":" + String(httpTimeouts) + ",\"maxBatch\":" + String(httpMaxBatch) + ",\"lastClientIp\":\"" + escapeJson(lastHttpClientIp) + "\",\"lastPath\":\"" + escapeJson(lastHttpPath) + "\",\"lastClientAge\":" + String(lastHttpClientAt ? (millis() - lastHttpClientAt) / 1000 : 0) + "},\"strips\":[";
   for (uint8_t i = 0; i < STRIP_COUNT; i++) { if (i) out += ','; out += "{\"id\":" + String(i + 1) + ",\"enabled\":" + String(leds[i].enabled ? "true" : "false") + ",\"brightness\":" + String(leds[i].brightness) + ",\"effect\":" + String(leds[i].effect) + ",\"speed\":" + String(leds[i].speed) + ",\"color\":[" + String(leds[i].red) + ',' + String(leds[i].green) + ',' + String(leds[i].blue) + "]}"; }
   return out + "]}";
 }
 String logsJson() { String out = "["; for (uint8_t i = 0; i < logSize; i++) { if (i) out += ','; Log& e = logs[(logStart + i) % 50]; out += "{\"timestamp\":\"" + String(e.timestamp) + "s\",\"type\":\"" + e.type + "\",\"message\":\"" + escapeJson(e.message) + "\"}"; } return out + "]"; }
 void sendJson(WiFiClient& c, const String& body, int code = 200) { c.print(code == 200 ? "HTTP/1.1 200 OK\r\n" : "HTTP/1.1 400 Bad Request\r\n"); c.print("Content-Type: application/json; charset=utf-8\r\nAccess-Control-Allow-Origin: *\r\nConnection: close\r\nContent-Length: "); c.print(body.length()); c.print("\r\n\r\n"); c.print(body); }
+void rememberHttpClient(WiFiClient& c, const char* method, const String& path, bool timedOut = false) {
+  IPAddress remote = c.remoteIP();
+  char ip[16]; snprintf(ip, sizeof(ip), "%u.%u.%u.%u", remote[0], remote[1], remote[2], remote[3]);
+  String cleanPath = path.substring(0, path.indexOf('?') < 0 ? path.length() : path.indexOf('?'));
+  strncpy(lastHttpClientIp, ip, sizeof(lastHttpClientIp) - 1); lastHttpClientIp[sizeof(lastHttpClientIp) - 1] = 0;
+  strncpy(lastHttpPath, cleanPath.c_str(), sizeof(lastHttpPath) - 1); lastHttpPath[sizeof(lastHttpPath) - 1] = 0;
+  lastHttpClientAt = millis();
+  // A konzolnaplót nem árasztjuk el: első alkalommal, hibakor, majd 15 mp-enként
+  // jelzünk. A státuszban ettől függetlenül mindig a legutóbbi kliens látható.
+  if (timedOut || !lastHttpClientLog || millis() - lastHttpClientLog >= 15000) {
+    char message[88];
+    snprintf(message, sizeof(message), timedOut ? "HTTP kliens %s: adat timeout" : "HTTP kliens %s: %s %s", ip, method, lastHttpPath);
+    logEvent(timedOut ? "warn" : "info", message); lastHttpClientLog = millis();
+  }
+}
 int valueInt(const String& query, const char* name, int fallback, int low, int high) { int from = query.indexOf(String(name) + '='); if (from < 0) return fallback; from += strlen(name) + 1; int to = query.indexOf('&', from); if (to < 0) to = query.length(); return constrain(query.substring(from, to).toInt(), low, high); }
 bool valueBool(const String& query, const char* name, bool fallback) { int from = query.indexOf(String(name) + '='); if (from < 0) return fallback; from += strlen(name) + 1; int to = query.indexOf('&', from); if (to < 0) to = query.length(); String value = query.substring(from, to); return value == "1" || value == "true"; }
 
@@ -385,7 +402,7 @@ void handleHttp() {
     batch++; httpRequests++;
     unsigned long started = millis();
     while (c.connected() && !c.available() && millis() - started < HTTP_FIRST_BYTE_TIMEOUT) delay(1);
-    if (!c.available()) { httpTimeouts++; c.stop(); continue; }
+    if (!c.available()) { httpTimeouts++; rememberHttpClient(c, "-", "-", true); c.stop(); continue; }
 
     c.setTimeout(HTTP_READ_TIMEOUT);
     String line = c.readStringUntil('\n'); line.trim();
@@ -393,6 +410,7 @@ void handleHttp() {
     int a = line.indexOf(' '), b = line.indexOf(' ', a + 1);
     if (a >= 0 && b >= 0) {
       String method = line.substring(0, a), path = line.substring(a + 1, b);
+      rememberHttpClient(c, method.c_str(), path);
       if (method == "OPTIONS") c.print("HTTP/1.1 204 No Content\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: GET,POST,OPTIONS\r\nAccess-Control-Allow-Headers: Content-Type\r\nConnection: close\r\n\r\n"); else if (method == "GET" || method == "POST") route(c, path); else sendJson(c, "{\"error\":\"Nem tamogatott metodus\"}", 400);
     }
     // Rövid idő a WiFi modulnak a válasz továbbítására, majd azonnal jöhet a
