@@ -13,7 +13,7 @@
 #include <time.h>
 #include "secrets.h"
 
-#define FIRMWARE_VERSION "4.0.2"
+#define FIRMWARE_VERSION "4.0.3"
 #define DEVICE_NAME "arduino-led-controller"
 #ifndef ENABLE_PIR_SENSORS
 #define ENABLE_PIR_SENSORS 0
@@ -352,7 +352,24 @@ String statusJson() {
   for (uint8_t i = 0; i < STRIP_COUNT; i++) { if (i) out += ','; out += "{\"id\":" + String(i + 1) + ",\"enabled\":" + String(leds[i].enabled ? "true" : "false") + ",\"brightness\":" + String(leds[i].brightness) + ",\"effect\":" + String(leds[i].effect) + ",\"speed\":" + String(leds[i].speed) + ",\"color\":[" + String(leds[i].red) + ',' + String(leds[i].green) + ',' + String(leds[i].blue) + "]}"; }
   return out + "]}";
 }
-String logsJson() { String out = "["; for (uint8_t i = 0; i < logSize; i++) { if (i) out += ','; Log& e = logs[(logStart + i) % 50]; out += "{\"timestamp\":\"" + String(e.timestamp) + "s\",\"type\":\"" + e.type + "\",\"message\":\"" + escapeJson(e.message) + "\"}"; } return out + "]"; }
+String logsJson() {
+  // Az összes (max. 50) bejegyzés egyszerre túl nagy, töredezett String
+  // memóriát igényelhet. Ilyenkor a régi kód érvénytelen, csak "]" választ
+  // küldött. A legutóbbi 12 bejegyzés elegendő a felülethez és stabil marad.
+  const uint8_t responseLimit = 12;
+  uint8_t count = min(logSize, responseLimit);
+  String out;
+  if (!out.reserve(2300)) return "[]";
+  out += '[';
+  uint8_t first = logSize - count;
+  for (uint8_t i = 0; i < count; i++) {
+    if (i) out += ',';
+    Log& e = logs[(logStart + first + i) % 50];
+    out += "{\"timestamp\":\"" + String(e.timestamp) + "s\",\"type\":\"" + e.type + "\",\"message\":\"" + escapeJson(e.message) + "\"}";
+  }
+  out += ']';
+  return out;
+}
 void sendJson(WiFiClient& c, const String& body, int code = 200) { c.print(code == 200 ? "HTTP/1.1 200 OK\r\n" : "HTTP/1.1 400 Bad Request\r\n"); c.print("Content-Type: application/json; charset=utf-8\r\nAccess-Control-Allow-Origin: *\r\nConnection: close\r\nContent-Length: "); c.print(body.length()); c.print("\r\n\r\n"); c.print(body); }
 void rememberHttpClient(WiFiClient& c, const char* method, const String& path, bool timedOut = false) {
   IPAddress remote = c.remoteIP();

@@ -15,6 +15,7 @@ function App() {
   const [config, setConfig] = useState<Config>({ arduinoIp: '10.0.0.117', arduinoPort: 80 });
   const [status, setStatus] = useState<Status | null>(null);
   const [logs, setLogs] = useState<Log[]>([]);
+  const [arduinoLogError, setArduinoLogError] = useState('');
   const [networkLogs, setNetworkLogs] = useState<NetworkLog[]>([]);
   const [message, setMessage] = useState('Kapcsolatra vár…');
   const [busy, setBusy] = useState(false);
@@ -23,20 +24,20 @@ function App() {
   const [bootChecks, setBootChecks] = useState<BootCheck[]>([]);
 
   const refresh = async () => {
+    const [statusResult, logsResult] = await Promise.allSettled([
+      invoke<Status>('arduino_status'),
+      invoke<Log[]>('arduino_logs')
+    ]);
+    if (statusResult.status === 'fulfilled') {
+      setStatus(statusResult.value);
+      setMessage(`Kapcsolódva: ${config.arduinoIp}`);
+    } else setMessage(`Arduino nem érhető el: ${String(statusResult.reason)}`);
+    if (logsResult.status === 'fulfilled') {
+      setLogs(logsResult.value.slice().reverse());
+      setArduinoLogError('');
+    } else setArduinoLogError(String(logsResult.reason));
     const diagnostics = await invoke<NetworkLog[]>('network_logs').catch(() => []);
     setNetworkLogs(diagnostics.slice().reverse());
-    try {
-      const [nextStatus, nextLogs] = await Promise.all([
-        invoke<Status>('arduino_status'),
-        invoke<Log[]>('arduino_logs')
-      ]);
-      setStatus(nextStatus); setLogs(nextLogs.slice().reverse());
-      setMessage(`Kapcsolódva: ${config.arduinoIp}`);
-    } catch (error) {
-      setMessage(`Arduino nem érhető el: ${String(error)}`);
-      const refreshedDiagnostics = await invoke<NetworkLog[]>('network_logs').catch(() => []);
-      setNetworkLogs(refreshedDiagnostics.slice().reverse());
-    }
   };
 
   useEffect(() => {
@@ -83,7 +84,7 @@ function App() {
     </section>
     <section className="panel settings"><h2>Kapcsolat</h2><label>Arduino IP<input value={config.arduinoIp} onChange={(event) => setConfig({ ...config, arduinoIp: event.target.value })} /></label><label>Port<input type="number" min="1" max="65535" value={config.arduinoPort} onChange={(event) => setConfig({ ...config, arduinoPort: Number(event.target.value) })} /></label><button onClick={() => void saveConfig()} disabled={busy}>Célgép mentése</button></section>
     <section className="panel"><h2>LED vezérlés</h2><div className="leds">{(status?.strips ?? []).map((strip) => <article className="strip" key={strip.id}><div><h3>LED {strip.id}</h3><label className="switch"><input type="checkbox" checked={strip.enabled} onChange={(event) => void updateStrip(strip, { enabled: event.target.checked })} /><span>{strip.enabled ? 'Bekapcsolva' : 'Kikapcsolva'}</span></label></div><label>Fényerő <input type="range" min="0" max="255" value={strip.brightness} onChange={(event) => void updateStrip(strip, { brightness: Number(event.target.value) })} /></label><label>Effekt<select value={strip.effect} onChange={(event) => void updateStrip(strip, { effect: Number(event.target.value) })}>{effects.map((name, index) => <option key={name} value={index}>{name}</option>)}</select></label><label>Sebesség<input type="range" min="1" max="100" value={strip.speed} onChange={(event) => void updateStrip(strip, { speed: Number(event.target.value) })} /></label></article>)}</div></section>
-    <section className="panel"><h2>Arduino eseménynapló</h2><p className="muted">Az itt látható kliens-IP bizonyítja, hogy a kérés elért az Arduinoig.</p><div className="logs">{logs.length ? logs.map((log, index) => <p key={`${log.timestamp}-${index}`}><time>{log.timestamp}</time><b>{log.type}</b>{log.message}</p>) : <p>Nincs elérhető esemény.</p>}</div></section>
+    <section className="panel"><h2>Arduino eseménynapló</h2><p className="muted">Az itt látható kliens-IP bizonyítja, hogy a kérés elért az Arduinoig.</p>{arduinoLogError && <p className="bad">A napló külön hibája: {arduinoLogError}</p>}<div className="logs">{logs.length ? logs.map((log, index) => <p key={`${log.timestamp}-${index}`}><time>{log.timestamp}</time><b>{log.type}</b>{log.message}</p>) : <p>Nincs elérhető esemény.</p>}</div></section>
     <section className="panel"><h2>Alkalmazás hálózati napló</h2><p className="muted">Ez a Macen futó Tauri alkalmazás saját naplója; akkor is látható, ha az Arduino nem válaszol.</p><div className="logs">{networkLogs.length ? networkLogs.map((log, index) => <p key={`${log.timestamp}-${index}`}><time>{new Date(log.timestamp * 1000).toLocaleTimeString()}</time><b className={log.ok ? 'ok' : 'bad'}>{log.ok ? 'SIKER' : 'HIBA'}</b><span>{log.endpoint} · {log.message}</span></p>) : <p>Még nincs hálózati kérés.</p>}</div></section>
   </main>;
 }
