@@ -503,6 +503,13 @@ function validateLocalSchedule(schedule) {
 }
 
 async function runLocalSchedules() {
+  // Ha az Arduino már saját EEPROM-időzítést használ, a szerver nem küldi el
+  // még egyszer ugyanazt a parancsot. Kapcsolati hiba esetén a szerveres
+  // végrehajtás úgysem tudná elérni az eszközt, az Arduino viszont önállóan fut.
+  try {
+    const status = await arduino.get('/api/status');
+    if (status.scheduler === 'arduino-eeprom' && Number(status.scheduleCount) > 0) return;
+  } catch (error) { return; }
   const now = new Date();
   const day = now.getDay() === 0 ? 7 : now.getDay(); // hétfő=1 ... vasárnap=7
   const time = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
@@ -1290,6 +1297,29 @@ function renderConfiguredDashboard() {
     testPanel.style.marginBottom = '18px';
     testPanel.innerHTML = '<div class="panel-head"><div><h2>LED teszt és effektek</h2><div class="muted">Gyors ellenőrzés mindhárom szalagon. A teszt ideiglenesen felülírja az aktuális kézi LED-beállítást.</div></div></div><div class="section-actions"><button class="ghost" data-led-preset="night">🌙 Éjszakai kék</button><button class="ghost" data-led-preset="rainbow">🌈 Szivárvány teszt</button><button class="ghost" data-led-preset="pulse">✨ Lélegző teszt</button><button class="danger" data-led-preset="off">■ Teszt leállítása</button></div><p id="ledTestState" class="muted" style="margin:14px 0 0">Válassz egy mintát a LED-ek és a kapcsolat gyors ellenőrzéséhez.</p>';
     if (controlSection) controlSection.prepend(testPanel);
+
+    const schedulePanel = document.getElementById('schedule');
+    const scheduleActions = schedulePanel && schedulePanel.querySelector('.section-actions');
+    if (scheduleActions) {
+      const syncButton = document.createElement('button');
+      syncButton.id = 'syncArduinoSchedules';
+      syncButton.className = 'primary';
+      syncButton.textContent = 'Mentés az Arduino-ba';
+      scheduleActions.prepend(syncButton);
+      const hint = document.createElement('p');
+      hint.className = 'muted';
+      hint.textContent = 'Módosítás, törlés vagy feltöltés után kattints a „Mentés az Arduino-ba” gombra. Ettől a heti program Proxmox nélkül is fut tovább.';
+      schedulePanel.querySelector('.schedule-list').before(hint);
+      syncButton.addEventListener('click', async function () {
+        syncButton.disabled = true; syncButton.textContent = 'Arduino mentése…';
+        try {
+          const result = await request('/api/local-schedules/sync-arduino', { method: 'POST' });
+          msg(result.count + ' időzítés elmentve az Arduino belső tárhelyére.');
+          loadStatus(); loadLogs();
+        } catch (error) { msg('Arduino mentési hiba: ' + error.message, true); }
+        finally { syncButton.disabled = false; syncButton.textContent = 'Mentés az Arduino-ba'; }
+      });
+    }
     const accessPanel = document.createElement('div');
     accessPanel.className = 'panel scheduler';
     accessPanel.style.marginTop = '18px';
