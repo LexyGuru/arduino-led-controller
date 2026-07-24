@@ -5,6 +5,9 @@ const root = path.join(__dirname, '..'), temp = path.join(root, '.desktop-ota-do
 const targets = {
   'win32-x64': ['https://downloads.arduino.cc/tools/arduinoOTA/arduinoOTA_1.4.1_Windows_64bit.zip', 'd9d14f01cbccc83a19292777cd604660e8cbe7d362f2ca972e3d0a296ab0d746', 'zip', 'arduinoOTA.exe'],
   'darwin-x64': ['https://downloads.arduino.cc/tools/arduinoOTA/arduinoOTA_1.4.1_macOS_64bit.tar.gz', '5f824b5268b6cb56391deee81a58e9edaa3f0b247862d623c4c8e735b202ecf2', 'tar', 'arduinoOTA'],
+  // Az Arduino jelenleg Intel macOS OTA-binárist ad ki. Apple Siliconon a
+  // macOS Rosetta környezete futtatja, maga az Electron alkalmazás natív marad.
+  'darwin-arm64': ['https://downloads.arduino.cc/tools/arduinoOTA/arduinoOTA_1.4.1_macOS_64bit.tar.gz', '5f824b5268b6cb56391deee81a58e9edaa3f0b247862d623c4c8e735b202ecf2', 'tar', 'arduinoOTA'],
   'linux-x64': ['https://downloads.arduino.cc/tools/arduinoOTA/arduinoOTA_1.4.1_Linux_64bit.tar.gz', '90d9394f368fb80c512b0be89535f28ca03da64f97e39ed755d33aba63aba7dd', 'tar', 'arduinoOTA']
 };
 const target = targets[`${process.platform}-${process.arch}`]; if (!target) throw new Error(`Nem támogatott OTA célplatform: ${process.platform}-${process.arch}`);
