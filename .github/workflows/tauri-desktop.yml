@@ -1,0 +1,63 @@
+name: Natív asztali alkalmazás kiadás
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'desktop-tauri/**'
+      - '.github/workflows/tauri-desktop.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: ${{ matrix.name }} Tauri alkalmazás
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS
+            os: macos-latest
+            args: --bundles dmg
+          - name: Windows
+            os: windows-latest
+            args: --bundles nsis
+          - name: Linux
+            os: ubuntu-22.04
+            args: --bundles appimage,deb
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: desktop-tauri
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: desktop-tauri/package-lock.json
+      - name: Linux csomagolási függőségek
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev
+      - run: npm ci
+      - name: Kiadási verzió beállítása
+        shell: bash
+        run: |
+          VERSION="2.0.${GITHUB_RUN_NUMBER}"
+          npm pkg set version="$VERSION"
+          node -e "const fs=require('fs');const p='src-tauri/tauri.conf.json';const c=JSON.parse(fs.readFileSync(p));c.version=process.env.VERSION;fs.writeFileSync(p,JSON.stringify(c,null,2)+'\\n')"
+        env:
+          VERSION: 2.0.${{ github.run_number }}
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: desktop-tauri
+          tagName: tauri-v__VERSION__
+          releaseName: Arduino LED Controller __VERSION__
+          releaseBody: Natív Tauri alkalmazás macOS, Windows és Linux rendszerekre.
+          releaseDraft: false
+          prerelease: true
+          args: ${{ matrix.args }}
