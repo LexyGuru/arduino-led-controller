@@ -69,11 +69,17 @@ jobs:
           RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && format('desktop-v{0}', inputs.version) || github.ref_type == 'tag' && github.ref_name || format('desktop-v1.0.{0}', github.run_number) }}
           RELEASE_NAME: Arduino LED Controller ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_type == 'tag' && github.ref_name || format('1.0.{0}', github.run_number) }}
         run: |
+          mapfile -d '' ASSETS < <(find desktop-release -maxdepth 1 -type f \( -name '*.exe' -o -name '*.dmg' -o -name '*.AppImage' -o -name '*.deb' \) -print0)
+          if [ "${#ASSETS[@]}" -eq 0 ]; then
+            echo 'Nem található feltölthető telepítőfájl.' >&2
+            find desktop-release -maxdepth 2 -type f >&2
+            exit 1
+          fi
           for attempt in 1 2 3 4 5; do
             if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
-              gh release upload "$RELEASE_TAG" desktop-release/**/* --clobber && exit 0
+              gh release upload "$RELEASE_TAG" "${ASSETS[@]}" --clobber && exit 0
             else
-              gh release create "$RELEASE_TAG" desktop-release/**/* --title "$RELEASE_NAME" --generate-notes && exit 0
+              gh release create "$RELEASE_TAG" "${ASSETS[@]}" --title "$RELEASE_NAME" --generate-notes && exit 0
             fi
             echo "A GitHub kiadás feltöltése sikertelen, újrapróbálás: $attempt/5"
             sleep $((attempt * 10))
