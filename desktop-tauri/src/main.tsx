@@ -7,6 +7,7 @@ type Strip = { id: number; enabled: boolean; brightness: number; effect: number;
 type Status = { connected: boolean; firmwareVersion?: string; rssi?: number; uptime?: number; strips?: Strip[]; http?: { lastClientIp?: string; lastPath?: string; requests?: number; timeouts?: number } };
 type Log = { timestamp: string; type: string; message: string };
 type NetworkLog = { timestamp: number; endpoint: string; ok: boolean; message: string };
+type BootCheck = { label: string; ok: boolean; detail: string };
 
 const effects = ['Statikus', 'Villogás', 'Lélegzés', 'Szivárvány', 'Futófény'];
 
@@ -17,6 +18,9 @@ function App() {
   const [networkLogs, setNetworkLogs] = useState<NetworkLog[]>([]);
   const [message, setMessage] = useState('Kapcsolatra vár…');
   const [busy, setBusy] = useState(false);
+  const [starting, setStarting] = useState(true);
+  const [startupDone, setStartupDone] = useState(false);
+  const [bootChecks, setBootChecks] = useState<BootCheck[]>([]);
 
   const refresh = async () => {
     const diagnostics = await invoke<NetworkLog[]>('network_logs').catch(() => []);
@@ -35,8 +39,21 @@ function App() {
     }
   };
 
-  useEffect(() => { invoke<Config>('load_config').then(setConfig).catch(() => undefined); }, []);
-  useEffect(() => { void refresh(); const timer = window.setInterval(() => void refresh(), 15000); return () => window.clearInterval(timer); }, [config.arduinoIp, config.arduinoPort]);
+  useEffect(() => {
+    void (async () => {
+      const savedConfig = await invoke<Config>('load_config').catch(() => config);
+      setConfig(savedConfig);
+      const checks = await invoke<BootCheck[]>('boot_checks').catch((error) => [{ label: 'Indítási ellenőrzés', ok: false, detail: String(error) }]);
+      setBootChecks(checks);
+      setStartupDone(true);
+    })();
+  }, []);
+  useEffect(() => {
+    if (starting) return;
+    void refresh();
+    const timer = window.setInterval(() => void refresh(), 15000);
+    return () => window.clearInterval(timer);
+  }, [starting, config.arduinoIp, config.arduinoPort]);
 
   const saveConfig = async () => {
     setBusy(true);
@@ -53,6 +70,8 @@ function App() {
     } catch (error) { setMessage(`LED hiba: ${String(error)}`); }
     finally { setBusy(false); }
   };
+
+  if (starting) return <main className="startup"><section className="startup-card"><p className="eyebrow">ARDUINO LED CONTROLLER · INDÍTÁS</p><h1>{startupDone ? 'Ellenőrzés kész' : 'Betöltés…'}</h1><p className="muted">A program a helyi modulokat, az internet-elérést és az Arduino kapcsolatot ellenőrzi.</p><div className="boot-checks">{bootChecks.length ? bootChecks.map((check) => <p key={check.label}><b className={check.ok ? 'ok' : 'bad'}>{check.ok ? '✓' : '!'}</b><span>{check.label}</span><small>{check.detail}</small></p>) : <p><b className="loading-dot">●</b><span>Indítómodulok betöltése</span><small>Folyamatban…</small></p>}</div><button onClick={() => setStarting(false)} disabled={!startupDone}>Tovább az alkalmazásba</button></section></main>;
 
   return <main>
     <header><div><p className="eyebrow">NATÍV ASZTALI ALKALMAZÁS · TAURI</p><h1>Arduino LED Controller</h1><p className="muted">{message}</p></div><button onClick={() => void refresh()} disabled={busy}>Frissítés</button></header>

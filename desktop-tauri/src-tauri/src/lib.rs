@@ -1,7 +1,6 @@
-use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::{fs, net::IpAddr, path::PathBuf, sync::Mutex, time::{Duration, SystemTime, UNIX_EPOCH}};
+use std::{fs, io::{Read, Write}, net::{IpAddr, SocketAddr, TcpStream}, path::PathBuf, sync::Mutex, time::{Duration, SystemTime, UNIX_EPOCH}};
 use tauri::{AppHandle, Manager, State};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -15,9 +14,12 @@ struct Schedule { id: String, day: u8, time: String, leds: Vec<ScheduleLed> }
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct NetworkLog { timestamp: u64, endpoint: String, ok: bool, message: String }
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct BootCheck { label: String, ok: bool, detail: String }
 
 impl Default for Config { fn default() -> Self { Self { arduino_ip: "10.0.0.117".into(), arduino_port: 80 } } }
-struct AppState { config: Mutex<Config>, client: Client, network_logs: Mutex<Vec<NetworkLog>> }
+struct AppState { config: Mutex<Config>, network_logs: Mutex<Vec<NetworkLog>> }
 
 fn config_path(app: &AppHandle) -> Result<PathBuf, String> {
   let mut directory = app.path().app_config_dir().map_err(|e| e.to_string())?;
@@ -35,33 +37,60 @@ fn network_log(state: &AppState, endpoint: &str, ok: bool, message: String) {
     if excess > 0 { logs.drain(0..excess); }
   }
 }
+fn raw_get_json(config: &Config, path: &str) -> Result<Value, String> {
+  let ip = config.arduino_ip.parse::<IpAddr>().map_err(|_| "Érvénytelen Arduino IP-cím.".to_string())?;
+  let address = SocketAddr::new(ip, config.arduino_port);
+  let timeout = Duration::from_secs(8);
+  let mut stream = TcpStream::connect_timeout(&address, timeout).map_err(|error| format!("TCP kapcsolat {address}: {error}"))?;
+  stream.set_read_timeout(Some(timeout)).map_err(|error| error.to_string())?;
+  stream.set_write_timeout(Some(timeout)).map_err(|error| error.to_string())?;
+  let request = format!("GET {path} HTTP/1.1\r\nHost: {}:{}\r\nUser-Agent: Arduino-LED-Controller-Tauri/2\r\nAccept: application/json\r\nConnection: close\r\n\r\n", config.arduino_ip, config.arduino_port);
+  stream.write_all(request.as_bytes()).map_err(|error| format!("HTTP kérés küldése: {error}"))?;
+  let mut response = Vec::new();
+  stream.read_to_end(&mut response).map_err(|error| format!("HTTP válasz olvasása: {error}"))?;
+  let split = response.windows(4).position(|part| part == b"\r\n\r\n").ok_or_else(|| "Hiányzó HTTP válaszfejléc.".to_string())?;
+  let headers = String::from_utf8_lossy(&response[..split]);
+  let status = headers.lines().next().unwrap_or_default();
+  if !status.contains(" 200 ") { return Err(format!("Arduino HTTP válasz: {status}")); }
+  serde_json::from_slice(&response[split + 4..]).map_err(|error| format!("JSON válasz: {error}"))
+}
 async fn get_json(state: &AppState, path: &str) -> Result<Value, String> {
   let config = state.config.lock().map_err(|_| "A beállítás zárolva van.".to_string())?.clone();
   let endpoint = url(&config, path);
-  let response = match state.client.get(&endpoint).send().await {
-    Ok(response) => response,
-    Err(error) => {
-      let message = format!("Kapcsolati hiba: {error:#}");
+  let path = path.to_string();
+  let result = tauri::async_runtime::spawn_blocking(move || raw_get_json(&config, &path)).await.map_err(|error| format!("Háttérfeladat hiba: {error}"));
+  match result {
+    Ok(Ok(value)) => { network_log(state, &endpoint, true, "Közvetlen TCP/HTTP kérés sikeres".into()); Ok(value) }
+    Ok(Err(error)) => {
+      let message = format!("Kapcsolati hiba: {error}");
       network_log(state, &endpoint, false, message.clone());
       return Err(format!("Arduino kapcsolat: {message}"));
     }
-  };
-  let response = match response.error_for_status() {
-    Ok(response) => response,
     Err(error) => {
-      let message = format!("HTTP hiba: {error:#}");
+      let message = format!("Kapcsolati háttérhiba: {error}");
       network_log(state, &endpoint, false, message.clone());
-      return Err(format!("Arduino HTTP hiba: {message}"));
-    }
-  };
-  match response.json().await {
-    Ok(value) => { network_log(state, &endpoint, true, "HTTP kérés sikeres".into()); Ok(value) }
-    Err(error) => {
-      let message = format!("Válaszfeldolgozási hiba: {error:#}");
-      network_log(state, &endpoint, false, message.clone());
-      Err(format!("Arduino válaszhiba: {message}"))
+      Err(format!("Arduino kapcsolat: {message}"))
     }
   }
+}
+#[tauri::command]
+async fn boot_checks(state: State<'_, AppState>) -> Result<Vec<BootCheck>, String> {
+  let mut checks = vec![
+    BootCheck { label: "Felületmodul".into(), ok: true, detail: "Betöltve".into() },
+    BootCheck { label: "Natív Tauri háttérprogram".into(), ok: true, detail: "Elindult".into() },
+  ];
+  let internet = tauri::async_runtime::spawn_blocking(|| {
+    let address: SocketAddr = "8.8.8.8:53".parse().expect("érvényes tesztcím");
+    TcpStream::connect_timeout(&address, Duration::from_secs(3)).is_ok()
+  }).await.unwrap_or(false);
+  checks.push(BootCheck { label: "Internet elérési teszt (8.8.8.8)".into(), ok: internet, detail: if internet { "Sikeres".into() } else { "Nem érhető el (a helyi Arduino ettől még működhet)".into() } });
+  let config = state.config.lock().map_err(|_| "A beállítás zárolva van.".to_string())?.clone();
+  let target = format!("{}:{}", config.arduino_ip, config.arduino_port);
+  match get_json(&state, "/api/status").await {
+    Ok(_) => checks.push(BootCheck { label: "Arduino API".into(), ok: true, detail: format!("Elérhető: {target}") }),
+    Err(error) => checks.push(BootCheck { label: "Arduino API".into(), ok: false, detail: format!("{target} · {error}") }),
+  }
+  Ok(checks)
 }
 fn validate_schedules(schedules: &[Schedule]) -> Result<(), String> {
   if schedules.len() > 60 { return Err("Az Arduino legfeljebb 60 időzítést tárolhat.".into()); }
@@ -87,10 +116,6 @@ pub fn run() {
   tauri::Builder::default().plugin(tauri_plugin_opener::init()).setup(|app| {
     let path = config_path(app.handle()).map_err(std::io::Error::other)?;
     let config = fs::read(&path).ok().and_then(|bytes| serde_json::from_slice(&bytes).ok()).unwrap_or_default();
-    // A helyi Arduino-címeket mindig közvetlenül érjük el. Ez megakadályozza,
-    // hogy egy macOS/munkahelyi rendszerproxy a 10.x.x.x hálózati kéréseket
-    // hibásan maga felé terelje.
-    let client = Client::builder().no_proxy().timeout(Duration::from_secs(12)).build().map_err(std::io::Error::other)?;
-    app.manage(AppState { config: Mutex::new(config), client, network_logs: Mutex::new(Vec::new()) }); Ok(())
-  }).invoke_handler(tauri::generate_handler![load_config, save_config, arduino_status, arduino_logs, network_logs, set_led, load_schedules, save_and_sync_schedules]).run(tauri::generate_context!()).expect("Tauri application error");
+    app.manage(AppState { config: Mutex::new(config), network_logs: Mutex::new(Vec::new()) }); Ok(())
+  }).invoke_handler(tauri::generate_handler![load_config, save_config, boot_checks, arduino_status, arduino_logs, network_logs, set_led, load_schedules, save_and_sync_schedules]).run(tauri::generate_context!()).expect("Tauri application error");
 }
