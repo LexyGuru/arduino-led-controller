@@ -27,8 +27,9 @@ npm run desktop:dist
 GitHubon egy `desktop-v1.0.0` formátumú tag létrehozása automatikusan legyártja
 a Windows `.exe`, macOS `.dmg`, Linux `.AppImage` és `.deb` csomagokat a
 **Actions** oldalon. A desktop alkalmazás az OTA-jelszót az operációs rendszer
-titkosított tárhelyén tárolja, és a hivatalos Arduino OTA feltöltő eszközt a
-telepítőcsomag részeként kapja meg.
+titkosított tárhelyén tárolja. Windows és Linux kiadásban a hivatalos Arduino
+OTA-feltöltő is a csomag része; az Apple Silicon OTA feltöltő natív
+megvalósítása külön fejlesztési lépés, Intel/Rosetta binárist nem használunk.
 
 ## Proxmox LXC előkészítése
 
