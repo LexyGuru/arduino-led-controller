@@ -33,8 +33,8 @@ jobs:
             target: --linux AppImage deb
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
       - run: npm install
@@ -42,7 +42,7 @@ jobs:
         env:
           SKIP_OTA_TOOL: ${{ matrix.skip_ota_tool }}
       - run: npx electron-builder ${{ matrix.target }} --publish never
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: desktop-${{ matrix.name }}
           # Csak a kész telepítőket adjuk át a Release feladatnak; a
@@ -59,10 +59,10 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
         with:
           path: desktop-release
           merge-multiple: true
