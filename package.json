@@ -34,7 +34,12 @@
       "output": "release"
     },
     "win": { "target": ["nsis"] },
-    "mac": { "target": ["dmg"] },
+    "mac": {
+      "target": ["dmg"],
+      "extendInfo": {
+        "NSLocalNetworkUsageDescription": "Az Arduino LED Controllernek helyi hálózati hozzáférésre van szüksége az Arduino UNO R4 WiFi vezérlő eléréséhez."
+      }
+    },
     "linux": { "target": ["AppImage", "deb"], "maintainer": "LexyGuru <LexyGuru@users.noreply.github.com>" }
   },
   "dependencies": {
