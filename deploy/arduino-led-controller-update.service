@@ -1,5 +1,5 @@
 [Unit]
-Description=Arduino LED Controller GitHub frissítés ellenőrzése
+Description=Arduino LED Controller GitHub update check
 After=network-online.target
 Wants=network-online.target
 
