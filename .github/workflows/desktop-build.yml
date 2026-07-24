@@ -1,21 +1,33 @@
-name: Desktop applications
+name: Desktop alkalmazás kiadás
 
 on:
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Kiadás verziója, például 1.0.0'
+        required: true
+        type: string
   push:
     tags: ['desktop-v*']
 
+permissions:
+  contents: write
+
 jobs:
   build:
+    name: ${{ matrix.name }} alkalmazás
     strategy:
       fail-fast: false
       matrix:
         include:
-          - os: windows-latest
+          - name: Windows
+            os: windows-latest
             target: --win nsis
-          - os: macos-latest
+          - name: macOS
+            os: macos-latest
             target: --mac dmg
-          - os: ubuntu-latest
+          - name: Linux
+            os: ubuntu-latest
             target: --linux AppImage deb
     runs-on: ${{ matrix.os }}
     steps:
@@ -28,5 +40,23 @@ jobs:
       - run: npx electron-builder ${{ matrix.target }} --publish never
       - uses: actions/upload-artifact@v4
         with:
-          name: arduino-led-controller-${{ matrix.os }}
+          name: desktop-${{ matrix.name }}
           path: release/*
+          if-no-files-found: error
+
+  release:
+    name: Letölthető GitHub kiadás
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: desktop-release
+          merge-multiple: true
+      - name: Kiadás létrehozása és fájlok feltöltése
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event_name == 'workflow_dispatch' && format('desktop-v{0}', inputs.version) || github.ref_name }}
+          name: Arduino LED Controller ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}
+          generate_release_notes: true
+          files: desktop-release/**/*
