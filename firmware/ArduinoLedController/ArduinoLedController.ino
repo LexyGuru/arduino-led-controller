@@ -13,8 +13,14 @@
 #include <time.h>
 #include "secrets.h"
 
-#define FIRMWARE_VERSION "4.0.3"
+#define FIRMWARE_VERSION "4.1.0"
 #define DEVICE_NAME "arduino-led-controller"
+#ifndef API_SHARED_SECRET
+#define API_SHARED_SECRET "CHANGE_THIS_TO_A_LONG_RANDOM_API_SECRET"
+#endif
+#ifndef API_PRIVATE_PATH
+#define API_PRIVATE_PATH "/CHANGE_THIS_TO_A_LONG_RANDOM_API_PATH"
+#endif
 #ifndef ENABLE_PIR_SENSORS
 #define ENABLE_PIR_SENSORS 0
 #endif
@@ -31,6 +37,11 @@ constexpr uint32_t NETWORK_SETTINGS_MAGIC = 0x4C454431UL; // "LED1"
 constexpr uint16_t NETWORK_SETTINGS_VERSION = 1;
 constexpr uint16_t SCHEDULE_EEPROM_OFFSET = 256;
 constexpr uint8_t SCHEDULE_MAX = 60;
+// A WiFi/OTA adatoktól és az időzítésektől elkülönítve tároljuk. Így a
+// nyilvános GitHub firmware-frissítés nem írja felül az USB-n megadott titkot.
+constexpr uint16_t API_SETTINGS_EEPROM_OFFSET = 2300;
+constexpr uint32_t API_SETTINGS_MAGIC = 0x41504931UL; // "API1"
+constexpr uint16_t API_SETTINGS_VERSION = 1;
 // A WiFiS3 modul több rövid TCP-kapcsolatot tud várakoztatni, de a főprogram
 // csak sorban dolgozhatja fel őket. Egy körben ennyit ürítünk ki a várakozó
 // sorból, hogy a Proxmox és az asztali alkalmazás ne akadályozza egymást.
@@ -48,6 +59,13 @@ struct NetworkSettings {
   char ssid[33];
   char password[65];
   char otaPassword[65];
+  uint32_t checksum;
+};
+struct ApiSettings {
+  uint32_t magic;
+  uint16_t version;
+  char privatePath[49];
+  char sharedSecret[65];
   uint32_t checksum;
 };
 struct __attribute__((packed)) StoredLed { uint8_t apply, enabled, brightness, effect, speed, red, green, blue; };
@@ -85,11 +103,14 @@ bool pirRaw[STRIP_COUNT] = {}, pirActive[STRIP_COUNT] = {}, otaReady = false, ti
 unsigned long pirChanged[STRIP_COUNT] = {}, lastMotion[STRIP_COUNT] = {}, lastWifi = 0, lastFrame = 0, lastTimeCheck = 0;
 uint8_t logStart = 0, logSize = 0;
 unsigned long httpRequests = 0, httpTimeouts = 0;
+unsigned long httpRejected = 0;
 uint8_t httpMaxBatch = 0;
 char lastHttpClientIp[16] = "-", lastHttpPath[48] = "-";
 unsigned long lastHttpClientAt = 0, lastHttpClientLog = 0;
 NetworkSettings networkSettings = {};
 bool networkSettingsStored = false;
+ApiSettings apiSettings = {};
+bool apiSettingsStored = false;
 StoredSchedule schedules[SCHEDULE_MAX] = {};
 uint8_t scheduleCount = 0;
 bool schedulesStored = false;
@@ -120,7 +141,7 @@ void copyText(char* target, size_t targetSize, const char* source) {
   target[targetSize - 1] = 0;
 }
 bool isPlaceholder(const char* value) {
-  return !value || !value[0] || strcmp(value, "YOUR_WIFI_NAME") == 0 || strcmp(value, "YOUR_WIFI_PASSWORD") == 0 || strcmp(value, "CHANGE_THIS_TO_A_LONG_RANDOM_PASSWORD") == 0;
+  return !value || !value[0] || strcmp(value, "YOUR_WIFI_NAME") == 0 || strcmp(value, "YOUR_WIFI_PASSWORD") == 0 || strcmp(value, "CHANGE_THIS_TO_A_LONG_RANDOM_PASSWORD") == 0 || strcmp(value, "CHANGE_THIS_TO_A_LONG_RANDOM_API_SECRET") == 0 || strcmp(value, "/CHANGE_THIS_TO_A_LONG_RANDOM_API_PATH") == 0;
 }
 bool compiledNetworkSettingsUsable() { return !isPlaceholder(WIFI_SSID) && !isPlaceholder(WIFI_PASSWORD) && !isPlaceholder(OTA_PASSWORD); }
 bool settingsValid(const NetworkSettings& settings) {
@@ -161,6 +182,42 @@ void loadNetworkSettings() {
   copyText(networkSettings.password, sizeof(networkSettings.password), WIFI_PASSWORD);
   copyText(networkSettings.otaPassword, sizeof(networkSettings.otaPassword), OTA_PASSWORD);
   logEvent("error", "Nincs ervenyes WiFi beallitas; USB-s kezdeti feltoltes kell");
+}
+
+uint32_t apiSettingsChecksum(const ApiSettings& settings) {
+  const uint8_t* bytes = reinterpret_cast<const uint8_t*>(&settings);
+  uint32_t result = 2166136261UL;
+  for (size_t i = 0; i < sizeof(ApiSettings) - sizeof(settings.checksum); i++) result = (result ^ bytes[i]) * 16777619UL;
+  return result;
+}
+bool privatePathValid(const char* value) {
+  if (isPlaceholder(value) || value[0] != '/' || strlen(value) < 18 || strlen(value) >= sizeof(apiSettings.privatePath)) return false;
+  for (const char* item = value + 1; *item; item++) if (!((*item >= 'a' && *item <= 'z') || (*item >= 'A' && *item <= 'Z') || (*item >= '0' && *item <= '9') || *item == '-' || *item == '_')) return false;
+  return true;
+}
+bool apiSecretValid(const char* value) { return !isPlaceholder(value) && strlen(value) >= 24 && strlen(value) < sizeof(apiSettings.sharedSecret); }
+bool apiSettingsValid(const ApiSettings& settings) {
+  return settings.magic == API_SETTINGS_MAGIC && settings.version == API_SETTINGS_VERSION && settings.checksum == apiSettingsChecksum(settings) && privatePathValid(settings.privatePath) && apiSecretValid(settings.sharedSecret);
+}
+void saveCompiledApiSettings() {
+  memset(&apiSettings, 0, sizeof(apiSettings));
+  apiSettings.magic = API_SETTINGS_MAGIC; apiSettings.version = API_SETTINGS_VERSION;
+  copyText(apiSettings.privatePath, sizeof(apiSettings.privatePath), API_PRIVATE_PATH);
+  copyText(apiSettings.sharedSecret, sizeof(apiSettings.sharedSecret), API_SHARED_SECRET);
+  apiSettings.checksum = apiSettingsChecksum(apiSettings);
+  EEPROM.put(API_SETTINGS_EEPROM_OFFSET, apiSettings);
+  apiSettingsStored = true;
+}
+void loadApiSettings() {
+  EEPROM.get(API_SETTINGS_EEPROM_OFFSET, apiSettings);
+  const bool storedIsValid = apiSettingsValid(apiSettings);
+  const bool compiledIsValid = privatePathValid(API_PRIVATE_PATH) && apiSecretValid(API_SHARED_SECRET);
+  if (compiledIsValid && (!storedIsValid || strcmp(apiSettings.privatePath, API_PRIVATE_PATH) != 0 || strcmp(apiSettings.sharedSecret, API_SHARED_SECRET) != 0)) {
+    saveCompiledApiSettings(); logEvent("success", "Vedett API beallitas EEPROM-be mentve"); return;
+  }
+  if (storedIsValid) { apiSettingsStored = true; logEvent("success", "Vedett API beallitas EEPROM-bol betoltve"); return; }
+  memset(&apiSettings, 0, sizeof(apiSettings));
+  logEvent("error", "Vedett API nincs beallitva; USB-s kezdeti feltoltes kell");
 }
 
 uint32_t scheduleChecksum(const StoredSchedule* entries, uint8_t count) {
@@ -348,7 +405,7 @@ String escapeJson(const char* source) { String out; while (*source) { if (*sourc
 String statusJson() {
   String out = "{\"connected\":" + String(wifiHasAddress() ? "true" : "false") + ",\"timesynced\":" + String(timeSynced ? "true" : "false");
   out += ",\"networkConfigStored\":" + String(networkSettingsStored ? "true" : "false");
-  out += ",\"scheduler\":\"arduino-eeprom\",\"scheduleCount\":" + String(scheduleCount) + ",\"firmwareVersion\":\"" FIRMWARE_VERSION "\",\"otaEnabled\":" + String(otaReady ? "true" : "false") + ",\"matrixEnabled\":true,\"pirSensorsEnabled\":" + String(ENABLE_PIR_SENSORS ? "true" : "false") + ",\"physicalButtonsEnabled\":" + String(ENABLE_PHYSICAL_BUTTONS ? "true" : "false") + ",\"uptime\":" + String(millis() / 1000) + ",\"rssi\":" + String(wifiHasAddress() ? WiFi.RSSI() : 0) + ",\"http\":{\"requests\":" + String(httpRequests) + ",\"timeouts\":" + String(httpTimeouts) + ",\"maxBatch\":" + String(httpMaxBatch) + ",\"lastClientIp\":\"" + escapeJson(lastHttpClientIp) + "\",\"lastPath\":\"" + escapeJson(lastHttpPath) + "\",\"lastClientAge\":" + String(lastHttpClientAt ? (millis() - lastHttpClientAt) / 1000 : 0) + "},\"strips\":[";
+  out += ",\"scheduler\":\"arduino-eeprom\",\"scheduleCount\":" + String(scheduleCount) + ",\"firmwareVersion\":\"" FIRMWARE_VERSION "\",\"otaEnabled\":" + String(otaReady ? "true" : "false") + ",\"apiProtected\":" + String(apiSettingsStored ? "true" : "false") + ",\"matrixEnabled\":true,\"pirSensorsEnabled\":" + String(ENABLE_PIR_SENSORS ? "true" : "false") + ",\"physicalButtonsEnabled\":" + String(ENABLE_PHYSICAL_BUTTONS ? "true" : "false") + ",\"uptime\":" + String(millis() / 1000) + ",\"rssi\":" + String(wifiHasAddress() ? WiFi.RSSI() : 0) + ",\"http\":{\"requests\":" + String(httpRequests) + ",\"timeouts\":" + String(httpTimeouts) + ",\"rejected\":" + String(httpRejected) + ",\"maxBatch\":" + String(httpMaxBatch) + ",\"lastClientIp\":\"" + escapeJson(lastHttpClientIp) + "\",\"lastPath\":\"" + escapeJson(lastHttpPath) + "\",\"lastClientAge\":" + String(lastHttpClientAt ? (millis() - lastHttpClientAt) / 1000 : 0) + "},\"strips\":[";
   for (uint8_t i = 0; i < STRIP_COUNT; i++) { if (i) out += ','; out += "{\"id\":" + String(i + 1) + ",\"enabled\":" + String(leds[i].enabled ? "true" : "false") + ",\"brightness\":" + String(leds[i].brightness) + ",\"effect\":" + String(leds[i].effect) + ",\"speed\":" + String(leds[i].speed) + ",\"color\":[" + String(leds[i].red) + ',' + String(leds[i].green) + ',' + String(leds[i].blue) + "]}"; }
   return out + "]}";
 }
@@ -370,7 +427,7 @@ String logsJson() {
   out += ']';
   return out;
 }
-void sendJson(WiFiClient& c, const String& body, int code = 200) { c.print(code == 200 ? "HTTP/1.1 200 OK\r\n" : "HTTP/1.1 400 Bad Request\r\n"); c.print("Content-Type: application/json; charset=utf-8\r\nAccess-Control-Allow-Origin: *\r\nConnection: close\r\nContent-Length: "); c.print(body.length()); c.print("\r\n\r\n"); c.print(body); }
+void sendJson(WiFiClient& c, const String& body, int code = 200) { c.print(code == 200 ? "HTTP/1.1 200 OK\r\n" : "HTTP/1.1 400 Bad Request\r\n"); c.print("Content-Type: application/json; charset=utf-8\r\nConnection: close\r\nContent-Length: "); c.print(body.length()); c.print("\r\n\r\n"); c.print(body); }
 void rememberHttpClient(WiFiClient& c, const char* method, const String& path, bool timedOut = false) {
   IPAddress remote = c.remoteIP();
   char ip[16]; snprintf(ip, sizeof(ip), "%u.%u.%u.%u", remote[0], remote[1], remote[2], remote[3]);
@@ -403,13 +460,65 @@ void route(WiFiClient& c, const String& path) {
   if (base == "/api/schedules/upload") { String payload = queryAt < 0 ? "" : path.substring(queryAt + 1); if (!payload.startsWith("payload=")) { sendJson(c, "{\"error\":\"Hianyzik a payload\"}", 400); return; } if (!importSchedulesHex(payload.substring(8))) { sendJson(c, "{\"error\":\"Ervenytelen idozitesi adat\"}", 400); return; } char message[64]; snprintf(message, sizeof(message), "Arduino idozites mentve: %d bejegyzes", scheduleCount); logEvent("success", message); sendJson(c, "{\"success\":true,\"count\":" + String(scheduleCount) + "}"); return; }
   if (base == "/api/schedules/chunk") { String query = queryAt < 0 ? "" : path.substring(queryAt + 1); int index = valueInt(query, "index", -1, -1, SCHEDULE_MAX - 1), total = valueInt(query, "total", 0, 0, SCHEDULE_MAX); int payloadAt = query.indexOf("payload="); if (index < 0 || total < 1 || index >= total || payloadAt < 0 || !decodeScheduleHex(query.substring(payloadAt + 8), schedules[index])) { sendJson(c, "{\"error\":\"Ervenytelen idozitesi reszlet\"}", 400); return; } if (index + 1 == total) { saveSchedules(total); char message[64]; snprintf(message, sizeof(message), "Arduino idozites mentve: %d bejegyzes", scheduleCount); logEvent("success", message); } sendJson(c, "{\"success\":true,\"count\":" + String(index + 1 == total ? scheduleCount : 0) + "}"); return; }
   if (base == "/api/schedules/clear") { memset(schedules, 0, sizeof(schedules)); saveSchedules(0); logEvent("info", "Arduino idozites torolve"); sendJson(c, "{\"success\":true}"); return; }
-  if (path == "/api/status" || path == "/api/led/status") { sendJson(c, statusJson()); return; }
-  if (path == "/api/console/logs") { sendJson(c, logsJson()); return; }
-  if (path == "/api/console/stats") { String body = "{\"logCount\":" + String(logSize) + ",\"uptime\":" + String(millis() / 1000) + ",\"wifiSignal\":" + String(wifiHasAddress() ? WiFi.RSSI() : 0) + ",\"http\":{\"requests\":" + String(httpRequests) + ",\"timeouts\":" + String(httpTimeouts) + ",\"maxBatch\":" + String(httpMaxBatch) + "},\"system\":{\"wifiConnected\":" + String(wifiHasAddress() ? "true" : "false") + ",\"consoleActive\":true}}"; sendJson(c, body); return; }
-  if (path == "/api/console/clear") { logStart = 0; logSize = 0; sendJson(c, "{\"success\":true}"); return; }
-  if (path == "/api/all-on" || path == "/api/all-off") { bool state = path == "/api/all-on"; for (uint8_t i = 0; i < STRIP_COUNT; i++) leds[i].enabled = state; logEvent("info", state ? "Minden LED bekapcsolva" : "Minden LED kikapcsolva"); renderAll(true); sendJson(c, statusJson()); return; }
-  if (path.startsWith("/api/led/")) { updateLed(path); sendJson(c, statusJson()); return; }
+  if (base == "/api/status" || base == "/api/led/status") { sendJson(c, statusJson()); return; }
+  if (base == "/api/console/logs") { sendJson(c, logsJson()); return; }
+  if (base == "/api/console/stats") { String body = "{\"logCount\":" + String(logSize) + ",\"uptime\":" + String(millis() / 1000) + ",\"wifiSignal\":" + String(wifiHasAddress() ? WiFi.RSSI() : 0) + ",\"http\":{\"requests\":" + String(httpRequests) + ",\"timeouts\":" + String(httpTimeouts) + ",\"rejected\":" + String(httpRejected) + ",\"maxBatch\":" + String(httpMaxBatch) + "},\"system\":{\"wifiConnected\":" + String(wifiHasAddress() ? "true" : "false") + ",\"consoleActive\":true}}"; sendJson(c, body); return; }
+  if (base == "/api/console/clear") { logStart = 0; logSize = 0; sendJson(c, "{\"success\":true}"); return; }
+  if (base == "/api/all-on" || base == "/api/all-off") { bool state = base == "/api/all-on"; for (uint8_t i = 0; i < STRIP_COUNT; i++) leds[i].enabled = state; logEvent("info", state ? "Minden LED bekapcsolva" : "Minden LED kikapcsolva"); renderAll(true); sendJson(c, statusJson()); return; }
+  if (base.startsWith("/api/led/")) { updateLed(path); sendJson(c, statusJson()); return; }
   sendJson(c, "{\"error\":\"Ismeretlen API vegpont\"}", 400);
+}
+
+bool constantTimeEquals(const String& supplied, const char* expected) {
+  const size_t expectedLength = strlen(expected);
+  if (supplied.length() != expectedLength) return false;
+  uint8_t difference = 0;
+  for (size_t i = 0; i < expectedLength; i++) difference |= supplied[i] ^ expected[i];
+  return difference == 0;
+}
+bool extractQueryValue(const String& query, const char* name, String& value) {
+  const String prefix = String(name) + "=";
+  int start = 0;
+  while (start < query.length()) {
+    int end = query.indexOf('&', start); if (end < 0) end = query.length();
+    if (query.substring(start, end).startsWith(prefix)) { value = query.substring(start + prefix.length(), end); return true; }
+    start = end + 1;
+  }
+  return false;
+}
+bool unwrapProtectedPath(const String& requestPath, String& apiPath) {
+  if (!apiSettingsStored) return false;
+  const int queryAt = requestPath.indexOf('?');
+  const String base = queryAt < 0 ? requestPath : requestPath.substring(0, queryAt);
+  const String prefix = String(apiSettings.privatePath) + "/api/";
+  if (!base.startsWith(prefix)) return false;
+  String supplied;
+  const String query = queryAt < 0 ? "" : requestPath.substring(queryAt + 1);
+  if (!extractQueryValue(query, "k", supplied) || !constantTimeEquals(supplied, apiSettings.sharedSecret)) return false;
+  apiPath = base.substring(strlen(apiSettings.privatePath));
+  // A hitelesítő paramétert nem adjuk tovább az alkalmazáslogikának. Így a
+  // nagyobb ütemezési payload végét sem szennyezi meg az API-kulcs.
+  String cleanQuery; int start = 0;
+  while (start < query.length()) {
+    int end = query.indexOf('&', start); if (end < 0) end = query.length();
+    String item = query.substring(start, end);
+    if (!item.startsWith("k=")) { if (cleanQuery.length()) cleanQuery += '&'; cleanQuery += item; }
+    start = end + 1;
+  }
+  if (cleanQuery.length()) apiPath += "?" + cleanQuery;
+  return true;
+}
+bool readRequestLine(WiFiClient& c, char* output, size_t outputSize) {
+  size_t length = 0; const unsigned long started = millis();
+  while (millis() - started < HTTP_READ_TIMEOUT) {
+    if (!c.available()) { delay(1); continue; }
+    char item = c.read();
+    if (item == '\n') { output[length] = 0; return length > 0; }
+    if (item == '\r') continue;
+    if (length + 1 >= outputSize) return false;
+    output[length++] = item;
+  }
+  return false;
 }
 void handleHttp() {
   uint8_t batch = 0;
@@ -421,15 +530,20 @@ void handleHttp() {
     while (c.connected() && !c.available() && millis() - started < HTTP_FIRST_BYTE_TIMEOUT) delay(1);
     if (!c.available()) { httpTimeouts++; rememberHttpClient(c, "-", "-", true); c.stop(); continue; }
 
-    c.setTimeout(HTTP_READ_TIMEOUT);
-    String line = c.readStringUntil('\n'); line.trim();
-    while (c.available()) { String header = c.readStringUntil('\n'); if (header == "\r" || header.length() == 0) break; }
+    char requestLine[256];
+    if (!readRequestLine(c, requestLine, sizeof(requestLine))) { httpRejected++; c.stop(); continue; }
+    String line(requestLine); line.trim();
     int a = line.indexOf(' '), b = line.indexOf(' ', a + 1);
     if (a >= 0 && b >= 0) {
-      String method = line.substring(0, a), path = line.substring(a + 1, b);
+      String method = line.substring(0, a), requestedPath = line.substring(a + 1, b), path;
+      // A rossz útvonalú vagy kulcs nélküli kérésnél szándékosan nem olvassuk
+      // el a fejléceket és nem küldünk választ. Ez védi a kevés RAM-ot.
+      if ((method != "GET" && method != "POST") || !unwrapProtectedPath(requestedPath, path)) { httpRejected++; c.stop(); continue; }
+      c.setTimeout(HTTP_READ_TIMEOUT);
+      while (c.available()) { String header = c.readStringUntil('\n'); if (header == "\r" || header.length() == 0) break; }
       rememberHttpClient(c, method.c_str(), path);
-      if (method == "OPTIONS") c.print("HTTP/1.1 204 No Content\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: GET,POST,OPTIONS\r\nAccess-Control-Allow-Headers: Content-Type\r\nConnection: close\r\n\r\n"); else if (method == "GET" || method == "POST") route(c, path); else sendJson(c, "{\"error\":\"Nem tamogatott metodus\"}", 400);
-    }
+      route(c, path);
+    } else { httpRejected++; }
     // Rövid idő a WiFi modulnak a válasz továbbítására, majd azonnal jöhet a
     // következő várakozó kapcsolat.
     delay(5); c.stop();
@@ -457,6 +571,7 @@ void setup() {
   logEvent("info", ENABLE_PIR_SENSORS ? "PIR figyeles bekapcsolva" : "PIR figyeles kikapcsolva (nincs szenzor)");
   logEvent("info", ENABLE_PHYSICAL_BUTTONS ? "Fizikai gombok bekapcsolva" : "Fizikai gombok kikapcsolva");
   loadNetworkSettings();
+  loadApiSettings();
   loadSchedules();
   connectWifi(); server.begin();
 }

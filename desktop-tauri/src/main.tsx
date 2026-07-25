@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import './styles.css';
 
-type Config = { arduinoIp: string; arduinoPort: number };
+type Config = { arduinoIp: string; arduinoPort: number; arduinoApiPath: string; arduinoApiKey: string };
 type Strip = { id: number; enabled: boolean; brightness: number; effect: number; speed: number; color: [number, number, number] };
 type Status = { connected: boolean; firmwareVersion?: string; rssi?: number; uptime?: number; strips?: Strip[]; http?: { lastClientIp?: string; lastPath?: string; requests?: number; timeouts?: number } };
 type Log = { timestamp: string; type: string; message: string };
@@ -12,7 +12,7 @@ type BootCheck = { label: string; ok: boolean; detail: string };
 const effects = ['Statikus', 'Villogás', 'Lélegzés', 'Szivárvány', 'Futófény'];
 
 function App() {
-  const [config, setConfig] = useState<Config>({ arduinoIp: '10.0.0.117', arduinoPort: 80 });
+  const [config, setConfig] = useState<Config>({ arduinoIp: '10.0.0.117', arduinoPort: 80, arduinoApiPath: '', arduinoApiKey: '' });
   const [status, setStatus] = useState<Status | null>(null);
   const [logs, setLogs] = useState<Log[]>([]);
   const [arduinoLogError, setArduinoLogError] = useState('');
@@ -82,7 +82,7 @@ function App() {
       <article><span>Wi‑Fi jel</span><strong>{status?.rssi == null ? '—' : `${status.rssi} dBm`}</strong></article>
       <article><span>Utolsó kliens</span><strong>{status?.http?.lastClientIp ?? '—'}</strong><small>{status?.http?.lastPath ?? ''}</small></article>
     </section>
-    <section className="panel settings"><h2>Kapcsolat</h2><label>Arduino IP<input value={config.arduinoIp} onChange={(event) => setConfig({ ...config, arduinoIp: event.target.value })} /></label><label>Port<input type="number" min="1" max="65535" value={config.arduinoPort} onChange={(event) => setConfig({ ...config, arduinoPort: Number(event.target.value) })} /></label><button onClick={() => void saveConfig()} disabled={busy}>Célgép mentése</button></section>
+    <section className="panel settings"><h2>Kapcsolat és védelem</h2><label>Arduino IP<input value={config.arduinoIp} onChange={(event) => setConfig({ ...config, arduinoIp: event.target.value })} /></label><label>Port<input type="number" min="1" max="65535" value={config.arduinoPort} onChange={(event) => setConfig({ ...config, arduinoPort: Number(event.target.value) })} /></label><label>Titkos API útvonal<input value={config.arduinoApiPath} placeholder="/peldaul_veletlen_utvonal" onChange={(event) => setConfig({ ...config, arduinoApiPath: event.target.value })} /></label><label>API-kulcs<input type="password" value={config.arduinoApiKey} placeholder="Legalább 24 karakter" onChange={(event) => setConfig({ ...config, arduinoApiKey: event.target.value })} /></label><button onClick={() => void saveConfig()} disabled={busy}>Célgép mentése</button></section>
     <section className="panel"><h2>LED vezérlés</h2><div className="leds">{(status?.strips ?? []).map((strip) => <article className="strip" key={strip.id}><div><h3>LED {strip.id}</h3><label className="switch"><input type="checkbox" checked={strip.enabled} onChange={(event) => void updateStrip(strip, { enabled: event.target.checked })} /><span>{strip.enabled ? 'Bekapcsolva' : 'Kikapcsolva'}</span></label></div><label>Fényerő <input type="range" min="0" max="255" value={strip.brightness} onChange={(event) => void updateStrip(strip, { brightness: Number(event.target.value) })} /></label><label>Effekt<select value={strip.effect} onChange={(event) => void updateStrip(strip, { effect: Number(event.target.value) })}>{effects.map((name, index) => <option key={name} value={index}>{name}</option>)}</select></label><label>Sebesség<input type="range" min="1" max="100" value={strip.speed} onChange={(event) => void updateStrip(strip, { speed: Number(event.target.value) })} /></label></article>)}</div></section>
     <section className="panel"><h2>Arduino eseménynapló</h2><p className="muted">Az itt látható kliens-IP bizonyítja, hogy a kérés elért az Arduinoig.</p>{arduinoLogError && <p className="bad">A napló külön hibája: {arduinoLogError}</p>}<div className="logs">{logs.length ? logs.map((log, index) => <p key={`${log.timestamp}-${index}`}><time>{log.timestamp}</time><b>{log.type}</b>{log.message}</p>) : <p>Nincs elérhető esemény.</p>}</div></section>
     <section className="panel"><h2>Alkalmazás hálózati napló</h2><p className="muted">Ez a Macen futó Tauri alkalmazás saját naplója; akkor is látható, ha az Arduino nem válaszol.</p><div className="logs">{networkLogs.length ? networkLogs.map((log, index) => <p key={`${log.timestamp}-${index}`}><time>{new Date(log.timestamp * 1000).toLocaleTimeString()}</time><b className={log.ok ? 'ok' : 'bad'}>{log.ok ? 'SIKER' : 'HIBA'}</b><span>{log.endpoint} · {log.message}</span></p>) : <p>Még nincs hálózati kérés.</p>}</div></section>

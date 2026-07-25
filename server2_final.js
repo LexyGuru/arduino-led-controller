@@ -31,6 +31,10 @@ const config = {
   bindHost: process.env.BIND_HOST || '0.0.0.0',
   arduinoIP: process.env.ARDUINO_IP || '10.0.0.117',
   arduinoPort: process.env.ARDUINO_PORT || 80,
+  // Az Arduino a teljes API-t egy titkos útvonal és kulcs mögé teszi. Ezeket
+  // kizárólag a /etc/arduino-led-controller.env fájlban tároljuk.
+  arduinoApiPath: process.env.ARDUINO_API_PATH || '',
+  arduinoApiKey: process.env.ARDUINO_API_KEY || '',
   consolePort: process.env.CONSOLE_PORT || 81,
   dataDir: process.env.DATA_DIR || path.join(__dirname, 'data'),
   configDir: process.env.CONFIG_DIR || path.join(__dirname, 'config'),
@@ -283,8 +287,8 @@ function requireAdmin(req, res, next) {
 // ========================= ARDUINO API WRAPPER =========================
 
 class ArduinoAPI {
-  constructor(ip, port) {
-    this.setTarget(ip, port);
+  constructor(ip, port, apiPath, apiKey) {
+    this.setTarget(ip, port, apiPath, apiKey);
     this.timeout = Number(process.env.ARDUINO_TIMEOUT_MS) || 30000;
     this.maxRetries = Number(process.env.ARDUINO_RETRY_COUNT) || 3;
     this.retryDelay = Number(process.env.ARDUINO_RETRY_DELAY) || 2000;
@@ -293,8 +297,16 @@ class ArduinoAPI {
     this.requestQueue = Promise.resolve();
   }
 
-  setTarget(ip, port) {
+  setTarget(ip, port, apiPath = this.apiPath, apiKey = this.apiKey) {
     this.baseURL = `http://${ip}:${port}`;
+    this.apiPath = String(apiPath || '').replace(/\/+$/, '');
+    this.apiKey = String(apiKey || '');
+  }
+
+  protectedEndpoint(endpoint) {
+    if (!this.apiPath || !this.apiKey) throw new Error('Hiányzik az Arduino védett API útvonala vagy API-kulcsa a szerver beállításaiból.');
+    const separator = endpoint.includes('?') ? '&' : '?';
+    return `${this.apiPath}${endpoint}${separator}k=${encodeURIComponent(this.apiKey)}`;
   }
 
   // A macOS-es Electron gyermekfolyamatoknál egyes hálózatokon a Node TCP
@@ -355,7 +367,8 @@ class ArduinoAPI {
       options.data = data;
     }
 
-    const url = `${this.baseURL}${endpoint}`;
+    const protectedEndpoint = this.protectedEndpoint(endpoint);
+    const url = `${this.baseURL}${protectedEndpoint}`;
     
     logger.debug(`Arduino ${method} ${endpoint}`);
 
@@ -413,7 +426,7 @@ class ArduinoAPI {
   }
 }
 
-const arduino = new ArduinoAPI(config.arduinoIP, config.arduinoPort);
+const arduino = new ArduinoAPI(config.arduinoIP, config.arduinoPort, config.arduinoApiPath, config.arduinoApiKey);
 
 // ========================= LED API WRAPPER =========================
 

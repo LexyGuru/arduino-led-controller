@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="hu">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Arduino LED Controller – API kulcs generátor</title>
+  <style>
+    :root{font-family:Inter,ui-sans-serif,system-ui,sans-serif;color:#edf2f7;background:#10161e}*{box-sizing:border-box}body{min-height:100vh;margin:0;display:grid;place-items:center;padding:24px;background:radial-gradient(circle at 80% 0,#263f57,transparent 38rem),#10161e}.card{width:min(760px,100%);padding:32px;border:1px solid #304254;border-radius:22px;background:#18222ddd;box-shadow:0 22px 70px #0008}.eyebrow{margin:0;color:#76c8ff;font-size:.75rem;letter-spacing:.13em}h1{margin:10px 0;font-size:clamp(1.6rem,5vw,2.4rem)}p{color:#afbdca;line-height:1.55}.actions{display:flex;gap:10px;flex-wrap:wrap;margin:24px 0}button{border:1px solid #3c91c4;border-radius:10px;padding:11px 15px;color:white;background:#176d9e;font:inherit;font-weight:700;cursor:pointer}button.secondary{background:#202d39;border-color:#3a4b5a}.block{margin-top:15px;padding:16px;border:1px solid #314353;border-radius:13px;background:#101820}.label{display:block;margin-bottom:8px;color:#9db2c5;font-size:.82rem;font-weight:700}code{display:block;overflow-wrap:anywhere;color:#f6fbff;font:600 .85rem ui-monospace,SFMono-Regular,Menlo,monospace;line-height:1.55}.copy{margin-top:11px;padding:7px 10px;font-size:.8rem}.hint{margin:20px 0 0;font-size:.86rem}.ok{color:#67d99b;font-weight:700}@media(max-width:520px){.card{padding:22px}.actions button{width:100%}}
+  </style>
+</head>
+<body>
+  <main class="card">
+    <p class="eyebrow">ARDUINO LED CONTROLLER · HELYI ESZKÖZ</p>
+    <h1>Védett API kulcs generátor</h1>
+    <p>Ez az oldal teljesen helyben fut. Nem használ internetet, és a generált kulcsot nem menti el. Generálás után másold át az értékeket az Arduino <code>secrets.h</code> fájljába, a Proxmox környezeti fájljába, majd a Tauri alkalmazásba.</p>
+    <div class="actions"><button id="generate">Új biztonságos adatok generálása</button><button id="copyAll" class="secondary">Minden beállítás másolása</button></div>
+    <section class="block"><span class="label">Arduino secrets.h</span><code id="arduino"></code><button class="copy" data-copy="arduino">Arduino-kód másolása</button></section>
+    <section class="block"><span class="label">Proxmox: /etc/arduino-led-controller.env</span><code id="proxmox"></code><button class="copy" data-copy="proxmox">Proxmox-beállítás másolása</button></section>
+    <p id="message" class="hint">A generáláshoz kattints a fenti gombra.</p>
+  </main>
+  <script>
+    const alphabet='abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    const $=id=>document.getElementById(id);
+    let all='';
+    function randomText(length){const data=new Uint8Array(length);crypto.getRandomValues(data);return [...data].map(byte=>alphabet[byte%alphabet.length]).join('')}
+    function generate(){const path='/led_'+randomText(32),key=randomText(52);const arduino=`#define API_PRIVATE_PATH "${path}"\n#define API_SHARED_SECRET "${key}"`;const proxmox=`ARDUINO_API_PATH=${path}\nARDUINO_API_KEY=${key}`;$('arduino').textContent=arduino;$('proxmox').textContent=proxmox;all=`${arduino}\n\n${proxmox}`;$('message').innerHTML='<span class="ok">✓ Elkészült.</span> Mentsd el biztonságos helyre; újragenerálás után a régi kulcs nem lesz látható.'}
+    async function copy(text){try{await navigator.clipboard.writeText(text);$('message').innerHTML='<span class="ok">✓ Vágólapra másolva.</span>'}catch{window.prompt('Másold ki ezt az értéket:',text)}}
+    $('generate').addEventListener('click',generate);$('copyAll').addEventListener('click',()=>all&&copy(all));document.querySelectorAll('[data-copy]').forEach(button=>button.addEventListener('click',()=>copy($(button.dataset.copy).textContent)));generate();
+  </script>
+</body>
+</html>

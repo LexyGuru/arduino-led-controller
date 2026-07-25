@@ -101,6 +101,75 @@ journalctl -u arduino-led-controller -f
 systemctl restart arduino-led-controller
 ```
 
+## Védett Arduino API és távoli elérés
+
+Az Arduino HTTP API-ja nem érhető el közvetlenül a szokásos `/api/...`
+útvonalon. Minden kéréshez kell egy hosszú, véletlen privát útvonal és egy
+külön API-kulcs. Ez csökkenti a véletlen internetes próbálkozásokat, az
+Arduino pedig rossz kérésnél az első HTTP sor után azonnal bontja a
+kapcsolatot.
+
+Első alkalommal az USB-s feltöltés előtt add hozzá a saját, hosszú értékeidet
+a **csak helyben lévő** `firmware/ArduinoLedController/secrets.h` fájlhoz:
+
+```cpp
+#define API_PRIVATE_PATH "/peldaul_egy_hosszu_veletlen_utvonal_2026"
+#define API_SHARED_SECRET "legalabb_32_karakteres_veletlen_api_kulcs"
+```
+
+A két érték előállításához nyisd meg helyben a
+`tools/api-kulcs-generator.html` fájlt. Az eszköz nem használ internetet és
+nem menti el a generált értékeket.
+
+Ugyanezeket az értékeket add meg a Proxmox konténerben az
+`/etc/arduino-led-controller.env` fájlban:
+
+```text
+ARDUINO_API_PATH=/peldaul_egy_hosszu_veletlen_utvonal_2026
+ARDUINO_API_KEY=legalabb_32_karakteres_veletlen_api_kulcs
+```
+
+Ezután indítsd újra a szolgáltatást:
+
+```bash
+systemctl restart arduino-led-controller
+```
+
+A Tauri alkalmazás **Kapcsolat és védelem** részében ugyanezt a privát
+útvonalat és API-kulcsot kell megadni. A kulcs nem jelenik meg sem az Arduino,
+sem az alkalmazás hálózati naplójában.
+
+Ha a routerben később külső `25666` portot irányítasz az Arduino belső `80`
+portjára, a Proxmoxon továbbra is a belső IP-címet és `80`-as portot használd.
+Ez a védelem nem helyettesíti a HTTPS-t vagy a VPN-t; csak átmeneti,
+közvetlen eléréshez készült.
+
+### Hálózati és porttovábbítási térkép
+
+Az eszközöknek azonos otthoni hálózaton **nem kell** porttovábbítás: a
+Proxmox, a böngésző és a Tauri alkalmazás közvetlenül eléri a belső IP-címeket.
+Az Arduino IP-címének érdemes DHCP-foglalást beállítani a routerben, például
+`10.0.0.123` értékre.
+
+| Használat | Routerben szükséges szabály | Cél |
+| --- | --- | --- |
+| Proxmox → Arduino, helyi hálózaton | nincs | Arduino belső IP-je, `80` |
+| Tauri alkalmazás → Arduino, helyi hálózaton | nincs | Arduino belső IP-je, `80` |
+| Böngésző → Proxmox, helyi hálózaton | nincs | LXC belső IP-je, `443` |
+| Távoli böngészős elérés | külső `443/TCP` → LXC `443/TCP` | Proxmox HTTPS felület |
+| Távoli Tauri → Arduino, csak ideiglenesen | külső `25666/TCP` → Arduino `80/TCP` | Arduino védett HTTP API |
+
+Távoli, közvetlen Tauri elérésnél az alkalmazásban a router publikus IP-címét
+vagy dinamikus DNS-nevét és a `25666` portot add meg, a belső hálózaton pedig
+mindig az Arduino belső IP-jét és a `80` portot használd. Egyes routerek nem
+támogatják a saját publikus címükön történő belső tesztet; ezt mobilnetről
+lehet helyesen kipróbálni.
+
+**Ne nyisd ki** az Arduino `3232` OTA-portját, a Proxmox `3000`/`81` portját
+vagy a router adminisztrációs felületét az internet felé. A `25666` csak
+elrejtés, nem HTTPS: a védett útvonal és API-kulcs kötelező, a hosszú távú
+megoldás továbbra is VPN vagy HTTPS relay.
+
 ## Automatikus frissítés GitHubról
 
 A telepítő bekapcsol egy óránként futó frissítés-ellenőrzőt. Ha a GitHub `main`

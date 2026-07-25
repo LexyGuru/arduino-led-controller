@@ -5,7 +5,7 @@ use tauri::{AppHandle, Manager, State};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct Config { arduino_ip: String, arduino_port: u16 }
+struct Config { arduino_ip: String, arduino_port: u16, #[serde(default)] arduino_api_path: String, #[serde(default)] arduino_api_key: String }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct ScheduleLed { id: u8, enabled: bool, brightness: u8, effect: u8, speed: u8, color: Vec<u8> }
@@ -18,7 +18,7 @@ struct NetworkLog { timestamp: u64, endpoint: String, ok: bool, message: String 
 #[serde(rename_all = "camelCase")]
 struct BootCheck { label: String, ok: bool, detail: String }
 
-impl Default for Config { fn default() -> Self { Self { arduino_ip: "10.0.0.117".into(), arduino_port: 80 } } }
+impl Default for Config { fn default() -> Self { Self { arduino_ip: "10.0.0.117".into(), arduino_port: 80, arduino_api_path: String::new(), arduino_api_key: String::new() } } }
 struct AppState { config: Mutex<Config>, network_logs: Mutex<Vec<NetworkLog>> }
 
 fn config_path(app: &AppHandle) -> Result<PathBuf, String> {
@@ -28,7 +28,18 @@ fn config_path(app: &AppHandle) -> Result<PathBuf, String> {
 }
 fn schedules_path(app: &AppHandle) -> Result<PathBuf, String> { let mut path = config_path(app)?; path.set_file_name("weekly-led-schedules.json"); Ok(path) }
 fn validate(config: &Config) -> Result<(), String> { config.arduino_ip.parse::<IpAddr>().map_err(|_| "Érvénytelen Arduino IP-cím.".to_string())?; if config.arduino_port == 0 { return Err("Érvénytelen port.".into()); } Ok(()) }
-fn url(config: &Config, path: &str) -> String { format!("http://{}:{}{}", config.arduino_ip, config.arduino_port, path) }
+// A naplóban szándékosan nincs API-kulcs; csak a célgép és a rejtett útvonal
+// látszik. A kulcs kizárólag a tényleges TCP-kérésbe kerül.
+fn url(config: &Config, path: &str) -> String { format!("http://{}:{}{}{}", config.arduino_ip, config.arduino_port, config.arduino_api_path.trim_end_matches('/'), path) }
+fn percent_encode(value: &str) -> String {
+  value.bytes().map(|byte| match byte { b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => (byte as char).to_string(), _ => format!("%{byte:02X}") }).collect()
+}
+fn protected_path(config: &Config, path: &str) -> Result<String, String> {
+  let private_path = config.arduino_api_path.trim_end_matches('/');
+  if private_path.len() < 18 || !private_path.starts_with('/') || config.arduino_api_key.len() < 24 { return Err("A védett Arduino API útvonal vagy API-kulcs nincs beállítva.".into()); }
+  let separator = if path.contains('?') { '&' } else { '?' };
+  Ok(format!("{private_path}{path}{separator}k={}", percent_encode(&config.arduino_api_key)))
+}
 fn network_log(state: &AppState, endpoint: &str, ok: bool, message: String) {
   let timestamp = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs();
   if let Ok(mut logs) = state.network_logs.lock() {
@@ -44,6 +55,7 @@ fn raw_get_json(config: &Config, path: &str) -> Result<Value, String> {
   let mut stream = TcpStream::connect_timeout(&address, timeout).map_err(|error| format!("TCP kapcsolat {address}: {error}"))?;
   stream.set_read_timeout(Some(timeout)).map_err(|error| error.to_string())?;
   stream.set_write_timeout(Some(timeout)).map_err(|error| error.to_string())?;
+  let path = protected_path(config, path)?;
   let request = format!("GET {path} HTTP/1.1\r\nHost: {}:{}\r\nUser-Agent: Arduino-LED-Controller-Tauri/2\r\nAccept: application/json\r\nConnection: close\r\n\r\n", config.arduino_ip, config.arduino_port);
   stream.write_all(request.as_bytes()).map_err(|error| format!("HTTP kérés küldése: {error}"))?;
   let mut response = Vec::new();
