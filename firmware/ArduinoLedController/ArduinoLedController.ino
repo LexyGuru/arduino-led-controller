@@ -13,7 +13,7 @@
 #include <time.h>
 #include "secrets.h"
 
-#define FIRMWARE_VERSION "4.1.1"
+#define FIRMWARE_VERSION "4.1.2"
 #define DEVICE_NAME "arduino-led-controller"
 #ifndef API_SHARED_SECRET
 #define API_SHARED_SECRET "CHANGE_THIS_TO_A_LONG_RANDOM_API_SECRET"
@@ -32,7 +32,7 @@ constexpr uint16_t PIXELS = 300;
 constexpr uint8_t LED_PINS[STRIP_COUNT] = {6, 7, 8};
 constexpr uint8_t PIR_PINS[STRIP_COUNT] = {2, 3, 4};
 constexpr uint8_t BUTTON_MODE = A0, BUTTON_UP = A1, BUTTON_DOWN = A2;
-constexpr unsigned long PIR_TIMEOUT = 60000, PIR_DEBOUNCE = 200, WIFI_RETRY = 15000, EFFECT_FRAME = 50;
+constexpr unsigned long PIR_TIMEOUT = 60000, PIR_DEBOUNCE = 200, WIFI_RETRY = 15000, EFFECT_FRAME = 50, SCHEDULE_AUDIT_INTERVAL = 30000;
 constexpr uint32_t NETWORK_SETTINGS_MAGIC = 0x4C454431UL; // "LED1"
 constexpr uint16_t NETWORK_SETTINGS_VERSION = 1;
 constexpr uint16_t SCHEDULE_EEPROM_OFFSET = 256;
@@ -114,7 +114,7 @@ bool apiSettingsStored = false;
 StoredSchedule schedules[SCHEDULE_MAX] = {};
 uint8_t scheduleCount = 0;
 bool schedulesStored = false;
-unsigned long lastClockEpoch = 0, lastClockMillis = 0, lastScheduleMinute = 0xFFFFFFFFUL;
+unsigned long lastClockEpoch = 0, lastClockMillis = 0, lastScheduleMinute = 0xFFFFFFFFUL, lastScheduleAudit = 0;
 
 void renderAll(bool force = false);
 
@@ -288,13 +288,62 @@ bool localScheduleTime(uint8_t& day, uint8_t& hour, uint8_t& minute) {
   tm utc = *gmtime(&utcEpoch); utcEpoch += 3600 + (euSummerTime(utc) ? 3600 : 0);
   tm local = *gmtime(&utcEpoch); day = local.tm_wday == 0 ? 7 : local.tm_wday; hour = local.tm_hour; minute = local.tm_min; return true;
 }
+bool ledMatchesStored(const Led& current, const StoredLed& expected) {
+  return current.enabled == (expected.enabled != 0) && current.brightness == expected.brightness &&
+    current.effect == expected.effect && current.speed == expected.speed && current.red == expected.red &&
+    current.green == expected.green && current.blue == expected.blue;
+}
+void applyStoredLed(uint8_t stripIndex, const StoredLed& source) {
+  leds[stripIndex] = { source.enabled != 0, source.brightness, source.effect, source.speed, source.red, source.green, source.blue };
+}
+void reconcileArduinoSchedules(bool forceCheck = false) {
+  if (!scheduleCount || !timeSynced) return;
+  const unsigned long now = millis();
+  if (!forceCheck && lastScheduleAudit && now - lastScheduleAudit < SCHEDULE_AUDIT_INTERVAL) return;
+  lastScheduleAudit = now;
+
+  uint8_t day, hour, minute; if (!localScheduleTime(day, hour, minute)) return;
+  const uint16_t currentWeekMinute = (day - 1) * 1440U + hour * 60U + minute;
+  bool changed = false;
+
+  for (uint8_t stripIndex = 0; stripIndex < STRIP_COUNT; stripIndex++) {
+    int16_t selected = -1;
+    int32_t selectedMinute = -1;
+
+    // Eloszor az aktualis heti pillanatig keressuk a legutobbi ervenyes rekordot.
+    for (uint8_t s = 0; s < scheduleCount; s++) {
+      if (!schedules[s].leds[stripIndex].apply) continue;
+      const uint16_t eventMinute = (schedules[s].day - 1) * 1440U + schedules[s].hour * 60U + schedules[s].minute;
+      if (eventMinute <= currentWeekMinute && eventMinute >= selectedMinute) { selected = s; selectedMinute = eventMinute; }
+    }
+    // Ha hetfon a legelso esemeny elott vagyunk, az elozo het utolso rekordja ervenyes.
+    if (selected < 0) {
+      for (uint8_t s = 0; s < scheduleCount; s++) {
+        if (!schedules[s].leds[stripIndex].apply) continue;
+        const uint16_t eventMinute = (schedules[s].day - 1) * 1440U + schedules[s].hour * 60U + schedules[s].minute;
+        if (eventMinute >= selectedMinute) { selected = s; selectedMinute = eventMinute; }
+      }
+    }
+
+    if (selected >= 0) {
+      const StoredLed& expected = schedules[selected].leds[stripIndex];
+      if (!ledMatchesStored(leds[stripIndex], expected)) { applyStoredLed(stripIndex, expected); changed = true; }
+    }
+  }
+
+  if (changed) {
+    char message[88];
+    snprintf(message, sizeof(message), "Idozites allapot helyreallitva: %d %02d:%02d", day, hour, minute);
+    logEvent("success", message);
+    renderAll(true);
+  }
+}
 void runArduinoSchedules() {
   uint8_t day, hour, minute; if (!localScheduleTime(day, hour, minute)) return;
-  unsigned long key = (lastClockEpoch + (millis() - lastClockMillis) / 1000) / 60; if (key == lastScheduleMinute) return; lastScheduleMinute = key;
-  for (uint8_t s = 0; s < scheduleCount; s++) if (schedules[s].day == day && schedules[s].hour == hour && schedules[s].minute == minute) {
-    for (uint8_t i = 0; i < STRIP_COUNT; i++) { StoredLed& source = schedules[s].leds[i]; if (!source.apply) continue; leds[i] = { source.enabled != 0, source.brightness, source.effect, source.speed, source.red, source.green, source.blue }; }
-    char message[72]; snprintf(message, sizeof(message), "Arduino idozites lefutott: %d %02d:%02d", day, hour, minute); logEvent("success", message); renderAll(true);
-  }
+  const unsigned long key = (lastClockEpoch + (millis() - lastClockMillis) / 1000) / 60;
+  const bool newMinute = key != lastScheduleMinute;
+  if (newMinute) lastScheduleMinute = key;
+  reconcileArduinoSchedules(newMinute);
 }
 
 bool wifiHasAddress() {

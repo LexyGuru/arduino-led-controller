@@ -55,3 +55,9 @@ npm run tauri:build
 A csomag `firmware/ArduinoLedController-4.1.1.ino` fájlja a felhasználó 4.1.0 firmware-jére épül.
 Hozzáadja a `GET /api/schedules/export?index=N` végpontot, amelyet a desktop alkalmazás az EEPROM időzítéseinek beolvasásához használ.
 Az ArduinoOTA portja ennél a firmware-nél 3232.
+
+## 3.0.3 / firmware 4.1.2
+
+- A fényerő- és effektsebesség-csúszka 4 másodperces debounce után küld az Arduinónak.
+- Mindkét érték közvetlenül beírható számmal; Enter vagy fókuszvesztés azonnal küld.
+- A firmware 30 másodpercenként összeveti a LED-eket a heti program elvárt állapotával.
