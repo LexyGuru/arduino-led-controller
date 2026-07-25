@@ -252,13 +252,13 @@ bool decodeScheduleHex(const String& payload, StoredSchedule& entry) {
   return entry.day >= 1 && entry.day <= 7 && entry.hour <= 23 && entry.minute <= 59;
 }
 String encodeScheduleHex(const StoredSchedule& entry) {
-  static const char HEX_DIGITS[] = "0123456789abcdef";
+  static const char HEX[] = "0123456789abcdef";
   const uint8_t* source = reinterpret_cast<const uint8_t*>(&entry);
   String payload;
   if (!payload.reserve(sizeof(StoredSchedule) * 2)) return "";
   for (size_t i = 0; i < sizeof(StoredSchedule); i++) {
-    payload += HEX_DIGITS[(source[i] >> 4) & 0x0f];
-    payload += HEX_DIGITS[source[i] & 0x0f];
+    payload += HEX[(source[i] >> 4) & 0x0f];
+    payload += HEX[source[i] & 0x0f];
   }
   return payload;
 }
