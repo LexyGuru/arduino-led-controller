@@ -1,4 +1,3 @@
-```yaml
 name: Natív asztali alkalmazás kiadás
 
 on:
@@ -106,4 +105,3 @@ jobs:
           releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
-```
