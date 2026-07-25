@@ -5,7 +5,7 @@ import type { LedTestPreset } from '../pages/LedsPage';
 
 const fallbackConfig: ConnectionConfig = {
   arduinoIp: '10.0.0.117', arduinoPort: 80, arduinoApiPath: '', arduinoApiKey: '',
-  otaUploadPort: 3232
+  otaUploadPort: 65280
 };
 
 export function useController() {

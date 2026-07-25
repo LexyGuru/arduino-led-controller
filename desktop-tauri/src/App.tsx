@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { getVersion } from '@tauri-apps/api/app';
 import { Sidebar } from './components/Sidebar';
 import { Topbar } from './components/Topbar';
 import { useController } from './hooks/useController';
@@ -12,9 +13,14 @@ import type { PageId } from './types';
 
 export default function App() {
   const [page, setPage] = useState<PageId>('dashboard');
+  const [appVersion, setAppVersion] = useState('…');
   const c = useController();
+
+  useEffect(() => {
+    void getVersion().then(setAppVersion).catch(() => setAppVersion('ismeretlen'));
+  }, []);
   return <div className="app-shell">
-    <Sidebar page={page} onChange={setPage}/>
+    <Sidebar page={page} onChange={setPage} appVersion={appVersion} firmwareVersion={c.status?.firmwareVersion}/>
     <div className="content-shell">
       <Topbar online={Boolean(c.status?.connected)} message={c.message} busy={c.busy} onRefresh={() => void c.refresh()}/>
       <main className="content">

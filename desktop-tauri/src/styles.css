@@ -14,3 +14,10 @@
 @media(max-width:1150px){.dashboard-grid{grid-template-columns:1fr}.test-panel{grid-template-columns:1fr}.schedule-led-grid{grid-template-columns:1fr}.schedule-top-row{grid-template-columns:1fr}.summary-main{grid-template-columns:1fr}}
 
 .slider-number-row{display:grid;grid-template-columns:minmax(0,1fr) 88px;gap:12px;align-items:center}.value-number{text-align:center;font-weight:800;font-variant-numeric:tabular-nums}.send-hint{min-height:16px;color:#718096;font-size:11px}.slider-number-row input[type=range]{min-width:0}
+
+.sidebar-footer span {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.75rem;
+  opacity: 0.72;
+}

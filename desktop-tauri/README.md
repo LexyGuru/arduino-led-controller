@@ -54,10 +54,25 @@ npm run tauri:build
 
 A csomag `firmware/ArduinoLedController-4.1.1.ino` fájlja a felhasználó 4.1.0 firmware-jére épül.
 Hozzáadja a `GET /api/schedules/export?index=N` végpontot, amelyet a desktop alkalmazás az EEPROM időzítéseinek beolvasásához használ.
-Az ArduinoOTA portja ennél a firmware-nél 3232.
+Az ArduinoOTA portja ennél a firmware-nél 65280.
 
-## 3.0.3 / firmware 4.1.2
+## 3.0.5 / firmware 4.1.2
 
 - A fényerő- és effektsebesség-csúszka 4 másodperces debounce után küld az Arduinónak.
 - Mindkét érték közvetlenül beírható számmal; Enter vagy fókuszvesztés azonnal küld.
 - A firmware 30 másodpercenként összeveti a LED-eket a heti program elvárt állapotával.
+
+## 3.0.4 javítások
+
+- Az ArduinoOTA feltöltési alapport ismét `65280`, ugyanaz, mint a működő Proxmox OTA folyamatban.
+- Sikertelen OTA esetén az alkalmazás megjeleníti az `arduinoOTA` stdout és stderr teljes szövegét, valamint a használt IP-címet és portot.
+- A GitHub Actions workflow nem próbál nem létező `package-lock.json` fájlt cache-elni.
+- A Linux, macOS és Windows build külön artifactként tölthető le a workflow futásából.
+
+
+## 3.0.5 javítás
+
+- A korábbi, beégetett `v2.3.0` felirat eltávolítva.
+- Az alkalmazás verzióját a Tauri saját konfigurációjából olvassa.
+- A firmware verzióját az Arduino `/api/status` válaszából jeleníti meg.
+- A két verzió külön sorban látható az oldalsáv alján.

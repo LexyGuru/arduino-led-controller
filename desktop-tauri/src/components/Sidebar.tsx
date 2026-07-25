@@ -5,4 +5,21 @@ const items: Array<{ id: PageId; label: string; icon: typeof Gauge }> = [
   { id: 'schedules', label: 'Időzítések', icon: CalendarClock }, { id: 'firmware', label: 'Firmware OTA', icon: Cpu },
   { id: 'logs', label: 'Naplók', icon: ScrollText }, { id: 'settings', label: 'Beállítások', icon: Settings }
 ];
-export function Sidebar({ page, onChange }: { page: PageId; onChange: (page: PageId) => void }) { return <aside className="sidebar"><div className="brand"><span className="brand-mark">L</span><div><strong>LED Controller</strong><small>Standalone Tauri</small></div></div><nav>{items.map(({ id, label, icon: Icon }) => <button key={id} className={page === id ? 'active' : ''} onClick={() => onChange(id)}><Icon size={19}/><span>{label}</span></button>)}</nav><div className="sidebar-footer"><small>Arduino UNO R4 WiFi</small><b>v2.3.0</b></div></aside>; }
+interface SidebarProps {
+  page: PageId;
+  onChange: (page: PageId) => void;
+  appVersion: string;
+  firmwareVersion?: string;
+}
+
+export function Sidebar({ page, onChange, appVersion, firmwareVersion }: SidebarProps) {
+  return <aside className="sidebar">
+    <div className="brand"><span className="brand-mark">L</span><div><strong>LED Controller</strong><small>Standalone Tauri</small></div></div>
+    <nav>{items.map(({ id, label, icon: Icon }) => <button key={id} className={page === id ? 'active' : ''} onClick={() => onChange(id)}><Icon size={19}/><span>{label}</span></button>)}</nav>
+    <div className="sidebar-footer">
+      <small>Arduino UNO R4 WiFi</small>
+      <b>Firmware v{firmwareVersion ?? '–'}</b>
+      <span>Alkalmazás v{appVersion}</span>
+    </div>
+  </aside>;
+}

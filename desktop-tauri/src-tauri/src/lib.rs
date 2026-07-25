@@ -30,7 +30,7 @@ impl Default for Config {
             arduino_port: 80,
             arduino_api_path: String::new(),
             arduino_api_key: String::new(),
-            ota_upload_port: 3232,
+            ota_upload_port: 65280,
         }
     }
 }
@@ -538,7 +538,17 @@ fn export_schedules_file(path: String, schedules: Vec<Schedule>) -> Result<(), S
             "-upload", "/sketch", "-b"
         ])
         .output().map_err(|e| format!("Az OTA feltöltő nem indítható: {e}"))?;
-    if !output.status.success() { return Err(String::from_utf8_lossy(&output.stderr).trim().to_string()); }
+    if !output.status.success() {
+        let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+        let details = match (stdout.is_empty(), stderr.is_empty()) {
+            (false, false) => format!("{stderr}\n{stdout}"),
+            (false, true) => stdout,
+            (true, false) => stderr,
+            (true, true) => format!("Az arduinoOTA hibakóddal állt le: {}", output.status),
+        };
+        return Err(format!("OTA feltöltési hiba ({}:{}): {details}", config.arduino_ip, config.ota_upload_port));
+    }
     {
         let mut s = state.firmware_status.lock().map_err(|_| "Firmware állapot zárolva".to_string())?;
         s.state = "restarting".into(); s.message = "Az Arduino újraindul…".into();
