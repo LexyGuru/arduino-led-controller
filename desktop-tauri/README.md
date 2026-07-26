@@ -76,3 +76,15 @@ Az ArduinoOTA portja ennél a firmware-nél 65280.
 - Az alkalmazás verzióját a Tauri saját konfigurációjából olvassa.
 - A firmware verzióját az Arduino `/api/status` válaszából jeleníti meg.
 - A két verzió külön sorban látható az oldalsáv alján.
+
+## GitHub Actions v3.0.6 javítás
+
+A workflow szándékosan nem használ Node/npm cache-t. A repository gyökerében kell lennie a `package.json` és a `src-tauri` mappának. A régi `.github/workflows/*.yml` fájlokat törölni kell, ha azok `actions/setup-node@v5` vagy `cache-dependency-path` beállítást tartalmaznak.
+
+## 3.0.7 OTA-javítás
+
+- Az OTA-port fixen `65280`; a felületen nem módosítható, és a mentett konfiguráció sem befolyásolja.
+- macOS-en a program közvetlenül ellenőrzi a `/usr/local/bin/arduinoOTA` és `/opt/homebrew/bin/arduinoOTA` útvonalakat is.
+- Az alkalmazás nemcsak a fájl meglétét nézi, hanem az `arduinoOTA -version` paranccsal ellenőrzi, hogy az eszköz ténylegesen futtatható-e.
+- A Firmware oldalon megjelenik a megtalált OTA-program teljes útvonala vagy a telepítési/indítási hiba.
+- Azonos telepített és GitHub-verzió esetén a felület „A firmware naprakész” üzenetet mutat, és a telepítés gomb letiltódik.

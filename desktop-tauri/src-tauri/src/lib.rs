@@ -20,7 +20,6 @@ struct Config {
     arduino_port: u16,
     arduino_api_path: String,
     arduino_api_key: String,
-    ota_upload_port: u16,
 }
 
 impl Default for Config {
@@ -30,7 +29,6 @@ impl Default for Config {
             arduino_port: 80,
             arduino_api_path: String::new(),
             arduino_api_key: String::new(),
-            ota_upload_port: 65280,
         }
     }
 }
@@ -137,6 +135,9 @@ struct FirmwareStatus {
     ota_password_configured: bool,
     available_firmware: Option<FirmwareArtifact>,
     firmware_lookup_error: Option<String>,
+    ota_tool_path: Option<String>,
+    ota_tool_error: Option<String>,
+    update_available: bool,
 }
 
 struct AppState {
@@ -165,7 +166,7 @@ fn validate_config(c: &Config) -> Result<(), String> {
     if host.contains("://") || host.contains('/') || host.contains(' ') || host.len() > 253 {
         return Err("Csak IP-címet vagy DDNS-nevet adj meg, protokoll nélkül.".into());
     }
-    if c.arduino_port == 0 || c.ota_upload_port == 0 { return Err("Érvénytelen port.".into()); }
+    if c.arduino_port == 0 { return Err("Érvénytelen HTTP-port.".into()); }
     Ok(())
 }
 
@@ -339,6 +340,7 @@ fn encode_schedule(s: &Schedule) -> Result<String, String> {
 
 const FIRMWARE_REPOSITORY: &str = "LexyGuru/arduino-led-controller";
 const FIRMWARE_RELEASE_TAG: &str = "firmware-latest";
+const OTA_UPLOAD_PORT: u16 = 65280;
 
 async fn latest_firmware(_config: &Config) -> Result<FirmwareArtifact, String> {
     let url = format!("https://api.github.com/repos/{}/releases/tags/{}", FIRMWARE_REPOSITORY, FIRMWARE_RELEASE_TAG);
@@ -372,9 +374,39 @@ fn recursive_find_ota(root: &Path, depth: usize) -> Option<PathBuf> {
     None
 }
 
-fn find_ota_tool(app: &AppHandle) -> Option<PathBuf> {
+fn ota_tool_works(path: &Path) -> Result<(), String> {
+    if !path.is_file() {
+        return Err("A fájl nem létezik.".into());
+    }
+    let output = Command::new(path)
+        .arg("-version")
+        .output()
+        .map_err(|e| format!("Nem indítható: {e}"))?;
+    if output.status.success() {
+        Ok(())
+    } else {
+        let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+        let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        let detail = if !stderr.is_empty() { stderr } else if !stdout.is_empty() { stdout } else { format!("kilépési állapot: {}", output.status) };
+        Err(format!("Az arduinoOTA nem működik: {detail}"))
+    }
+}
+
+fn find_ota_tool(app: &AppHandle) -> Result<PathBuf, String> {
     let name = executable_name();
     let mut candidates: Vec<PathBuf> = Vec::new();
+
+    // A grafikus macOS alkalmazások PATH-ja gyakran nem tartalmazza ezeket.
+    #[cfg(target_os = "macos")]
+    {
+        candidates.push(PathBuf::from("/usr/local/bin/arduinoOTA"));
+        candidates.push(PathBuf::from("/opt/homebrew/bin/arduinoOTA"));
+    }
+    #[cfg(target_os = "linux")]
+    {
+        candidates.push(PathBuf::from("/usr/local/bin/arduinoOTA"));
+        candidates.push(PathBuf::from("/usr/bin/arduinoOTA"));
+    }
 
     if let Ok(resource_dir) = app.path().resource_dir() {
         candidates.push(resource_dir.join("tools").join("arduinoOTA").join(name));
@@ -389,8 +421,15 @@ fn find_ota_tool(app: &AppHandle) -> Option<PathBuf> {
     if let Some(path_var) = env::var_os("PATH") {
         for dir in env::split_paths(&path_var) { candidates.push(dir.join(name)); }
     }
+
+    let mut invalid: Vec<String> = Vec::new();
     for candidate in candidates {
-        if candidate.is_file() { return Some(candidate); }
+        if candidate.is_file() {
+            match ota_tool_works(&candidate) {
+                Ok(()) => return Ok(candidate),
+                Err(e) => invalid.push(format!("{}: {e}", candidate.display())),
+            }
+        }
     }
 
     let mut roots: Vec<PathBuf> = Vec::new();
@@ -403,9 +442,23 @@ fn find_ota_tool(app: &AppHandle) -> Option<PathBuf> {
         roots.push(PathBuf::from(local).join("Arduino15/packages/arduino/tools/arduinoOTA"));
     }
     for root in roots {
-        if let Some(found) = recursive_find_ota(&root, 8) { return Some(found); }
+        if let Some(found) = recursive_find_ota(&root, 8) {
+            match ota_tool_works(&found) {
+                Ok(()) => return Ok(found),
+                Err(e) => invalid.push(format!("{}: {e}", found.display())),
+            }
+        }
     }
-    None
+
+    if invalid.is_empty() {
+        Err("Az arduinoOTA feltöltő nincs telepítve. Telepítsd az Arduino IDE/CLI arduinoOTA eszközét. macOS Apple Silicon esetén a működő program ajánlott helye: /usr/local/bin/arduinoOTA.".into())
+    } else {
+        Err(format!("Találtam arduinoOTA fájlt, de egyik sem futtatható: {}", invalid.join(" | ")))
+    }
+}
+
+fn normalize_version(value: &str) -> String {
+    value.trim().trim_start_matches('v').to_ascii_lowercase()
 }
 
 fn read_ota_password(app: &AppHandle) -> Result<String, String> { Ok(fs::read_to_string(secret_path(app)?).unwrap_or_default().trim().to_string()) }
@@ -497,9 +550,34 @@ fn export_schedules_file(path: String, schedules: Vec<Schedule>) -> Result<(), S
         status.arduino_online = true;
         status.installed_version = v.get("firmwareVersion").and_then(Value::as_str).map(str::to_string);
     }
-    status.ota_tool_installed = find_ota_tool(&app).is_some();
+    match find_ota_tool(&app) {
+        Ok(path) => {
+            status.ota_tool_installed = true;
+            status.ota_tool_path = Some(path.to_string_lossy().to_string());
+        }
+        Err(error) => {
+            status.ota_tool_installed = false;
+            status.ota_tool_error = Some(error);
+        }
+    }
     status.ota_password_configured = !read_ota_password(&app)?.is_empty();
-    match latest_firmware(&config).await { Ok(a) => status.available_firmware = Some(a), Err(e) => status.firmware_lookup_error = Some(e) }
+    match latest_firmware(&config).await {
+        Ok(a) => {
+            let available_version = a.firmware_version.as_deref().unwrap_or(&a.tag);
+            status.update_available = status.installed_version.as_deref()
+                .map(|installed| normalize_version(installed) != normalize_version(available_version))
+                .unwrap_or(true);
+            status.message = if status.arduino_online && !status.update_available {
+                format!("A firmware naprakész: {}.", status.installed_version.clone().unwrap_or_else(|| available_version.to_string()))
+            } else if status.update_available {
+                format!("Új firmware érhető el: {}.", available_version)
+            } else {
+                "A firmware állapota ellenőrizve.".into()
+            };
+            status.available_firmware = Some(a);
+        }
+        Err(e) => status.firmware_lookup_error = Some(e)
+    }
     *state.firmware_status.lock().map_err(|_| "Firmware állapot zárolva".to_string())? = status.clone();
     Ok(status)
 }
@@ -507,8 +585,14 @@ fn export_schedules_file(path: String, schedules: Vec<Schedule>) -> Result<(), S
     let config = state.config.lock().map_err(|_| "Beállítás zárolva".to_string())?.clone();
     let password = read_ota_password(&app)?;
     if password.is_empty() { return Err("Hiányzik az OTA-jelszó.".into()); }
-    let ota_tool = find_ota_tool(&app).ok_or("Az arduinoOTA feltöltő nem található. Telepítsd az Arduino IDE/CLI eszközt, vagy csomagold az arduinoOTA programot az alkalmazás tools/arduinoOTA mappájába.")?;
+    let ota_tool = find_ota_tool(&app)?;
     let artifact = latest_firmware(&config).await?;
+    if let Some(installed) = get_json(&state, "/api/status").await.ok().and_then(|v| v.get("firmwareVersion").and_then(Value::as_str).map(str::to_string)) {
+        let available = artifact.firmware_version.as_deref().unwrap_or(&artifact.tag);
+        if normalize_version(&installed) == normalize_version(available) {
+            return Err(format!("Nincs szükség frissítésre. A telepített és az elérhető firmware-verzió egyaránt {}.", installed));
+        }
+    }
     {
         let mut s = state.firmware_status.lock().map_err(|_| "Firmware állapot zárolva".to_string())?;
         s.state = "downloading".into(); s.message = "Firmware letöltése…".into(); s.available_firmware = Some(artifact.clone());
@@ -526,7 +610,7 @@ fn export_schedules_file(path: String, schedules: Vec<Schedule>) -> Result<(), S
         let mut s = state.firmware_status.lock().map_err(|_| "Firmware állapot zárolva".to_string())?;
         s.state = "uploading".into(); s.message = "Firmware feltöltése az Arduino OTA szolgáltatására…".into();
     }
-    let ota_port = config.ota_upload_port.to_string();
+    let ota_port = OTA_UPLOAD_PORT.to_string();
     let binary_string = binary_path.to_string_lossy().to_string();
     let output = Command::new(&ota_tool)
         .args([
@@ -547,7 +631,7 @@ fn export_schedules_file(path: String, schedules: Vec<Schedule>) -> Result<(), S
             (true, false) => stderr,
             (true, true) => format!("Az arduinoOTA hibakóddal állt le: {}", output.status),
         };
-        return Err(format!("OTA feltöltési hiba ({}:{}): {details}", config.arduino_ip, config.ota_upload_port));
+        return Err(format!("OTA feltöltési hiba ({}:{}): {details}", config.arduino_ip, OTA_UPLOAD_PORT));
     }
     {
         let mut s = state.firmware_status.lock().map_err(|_| "Firmware állapot zárolva".to_string())?;
@@ -563,6 +647,9 @@ fn export_schedules_file(path: String, schedules: Vec<Schedule>) -> Result<(), S
         ota_password_configured: true,
         available_firmware: Some(artifact),
         firmware_lookup_error: None,
+        ota_tool_path: Some(ota_tool.to_string_lossy().to_string()),
+        ota_tool_error: None,
+        update_available: false,
     };
     *state.firmware_status.lock().map_err(|_| "Firmware állapot zárolva".to_string())? = final_status.clone();
     Ok(final_status)

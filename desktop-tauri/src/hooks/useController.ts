@@ -4,8 +4,7 @@ import type { ArduinoLog, ArduinoStatus, ConnectionConfig, FirmwareStatus, LedSc
 import type { LedTestPreset } from '../pages/LedsPage';
 
 const fallbackConfig: ConnectionConfig = {
-  arduinoIp: '10.0.0.117', arduinoPort: 80, arduinoApiPath: '', arduinoApiKey: '',
-  otaUploadPort: 65280
+  arduinoIp: '10.0.0.117', arduinoPort: 80, arduinoApiPath: '', arduinoApiKey: ''
 };
 
 export function useController() {

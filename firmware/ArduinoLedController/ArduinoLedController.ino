@@ -13,7 +13,7 @@
 #include <time.h>
 #include "secrets.h"
 
-#define FIRMWARE_VERSION "4.1.2"
+#define FIRMWARE_VERSION "4.1.3"
 #define DEVICE_NAME "arduino-led-controller"
 #ifndef API_SHARED_SECRET
 #define API_SHARED_SECRET "CHANGE_THIS_TO_A_LONG_RANDOM_API_SECRET"
@@ -27,6 +27,9 @@
 #ifndef ENABLE_PHYSICAL_BUTTONS
 #define ENABLE_PHYSICAL_BUTTONS 0
 #endif
+constexpr uint16_t HTTP_API_PORT = 80;
+constexpr uint16_t OTA_UPLOAD_PORT = 65280;
+constexpr uint16_t MDNS_PORT = 5353;
 constexpr uint8_t STRIP_COUNT = 3;
 constexpr uint16_t PIXELS = 300;
 constexpr uint8_t LED_PINS[STRIP_COUNT] = {6, 7, 8};
@@ -97,7 +100,7 @@ uint8_t MATRIX_ERROR[8][12] = {
   {1,0,0,0,0,0,0,0,0,0,0,1},{0,1,0,0,0,0,0,0,0,0,1,0},{0,0,1,0,0,0,0,0,0,1,0,0},{0,0,0,1,0,0,0,0,1,0,0,0},
   {0,0,0,0,1,0,0,1,0,0,0,0},{0,0,0,0,1,0,0,1,0,0,0,0},{0,0,0,1,0,0,0,0,1,0,0,0},{0,0,1,0,0,0,0,0,0,1,0,0}
 };
-WiFiServer server(80);
+WiFiServer server(HTTP_API_PORT);
 Led leds[STRIP_COUNT]; Log logs[50];
 bool pirRaw[STRIP_COUNT] = {}, pirActive[STRIP_COUNT] = {}, otaReady = false, timeSynced = false, wifiReported = false;
 unsigned long pirChanged[STRIP_COUNT] = {}, lastMotion[STRIP_COUNT] = {}, lastWifi = 0, lastFrame = 0, lastTimeCheck = 0;
@@ -363,22 +366,47 @@ void connectWifi() {
 void reportWifiConnected() {
   if (!wifiHasAddress()) { wifiReported = false; return; }
   if (wifiReported) return;
+
   wifiReported = true;
   showMatrix(MATRIX_OK);
   IPAddress ip = WiFi.localIP();
-  char message[88];
-  snprintf(message, sizeof(message), "WiFi kesz: %u.%u.%u.%u, jel: %d dBm", ip[0], ip[1], ip[2], ip[3], WiFi.RSSI());
+
+  char message[128];
+  snprintf(message, sizeof(message),
+    "WiFi kesz: %u.%u.%u.%u, jel: %d dBm, HTTP: %u, OTA: %u",
+    ip[0], ip[1], ip[2], ip[3], WiFi.RSSI(), HTTP_API_PORT, OTA_UPLOAD_PORT);
   logEvent("success", message);
+
+  Serial.println();
   Serial.println("==========================================");
-  Serial.print("Eszkoz: "); Serial.println(DEVICE_NAME);
-  Serial.print("Firmware: "); Serial.println(FIRMWARE_VERSION);
+  Serial.print("Eszkoz:              "); Serial.println(DEVICE_NAME);
+  Serial.print("Firmware:            "); Serial.println(FIRMWARE_VERSION);
   Serial.print("WiFi modul firmware: "); Serial.println(WiFi.firmwareVersion());
-  Serial.print("IP cim: "); Serial.println(ip);
-  Serial.print("Jelerosseg: "); Serial.print(WiFi.RSSI()); Serial.println(" dBm");
-  Serial.print("PIR figyeles: "); Serial.println(ENABLE_PIR_SENSORS ? "BE" : "KI (nincs szenzor)");
-  Serial.print("Fizikai gombok: "); Serial.println(ENABLE_PHYSICAL_BUTTONS ? "BE" : "KI");
-  Serial.println("Web API: http://<IP>/api/status");
+  Serial.print("IP cim:              "); Serial.println(ip);
+  Serial.print("Jelerosseg:           "); Serial.print(WiFi.RSSI()); Serial.println(" dBm");
+  Serial.println("------------------------------------------");
+
+  Serial.print("Web API:             http://");
+  Serial.print(ip);
+  Serial.print(":");
+  Serial.print(HTTP_API_PORT);
+  Serial.println("/api/status");
+
+  Serial.print("OTA feltoltes:       ");
+  Serial.print(ip);
+  Serial.print(":");
+  Serial.println(OTA_UPLOAD_PORT);
+
+  Serial.print("mDNS felismeres:     UDP ");
+  Serial.println(MDNS_PORT);
+  Serial.println("------------------------------------------");
+
+  Serial.print("OTA szolgaltatas:    "); Serial.println(otaReady ? "AKTIV" : "INAKTIV");
+  Serial.print("OTA jelszo:          "); Serial.println(networkSettings.otaPassword[0] ? "BEALLITVA" : "HIANYZIK");
+  Serial.print("PIR figyeles:        "); Serial.println(ENABLE_PIR_SENSORS ? "BE" : "KI (nincs szenzor)");
+  Serial.print("Fizikai gombok:      "); Serial.println(ENABLE_PHYSICAL_BUTTONS ? "BE" : "KI");
   Serial.println("==========================================");
+  Serial.println();
 }
 void showOtaIndicator(uint8_t red, uint8_t green, uint8_t blue, uint8_t brightness = 80) {
   for (uint8_t i = 0; i < STRIP_COUNT; i++) {
@@ -405,13 +433,25 @@ void otaTransferError(int code, const char*) {
   showOtaIndicator(255, 0, 0);
 }
 void startOta() {
-  if (wifiHasAddress() && !otaReady) {
-    ArduinoOTA.onStart(otaTransferStarted);
-    ArduinoOTA.beforeApply(otaBeforeApply);
-    ArduinoOTA.onError(otaTransferError);
-    ArduinoOTA.begin(WiFi.localIP(), DEVICE_NAME, networkSettings.otaPassword, InternalStorage);
-    otaReady = true; logEvent("success", "OTA frissites fogado szolgaltatas aktiv (3232 port)");
-  }
+  if (!wifiHasAddress() || otaReady) return;
+
+  ArduinoOTA.onStart(otaTransferStarted);
+  ArduinoOTA.beforeApply(otaBeforeApply);
+  ArduinoOTA.onError(otaTransferError);
+  ArduinoOTA.begin(WiFi.localIP(), DEVICE_NAME, networkSettings.otaPassword, InternalStorage);
+  otaReady = true;
+
+  IPAddress ip = WiFi.localIP();
+  char message[112];
+  snprintf(message, sizeof(message),
+    "OTA fogado szolgaltatas aktiv: %u.%u.%u.%u:%u",
+    ip[0], ip[1], ip[2], ip[3], OTA_UPLOAD_PORT);
+  logEvent("success", message);
+
+  Serial.print("OTA szolgaltatas aktiv: ");
+  Serial.print(ip);
+  Serial.print(":");
+  Serial.println(OTA_UPLOAD_PORT);
 }
 
 float effectScale(uint8_t speed) { return 0.25f + (constrain(speed, 1, 100) / 100.0f) * 3.75f; }
@@ -466,7 +506,7 @@ String escapeJson(const char* source) { String out; while (*source) { if (*sourc
 String statusJson() {
   String out = "{\"connected\":" + String(wifiHasAddress() ? "true" : "false") + ",\"timesynced\":" + String(timeSynced ? "true" : "false");
   out += ",\"networkConfigStored\":" + String(networkSettingsStored ? "true" : "false");
-  out += ",\"scheduler\":\"arduino-eeprom\",\"scheduleCount\":" + String(scheduleCount) + ",\"firmwareVersion\":\"" FIRMWARE_VERSION "\",\"otaEnabled\":" + String(otaReady ? "true" : "false") + ",\"apiProtected\":" + String(apiSettingsStored ? "true" : "false") + ",\"matrixEnabled\":true,\"pirSensorsEnabled\":" + String(ENABLE_PIR_SENSORS ? "true" : "false") + ",\"physicalButtonsEnabled\":" + String(ENABLE_PHYSICAL_BUTTONS ? "true" : "false") + ",\"uptime\":" + String(millis() / 1000) + ",\"rssi\":" + String(wifiHasAddress() ? WiFi.RSSI() : 0) + ",\"http\":{\"requests\":" + String(httpRequests) + ",\"timeouts\":" + String(httpTimeouts) + ",\"rejected\":" + String(httpRejected) + ",\"maxBatch\":" + String(httpMaxBatch) + ",\"lastClientIp\":\"" + escapeJson(lastHttpClientIp) + "\",\"lastPath\":\"" + escapeJson(lastHttpPath) + "\",\"lastClientAge\":" + String(lastHttpClientAt ? (millis() - lastHttpClientAt) / 1000 : 0) + "},\"strips\":[";
+  out += ",\"scheduler\":\"arduino-eeprom\",\"scheduleCount\":" + String(scheduleCount) + ",\"firmwareVersion\":\"" FIRMWARE_VERSION "\",\"httpPort\":" + String(HTTP_API_PORT) + ",\"otaPort\":" + String(OTA_UPLOAD_PORT) + ",\"mdnsPort\":" + String(MDNS_PORT) + ",\"otaEnabled\":" + String(otaReady ? "true" : "false") + ",\"otaPasswordConfigured\":" + String(networkSettings.otaPassword[0] ? "true" : "false") + ",\"apiProtected\":" + String(apiSettingsStored ? "true" : "false") + ",\"matrixEnabled\":true,\"pirSensorsEnabled\":" + String(ENABLE_PIR_SENSORS ? "true" : "false") + ",\"physicalButtonsEnabled\":" + String(ENABLE_PHYSICAL_BUTTONS ? "true" : "false") + ",\"uptime\":" + String(millis() / 1000) + ",\"rssi\":" + String(wifiHasAddress() ? WiFi.RSSI() : 0) + ",\"http\":{\"requests\":" + String(httpRequests) + ",\"timeouts\":" + String(httpTimeouts) + ",\"rejected\":" + String(httpRejected) + ",\"maxBatch\":" + String(httpMaxBatch) + ",\"lastClientIp\":\"" + escapeJson(lastHttpClientIp) + "\",\"lastPath\":\"" + escapeJson(lastHttpPath) + "\",\"lastClientAge\":" + String(lastHttpClientAt ? (millis() - lastHttpClientAt) / 1000 : 0) + "},\"strips\":[";
   for (uint8_t i = 0; i < STRIP_COUNT; i++) { if (i) out += ','; out += "{\"id\":" + String(i + 1) + ",\"enabled\":" + String(leds[i].enabled ? "true" : "false") + ",\"brightness\":" + String(leds[i].brightness) + ",\"effect\":" + String(leds[i].effect) + ",\"speed\":" + String(leds[i].speed) + ",\"color\":[" + String(leds[i].red) + ',' + String(leds[i].green) + ',' + String(leds[i].blue) + "]}"; }
   return out + "]}";
 }
@@ -663,8 +703,9 @@ void loop() {
     if (millis() - lastWifi > WIFI_RETRY) { otaReady = false; connectWifi(); }
   }
   if (wifiHasAddress()) {
+    startOta();
     reportWifiConnected();
-    startOta(); ArduinoOTA.poll();
+    if (otaReady) ArduinoOTA.poll();
     if (millis() - lastTimeCheck > 60000 || !timeSynced) { lastTimeCheck = millis(); unsigned long epoch = WiFi.getTime(); if (epoch > 1700000000UL) { bool firstSync = !timeSynced; lastClockEpoch = epoch; lastClockMillis = millis(); timeSynced = true; if (firstSync) logEvent("success", "NTP ido szinkronizalva"); } }
     runArduinoSchedules();
   }

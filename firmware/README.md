@@ -1,50 +1,150 @@
-# Arduino LED Controller Lite firmware
+# Arduino LED Controller – GitHub OTA firmware
 
-Ez az SD-kartya nelkuli, egyszerusitett UNO R4 WiFi firmware. A heti
-idözitesek a Proxmoxon futó webszerveren maradnak; az Arduino csak a LED-eket,
-a PIR szenzorokat, a helyi API-t, a naplot es az OTA fogadast kezeli.
+Ez a repository-csomag az **Arduino UNO R4 WiFi** LED-vezérlő firmware automatikus fordítására és OTA-kiadására készült.
 
-Alapbol a PIR szenzorok es a fizikai gombok ki vannak kapcsolva. Ez fontos,
-mert szenzor nelkul a bemenetek zajt olvasnak, ami teves „mozgas erzekelve"
-uzeneteket okozhat. Ha kesobb bekotod ezeket, a sajat `secrets.h` fajlodban
-allitsd az `ENABLE_PIR_SENSORS` vagy `ENABLE_PHYSICAL_BUTTONS` erteket `1`-re.
+## Mit csinál automatikusan?
 
-## Elso telepites USB-n
+Amikor a `main` ágra firmware-módosítás kerül, a GitHub Actions:
 
-1. Telepitsd az **Adafruit NeoPixel** es **ArduinoOTA** konyvtarakat az Arduino
-   IDE Library Managerbol.
-2. Masold a `secrets.example.h` fajlt `secrets.h` nevvel ugyanebbe a mappaba.
-3. Ird be a WiFi adataidat es egy hosszu, egyedi OTA jelszot.
-4. Valaszd ki: **Arduino UNO R4 WiFi**, majd toltsd fel USB-n.
+1. telepíti az Arduino CLI-t;
+2. telepíti az `arduino:renesas_uno` platformot;
+3. telepíti az `Adafruit NeoPixel` könyvtárat;
+4. lefordítja a firmware-t UNO R4 WiFi célhardverre;
+5. elkészíti a SHA-256 ellenőrzőfájlt;
+6. törli a korábbi `firmware-latest` kiadást és tag-et;
+7. ugyanazon a címen újra létrehozza a legfrissebb kiadást.
 
-Az elso USB-s feltoltes kotelezo. A 3.1.0 vagy ujabb firmware ilyenkor a WiFi
-nevet, WiFi jelszot es OTA jelszot az UNO R4 sajat EEPROM memoriajaba menti.
-Ez a memoria az OTA firmware-frissitesek utan is megmarad. A sikeres inditas
-utan a `/api/status` valaszban mind az `"otaEnabled":true`, mind a
-`"networkConfigStored":true` mezőnek szerepelnie kell.
+A desktop alkalmazás által használt állandó kiadás:
 
-## OTA frissites Proxmoxrol
+```text
+https://github.com/LexyGuru/arduino-led-controller/releases/tag/firmware-latest
+```
 
-A webszerver a GitHub Actions altal sikeresen leforditott `.bin` firmware-t
-tolti le, ellenorzi az ellenorzoosszeget, majd a helyi halozaton telepiti az
-UNO R4-re. A Proxmox `/etc/arduino-led-controller.env` fajljaba ugyanazt az
-`OTA_PASSWORD` erteket kell beirni, mint ami az Arduino sajat `secrets.h`
-fajljaban van. A firmware-kiadas nyilvanos, ezert GitHub hozzáférési kulcs
-nem szükséges.
+A Release két fájlt tartalmaz:
 
-A publikus GitHub-bináris szándékosan nem tartalmaz WiFi- vagy OTA-jelszót.
-Ehelyett az első USB-s feltöltéskor elmentett EEPROM-beállításokat használja.
-Ezért a webfelület automatikusan letiltja az OTA gombot addig, amíg az egyszeri
-USB-s előkészítés nem történt meg.
+```text
+ArduinoLedController.ino.bin
+ArduinoLedController.ino.bin.sha256
+```
 
-## API kompatibilitas
+## Könyvtárszerkezet
 
-A Lite firmware megtartja a webalkalmazas altal hasznalt vegpontokat:
+```text
+arduino-led-controller/
+├── .github/
+│   └── workflows/
+│       └── firmware-build.yml
+├── firmware/
+│   └── ArduinoLedController/
+│       ├── ArduinoLedController.ino
+│       └── secrets.example.h
+├── .gitignore
+└── README.md
+```
 
-- `/api/status`, `/api/led/status`
-- `/api/led/1?...`, `/api/led/2?...`, `/api/led/3?...`
-- `/api/all-on`, `/api/all-off`
-- `/api/console/logs`, `/api/console/stats`, `/api/console/clear`
+## Első USB-s telepítés
 
-Nincs SD-kartya, nincs `/api/schedule/*`, nincs Arduino-oldali konfiguracios
-fajl es nincs Arduino-oldali utemezes.
+A valódi titkokat tartalmazó fájlt helyben kell létrehozni:
+
+```bash
+cd firmware/ArduinoLedController
+cp secrets.example.h secrets.h
+```
+
+Ezután töltsd ki a saját adataiddal:
+
+```cpp
+#define WIFI_SSID "SAJAT_WIFI"
+#define WIFI_PASSWORD "SAJAT_WIFI_JELSZO"
+#define OTA_PASSWORD "HOSSZU_RANDOM_OTA_JELSZO"
+#define API_SHARED_SECRET "HOSSZU_RANDOM_API_KULCS"
+#define API_PRIVATE_PATH "/HOSSZU_RANDOM_PRIVAT_UTVONAL"
+```
+
+A `secrets.h` szerepel a `.gitignore` fájlban, ezért normál esetben nem kerül fel GitHubra.
+
+Az első, személyes adatokat tartalmazó firmware-t **USB-n** kell feltölteni. Ez elmenti a WiFi-, OTA- és API-adatokat az EEPROM-ba. A GitHub Actions által készített publikus OTA-bináris mintaadatokat tartalmaz, ezért nem írja felül az EEPROM-ban tárolt valódi beállításokat.
+
+## Feltöltés új GitHub repositoryba
+
+```bash
+git init
+git branch -M main
+git add .
+git commit -m "Add Arduino firmware OTA build"
+git remote add origin https://github.com/LexyGuru/arduino-led-controller.git
+git push -u origin main
+```
+
+Ha a repository már létezik, másold bele vagy egyesítsd a csomag tartalmát, majd:
+
+```bash
+git add .
+git commit -m "Add firmware 4.1.3 and automatic OTA release"
+git push origin main
+```
+
+## GitHub Actions engedély
+
+A repositoryban ellenőrizd:
+
+```text
+Settings → Actions → General → Workflow permissions
+```
+
+A következő legyen kiválasztva:
+
+```text
+Read and write permissions
+```
+
+A workflow ugyan `contents: write` jogosultságot kér, de privát vagy korlátozott repository-beállítás esetén a fenti kapcsoló is szükséges lehet.
+
+## Kézi build indítása
+
+A GitHubon:
+
+```text
+Actions → Build and publish latest firmware → Run workflow
+```
+
+## OTA-frissítés
+
+A desktop alkalmazás a `firmware-latest` Release fájljait tölti le, ellenőrzi a SHA-256 összeget, majd az Arduino OTA szolgáltatására küldi a binárist.
+
+A firmware OTA-portja:
+
+```text
+3232
+```
+
+## Fontos biztonsági szabály
+
+Soha ne töltsd fel a valódi `secrets.h` fájlt. Feltöltés előtt ellenőrizheted:
+
+```bash
+git status --ignored
+```
+
+A fájlnak az ignorált elemek között kell megjelennie.
+
+## 4.1.3 build-javítás
+
+Az `encodeScheduleHex()` függvényben a hexadecimális karaktertábla neve `HEX_DIGITS`.
+Ez elkerüli az Arduino `Print.h` által definiált `HEX` makróval való névütközést.
+
+## 4.1.3 változások
+
+- Az Arduino 30 másodpercenként ellenőrzi az időzítés alapján elvárt LED-állapotot.
+- Újraindítás vagy eltérő kézi állapot után automatikusan helyreállítja a hét legutóbbi érvényes rekordját.
+- Csak valódi eltérés esetén módosítja a LED-eket és ír naplóbejegyzést.
+- Javítva az Arduino `HEX` makróval ütköző hexadecimális karaktertábla neve.
+
+
+## 4.1.3
+
+- Valódi IP-címet ír ki a Serial Monitorban.
+- HTTP API port: 80.
+- OTA port: 65280.
+- mDNS port: 5353.
+- Az `/api/status` tartalmazza a portokat és az OTA állapotát.

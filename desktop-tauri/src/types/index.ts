@@ -5,7 +5,6 @@ export interface ConnectionConfig {
   arduinoPort: number;
   arduinoApiPath: string;
   arduinoApiKey: string;
-  otaUploadPort: number;
 }
 
 export interface LedStrip { id: number; enabled: boolean; brightness: number; effect: number; speed: number; color: [number, number, number]; }
@@ -16,4 +15,4 @@ export interface NetworkLog { timestamp: number; endpoint: string; ok: boolean; 
 export interface ScheduleLed { id: number; enabled: boolean; brightness: number; effect: number; speed: number; color: [number, number, number]; }
 export interface LedSchedule { id: string; day: number; time: string; leds: ScheduleLed[]; }
 export interface FirmwareArtifact { name: string; downloadUrl: string; checksumUrl: string; firmwareVersion?: string; tag: string; createdAt?: string; }
-export interface FirmwareStatus { state: string; message: string; installedVersion?: string; arduinoOnline: boolean; otaToolInstalled: boolean; otaPasswordConfigured: boolean; availableFirmware?: FirmwareArtifact; firmwareLookupError?: string; }
+export interface FirmwareStatus { state: string; message: string; installedVersion?: string; arduinoOnline: boolean; otaToolInstalled: boolean; otaPasswordConfigured: boolean; availableFirmware?: FirmwareArtifact; firmwareLookupError?: string; otaToolPath?: string; otaToolError?: string; updateAvailable: boolean; }
