@@ -13,7 +13,7 @@
 #include <time.h>
 #include "secrets.h"
 
-#define FIRMWARE_VERSION "4.1.4"
+#define FIRMWARE_VERSION "4.1.5"
 #define DEVICE_NAME "arduino-led-controller"
 #ifndef API_SHARED_SECRET
 #define API_SHARED_SECRET "CHANGE_THIS_TO_A_LONG_RANDOM_API_SECRET"
@@ -387,7 +387,7 @@ void reportWifiConnected() {
   consoleLine("==========================================");
   snprintf(message, sizeof(message), "Eszkoz:              %s", DEVICE_NAME); consoleLine(message);
   snprintf(message, sizeof(message), "Firmware:            %s", FIRMWARE_VERSION); consoleLine(message);
-  snprintf(message, sizeof(message), "WiFi modul firmware: %s", WiFi.firmwareVersion().c_str()); consoleLine(message);
+  snprintf(message, sizeof(message), "WiFi modul firmware: %s", WiFi.firmwareVersion()); consoleLine(message);
   snprintf(message, sizeof(message), "IP cim:              %u.%u.%u.%u", ip[0], ip[1], ip[2], ip[3]); consoleLine(message);
   snprintf(message, sizeof(message), "Jelerosseg:           %d dBm", WiFi.RSSI()); consoleLine(message);
   consoleLine("------------------------------------------");
