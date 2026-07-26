@@ -88,3 +88,11 @@ A workflow szándékosan nem használ Node/npm cache-t. A repository gyökerébe
 - Az alkalmazás nemcsak a fájl meglétét nézi, hanem az `arduinoOTA -version` paranccsal ellenőrzi, hogy az eszköz ténylegesen futtatható-e.
 - A Firmware oldalon megjelenik a megtalált OTA-program teljes útvonala vagy a telepítési/indítási hiba.
 - Azonos telepített és GitHub-verzió esetén a felület „A firmware naprakész” üzenetet mutat, és a telepítés gomb letiltódik.
+
+
+## 3.0.8 – hálózati Arduino konzol
+
+- Az Arduino `/api/console/logs?after=<id>` végpontja sorszámozva adja vissza az új konzolsorokat.
+- A Tauri kliens 2 másodpercenként olvassa az új sorokat.
+- Nincs duplikáció, és legfeljebb 500 sor marad a felületen.
+- A konzol USB-s soros kapcsolat nélkül, WiFi-n keresztül működik.

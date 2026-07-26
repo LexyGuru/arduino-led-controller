@@ -18,14 +18,27 @@ export function useController() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('Kapcsolatra vár…');
   const testSnapshot = useRef<LedStrip[] | null>(null);
+  const lastConsoleId = useRef(0);
+
+  const refreshConsole = useCallback(async () => {
+    const response = await tauriApi.logs(lastConsoleId.current);
+    if (response.logs.length) {
+      setLogs((current) => {
+        const merged = [...response.logs, ...current];
+        const unique = Array.from(new Map(merged.map((entry) => [entry.id, entry])).values());
+        return unique.sort((a, b) => b.id - a.id).slice(0, 500);
+      });
+    }
+    lastConsoleId.current = Math.max(lastConsoleId.current, response.lastId ?? 0);
+  }, []);
 
   const refresh = useCallback(async () => {
-    const [statusResult, logResult, networkResult] = await Promise.allSettled([tauriApi.status(), tauriApi.logs(), tauriApi.networkLogs()]);
+    const [statusResult, networkResult] = await Promise.allSettled([tauriApi.status(), tauriApi.networkLogs()]);
     if (statusResult.status === 'fulfilled') { setStatus({ ...statusResult.value, connected: true }); setMessage(`Kapcsolódva: ${config.arduinoIp}:${config.arduinoPort}`); }
     else { setStatus((current) => ({ ...(current ?? {}), connected: false })); setMessage(`Arduino nem érhető el: ${String(statusResult.reason)}`); }
-    if (logResult.status === 'fulfilled') setLogs(logResult.value.slice().reverse());
     if (networkResult.status === 'fulfilled') setNetworkLogs(networkResult.value.slice().reverse());
-  }, [config.arduinoIp, config.arduinoPort]);
+    await refreshConsole().catch(() => undefined);
+  }, [config.arduinoIp, config.arduinoPort, refreshConsole]);
 
   const refreshFirmware = useCallback(async () => {
     setBusy(true);
@@ -40,6 +53,7 @@ export function useController() {
     try { const remote = await tauriApi.loadSchedulesFromArduino(); setSchedules(remote); setMessage(`${remote.length} időzítés beolvasva az Arduinóból.`); } catch { /* local fallback */ }
   })(); }, []);
   useEffect(() => { void refresh(); const timer = window.setInterval(() => void refresh(), 15_000); return () => window.clearInterval(timer); }, [refresh]);
+  useEffect(() => { void refreshConsole(); const timer = window.setInterval(() => void refreshConsole().catch(() => undefined), 2_000); return () => window.clearInterval(timer); }, [refreshConsole]);
 
   const saveConfig = async () => { setBusy(true); try { await tauriApi.saveConfig(config); if (otaPassword) { await tauriApi.saveOtaPassword(otaPassword); setOtaPassword(''); } setMessage('Kapcsolati és OTA-beállítások mentve.'); await refresh(); } catch (error) { setMessage(`Mentési hiba: ${String(error)}`); } finally { setBusy(false); } };
   const updateStrip = async (strip: LedStrip) => { setBusy(true); try { await tauriApi.setLed(strip); setMessage(`LED ${strip.id} beállítva.`); await refresh(); } catch (error) { setMessage(`LED ${strip.id} hiba: ${String(error)}`); } finally { setBusy(false); } };

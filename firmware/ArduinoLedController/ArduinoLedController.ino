@@ -13,7 +13,7 @@
 #include <time.h>
 #include "secrets.h"
 
-#define FIRMWARE_VERSION "4.1.3"
+#define FIRMWARE_VERSION "4.1.4"
 #define DEVICE_NAME "arduino-led-controller"
 #ifndef API_SHARED_SECRET
 #define API_SHARED_SECRET "CHANGE_THIS_TO_A_LONG_RANDOM_API_SECRET"
@@ -55,7 +55,7 @@ constexpr uint32_t SCHEDULE_MAGIC = 0x53434831UL; // "SCH1"
 enum Effect : uint8_t { STATIC = 0, BLINK, BREATHE, RAINBOW, CHASE };
 
 struct Led { bool enabled; uint8_t brightness, effect, speed, red, green, blue; };
-struct Log { unsigned long timestamp; const char* type; char message[88]; };
+struct Log { uint32_t id; unsigned long timestamp; const char* type; char message[128]; };
 struct NetworkSettings {
   uint32_t magic;
   uint16_t version;
@@ -105,6 +105,7 @@ Led leds[STRIP_COUNT]; Log logs[50];
 bool pirRaw[STRIP_COUNT] = {}, pirActive[STRIP_COUNT] = {}, otaReady = false, timeSynced = false, wifiReported = false;
 unsigned long pirChanged[STRIP_COUNT] = {}, lastMotion[STRIP_COUNT] = {}, lastWifi = 0, lastFrame = 0, lastTimeCheck = 0;
 uint8_t logStart = 0, logSize = 0;
+uint32_t nextLogId = 1;
 unsigned long httpRequests = 0, httpTimeouts = 0;
 unsigned long httpRejected = 0;
 uint8_t httpMaxBatch = 0;
@@ -123,14 +124,19 @@ void renderAll(bool force = false);
 
 void showMatrix(uint8_t frame[8][12]) { matrix.renderBitmap(frame, 8, 12); }
 
-void logEvent(const char* type, const char* message) {
+void storeConsoleLine(const char* type, const char* message, bool includeTypeOnSerial) {
   uint8_t position = (logStart + logSize) % 50;
   if (logSize == 50) logStart = (logStart + 1) % 50; else logSize++;
-  logs[position].timestamp = millis() / 1000; logs[position].type = type;
+  logs[position].id = nextLogId++;
+  logs[position].timestamp = millis() / 1000;
+  logs[position].type = type;
   strncpy(logs[position].message, message, sizeof(logs[position].message) - 1);
   logs[position].message[sizeof(logs[position].message) - 1] = 0;
-  Serial.print('['); Serial.print(type); Serial.print("] "); Serial.println(message);
+  if (includeTypeOnSerial) { Serial.print('['); Serial.print(type); Serial.print("] "); }
+  Serial.println(message);
 }
+void logEvent(const char* type, const char* message) { storeConsoleLine(type, message, true); }
+void consoleLine(const char* message) { storeConsoleLine("console", message, false); }
 
 uint32_t settingsChecksum(const NetworkSettings& settings) {
   const uint8_t* bytes = reinterpret_cast<const uint8_t*>(&settings);
@@ -377,37 +383,26 @@ void reportWifiConnected() {
     ip[0], ip[1], ip[2], ip[3], WiFi.RSSI(), HTTP_API_PORT, OTA_UPLOAD_PORT);
   logEvent("success", message);
 
-  Serial.println();
-  Serial.println("==========================================");
-  Serial.print("Eszkoz:              "); Serial.println(DEVICE_NAME);
-  Serial.print("Firmware:            "); Serial.println(FIRMWARE_VERSION);
-  Serial.print("WiFi modul firmware: "); Serial.println(WiFi.firmwareVersion());
-  Serial.print("IP cim:              "); Serial.println(ip);
-  Serial.print("Jelerosseg:           "); Serial.print(WiFi.RSSI()); Serial.println(" dBm");
-  Serial.println("------------------------------------------");
-
-  Serial.print("Web API:             http://");
-  Serial.print(ip);
-  Serial.print(":");
-  Serial.print(HTTP_API_PORT);
-  Serial.println("/api/status");
-
-  Serial.print("OTA feltoltes:       ");
-  Serial.print(ip);
-  Serial.print(":");
-  Serial.println(OTA_UPLOAD_PORT);
-
-  Serial.print("mDNS felismeres:     UDP ");
-  Serial.println(MDNS_PORT);
-  Serial.println("------------------------------------------");
-
-  Serial.print("OTA szolgaltatas:    "); Serial.println(otaReady ? "AKTIV" : "INAKTIV");
-  Serial.print("OTA jelszo:          "); Serial.println(networkSettings.otaPassword[0] ? "BEALLITVA" : "HIANYZIK");
-  Serial.print("PIR figyeles:        "); Serial.println(ENABLE_PIR_SENSORS ? "BE" : "KI (nincs szenzor)");
-  Serial.print("Fizikai gombok:      "); Serial.println(ENABLE_PHYSICAL_BUTTONS ? "BE" : "KI");
-  Serial.println("==========================================");
-  Serial.println();
+  consoleLine("");
+  consoleLine("==========================================");
+  snprintf(message, sizeof(message), "Eszkoz:              %s", DEVICE_NAME); consoleLine(message);
+  snprintf(message, sizeof(message), "Firmware:            %s", FIRMWARE_VERSION); consoleLine(message);
+  snprintf(message, sizeof(message), "WiFi modul firmware: %s", WiFi.firmwareVersion().c_str()); consoleLine(message);
+  snprintf(message, sizeof(message), "IP cim:              %u.%u.%u.%u", ip[0], ip[1], ip[2], ip[3]); consoleLine(message);
+  snprintf(message, sizeof(message), "Jelerosseg:           %d dBm", WiFi.RSSI()); consoleLine(message);
+  consoleLine("------------------------------------------");
+  snprintf(message, sizeof(message), "Web API:             http://%u.%u.%u.%u:%u/api/status", ip[0], ip[1], ip[2], ip[3], HTTP_API_PORT); consoleLine(message);
+  snprintf(message, sizeof(message), "OTA feltoltes:       %u.%u.%u.%u:%u", ip[0], ip[1], ip[2], ip[3], OTA_UPLOAD_PORT); consoleLine(message);
+  snprintf(message, sizeof(message), "mDNS felismeres:     UDP %u", MDNS_PORT); consoleLine(message);
+  consoleLine("------------------------------------------");
+  snprintf(message, sizeof(message), "OTA szolgaltatas:    %s", otaReady ? "AKTIV" : "INAKTIV"); consoleLine(message);
+  snprintf(message, sizeof(message), "OTA jelszo:          %s", networkSettings.otaPassword[0] ? "BEALLITVA" : "HIANYZIK"); consoleLine(message);
+  snprintf(message, sizeof(message), "PIR figyeles:        %s", ENABLE_PIR_SENSORS ? "BE" : "KI (nincs szenzor)"); consoleLine(message);
+  snprintf(message, sizeof(message), "Fizikai gombok:      %s", ENABLE_PHYSICAL_BUTTONS ? "BE" : "KI"); consoleLine(message);
+  consoleLine("==========================================");
+  consoleLine("");
 }
+
 void showOtaIndicator(uint8_t red, uint8_t green, uint8_t blue, uint8_t brightness = 80) {
   for (uint8_t i = 0; i < STRIP_COUNT; i++) {
     strip[i].setBrightness(brightness);
@@ -448,10 +443,10 @@ void startOta() {
     ip[0], ip[1], ip[2], ip[3], OTA_UPLOAD_PORT);
   logEvent("success", message);
 
-  Serial.print("OTA szolgaltatas aktiv: ");
-  Serial.print(ip);
-  Serial.print(":");
-  Serial.println(OTA_UPLOAD_PORT);
+  snprintf(message, sizeof(message),
+    "OTA szolgaltatas aktiv: %u.%u.%u.%u:%u",
+    ip[0], ip[1], ip[2], ip[3], OTA_UPLOAD_PORT);
+  consoleLine(message);
 }
 
 float effectScale(uint8_t speed) { return 0.25f + (constrain(speed, 1, 100) / 100.0f) * 3.75f; }
@@ -510,24 +505,29 @@ String statusJson() {
   for (uint8_t i = 0; i < STRIP_COUNT; i++) { if (i) out += ','; out += "{\"id\":" + String(i + 1) + ",\"enabled\":" + String(leds[i].enabled ? "true" : "false") + ",\"brightness\":" + String(leds[i].brightness) + ",\"effect\":" + String(leds[i].effect) + ",\"speed\":" + String(leds[i].speed) + ",\"color\":[" + String(leds[i].red) + ',' + String(leds[i].green) + ',' + String(leds[i].blue) + "]}"; }
   return out + "]}";
 }
-String logsJson() {
-  // Az összes (max. 50) bejegyzés egyszerre túl nagy, töredezett String
-  // memóriát igényelhet. Ilyenkor a régi kód érvénytelen, csak "]" választ
-  // küldött. A legutóbbi 12 bejegyzés elegendő a felülethez és stabil marad.
-  const uint8_t responseLimit = 12;
-  uint8_t count = min(logSize, responseLimit);
+String logsJson(uint32_t afterId = 0) {
+  const uint32_t currentLastId = nextLogId ? nextLogId - 1 : 0;
+  // Arduino ujrainditasakor a sorszam 1-tol indul. Ha a kliens regi,
+  // nagyobb sorszamot kuld, adjuk vissza az aktualis teljes puffert.
+  if (afterId > currentLastId) afterId = 0;
   String out;
-  if (!out.reserve(2300)) return "[]";
-  out += '[';
-  uint8_t first = logSize - count;
-  for (uint8_t i = 0; i < count; i++) {
-    if (i) out += ',';
-    Log& e = logs[(logStart + first + i) % 50];
-    out += "{\"timestamp\":\"" + String(e.timestamp) + "s\",\"type\":\"" + e.type + "\",\"message\":\"" + escapeJson(e.message) + "\"}";
+  if (!out.reserve(6200)) return "{\"lastId\":0,\"logs\":[]}";
+  out = "{\"lastId\":" + String(nextLogId ? nextLogId - 1 : 0) + ",\"logs\":[";
+  bool first = true;
+  for (uint8_t i = 0; i < logSize; i++) {
+    Log& e = logs[(logStart + i) % 50];
+    if (e.id <= afterId) continue;
+    if (!first) out += ',';
+    first = false;
+    out += "{\"id\":" + String(e.id)
+      + ",\"timestamp\":\"" + String(e.timestamp) + "s\""
+      + ",\"type\":\"" + e.type + "\""
+      + ",\"message\":\"" + escapeJson(e.message) + "\"}";
   }
-  out += ']';
+  out += "]}";
   return out;
 }
+
 void sendJson(WiFiClient& c, const String& body, int code = 200) { c.print(code == 200 ? "HTTP/1.1 200 OK\r\n" : "HTTP/1.1 400 Bad Request\r\n"); c.print("Content-Type: application/json; charset=utf-8\r\nConnection: close\r\nContent-Length: "); c.print(body.length()); c.print("\r\n\r\n"); c.print(body); }
 void rememberHttpClient(WiFiClient& c, const char* method, const String& path, bool timedOut = false) {
   IPAddress remote = c.remoteIP();
@@ -583,7 +583,7 @@ void route(WiFiClient& c, const String& path) {
   if (base == "/api/schedules/chunk") { String query = queryAt < 0 ? "" : path.substring(queryAt + 1); int index = valueInt(query, "index", -1, -1, SCHEDULE_MAX - 1), total = valueInt(query, "total", 0, 0, SCHEDULE_MAX); int payloadAt = query.indexOf("payload="); if (index < 0 || total < 1 || index >= total || payloadAt < 0 || !decodeScheduleHex(query.substring(payloadAt + 8), schedules[index])) { sendJson(c, "{\"error\":\"Ervenytelen idozitesi reszlet\"}", 400); return; } if (index + 1 == total) { saveSchedules(total); char message[64]; snprintf(message, sizeof(message), "Arduino idozites mentve: %d bejegyzes", scheduleCount); logEvent("success", message); } sendJson(c, "{\"success\":true,\"count\":" + String(index + 1 == total ? scheduleCount : 0) + "}"); return; }
   if (base == "/api/schedules/clear") { memset(schedules, 0, sizeof(schedules)); saveSchedules(0); logEvent("info", "Arduino idozites torolve"); sendJson(c, "{\"success\":true}"); return; }
   if (base == "/api/status" || base == "/api/led/status") { sendJson(c, statusJson()); return; }
-  if (base == "/api/console/logs") { sendJson(c, logsJson()); return; }
+  if (base == "/api/console/logs") { String query = queryAt < 0 ? "" : path.substring(queryAt + 1); uint32_t afterId = (uint32_t)valueInt(query, "after", 0, 0, 2147483647); sendJson(c, logsJson(afterId)); return; }
   if (base == "/api/console/stats") { String body = "{\"logCount\":" + String(logSize) + ",\"uptime\":" + String(millis() / 1000) + ",\"wifiSignal\":" + String(wifiHasAddress() ? WiFi.RSSI() : 0) + ",\"http\":{\"requests\":" + String(httpRequests) + ",\"timeouts\":" + String(httpTimeouts) + ",\"rejected\":" + String(httpRejected) + ",\"maxBatch\":" + String(httpMaxBatch) + "},\"system\":{\"wifiConnected\":" + String(wifiHasAddress() ? "true" : "false") + ",\"consoleActive\":true}}"; sendJson(c, body); return; }
   if (base == "/api/console/clear") { logStart = 0; logSize = 0; sendJson(c, "{\"success\":true}"); return; }
   if (base == "/api/all-on" || base == "/api/all-off") { bool state = base == "/api/all-on"; for (uint8_t i = 0; i < STRIP_COUNT; i++) leds[i].enabled = state; logEvent("info", state ? "Minden LED bekapcsolva" : "Minden LED kikapcsolva"); renderAll(true); sendJson(c, statusJson()); return; }

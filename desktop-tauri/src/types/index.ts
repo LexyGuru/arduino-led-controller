@@ -10,7 +10,8 @@ export interface ConnectionConfig {
 export interface LedStrip { id: number; enabled: boolean; brightness: number; effect: number; speed: number; color: [number, number, number]; }
 export interface ArduinoHttpStatus { lastClientIp?: string; lastPath?: string; requests?: number; timeouts?: number; }
 export interface ArduinoStatus { connected: boolean; firmwareVersion?: string; rssi?: number; uptime?: number; freeMemory?: number; currentTime?: string; strips?: LedStrip[]; http?: ArduinoHttpStatus; scheduleCount?: number; }
-export interface ArduinoLog { timestamp: string; type: string; message: string; }
+export interface ArduinoLog { id: number; timestamp: string; type: string; message: string; }
+export interface ArduinoConsoleResponse { lastId: number; logs: ArduinoLog[]; }
 export interface NetworkLog { timestamp: number; endpoint: string; ok: boolean; message: string; }
 export interface ScheduleLed { id: number; enabled: boolean; brightness: number; effect: number; speed: number; color: [number, number, number]; }
 export interface LedSchedule { id: string; day: number; time: string; leds: ScheduleLed[]; }

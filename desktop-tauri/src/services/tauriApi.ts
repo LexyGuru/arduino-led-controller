@@ -1,12 +1,12 @@
 import { invoke } from '@tauri-apps/api/core';
-import type { ArduinoLog, ArduinoStatus, ConnectionConfig, FirmwareStatus, LedSchedule, LedStrip, NetworkLog } from '../types';
+import type { ArduinoConsoleResponse, ArduinoStatus, ConnectionConfig, FirmwareStatus, LedSchedule, LedStrip, NetworkLog } from '../types';
 
 export const tauriApi = {
   loadConfig: () => invoke<ConnectionConfig>('load_config'),
   saveConfig: (config: ConnectionConfig) => invoke<void>('save_config', { config }),
   saveOtaPassword: (password: string) => invoke<void>('save_ota_password', { password }),
   status: () => invoke<ArduinoStatus>('arduino_status'),
-  logs: () => invoke<ArduinoLog[]>('arduino_logs'),
+  logs: (afterId = 0) => invoke<ArduinoConsoleResponse>('arduino_logs', { afterId }),
   networkLogs: () => invoke<NetworkLog[]>('network_logs'),
   setLed: (strip: LedStrip) => invoke('set_led', { id: strip.id, enabled: strip.enabled, brightness: strip.brightness, effect: strip.effect, speed: strip.speed, color: strip.color }),
   loadSchedules: () => invoke<LedSchedule[]>('load_schedules'),

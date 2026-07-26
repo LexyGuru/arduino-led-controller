@@ -1,150 +1,242 @@
-# Arduino LED Controller – GitHub OTA firmware
+# Arduino LED Controller – Proxmox LXC
 
-Ez a repository-csomag az **Arduino UNO R4 WiFi** LED-vezérlő firmware automatikus fordítására és OTA-kiadására készült.
+Node.js alapú Arduino LED-vezérlő és heti időzítő webszerver. Az ütemezéseket
+a szerver tárolja, ezért SD-kártya nélkül is működik.
 
-## Mit csinál automatikusan?
+## Windows, macOS és Linux alkalmazás
 
-Amikor a `main` ágra firmware-módosítás kerül, a GitHub Actions:
+A `desktop/` Electron alkalmazás ugyanazt a kezelőfelületet használja, de a
+saját gépen indít helyi szolgáltatást és közvetlenül az Arduinohoz kapcsolódik.
+Így Proxmox nélkül is használható; az Arduino EEPROM-időzítője a számítógép
+kikapcsolásakor is fut. Az első indításkor a **Konfiguráció** menüben add meg
+az Arduino IP-címét.
 
-1. telepíti az Arduino CLI-t;
-2. telepíti az `arduino:renesas_uno` platformot;
-3. telepíti az `Adafruit NeoPixel` könyvtárat;
-4. lefordítja a firmware-t UNO R4 WiFi célhardverre;
-5. elkészíti a SHA-256 ellenőrzőfájlt;
-6. törli a korábbi `firmware-latest` kiadást és tag-et;
-7. ugyanazon a címen újra létrehozza a legfrissebb kiadást.
-
-A desktop alkalmazás által használt állandó kiadás:
-
-```text
-https://github.com/LexyGuru/arduino-led-controller/releases/tag/firmware-latest
-```
-
-A Release két fájlt tartalmaz:
-
-```text
-ArduinoLedController.ino.bin
-ArduinoLedController.ino.bin.sha256
-```
-
-## Könyvtárszerkezet
-
-```text
-arduino-led-controller/
-├── .github/
-│   └── workflows/
-│       └── firmware-build.yml
-├── firmware/
-│   └── ArduinoLedController/
-│       ├── ArduinoLedController.ino
-│       └── secrets.example.h
-├── .gitignore
-└── README.md
-```
-
-## Első USB-s telepítés
-
-A valódi titkokat tartalmazó fájlt helyben kell létrehozni:
+Fejlesztői indítás:
 
 ```bash
-cd firmware/ArduinoLedController
-cp secrets.example.h secrets.h
+npm install
+npm run desktop:dev
 ```
 
-Ezután töltsd ki a saját adataiddal:
+Telepítőcsomagok készítése az adott rendszeren:
+
+```bash
+npm run desktop:dist
+```
+
+GitHubon egy `desktop-v1.0.0` formátumú tag létrehozása automatikusan legyártja
+a Windows `.exe`, macOS `.dmg`, Linux `.AppImage` és `.deb` csomagokat a
+**Actions** oldalon. A desktop alkalmazás az OTA-jelszót az operációs rendszer
+titkosított tárhelyén tárolja. Windows és Linux kiadásban a hivatalos Arduino
+OTA-feltöltő is a csomag része; az Apple Silicon OTA feltöltő natív
+megvalósítása külön fejlesztési lépés, Intel/Rosetta binárist nem használunk.
+
+### macOS első indítás
+
+A GitHub Release-ből letöltött alkalmazás jelenleg nincs Apple-tanúsítvánnyal
+notarizálva, ezért a macOS első indításkor blokkolhatja vagy „sérült”
+alkalmazásként jelezheti. Ez csak akkor fordulhat elő biztonságosan, ha a fájl
+közvetlenül ennek a projektnek a GitHub **Releases** oldaláról származik.
+
+Húzd az alkalmazást az `Applications` mappába, majd a Terminalban futtasd:
+
+```bash
+xattr -dr com.apple.quarantine "/Applications/Arduino LED Controller.app"
+```
+
+Ez csak az adott alkalmazás macOS karanténjelölését távolítja el. A végleges,
+figyelmeztetésmentes terjesztéshez Apple Developer tanúsítvány és notarizálás
+szükséges.
+
+## Proxmox LXC előkészítése
+
+A Proxmox felületén hozz létre egy **Debian 12** LXC konténert az alábbi javasolt értékekkel:
+
+- 1 CPU mag
+- 512 MB RAM
+- 4 GB lemez
+- hálózat: ugyanazon a LAN-on, ahonnan az Arduino elérhető
+- indítás automatikusan: bekapcsolva
+
+## Telepítés a konténerben
+
+```bash
+apt-get update && apt-get install -y git
+git clone https://github.com/LexyGuru/arduino-led-controller.git /opt/arduino-led-controller
+cd /opt/arduino-led-controller
+ARDUINO_IP=10.0.0.117 bash deploy/install-lxc.sh
+```
+
+Az `ARDUINO_IP` értékét az Arduino tényleges IP-címére cseréld.
+
+Ezután a kezelőfelület címe:
+
+```text
+https://LXC_KONTENER_IP
+```
+
+Az első megnyitásnál minden eszközön fogadd el/telepítsd a Caddy helyi
+tanúsítványát. A tanúsítvány a konténerben itt található:
+
+```text
+/var/lib/caddy/.local/share/caddy/pki/authorities/local/root.crt
+```
+
+Letölthető a telepítés után erről a címről is:
+
+```text
+https://LXC_KONTENER_IP/caddy-root-ca.crt
+```
+
+Így a belépési és OTA-jelszavak HTTPS-en, titkosítva közlekednek a helyi
+hálózaton. Az első látogatáskor a felület adminisztrátori fiók létrehozását
+kéri; további felhasználókat és a szervernaplót a Konfiguráció menüben kezelhet
+az adminisztrátor.
+
+## Hasznos parancsok
+
+```bash
+systemctl status arduino-led-controller
+journalctl -u arduino-led-controller -f
+systemctl restart arduino-led-controller
+```
+
+## Védett Arduino API és távoli elérés
+
+Az Arduino HTTP API-ja nem érhető el közvetlenül a szokásos `/api/...`
+útvonalon. Minden kéréshez kell egy hosszú, véletlen privát útvonal és egy
+külön API-kulcs. Ez csökkenti a véletlen internetes próbálkozásokat, az
+Arduino pedig rossz kérésnél az első HTTP sor után azonnal bontja a
+kapcsolatot.
+
+Első alkalommal az USB-s feltöltés előtt add hozzá a saját, hosszú értékeidet
+a **csak helyben lévő** `firmware/ArduinoLedController/secrets.h` fájlhoz:
 
 ```cpp
-#define WIFI_SSID "SAJAT_WIFI"
-#define WIFI_PASSWORD "SAJAT_WIFI_JELSZO"
-#define OTA_PASSWORD "HOSSZU_RANDOM_OTA_JELSZO"
-#define API_SHARED_SECRET "HOSSZU_RANDOM_API_KULCS"
-#define API_PRIVATE_PATH "/HOSSZU_RANDOM_PRIVAT_UTVONAL"
+#define API_PRIVATE_PATH "/peldaul_egy_hosszu_veletlen_utvonal_2026"
+#define API_SHARED_SECRET "legalabb_32_karakteres_veletlen_api_kulcs"
 ```
 
-A `secrets.h` szerepel a `.gitignore` fájlban, ezért normál esetben nem kerül fel GitHubra.
+A két érték előállításához nyisd meg helyben a
+`tools/api-kulcs-generator.html` fájlt. Az eszköz nem használ internetet és
+nem menti el a generált értékeket.
 
-Az első, személyes adatokat tartalmazó firmware-t **USB-n** kell feltölteni. Ez elmenti a WiFi-, OTA- és API-adatokat az EEPROM-ba. A GitHub Actions által készített publikus OTA-bináris mintaadatokat tartalmaz, ezért nem írja felül az EEPROM-ban tárolt valódi beállításokat.
+Ugyanezeket az értékeket add meg a Proxmox konténerben az
+`/etc/arduino-led-controller.env` fájlban:
 
-## Feltöltés új GitHub repositoryba
+```text
+ARDUINO_API_PATH=/peldaul_egy_hosszu_veletlen_utvonal_2026
+ARDUINO_API_KEY=legalabb_32_karakteres_veletlen_api_kulcs
+```
+
+Ezután indítsd újra a szolgáltatást:
 
 ```bash
-git init
-git branch -M main
-git add .
-git commit -m "Add Arduino firmware OTA build"
-git remote add origin https://github.com/LexyGuru/arduino-led-controller.git
-git push -u origin main
+systemctl restart arduino-led-controller
 ```
 
-Ha a repository már létezik, másold bele vagy egyesítsd a csomag tartalmát, majd:
+A Tauri alkalmazás **Kapcsolat és védelem** részében ugyanezt a privát
+útvonalat és API-kulcsot kell megadni. A kulcs nem jelenik meg sem az Arduino,
+sem az alkalmazás hálózati naplójában.
+
+Ha a routerben később külső `25666` portot irányítasz az Arduino belső `80`
+portjára, a Proxmoxon továbbra is a belső IP-címet és `80`-as portot használd.
+Ez a védelem nem helyettesíti a HTTPS-t vagy a VPN-t; csak átmeneti,
+közvetlen eléréshez készült.
+
+### Hálózati és porttovábbítási térkép
+
+Az eszközöknek azonos otthoni hálózaton **nem kell** porttovábbítás: a
+Proxmox, a böngésző és a Tauri alkalmazás közvetlenül eléri a belső IP-címeket.
+Az Arduino IP-címének érdemes DHCP-foglalást beállítani a routerben, például
+`10.0.0.123` értékre.
+
+| Használat | Routerben szükséges szabály | Cél |
+| --- | --- | --- |
+| Proxmox → Arduino, helyi hálózaton | nincs | Arduino belső IP-je, `80` |
+| Tauri alkalmazás → Arduino, helyi hálózaton | nincs | Arduino belső IP-je, `80` |
+| Böngésző → Proxmox, helyi hálózaton | nincs | LXC belső IP-je, `443` |
+| Távoli böngészős elérés | külső `443/TCP` → LXC `443/TCP` | Proxmox HTTPS felület |
+| Távoli Tauri → Arduino, csak ideiglenesen | külső `25666/TCP` → Arduino `80/TCP` | Arduino védett HTTP API |
+
+Távoli, közvetlen Tauri elérésnél az alkalmazásban a router publikus IP-címét
+vagy dinamikus DNS-nevét és a `25666` portot add meg, a belső hálózaton pedig
+mindig az Arduino belső IP-jét és a `80` portot használd. Egyes routerek nem
+támogatják a saját publikus címükön történő belső tesztet; ezt mobilnetről
+lehet helyesen kipróbálni.
+
+**Ne nyisd ki** az Arduino `3232` OTA-portját, a Proxmox `3000`/`81` portját
+vagy a router adminisztrációs felületét az internet felé. A `25666` csak
+elrejtés, nem HTTPS: a védett útvonal és API-kulcs kötelező, a hosszú távú
+megoldás továbbra is VPN vagy HTTPS relay.
+
+## Automatikus frissítés GitHubról
+
+A telepítő bekapcsol egy óránként futó frissítés-ellenőrzőt. Ha a GitHub `main`
+ágán új verzió van, előbb külön munkakönyvtárban ellenőrzi a Node kódot és
+telepíti a szükséges csomagokat. Csak sikeres ellenőrzés után frissíti az
+alkalmazást és indítja újra a szolgáltatást.
+
+Ellenőrzés és kézi indítás:
 
 ```bash
-git add .
-git commit -m "Add firmware 4.1.3 and automatic OTA release"
-git push origin main
+systemctl status arduino-led-controller-update.timer
+systemctl start arduino-led-controller-update.service
+journalctl -u arduino-led-controller-update.service -n 50
 ```
 
-## GitHub Actions engedély
+Ha a konténerben valaki kézzel módosította a program fájljait, a frissítő
+biztonságból nem írja felül őket.
 
-A repositoryban ellenőrizd:
+## Arduino firmware frissítése a webfelületről
 
-```text
-Settings → Actions → General → Workflow permissions
-```
+A firmware fordítása GitHub Actionsben történik. Sikeres fordítás után a
+bináris és az ellenőrzőösszege automatikusan a nyilvános `firmware-latest`
+GitHub kiadásba kerül. A **Konfiguráció → Arduino firmware** részen a szerver
+onnan tölti le, ellenőrzi, majd az Arduino saját, jelszavas OTA szolgáltatására
+küldi. GitHub token nem szükséges.
 
-A következő legyen kiválasztva:
+Mielőtt az OTA gomb használható, USB-n egyszer fel kell tölteni a 3.1.0 vagy
+újabb firmware-t a saját, nem GitHubra feltöltött `secrets.h` fájloddal. Ez az
+Arduino EEPROM memóriájába menti a WiFi- és OTA-beállításokat; a későbbi
+nyilvános GitHub-bináris ezeket használja, ezért nem választhatja le az
+eszközt a WiFi-ről.
 
-```text
-Read and write permissions
-```
-
-A workflow ugyan `contents: write` jogosultságot kér, de privát vagy korlátozott repository-beállítás esetén a fenti kapcsoló is szükséges lehet.
-
-## Kézi build indítása
-
-A GitHubon:
-
-```text
-Actions → Build and publish latest firmware → Run workflow
-```
-
-## OTA-frissítés
-
-A desktop alkalmazás a `firmware-latest` Release fájljait tölti le, ellenőrzi a SHA-256 összeget, majd az Arduino OTA szolgáltatására küldi a binárist.
-
-A firmware OTA-portja:
-
-```text
-3232
-```
-
-## Fontos biztonsági szabály
-
-Soha ne töltsd fel a valódi `secrets.h` fájlt. Feltöltés előtt ellenőrizheted:
+Egyszeri beállításként csak az Arduino `secrets.h` fájljában lévő OTA jelszót
+add hozzá a Proxmox titkos környezeti fájljához:
 
 ```bash
-git status --ignored
+nano /etc/arduino-led-controller.env
 ```
 
-A fájlnak az ignorált elemek között kell megjelennie.
+```text
+OTA_PASSWORD=az_Arduino_secrets_h_fajljaban_levo_jelszo
+```
 
-## 4.1.3 build-javítás
+Ezután indítsd újra a szolgáltatást:
 
-Az `encodeScheduleHex()` függvényben a hexadecimális karaktertábla neve `HEX_DIGITS`.
-Ez elkerüli az Arduino `Print.h` által definiált `HEX` makróval való névütközést.
+```bash
+systemctl restart arduino-led-controller
+```
 
-## 4.1.3 változások
+A jelszó csak a Proxmox konténerben marad; nem kerül GitHubra és a
+webfelület sem jeleníti meg. Firmware-t csak a **Firmware telepítése** gomb
+indít el, a szerver saját magától nem írja át az Arduino programját.
 
-- Az Arduino 30 másodpercenként ellenőrzi az időzítés alapján elvárt LED-állapotot.
-- Újraindítás vagy eltérő kézi állapot után automatikusan helyreállítja a hét legutóbbi érvényes rekordját.
-- Csak valódi eltérés esetén módosítja a LED-eket és ír naplóbejegyzést.
-- Javítva az Arduino `HEX` makróval ütköző hexadecimális karaktertábla neve.
+## Kézi frissítés GitHubról
 
+```bash
+cd /opt/arduino-led-controller
+git pull
+bash deploy/install-lxc.sh
+```
 
-## 4.1.3
+## Tartós adatok
 
-- Valódi IP-címet ír ki a Serial Monitorban.
-- HTTP API port: 80.
-- OTA port: 65280.
-- mDNS port: 5353.
-- Az `/api/status` tartalmazza a portokat és az OTA állapotát.
+Az időzítések itt tárolódnak, ezért GitHub frissítéskor is megmaradnak:
+
+```text
+/opt/arduino-led-controller/schedules/weekly-led-schedules.json
+```
+
+Az alkalmazásnak folyamatosan futnia kell, hogy a heti időzítések a megadott időpontban végrehajtódjanak.

@@ -492,7 +492,7 @@ async fn confirm_restart(state: &AppState, expected: Option<String>) -> Result<O
 }
 #[tauri::command] fn save_ota_password(app: AppHandle, password: String) -> Result<(), String> { write_ota_password(&app, &password) }
 #[tauri::command] async fn arduino_status(state: State<'_, AppState>) -> Result<Value, String> { get_json(&state, "/api/status").await }
-#[tauri::command] async fn arduino_logs(state: State<'_, AppState>) -> Result<Value, String> { get_json(&state, "/api/console/logs").await }
+#[tauri::command] async fn arduino_logs(state: State<'_, AppState>, after_id: u32) -> Result<Value, String> { get_json(&state, &format!("/api/console/logs?after={after_id}")).await }
 #[tauri::command] fn network_logs(state: State<AppState>) -> Result<Vec<NetworkLog>, String> { Ok(state.network_logs.lock().map_err(|_| "Napló zárolva".to_string())?.clone()) }
 #[tauri::command] async fn set_led(state: State<'_, AppState>, id: u8, enabled: bool, brightness: u8, effect: u8, speed: u8, color: Vec<u8>) -> Result<Value, String> {
     if !(1..=3).contains(&id) || color.len() != 3 || effect > 4 || speed == 0 { return Err("Érvénytelen LED-beállítás.".into()); }
