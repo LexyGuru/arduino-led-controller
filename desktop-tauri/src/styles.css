@@ -23,3 +23,5 @@
 }
 
 .console-warning { margin: 12px 0; padding: 10px 12px; border: 1px solid rgba(255, 173, 51, .45); border-radius: 10px; background: rgba(255, 173, 51, .08); color: #ffd18a; font-size: .88rem; overflow-wrap: anywhere; }
+
+.checkbox-label{display:flex!important;flex-direction:row!important;align-items:center;gap:10px}.checkbox-label input{width:18px;height:18px;margin:0}

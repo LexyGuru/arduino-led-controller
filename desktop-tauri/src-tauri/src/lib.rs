@@ -5,7 +5,7 @@ use std::{
     fs,
     env,
     io::{ErrorKind, Read, Write},
-    net::{TcpStream, ToSocketAddrs},
+    net::{Ipv4Addr, TcpStream, ToSocketAddrs},
     path::{Path, PathBuf},
     process::Command,
     sync::{
@@ -18,10 +18,15 @@ use std::{
 use tauri::{AppHandle, Manager, State};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", default)]
 struct Config {
+    // Távoli/DDNS HTTP elérés. Helyi hálózaton nem ezt használjuk elsőként.
     arduino_ip: String,
     arduino_port: u16,
+    // Közvetlen LAN-cím. Ez kerüli el a router NAT-loopback/hairpin hibáit.
+    local_arduino_ip: String,
+    local_arduino_port: u16,
+    prefer_local: bool,
     arduino_api_path: String,
     arduino_api_key: String,
 }
@@ -29,8 +34,11 @@ struct Config {
 impl Default for Config {
     fn default() -> Self {
         Self {
-            arduino_ip: "10.0.0.117".into(),
+            arduino_ip: "10.0.0.123".into(),
             arduino_port: 80,
+            local_arduino_ip: "10.0.0.123".into(),
+            local_arduino_port: 80,
+            prefer_local: true,
             arduino_api_path: String::new(),
             arduino_api_key: String::new(),
         }
@@ -154,6 +162,8 @@ struct AppState {
     // Minden Arduino-kérést egyetlen sorba állítunk.
     arduino_request_lock: Arc<Mutex<()>>,
     ota_in_progress: Arc<AtomicBool>,
+    // A státuszválaszból megtanult belső IP-cím, csak az aktuális futásra.
+    last_known_local_ip: Mutex<Option<String>>,
 }
 
 fn app_dir(app: &AppHandle) -> Result<PathBuf, String> {
@@ -170,13 +180,24 @@ fn firmware_dir(app: &AppHandle) -> Result<PathBuf, String> {
     Ok(p)
 }
 
-fn validate_config(c: &Config) -> Result<(), String> {
-    let host = c.arduino_ip.trim();
-    if host.is_empty() { return Err("Az Arduino cím nem lehet üres.".into()); }
+fn validate_host(host: &str, label: &str) -> Result<(), String> {
+    if host.is_empty() { return Ok(()); }
     if host.contains("://") || host.contains('/') || host.contains(' ') || host.len() > 253 {
-        return Err("Csak IP-címet vagy DDNS-nevet adj meg, protokoll nélkül.".into());
+        return Err(format!("A(z) {label} mezőben csak IP-címet vagy DDNS-nevet adj meg, protokoll nélkül."));
     }
-    if c.arduino_port == 0 { return Err("Érvénytelen HTTP-port.".into()); }
+    Ok(())
+}
+
+fn validate_config(c: &Config) -> Result<(), String> {
+    let remote = c.arduino_ip.trim();
+    let local = c.local_arduino_ip.trim();
+    if remote.is_empty() && local.is_empty() {
+        return Err("Legalább a helyi vagy a távoli Arduino-címet add meg.".into());
+    }
+    validate_host(remote, "távoli Arduino-cím")?;
+    validate_host(local, "helyi Arduino-cím")?;
+    if !remote.is_empty() && c.arduino_port == 0 { return Err("Érvénytelen távoli HTTP-port.".into()); }
+    if !local.is_empty() && c.local_arduino_port == 0 { return Err("Érvénytelen helyi HTTP-port.".into()); }
     Ok(())
 }
 
@@ -200,6 +221,14 @@ fn protected_path(c: &Config, path: &str) -> Result<String, String> {
 fn add_log(state: &AppState, endpoint: &str, ok: bool, message: String) {
     let timestamp = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs();
     if let Ok(mut logs) = state.network_logs.lock() {
+        // Az ismétlődő sikeres polling ne árassza el a hálózati naplót.
+        if ok {
+            if let Some(last) = logs.last() {
+                if last.ok && last.endpoint == endpoint && last.message == message && timestamp.saturating_sub(last.timestamp) < 30 {
+                    return;
+                }
+            }
+        }
         logs.push(NetworkLog { timestamp, endpoint: endpoint.into(), ok, message });
         let excess = logs.len().saturating_sub(200);
         if excess > 0 { logs.drain(0..excess); }
@@ -207,7 +236,6 @@ fn add_log(state: &AppState, endpoint: &str, ok: bool, message: String) {
 }
 
 const HTTP_MAX_RESPONSE_BYTES: usize = 128 * 1024;
-const HTTP_REQUEST_ATTEMPTS: u8 = 3;
 
 fn parse_content_length(headers: &str) -> Option<usize> {
     headers.lines().find_map(|line| {
@@ -218,6 +246,46 @@ fn parse_content_length(headers: &str) -> Option<usize> {
             None
         }
     })
+}
+
+fn is_private_or_local_ipv4(value: &str) -> bool {
+    value
+        .parse::<Ipv4Addr>()
+        .map(|ip| ip.is_private() || ip.is_loopback() || ip.is_link_local())
+        .unwrap_or(false)
+}
+
+#[derive(Debug, Clone)]
+struct HttpTarget {
+    host: String,
+    port: u16,
+    label: &'static str,
+}
+
+fn push_target(targets: &mut Vec<HttpTarget>, host: &str, port: u16, label: &'static str) {
+    let host = host.trim();
+    if host.is_empty() || port == 0 { return; }
+    if targets.iter().any(|item| item.host.eq_ignore_ascii_case(host) && item.port == port) { return; }
+    targets.push(HttpTarget { host: host.to_string(), port, label });
+}
+
+fn connection_targets(config: &Config, learned_local_ip: Option<&str>) -> Vec<HttpTarget> {
+    let mut local = Vec::new();
+    push_target(&mut local, &config.local_arduino_ip, config.local_arduino_port, "helyi");
+    if let Some(ip) = learned_local_ip {
+        push_target(&mut local, ip, config.local_arduino_port.max(1), "felismert helyi");
+    }
+
+    let mut remote = Vec::new();
+    push_target(&mut remote, &config.arduino_ip, config.arduino_port, "távoli/DDNS");
+
+    if config.prefer_local {
+        local.extend(remote);
+        local
+    } else {
+        remote.extend(local);
+        remote
+    }
 }
 
 fn raw_get_once(c: &Config, path: &str, timeout: Duration) -> Result<Value, String> {
@@ -251,7 +319,7 @@ fn raw_get_once(c: &Config, path: &str, timeout: Duration) -> Result<Value, Stri
 
     let request_path = protected_path(c, path)?;
     let request = format!(
-        "GET {request_path} HTTP/1.1\r\nHost: {host}:{}\r\nUser-Agent: Arduino-LED-Controller-Tauri/3.0.9\r\nAccept: application/json\r\nConnection: close\r\n\r\n",
+        "GET {request_path} HTTP/1.1\r\nHost: {host}:{}\r\nUser-Agent: Arduino-LED-Controller-Tauri/3.0.10\r\nAccept: application/json\r\nConnection: close\r\n\r\n",
         c.arduino_port
     );
     stream
@@ -267,10 +335,7 @@ fn raw_get_once(c: &Config, path: &str, timeout: Duration) -> Result<Value, Stri
             Ok(read) => {
                 response.extend_from_slice(&buffer[..read]);
                 if response.len() > HTTP_MAX_RESPONSE_BYTES {
-                    return Err(format!(
-                        "Az Arduino HTTP-válasza túl nagy (>{} bájt).",
-                        HTTP_MAX_RESPONSE_BYTES
-                    ));
+                    return Err(format!("Az Arduino HTTP-válasza túl nagy (>{HTTP_MAX_RESPONSE_BYTES} bájt)."));
                 }
             }
             Err(error) if error.kind() == ErrorKind::Interrupted => continue,
@@ -284,8 +349,6 @@ fn raw_get_once(c: &Config, path: &str, timeout: Duration) -> Result<Value, Stri
                 if response.is_empty() {
                     return Err(format!("Az Arduino nem küldött teljes HTTP-választ: {error}"));
                 }
-                // Egyes routerek a teljes válasz után FIN helyett TCP resetet adnak.
-                // Ha már érkezett adat, azt lent fejléc- és Content-Length alapján ellenőrizzük.
                 break;
             }
             Err(error) => return Err(format!("Arduino válaszolvasási hiba: {error}")),
@@ -293,10 +356,7 @@ fn raw_get_once(c: &Config, path: &str, timeout: Duration) -> Result<Value, Stri
     }
 
     if response.is_empty() {
-        return Err(
-            "Az Arduino üres választ adott. Ellenőrizd a privát API-útvonalat és az API-kulcsot."
-                .into(),
-        );
+        return Err("Az Arduino üres választ adott.".into());
     }
 
     let split = response
@@ -317,97 +377,73 @@ fn raw_get_once(c: &Config, path: &str, timeout: Duration) -> Result<Value, Stri
     let mut body = &response[split + 4..];
     if let Some(expected) = parse_content_length(&headers) {
         if body.len() < expected {
-            return Err(format!(
-                "Az Arduino csonka HTTP-választ adott: {} / {} bájt érkezett.",
-                body.len(), expected
-            ));
+            return Err(format!("Az Arduino csonka HTTP-választ adott: {} / {} bájt érkezett.", body.len(), expected));
         }
         body = &body[..expected];
     }
 
-    let body = body
-        .iter()
-        .copied()
-        .skip_while(|byte| byte.is_ascii_whitespace())
-        .collect::<Vec<_>>();
+    let body = body.iter().copied().skip_while(|byte| byte.is_ascii_whitespace()).collect::<Vec<_>>();
     if body.is_empty() {
         return Err("Az Arduino HTTP-válaszának törzse üres volt.".into());
     }
 
     serde_json::from_slice(&body).map_err(|error| {
-        let preview = String::from_utf8_lossy(&body)
-            .chars()
-            .take(160)
-            .collect::<String>();
+        let preview = String::from_utf8_lossy(&body).chars().take(160).collect::<String>();
         format!("Hibás vagy csonka Arduino JSON-válasz: {error}. Részlet: {preview}")
     })
-}
-
-fn raw_get_with_retry(
-    c: &Config,
-    path: &str,
-    timeout: Duration,
-) -> Result<(Value, u8), String> {
-    let mut errors = Vec::new();
-    for attempt in 1..=HTTP_REQUEST_ATTEMPTS {
-        match raw_get_once(c, path, timeout) {
-            Ok(value) => return Ok((value, attempt)),
-            Err(error) => {
-                errors.push(format!("{attempt}. próbálkozás: {error}"));
-                if attempt < HTTP_REQUEST_ATTEMPTS {
-                    thread::sleep(Duration::from_millis(if attempt == 1 { 180 } else { 420 }));
-                }
-            }
-        }
-    }
-    Err(format!(
-        "Az Arduino-kérés {} próbálkozás után sem sikerült. {}",
-        HTTP_REQUEST_ATTEMPTS,
-        errors.join(" | ")
-    ))
 }
 
 async fn get_json(state: &AppState, path: &str) -> Result<Value, String> {
     if state.ota_in_progress.load(Ordering::SeqCst) {
         return Err("OTA-frissítés folyamatban; az automatikus Arduino-lekérések szünetelnek.".into());
     }
-    let config = state
-        .config
-        .lock()
-        .map_err(|_| "Beállítás zárolva".to_string())?
-        .clone();
-    let endpoint = format!(
-        "http://{}:{}{}",
-        config.arduino_ip, config.arduino_port, path
-    );
+    let config = state.config.lock().map_err(|_| "Beállítás zárolva".to_string())?.clone();
+    let learned_local = state.last_known_local_ip.lock().ok().and_then(|value| value.clone());
+    let targets = connection_targets(&config, learned_local.as_deref());
+    if targets.is_empty() { return Err("Nincs használható Arduino-cím beállítva.".into()); }
+
     let request_path = path.to_string();
     let request_lock = Arc::clone(&state.arduino_request_lock);
+    let base_config = config.clone();
 
     let result = tauri::async_runtime::spawn_blocking(move || {
-        let _guard = request_lock
-            .lock()
-            .map_err(|_| "Az Arduino kérési sor zárolása megsérült.".to_string())?;
-        raw_get_with_retry(&config, &request_path, Duration::from_secs(3))
-    })
-    .await;
+        let _guard = request_lock.lock().map_err(|_| "Az Arduino kérési sor zárolása megsérült.".to_string())?;
+        let mut errors = Vec::new();
+        for target in targets {
+            let mut target_config = base_config.clone();
+            target_config.arduino_ip = target.host.clone();
+            target_config.arduino_port = target.port;
+            // LAN-on gyorsan hibázzunk; DDNS-en se tartsuk fel hosszú ideig az egész alkalmazást.
+            let timeout = if is_private_or_local_ipv4(&target.host) { Duration::from_millis(1200) } else { Duration::from_millis(2200) };
+            match raw_get_once(&target_config, &request_path, timeout) {
+                Ok(value) => {
+                    let endpoint = format!("http://{}:{}{}", target.host, target.port, request_path);
+                    return Ok((value, endpoint, target.label));
+                }
+                Err(error) => errors.push(format!("{} {}:{}: {}", target.label, target.host, target.port, error)),
+            }
+        }
+        Err(format!("Az Arduino egyik beállított címen sem érhető el. {}", errors.join(" | ")))
+    }).await;
 
     match result {
-        Ok(Ok((value, attempts))) => {
-            let message = if attempts == 1 {
-                "Sikeres kérés".to_string()
-            } else {
-                format!("Sikeres kérés a(z) {attempts}. próbálkozásra")
-            };
-            add_log(state, &endpoint, true, message);
+        Ok(Ok((value, endpoint, label))) => {
+            if path.starts_with("/api/status") {
+                if let Some(ip) = value.get("ipAddress").and_then(Value::as_str).filter(|ip| is_private_or_local_ipv4(ip)) {
+                    if let Ok(mut cached) = state.last_known_local_ip.lock() { *cached = Some(ip.to_string()); }
+                }
+            }
+            add_log(state, &endpoint, true, format!("Sikeres kérés ({label})"));
             Ok(value)
         }
         Ok(Err(error)) => {
+            let endpoint = format!("Arduino API: {path}");
             add_log(state, &endpoint, false, error.clone());
             Err(error)
         }
         Err(error) => {
             let message = format!("Arduino háttérfeladat hiba: {error}");
-            add_log(state, &endpoint, false, message.clone());
+            add_log(state, &format!("Arduino API: {path}"), false, message.clone());
             Err(message)
         }
     }
@@ -731,6 +767,7 @@ async fn confirm_restart(state: &AppState, expected: Option<String>) -> Result<O
     validate_config(&config)?;
     fs::write(config_path(&app)?, serde_json::to_vec_pretty(&config).map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
     *state.config.lock().map_err(|_| "Beállítás zárolva".to_string())? = config;
+    if let Ok(mut cached) = state.last_known_local_ip.lock() { *cached = None; }
     Ok(())
 }
 #[tauri::command] fn save_ota_password(app: AppHandle, password: String) -> Result<(), String> { write_ota_password(&app, &password) }
@@ -927,7 +964,7 @@ async fn firmware_update_inner(
         .map_err(|e| e.to_string())?;
     let firmware = client
         .get(&artifact.download_url)
-        .header("User-Agent", "arduino-led-controller-tauri/3.0.9")
+        .header("User-Agent", "arduino-led-controller-tauri/3.0.10")
         .send()
         .await
         .map_err(|e| format!("Firmware letöltési hiba: {e}"))?
@@ -942,7 +979,7 @@ async fn firmware_update_inner(
 
     let checksum_text = client
         .get(&artifact.checksum_url)
-        .header("User-Agent", "arduino-led-controller-tauri/3.0.9")
+        .header("User-Agent", "arduino-led-controller-tauri/3.0.10")
         .send()
         .await
         .map_err(|e| format!("Checksum letöltési hiba: {e}"))?
@@ -1118,8 +1155,7 @@ mod tests {
         let config = Config {
             arduino_ip: "lexyguruhome.ddns.net".into(),
             arduino_port: 25666,
-            arduino_api_path: String::new(),
-            arduino_api_key: String::new(),
+            ..Config::default()
         };
         let status = serde_json::json!({
             "ipAddress": "10.0.0.123",
@@ -1145,6 +1181,7 @@ pub fn run() {
                 firmware_status: Mutex::new(FirmwareStatus::default()),
                 arduino_request_lock: Arc::new(Mutex::new(())),
                 ota_in_progress: Arc::new(AtomicBool::new(false)),
+                last_known_local_ip: Mutex::new(None),
             });
             Ok(())
         })

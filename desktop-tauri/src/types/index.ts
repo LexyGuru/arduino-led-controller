@@ -1,8 +1,13 @@
 export type PageId = 'dashboard' | 'leds' | 'schedules' | 'firmware' | 'logs' | 'settings';
 
 export interface ConnectionConfig {
+  /** Távoli/DDNS HTTP elérés. */
   arduinoIp: string;
   arduinoPort: number;
+  /** Elsődleges, közvetlen LAN elérés. */
+  localArduinoIp: string;
+  localArduinoPort: number;
+  preferLocal: boolean;
   arduinoApiPath: string;
   arduinoApiKey: string;
 }

@@ -14,7 +14,7 @@ import type { PageId } from './types';
 export default function App() {
   const [page, setPage] = useState<PageId>('dashboard');
   const [appVersion, setAppVersion] = useState('…');
-  const c = useController();
+  const c = useController(page);
 
   useEffect(() => {
     void getVersion().then(setAppVersion).catch(() => setAppVersion('ismeretlen'));

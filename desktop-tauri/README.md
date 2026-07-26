@@ -1,4 +1,4 @@
-# Arduino LED Controller Desktop v3.0.9
+# Arduino LED Controller Desktop v3.0.10
 
 Önálló React + Tauri + Rust asztali alkalmazás Arduino UNO R4 WiFi LED-vezérléshez. Közvetlenül az Arduinóhoz kapcsolódik; Node.js vagy LXC köztes szerver nem szükséges.
 
@@ -95,6 +95,20 @@ A workflow szándékosan nem használ Node/npm cache-t. A repository gyökerébe
 - Nincs duplikáció, és legfeljebb 500 sor marad a felületen.
 - A konzol USB-s soros kapcsolat nélkül, WiFi-n keresztül működik.
 
+
+
+## 3.0.10 – helyi kapcsolat, DDNS-tartalék és terhelésvédelem
+
+- Helyi hálózaton elsőként a közvetlen `10.0.0.123:80` címet használja.
+- A DDNS-cím csak tartalék, így a NAT-loopback időtúllépése nem blokkolja az alkalmazást.
+- Nincs háromszoros, hosszú DDNS-újrapróbálás.
+- A konzol csak a Naplók oldalon, 5 másodpercenként frissül.
+- Kapcsolati hiba után automatikus terhelésvédelmi szünet lép életbe.
+- Az induláskori, több tucat kérésből álló teljes Arduino-időzítés-beolvasás megszűnt.
+- A hálózati napló összevonja az ismétlődő sikeres polling sorokat.
+- Az OTA továbbra is a státusz API-ban visszaadott belső IP-címet és OTA-portot használja.
+
+Részletesen: `V3.0.10_FIXES.md`.
 
 ## 3.0.9 – stabil Arduino-kapcsolat, konzol és OTA
 
