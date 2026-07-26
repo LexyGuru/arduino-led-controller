@@ -13,7 +13,7 @@
 #include <time.h>
 #include "secrets.h"
 
-#define FIRMWARE_VERSION "4.1.9"
+#define FIRMWARE_VERSION "4.1.10"
 #define DEVICE_NAME "arduino-led-controller"
 #ifndef API_SHARED_SECRET
 #define API_SHARED_SECRET "CHANGE_THIS_TO_A_LONG_RANDOM_API_SECRET"
@@ -49,6 +49,7 @@ constexpr uint16_t API_SETTINGS_VERSION = 1;
 // csak sorban dolgozhatja fel őket. Egy körben ennyit ürítünk ki a várakozó
 // sorból, hogy a Proxmox és az asztali alkalmazás ne akadályozza egymást.
 constexpr uint8_t HTTP_CLIENTS_PER_LOOP = 4;
+constexpr uint8_t CONSOLE_LOGS_PER_RESPONSE = 12;
 constexpr unsigned long HTTP_FIRST_BYTE_TIMEOUT = 250;
 constexpr unsigned long HTTP_READ_TIMEOUT = 200;
 constexpr uint32_t SCHEDULE_MAGIC = 0x53434831UL; // "SCH1"
@@ -505,31 +506,102 @@ String statusJson() {
   String out = "{\"connected\":" + String(wifiHasAddress() ? "true" : "false") + ",\"timesynced\":" + String(timeSynced ? "true" : "false");
   out += ",\"deviceName\":\"" DEVICE_NAME "\",\"hostname\":\"\",\"localHostname\":\"\",\"ipAddress\":\"" + String(ipText) + "\",\"mdnsEnabled\":false";
   out += ",\"networkConfigStored\":" + String(networkSettingsStored ? "true" : "false");
-  out += ",\"scheduler\":\"arduino-eeprom\",\"scheduleCount\":" + String(scheduleCount) + ",\"firmwareVersion\":\"" FIRMWARE_VERSION "\",\"httpPort\":" + String(HTTP_API_PORT) + ",\"otaPort\":" + String(OTA_UPLOAD_PORT) + ",\"mdnsPort\":" + String(MDNS_PORT) + ",\"otaEnabled\":" + String(otaReady ? "true" : "false") + ",\"otaPasswordConfigured\":" + String(networkSettings.otaPassword[0] ? "true" : "false") + ",\"apiProtected\":" + String(apiSettingsStored ? "true" : "false") + ",\"matrixEnabled\":true,\"pirSensorsEnabled\":" + String(ENABLE_PIR_SENSORS ? "true" : "false") + ",\"physicalButtonsEnabled\":" + String(ENABLE_PHYSICAL_BUTTONS ? "true" : "false") + ",\"uptime\":" + String(millis() / 1000) + ",\"rssi\":" + String(wifiHasAddress() ? WiFi.RSSI() : 0) + ",\"http\":{\"requests\":" + String(httpRequests) + ",\"timeouts\":" + String(httpTimeouts) + ",\"rejected\":" + String(httpRejected) + ",\"maxBatch\":" + String(httpMaxBatch) + ",\"lastClientIp\":\"" + escapeJson(lastHttpClientIp) + "\",\"lastPath\":\"" + escapeJson(lastHttpPath) + "\",\"lastClientAge\":" + String(lastHttpClientAt ? (millis() - lastHttpClientAt) / 1000 : 0) + "},\"strips\":[";
+  out += ",\"scheduler\":\"arduino-eeprom\",\"scheduleCount\":" + String(scheduleCount) + ",\"consoleLogCount\":" + String(logSize) + ",\"consoleLastId\":" + String(nextLogId ? nextLogId - 1 : 0) + ",\"firmwareVersion\":\"" FIRMWARE_VERSION "\",\"httpPort\":" + String(HTTP_API_PORT) + ",\"otaPort\":" + String(OTA_UPLOAD_PORT) + ",\"mdnsPort\":" + String(MDNS_PORT) + ",\"otaEnabled\":" + String(otaReady ? "true" : "false") + ",\"otaPasswordConfigured\":" + String(networkSettings.otaPassword[0] ? "true" : "false") + ",\"apiProtected\":" + String(apiSettingsStored ? "true" : "false") + ",\"matrixEnabled\":true,\"pirSensorsEnabled\":" + String(ENABLE_PIR_SENSORS ? "true" : "false") + ",\"physicalButtonsEnabled\":" + String(ENABLE_PHYSICAL_BUTTONS ? "true" : "false") + ",\"uptime\":" + String(millis() / 1000) + ",\"rssi\":" + String(wifiHasAddress() ? WiFi.RSSI() : 0) + ",\"http\":{\"requests\":" + String(httpRequests) + ",\"timeouts\":" + String(httpTimeouts) + ",\"rejected\":" + String(httpRejected) + ",\"maxBatch\":" + String(httpMaxBatch) + ",\"lastClientIp\":\"" + escapeJson(lastHttpClientIp) + "\",\"lastPath\":\"" + escapeJson(lastHttpPath) + "\",\"lastClientAge\":" + String(lastHttpClientAt ? (millis() - lastHttpClientAt) / 1000 : 0) + "},\"strips\":[";
   for (uint8_t i = 0; i < STRIP_COUNT; i++) { if (i) out += ','; out += "{\"id\":" + String(i + 1) + ",\"enabled\":" + String(leds[i].enabled ? "true" : "false") + ",\"brightness\":" + String(leds[i].brightness) + ",\"effect\":" + String(leds[i].effect) + ",\"speed\":" + String(leds[i].speed) + ",\"color\":[" + String(leds[i].red) + ',' + String(leds[i].green) + ',' + String(leds[i].blue) + "]}"; }
   return out + "]}";
 }
-String logsJson(uint32_t afterId = 0) {
+size_t decimalLength(uint32_t value) {
+  size_t length = 1;
+  while (value >= 10) { value /= 10; length++; }
+  return length;
+}
+
+size_t escapedJsonLength(const char* source) {
+  size_t length = 0;
+  if (!source) return 0;
+  while (*source) {
+    if (*source == '"' || *source == '\\') length++;
+    length++;
+    source++;
+  }
+  return length;
+}
+
+void printJsonEscaped(WiFiClient& client, const char* source) {
+  if (!source) return;
+  while (*source) {
+    if (*source == '"' || *source == '\\') client.print('\\');
+    client.print(*source++);
+  }
+}
+
+size_t consoleLogJsonLength(const Log& entry) {
+  return strlen("{\"id\":") + decimalLength(entry.id)
+    + strlen(",\"timestamp\":\"") + decimalLength(entry.timestamp) + strlen("s\"")
+    + strlen(",\"type\":\"") + escapedJsonLength(entry.type) + strlen("\"")
+    + strlen(",\"message\":\"") + escapedJsonLength(entry.message) + strlen("\"}");
+}
+
+// A konzolvalaszt kozvetlenul a TCP-kapcsolatra irjuk. A korabbi megoldas
+// 6200 bajtos osszefuggo String puffert probalt lefoglalni, ami az UNO R4
+// WiFi RAM-jaban a WiFi, OTA, utemezesek es naplopuffer mellett idonkent
+// sikertelen volt. Ilyenkor ervenyes, de ures JSON ment vissza a kliensnek.
+void sendLogsJson(WiFiClient& client, uint32_t afterId = 0) {
   const uint32_t currentLastId = nextLogId ? nextLogId - 1 : 0;
   // Arduino ujrainditasakor a sorszam 1-tol indul. Ha a kliens regi,
-  // nagyobb sorszamot kuld, adjuk vissza az aktualis teljes puffert.
+  // nagyobb sorszamot kuld, kezdjuk ujra az aktualis puffer elejerol.
   if (afterId > currentLastId) afterId = 0;
-  String out;
-  if (!out.reserve(6200)) return "{\"lastId\":0,\"logs\":[]}";
-  out = "{\"lastId\":" + String(nextLogId ? nextLogId - 1 : 0) + ",\"logs\":[";
-  bool first = true;
-  for (uint8_t i = 0; i < logSize; i++) {
-    Log& e = logs[(logStart + i) % 50];
-    if (e.id <= afterId) continue;
-    if (!first) out += ',';
-    first = false;
-    out += "{\"id\":" + String(e.id)
-      + ",\"timestamp\":\"" + String(e.timestamp) + "s\""
-      + ",\"type\":\"" + e.type + "\""
-      + ",\"message\":\"" + escapeJson(e.message) + "\"}";
+
+  // Egyszerre csak nehany sort kuldunk. A Tauri a visszakapott lastId-t a
+  // kovetkezo kereskor after ertekkent hasznalja, igy gyorsan felzarkozik,
+  // de egyetlen valasz sem lesz indokolatlanul nagy.
+  uint32_t responseLastId = afterId;
+  uint8_t responseCount = 0;
+  for (uint8_t i = 0; i < logSize && responseCount < CONSOLE_LOGS_PER_RESPONSE; i++) {
+    const Log& entry = logs[(logStart + i) % 50];
+    if (entry.id <= afterId) continue;
+    responseLastId = entry.id;
+    responseCount++;
   }
-  out += "]}";
-  return out;
+
+  size_t bodyLength = strlen("{\"lastId\":") + decimalLength(responseLastId) + strlen(",\"logs\":[");
+  bool first = true;
+  uint8_t included = 0;
+  for (uint8_t i = 0; i < logSize && included < responseCount; i++) {
+    const Log& entry = logs[(logStart + i) % 50];
+    if (entry.id <= afterId) continue;
+    if (!first) bodyLength++;
+    bodyLength += consoleLogJsonLength(entry);
+    first = false;
+    included++;
+  }
+  bodyLength += strlen("]}");
+
+  client.print("HTTP/1.1 200 OK\r\n");
+  client.print("Content-Type: application/json; charset=utf-8\r\n");
+  client.print("Connection: close\r\n");
+  client.print("Cache-Control: no-store\r\n");
+  client.print("Content-Length: ");
+  client.print((unsigned long)bodyLength);
+  client.print("\r\n\r\n");
+
+  client.print("{\"lastId\":");
+  client.print(responseLastId);
+  client.print(",\"logs\":[");
+  first = true;
+  included = 0;
+  for (uint8_t i = 0; i < logSize && included < responseCount; i++) {
+    const Log& entry = logs[(logStart + i) % 50];
+    if (entry.id <= afterId) continue;
+    if (!first) client.print(',');
+    first = false;
+    client.print("{\"id\":"); client.print(entry.id);
+    client.print(",\"timestamp\":\""); client.print(entry.timestamp); client.print("s\"");
+    client.print(",\"type\":\""); printJsonEscaped(client, entry.type); client.print('"');
+    client.print(",\"message\":\""); printJsonEscaped(client, entry.message); client.print("\"}");
+    included++;
+  }
+  client.print("]}");
 }
 
 void sendJson(WiFiClient& c, const String& body, int code = 200) { c.print(code == 200 ? "HTTP/1.1 200 OK\r\n" : "HTTP/1.1 400 Bad Request\r\n"); c.print("Content-Type: application/json; charset=utf-8\r\nConnection: close\r\nContent-Length: "); c.print(body.length()); c.print("\r\n\r\n"); c.print(body); }
@@ -587,7 +659,7 @@ void route(WiFiClient& c, const String& path) {
   if (base == "/api/schedules/chunk") { String query = queryAt < 0 ? "" : path.substring(queryAt + 1); int index = valueInt(query, "index", -1, -1, SCHEDULE_MAX - 1), total = valueInt(query, "total", 0, 0, SCHEDULE_MAX); int payloadAt = query.indexOf("payload="); if (index < 0 || total < 1 || index >= total || payloadAt < 0 || !decodeScheduleHex(query.substring(payloadAt + 8), schedules[index])) { sendJson(c, "{\"error\":\"Ervenytelen idozitesi reszlet\"}", 400); return; } if (index + 1 == total) { saveSchedules(total); char message[64]; snprintf(message, sizeof(message), "Arduino idozites mentve: %d bejegyzes", scheduleCount); logEvent("success", message); } sendJson(c, "{\"success\":true,\"count\":" + String(index + 1 == total ? scheduleCount : 0) + "}"); return; }
   if (base == "/api/schedules/clear") { memset(schedules, 0, sizeof(schedules)); saveSchedules(0); logEvent("info", "Arduino idozites torolve"); sendJson(c, "{\"success\":true}"); return; }
   if (base == "/api/status" || base == "/api/led/status") { sendJson(c, statusJson()); return; }
-  if (base == "/api/console/logs") { String query = queryAt < 0 ? "" : path.substring(queryAt + 1); uint32_t afterId = (uint32_t)valueInt(query, "after", 0, 0, 2147483647); sendJson(c, logsJson(afterId)); return; }
+  if (base == "/api/console/logs") { String query = queryAt < 0 ? "" : path.substring(queryAt + 1); uint32_t afterId = (uint32_t)valueInt(query, "after", 0, 0, 2147483647); sendLogsJson(c, afterId); return; }
   if (base == "/api/console/stats") { String body = "{\"logCount\":" + String(logSize) + ",\"uptime\":" + String(millis() / 1000) + ",\"wifiSignal\":" + String(wifiHasAddress() ? WiFi.RSSI() : 0) + ",\"http\":{\"requests\":" + String(httpRequests) + ",\"timeouts\":" + String(httpTimeouts) + ",\"rejected\":" + String(httpRejected) + ",\"maxBatch\":" + String(httpMaxBatch) + "},\"system\":{\"wifiConnected\":" + String(wifiHasAddress() ? "true" : "false") + ",\"consoleActive\":true}}"; sendJson(c, body); return; }
   if (base == "/api/console/clear") { logStart = 0; logSize = 0; sendJson(c, "{\"success\":true}"); return; }
   if (base == "/api/all-on" || base == "/api/all-off") { bool state = base == "/api/all-on"; for (uint8_t i = 0; i < STRIP_COUNT; i++) leds[i].enabled = state; logEvent("info", state ? "Minden LED bekapcsolva" : "Minden LED kikapcsolva"); renderAll(true); sendJson(c, statusJson()); return; }
