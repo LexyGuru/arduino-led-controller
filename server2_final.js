@@ -968,6 +968,9 @@ async function getFirmwareStatus() {
     const status = await arduino.get('/api/status');
     installedVersion = status.firmwareVersion || null;
     networkConfigStored = status.networkConfigStored === true;
+    firmwareUpdate.deviceHostname = status.localHostname || (status.hostname ? `${status.hostname}.local` : null);
+    firmwareUpdate.deviceIpAddress = status.ipAddress || null;
+    firmwareUpdate.mdnsEnabled = status.mdnsEnabled === true;
     arduinoOnline = true;
   } catch (error) {
     logger.warn(`Firmware állapot: Arduino nem elérhető: ${error.message}`);
@@ -993,6 +996,23 @@ async function getFirmwareStatus() {
   };
 }
 
+function normalizeMdnsHostname(value) {
+  const raw = String(value || '').trim().toLowerCase();
+  if (!raw) return null;
+  const hostname = raw.endsWith('.local') ? raw : `${raw}.local`;
+  if (!/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*\.local$/.test(hostname)) return null;
+  return hostname;
+}
+
+async function resolveArduinoOtaTarget() {
+  const status = await arduino.get('/api/status');
+  const mdnsTarget = normalizeMdnsHostname(status.localHostname || status.hostname);
+  if (status.mdnsEnabled === true && mdnsTarget) {
+    return { address: mdnsTarget, source: 'mdns', status };
+  }
+  return { address: String(config.arduinoIP), source: 'configured', status };
+}
+
 async function downloadAndApplyFirmware() {
   const startedAt = new Date().toISOString();
   setFirmwareUpdate('checking', 'A GitHub firmware-csomag ellenőrzése…', { startedAt, finishedAt: null, artifact: null });
@@ -1016,9 +1036,14 @@ async function downloadAndApplyFirmware() {
   if (artifact.digest.startsWith('sha256:') && actual.toLowerCase() !== artifact.digest.slice(7).toLowerCase()) throw new Error('A GitHub firmware-digest ellenőrzése hibás.');
   await fs.writeFile(binaryPath, firmware, { mode: 0o600 });
 
-  setFirmwareUpdate('uploading', 'Firmware átvitele az Arduino OTA szolgáltatására…', { artifact });
+  const otaTarget = await resolveArduinoOtaTarget();
+  setFirmwareUpdate('uploading', `Firmware átvitele: ${otaTarget.address}:${otaTarget.status.otaPort || 65280} (${otaTarget.source === 'mdns' ? 'mDNS' : 'beállított cím'})…`, {
+    artifact,
+    otaTarget: otaTarget.address,
+    otaTargetSource: otaTarget.source
+  });
   await runProgram(config.otaToolPath, [
-    '-address', String(config.arduinoIP), '-port', '65280', '-username', 'arduino',
+    '-address', otaTarget.address, '-port', String(otaTarget.status.otaPort || 65280), '-username', 'arduino',
     '-password', config.otaPassword, '-sketch', binaryPath, '-upload', '/sketch', '-b'
   ], 240000);
   setFirmwareUpdate('restarting', 'Az Arduino újraindul; várakozás az új firmware-re…', { artifact });
