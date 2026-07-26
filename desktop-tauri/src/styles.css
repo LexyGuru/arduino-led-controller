@@ -21,3 +21,5 @@
   font-size: 0.75rem;
   opacity: 0.72;
 }
+
+.console-warning { margin: 12px 0; padding: 10px 12px; border: 1px solid rgba(255, 173, 51, .45); border-radius: 10px; background: rgba(255, 173, 51, .08); color: #ffd18a; font-size: .88rem; overflow-wrap: anywhere; }

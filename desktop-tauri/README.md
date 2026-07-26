@@ -1,4 +1,4 @@
-# Arduino LED Controller Desktop v3.0.2
+# Arduino LED Controller Desktop v3.0.9
 
 Önálló React + Tauri + Rust asztali alkalmazás Arduino UNO R4 WiFi LED-vezérléshez. Közvetlenül az Arduinóhoz kapcsolódik; Node.js vagy LXC köztes szerver nem szükséges.
 
@@ -50,11 +50,9 @@ npm run tauri:build
 - Exportáláskor kompatibilis `weekly-led-schedules.json` csomagot készít.
 
 
-## Firmware 4.1.1 kompatibilitás
+## Firmware-kompatibilitás
 
-A csomag `firmware/ArduinoLedController-4.1.1.ino` fájlja a felhasználó 4.1.0 firmware-jére épül.
-Hozzáadja a `GET /api/schedules/export?index=N` végpontot, amelyet a desktop alkalmazás az EEPROM időzítéseinek beolvasásához használ.
-Az ArduinoOTA portja ennél a firmware-nél 65280.
+A jelenlegi ajánlott firmware a csomagban található `firmware/ArduinoLedController-4.1.9-stable.ino`. Ez tartalmazza a konzol-, időzítés-export-, státusz- és OTA-végpontokat, miközben az instabil mDNS-réteg ki van kapcsolva. A `4.1.2` és `4.1.4` fájlok csak korábbi kompatibilitási változatként maradtak a csomagban.
 
 ## 3.0.5 / firmware 4.1.2
 
@@ -96,3 +94,19 @@ A workflow szándékosan nem használ Node/npm cache-t. A repository gyökerébe
 - A Tauri kliens 2 másodpercenként olvassa az új sorokat.
 - Nincs duplikáció, és legfeljebb 500 sor marad a felületen.
 - A konzol USB-s soros kapcsolat nélkül, WiFi-n keresztül működik.
+
+
+## 3.0.9 – stabil Arduino-kapcsolat, konzol és OTA
+
+- Az Arduino HTTP-kérései egyetlen sorban futnak, így a státusz, konzol és LED-parancs nem nyit egyszerre több TCP-kapcsolatot az UNO R4 WiFi felé.
+- Üres, csonka vagy idő előtt lezárt válasznál a Tauri kliens legfeljebb háromszor újrapróbálja a kérést.
+- Az `EOF while parsing a value` helyett részletes, érthető hálózati hiba jelenik meg.
+- A konzol kezeli a `{ lastId, logs }`, `{ lines }` és közvetlen tömb formátumot.
+- A React nem indít párhuzamos, dupla konzollekérést; egy folyamatban lévő kérés alatt nem küld újat.
+- Átmeneti konzolhiba esetén a már betöltött sorok megmaradnak.
+- Az OTA a `/api/status` `ipAddress` és `otaPort` mezőjét használja, nem a DDNS HTTP-címet.
+- Az OTA állapotban látható a tényleges célcím és célport.
+- A `package.json`, `tauri.conf.json` és `Cargo.toml` verziója egységesen 3.0.9.
+- Az összes időzítés törlése most a firmware `/api/schedules/clear` végpontját használja, majd visszaellenőrzi a nulla darabos állapotot.
+- Az OTA utáni ellenőrzés csak a várt firmware-verzió visszajelzését fogadja el sikernek.
+- A teljes válasz után érkező TCP reset nem okoz hamis JSON-hibát; a kliens a fejléc és `Content-Length` alapján ellenőrzi a választ.

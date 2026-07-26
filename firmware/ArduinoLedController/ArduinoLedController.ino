@@ -6,8 +6,6 @@
  * Elso feltoltes USB-n. A firmware ezutan OTA-frissitest fogad a halozaton.
  */
 #include <WiFiS3.h>
-#include <WiFiUdp.h>
-#include <ArduinoMDNS.h>
 #include <Adafruit_NeoPixel.h>
 #include <ArduinoOTA.h>
 #include <EEPROM.h>
@@ -15,7 +13,7 @@
 #include <time.h>
 #include "secrets.h"
 
-#define FIRMWARE_VERSION "4.1.8"
+#define FIRMWARE_VERSION "4.1.9"
 #define DEVICE_NAME "arduino-led-controller"
 #ifndef API_SHARED_SECRET
 #define API_SHARED_SECRET "CHANGE_THIS_TO_A_LONG_RANDOM_API_SECRET"
@@ -103,11 +101,6 @@ uint8_t MATRIX_ERROR[8][12] = {
   {0,0,0,0,1,0,0,1,0,0,0,0},{0,0,0,0,1,0,0,1,0,0,0,0},{0,0,0,1,0,0,0,0,1,0,0,0},{0,0,1,0,0,0,0,0,0,1,0,0}
 };
 WiFiServer server(HTTP_API_PORT);
-WiFiUDP mdnsUdp;
-MDNS mdns(mdnsUdp);
-char mdnsHostname[32] = "ledcontrol";
-char mdnsLocalHostname[40] = "ledcontrol.local";
-bool mdnsReady = false;
 Led leds[STRIP_COUNT]; Log logs[50];
 bool pirRaw[STRIP_COUNT] = {}, pirActive[STRIP_COUNT] = {}, otaReady = false, timeSynced = false, wifiReported = false;
 unsigned long pirChanged[STRIP_COUNT] = {}, lastMotion[STRIP_COUNT] = {}, lastWifi = 0, lastFrame = 0, lastTimeCheck = 0;
@@ -362,29 +355,6 @@ void runArduinoSchedules() {
   reconcileArduinoSchedules(newMinute);
 }
 
-void buildMdnsHostname() {
-  byte mac[6] = {0};
-  WiFi.macAddress(mac);
-  snprintf(mdnsHostname, sizeof(mdnsHostname),
-    "ledcontrol-%02x%02x%02x", mac[3], mac[4], mac[5]);
-  snprintf(mdnsLocalHostname, sizeof(mdnsLocalHostname),
-    "%s.local", mdnsHostname);
-}
-
-void startMdns() {
-  if (!wifiHasAddress() || mdnsReady) return;
-  buildMdnsHostname();
-  mdns.begin(WiFi.localIP(), mdnsHostname);
-  mdns.addServiceRecord("Arduino LED Controller._http", HTTP_API_PORT, MDNSServiceTCP);
-  mdns.addServiceRecord("Arduino LED Controller OTA._arduino-ota", OTA_UPLOAD_PORT, MDNSServiceTCP);
-  mdnsReady = true;
-
-  char message[112];
-  snprintf(message, sizeof(message), "mDNS aktiv: %s", mdnsLocalHostname);
-  logEvent("success", message);
-  consoleLine(message);
-}
-
 bool wifiHasAddress() {
   if (WiFi.status() != WL_CONNECTED) return false;
   IPAddress ip = WiFi.localIP();
@@ -416,7 +386,6 @@ void reportWifiConnected() {
   consoleLine("");
   consoleLine("==========================================");
   snprintf(message, sizeof(message), "Eszkoz:              %s", DEVICE_NAME); consoleLine(message);
-  snprintf(message, sizeof(message), "mDNS nev:            %s", mdnsReady ? mdnsLocalHostname : "INAKTIV"); consoleLine(message);
   snprintf(message, sizeof(message), "Firmware:            %s", FIRMWARE_VERSION); consoleLine(message);
   snprintf(message, sizeof(message), "WiFi modul firmware: %s", WiFi.firmwareVersion()); consoleLine(message);
   snprintf(message, sizeof(message), "IP cim:              %u.%u.%u.%u", ip[0], ip[1], ip[2], ip[3]); consoleLine(message);
@@ -424,7 +393,7 @@ void reportWifiConnected() {
   consoleLine("------------------------------------------");
   snprintf(message, sizeof(message), "Web API:             http://%u.%u.%u.%u:%u/api/status", ip[0], ip[1], ip[2], ip[3], HTTP_API_PORT); consoleLine(message);
   snprintf(message, sizeof(message), "OTA feltoltes:       %u.%u.%u.%u:%u", ip[0], ip[1], ip[2], ip[3], OTA_UPLOAD_PORT); consoleLine(message);
-  snprintf(message, sizeof(message), "mDNS felismeres:     %s (UDP %u)", mdnsReady ? mdnsLocalHostname : "INAKTIV", MDNS_PORT); consoleLine(message);
+  snprintf(message, sizeof(message), "mDNS felismeres:     INAKTIV (stabilitasi okbol)"); consoleLine(message);
   consoleLine("------------------------------------------");
   snprintf(message, sizeof(message), "OTA szolgaltatas:    %s", otaReady ? "AKTIV" : "INAKTIV"); consoleLine(message);
   snprintf(message, sizeof(message), "OTA jelszo:          %s", networkSettings.otaPassword[0] ? "BEALLITVA" : "HIANYZIK"); consoleLine(message);
@@ -534,7 +503,7 @@ String statusJson() {
   char ipText[16];
   snprintf(ipText, sizeof(ipText), "%u.%u.%u.%u", currentIp[0], currentIp[1], currentIp[2], currentIp[3]);
   String out = "{\"connected\":" + String(wifiHasAddress() ? "true" : "false") + ",\"timesynced\":" + String(timeSynced ? "true" : "false");
-  out += ",\"deviceName\":\"" DEVICE_NAME "\",\"hostname\":\"" + escapeJson(mdnsHostname) + "\",\"localHostname\":\"" + escapeJson(mdnsLocalHostname) + "\",\"ipAddress\":\"" + String(ipText) + "\",\"mdnsEnabled\":" + String(mdnsReady ? "true" : "false");
+  out += ",\"deviceName\":\"" DEVICE_NAME "\",\"hostname\":\"\",\"localHostname\":\"\",\"ipAddress\":\"" + String(ipText) + "\",\"mdnsEnabled\":false";
   out += ",\"networkConfigStored\":" + String(networkSettingsStored ? "true" : "false");
   out += ",\"scheduler\":\"arduino-eeprom\",\"scheduleCount\":" + String(scheduleCount) + ",\"firmwareVersion\":\"" FIRMWARE_VERSION "\",\"httpPort\":" + String(HTTP_API_PORT) + ",\"otaPort\":" + String(OTA_UPLOAD_PORT) + ",\"mdnsPort\":" + String(MDNS_PORT) + ",\"otaEnabled\":" + String(otaReady ? "true" : "false") + ",\"otaPasswordConfigured\":" + String(networkSettings.otaPassword[0] ? "true" : "false") + ",\"apiProtected\":" + String(apiSettingsStored ? "true" : "false") + ",\"matrixEnabled\":true,\"pirSensorsEnabled\":" + String(ENABLE_PIR_SENSORS ? "true" : "false") + ",\"physicalButtonsEnabled\":" + String(ENABLE_PHYSICAL_BUTTONS ? "true" : "false") + ",\"uptime\":" + String(millis() / 1000) + ",\"rssi\":" + String(wifiHasAddress() ? WiFi.RSSI() : 0) + ",\"http\":{\"requests\":" + String(httpRequests) + ",\"timeouts\":" + String(httpTimeouts) + ",\"rejected\":" + String(httpRejected) + ",\"maxBatch\":" + String(httpMaxBatch) + ",\"lastClientIp\":\"" + escapeJson(lastHttpClientIp) + "\",\"lastPath\":\"" + escapeJson(lastHttpPath) + "\",\"lastClientAge\":" + String(lastHttpClientAt ? (millis() - lastHttpClientAt) / 1000 : 0) + "},\"strips\":[";
   for (uint8_t i = 0; i < STRIP_COUNT; i++) { if (i) out += ','; out += "{\"id\":" + String(i + 1) + ",\"enabled\":" + String(leds[i].enabled ? "true" : "false") + ",\"brightness\":" + String(leds[i].brightness) + ",\"effect\":" + String(leds[i].effect) + ",\"speed\":" + String(leds[i].speed) + ",\"color\":[" + String(leds[i].red) + ',' + String(leds[i].green) + ',' + String(leds[i].blue) + "]}"; }
@@ -709,7 +678,6 @@ void handleHttp() {
 }
 void setup() {
   Serial.begin(115200); delay(300);
-  buildMdnsHostname();
   for (uint8_t i = 0; i < STRIP_COUNT; i++) {
     strip[i].begin(); strip[i].clear(); strip[i].show(); leds[i] = {false, 60, STATIC, 50, 0, 0, 255};
 #if ENABLE_PIR_SENSORS
@@ -736,13 +704,11 @@ void setup() {
 void loop() {
   if (!wifiHasAddress()) {
     wifiReported = false;
-    if (millis() - lastWifi > WIFI_RETRY) { otaReady = false; mdnsReady = false; connectWifi(); }
+    if (millis() - lastWifi > WIFI_RETRY) { otaReady = false; connectWifi(); }
   }
   if (wifiHasAddress()) {
-    startMdns();
     startOta();
     reportWifiConnected();
-    if (mdnsReady) mdns.run();
     if (otaReady) ArduinoOTA.poll();
     if (millis() - lastTimeCheck > 60000 || !timeSynced) { lastTimeCheck = millis(); unsigned long epoch = WiFi.getTime(); if (epoch > 1700000000UL) { bool firstSync = !timeSynced; lastClockEpoch = epoch; lastClockMillis = millis(); timeSynced = true; if (firstSync) logEvent("success", "NTP ido szinkronizalva"); } }
     runArduinoSchedules();

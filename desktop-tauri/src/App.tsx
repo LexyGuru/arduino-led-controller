@@ -28,7 +28,7 @@ export default function App() {
         {page === 'leds' && <LedsPage strips={c.status?.strips ?? []} busy={c.busy} onUpdate={(s) => void c.updateStrip(s)} onTest={(preset) => void c.runLedTest(preset)} onStopTest={() => void c.stopLedTest()}/>} 
         {page === 'schedules' && <SchedulesPage schedules={c.schedules} busy={c.busy} onSave={(x) => void c.saveSchedules(x)} onSync={() => void c.syncSchedulesFromArduino()}/>} 
         {page === 'firmware' && <FirmwarePage firmware={c.firmware} busy={c.busy} onRefresh={() => void c.refreshFirmware()} onUpdate={() => void c.updateFirmware()}/>} 
-        {page === 'logs' && <LogsPage arduino={c.logs} network={c.networkLogs}/>} 
+        {page === 'logs' && <LogsPage arduino={c.logs} network={c.networkLogs} error={c.consoleError}/>} 
         {page === 'settings' && <SettingsPage config={c.config} busy={c.busy} onChange={c.setConfig} onSave={() => void c.saveConfig()} otaPassword={c.otaPassword} onOtaPasswordChange={c.setOtaPassword}/>} 
       </main>
     </div>
