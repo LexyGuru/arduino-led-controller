@@ -3,8 +3,8 @@ name: Build Arduino firmware
 on:
   push:
     paths:
-      - 'firmware/**'
-      - '.github/workflows/firmware-build.yml'
+      - "firmware/**"
+      - ".github/workflows/firmware-build.yml"
   workflow_dispatch:
 
 permissions:
@@ -13,37 +13,94 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v5
-      - uses: arduino/setup-arduino-cli@v2
-      - name: Install board core and libraries
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Install Arduino CLI
+        uses: arduino/setup-arduino-cli@v2
+        with:
+          version: "1.x"
+
+      - name: Install UNO R4 WiFi core and libraries
         run: |
+          arduino-cli config init
           arduino-cli core update-index
+          arduino-cli lib update-index
+
           arduino-cli core install arduino:renesas_uno
+
           arduino-cli lib install "Adafruit NeoPixel"
-          arduino-cli lib install ArduinoOTA
+          arduino-cli lib install "ArduinoOTA"
+          arduino-cli lib install "ArduinoMDNS"
+
+          echo "Installed Arduino cores:"
+          arduino-cli core list
+
+          echo "Installed Arduino libraries:"
+          arduino-cli lib list
+
       - name: Create non-secret CI configuration
-        run: cp firmware/ArduinoLedController/secrets.example.h firmware/ArduinoLedController/secrets.h
+        run: |
+          cp \
+            firmware/ArduinoLedController/secrets.example.h \
+            firmware/ArduinoLedController/secrets.h
+
       - name: Compile UNO R4 WiFi firmware
         run: |
           mkdir -p build/firmware
-          arduino-cli compile --fqbn arduino:renesas_uno:unor4wifi --output-dir build/firmware firmware/ArduinoLedController
+
+          arduino-cli compile \
+            --fqbn arduino:renesas_uno:unor4wifi \
+            --output-dir build/firmware \
+            --warnings all \
+            firmware/ArduinoLedController
+
+      - name: Show generated firmware files
+        run: |
+          find build/firmware -maxdepth 1 -type f -print
+
       - name: Publish firmware artifact
         uses: actions/upload-artifact@v5
         with:
           name: ArduinoLedController-UNO-R4-WiFi
           path: build/firmware/*
           if-no-files-found: error
+
       - name: Create public firmware package
         run: |
           FIRMWARE_FILE="$(find build/firmware -type f -name '*.ino.bin' | head -n 1)"
-          test -n "${FIRMWARE_FILE}"
+
+          if [ -z "${FIRMWARE_FILE}" ]; then
+            echo "ERROR: Nem található .ino.bin firmware fájl."
+            find build/firmware -type f -print
+            exit 1
+          fi
+
+          echo "Firmware file: ${FIRMWARE_FILE}"
           sha256sum "${FIRMWARE_FILE}" > "${FIRMWARE_FILE}.sha256"
+
+          echo "SHA-256:"
+          cat "${FIRMWARE_FILE}.sha256"
+
       - name: Read firmware version
         run: |
-          VERSION="$(sed -nE 's/^#define FIRMWARE_VERSION "([^"]+)"/\1/p' firmware/ArduinoLedController/ArduinoLedController.ino)"
-          test -n "${VERSION}"
+          VERSION="$(
+            sed -nE \
+              's/^#define[[:space:]]+FIRMWARE_VERSION[[:space:]]+"([^"]+)".*/\1/p' \
+              firmware/ArduinoLedController/ArduinoLedController.ino |
+            head -n 1
+          )"
+
+          if [ -z "${VERSION}" ]; then
+            echo "ERROR: Nem található a FIRMWARE_VERSION."
+            exit 1
+          fi
+
           echo "FIRMWARE_VERSION=${VERSION}" >> "$GITHUB_ENV"
+          echo "Firmware version: ${VERSION}"
+
       - name: Publish latest public firmware release
         uses: softprops/action-gh-release@v2
         with:
@@ -51,8 +108,13 @@ jobs:
           name: Arduino LED Controller firmware (latest)
           body: |
             Automatikusan készített UNO R4 WiFi firmware.
+
             Firmware verzió: ${{ env.FIRMWARE_VERSION }}
             Forrás commit: ${{ github.sha }}
+
+            A csomag tartalmazza:
+            - ArduinoLedController.ino.bin
+            - SHA-256 ellenőrző fájl
           prerelease: true
           make_latest: false
           overwrite_files: true
