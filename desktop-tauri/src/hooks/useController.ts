@@ -289,12 +289,17 @@ export function useController(activePage: PageId) {
     } catch (error) {
       const text = String(error);
       setOtaStage('Hiba');
-      setOtaLogs((current) => current.at(-1)?.message === text ? current : [...current, {
+      const failureLog: OtaProgressEvent = {
         timestamp: Date.now(),
         stage: 'Hiba',
         level: 'error',
         message: text
-      }].slice(-300));
+      };
+      setOtaLogs((current) =>
+        current.at(-1)?.message === text
+          ? current
+          : [...current, failureLog].slice(-300)
+      );
       setMessage(`OTA-frissítési hiba: ${text}`);
     } finally {
       setBusy(false);
