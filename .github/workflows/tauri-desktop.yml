@@ -1,4 +1,4 @@
-name: Tauri desktop + Android + unsigned iOS/iPad build and release
+name: Tauri all-platform build and release
 
 on:
   workflow_dispatch:
@@ -9,6 +9,7 @@ on:
     paths:
       - "desktop-tauri/**"
       - ".github/workflows/tauri-desktop.yml"
+      - "README.md"
 
 # A build jobok csak olvasnak. Kizárólag a release job kap írási jogot.
 permissions:
@@ -60,7 +61,6 @@ jobs:
         uses: actions/setup-node@v5
         with:
           node-version: "24"
-          package-manager-cache: false
 
       - name: Rust telepítése
         uses: dtolnay/rust-toolchain@stable
@@ -144,7 +144,6 @@ jobs:
         uses: actions/setup-node@v5
         with:
           node-version: "24"
-          package-manager-cache: false
 
       - name: Rust és iOS target telepítése
         uses: dtolnay/rust-toolchain@stable
@@ -229,14 +228,12 @@ jobs:
         uses: actions/setup-node@v5
         with:
           node-version: "24"
-          package-manager-cache: false
 
       - name: Java 17 telepítése
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "17"
-          cache: gradle
 
       - name: Android SDK telepítése
         uses: android-actions/setup-android@v4
@@ -275,6 +272,15 @@ jobs:
           else
             npx tauri android init --ci
           fi
+
+      - name: Generált Android/Gradle projekt ellenőrzése
+        run: |
+          set -euo pipefail
+          test -d src-tauri/gen/android || { echo "::error::Az Android projekt nem jött létre."; exit 1; }
+          test -f src-tauri/gen/android/gradlew || { echo "::error::Hiányzik a Gradle wrapper: src-tauri/gen/android/gradlew"; exit 1; }
+          test -f src-tauri/gen/android/gradle/wrapper/gradle-wrapper.properties || { echo "::error::Hiányzik a gradle-wrapper.properties."; exit 1; }
+          chmod +x src-tauri/gen/android/gradlew
+          src-tauri/gen/android/gradlew --version
 
       - name: Android release-aláírás beállítása, ha a secretek elérhetők
         id: android_signing
@@ -516,5 +522,5 @@ jobs:
             gh release create "$TAG" "${FILES[@]}" \
               --target "$GITHUB_SHA" \
               --title "Arduino LED Controller v$VERSION" \
-              --notes "Automatikusan fordított Tauri kiadás Windows, macOS, Linux, Android, iPhone és iPad platformokra. Az unsigned iOS IPA telepítés előtt külön aláírást vagy sideload eszközt igényel. Android aláíró secretek nélkül debug APK és aláíratlan AAB készül; Play Store kiadáshoz állandó Android aláírókulcs szükséges."
+              --notes "Automatikusan fordított Tauri kiadás Windows, macOS, Linux, Android, iPhone és iPad platformokra ugyanabból a forrásverzióból. Az unsigned iOS IPA telepítés előtt külön aláírást vagy sideload eszközt igényel. Android aláíró secretek nélkül debug APK és aláíratlan AAB készül; Play Store kiadáshoz állandó Android aláírókulcs szükséges."
           fi
