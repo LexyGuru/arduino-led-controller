@@ -1,7 +1,8 @@
 /*
  * Arduino LED Controller Lite 3.1
- * UNO R4 WiFi: LED, PIR, helyi API, OTA. SD kartya es Arduino-oldali
- * utemezes nincs: az utemezeseket a Proxmox webszerver kezeli.
+ * UNO R4 WiFi: LED, PIR, vedett helyi API, EEPROM heti idozites es OTA.
+ * A 4.1.15 kiadas biztonsagos OTA-elokeszitesi modot es reszletes
+ * OTA-diagnosztikat ad a Tauri klienshez.
  *
  * Elso feltoltes USB-n. A firmware ezutan OTA-frissitest fogad a halozaton.
  */
@@ -14,7 +15,8 @@
 #include <stdarg.h>
 #include "secrets.h"
 
-#define FIRMWARE_VERSION "4.1.14"
+#define FIRMWARE_VERSION "4.1.15"
+#define FIRMWARE_FEATURE "ota-diagnostics"
 #define DEVICE_NAME "arduino-led-controller"
 #ifndef API_SHARED_SECRET
 #define API_SHARED_SECRET "CHANGE_THIS_TO_A_LONG_RANDOM_API_SECRET"
@@ -58,6 +60,8 @@ constexpr size_t HTTP_BODY_BUFFER_SIZE = 2304;
 constexpr size_t HTTP_WRITE_CHUNK_SIZE = 512;
 constexpr unsigned long HTTP_FIRST_BYTE_TIMEOUT = 180;
 constexpr unsigned long HTTP_READ_TIMEOUT = 220;
+constexpr unsigned long OTA_PREPARE_WINDOW = 30000;
+constexpr unsigned long OTA_ERROR_INDICATOR_TIME = 5000;
 constexpr uint32_t SCHEDULE_MAGIC = 0x53434831UL; // "SCH1"
 enum Effect : uint8_t { STATIC = 0, BLINK, BREATHE, RAINBOW, CHASE };
 
@@ -135,6 +139,10 @@ uint32_t nextLogId = 1;
 unsigned long httpRequests = 0, httpTimeouts = 0;
 unsigned long httpRejected = 0, httpWriteFailures = 0;
 unsigned long otaRestartCount = 0, lastOtaRestartAt = 0;
+bool otaTransferActive = false;
+unsigned long otaPrepareUntil = 0, otaErrorIndicatorUntil = 0;
+unsigned long otaLastTransferStartedAt = 0, otaLastErrorAt = 0;
+int otaLastErrorCode = 0;
 uint8_t httpMaxBatch = 0;
 char lastHttpClientIp[16] = "-", lastHttpPath[48] = "-";
 unsigned long lastHttpClientAt = 0, lastHttpClientLog = 0;
@@ -155,6 +163,12 @@ char httpBodyBuffer[HTTP_BODY_BUFFER_SIZE] = {};
 void renderAll(bool force = false);
 void activateManualOverride(uint8_t stripIndex);
 void refreshManualOverrideDeadlines();
+bool otaPrepareModeActive();
+bool otaErrorIndicatorActive();
+bool otaVisualHoldActive();
+unsigned long otaPrepareSecondsRemaining();
+void updateOtaVisualState();
+void sendOtaStatusJson(WiFiClient& client);
 
 void showMatrix(uint8_t frame[8][12]) { matrix.renderBitmap(frame, 8, 12); }
 
@@ -525,6 +539,40 @@ void reportWifiConnected() {
   consoleLine("");
 }
 
+bool otaPrepareModeActive() {
+  return otaPrepareUntil != 0 && static_cast<int32_t>(otaPrepareUntil - millis()) > 0;
+}
+
+bool otaErrorIndicatorActive() {
+  return otaErrorIndicatorUntil != 0 && static_cast<int32_t>(otaErrorIndicatorUntil - millis()) > 0;
+}
+
+bool otaVisualHoldActive() {
+  return otaTransferActive || otaPrepareModeActive() || otaErrorIndicatorActive();
+}
+
+unsigned long otaPrepareSecondsRemaining() {
+  if (!otaPrepareModeActive()) return 0;
+  return (otaPrepareUntil - millis() + 999UL) / 1000UL;
+}
+
+void restoreNormalVisualState() {
+  showMatrix(wifiHasAddress() ? MATRIX_OK : MATRIX_WIFI);
+  renderAll(true);
+}
+
+void updateOtaVisualState() {
+  if (otaPrepareUntil && !otaPrepareModeActive() && !otaTransferActive) {
+    otaPrepareUntil = 0;
+    logEvent("info", "OTA elokeszitesi idoablak lejart");
+    restoreNormalVisualState();
+  }
+  if (otaErrorIndicatorUntil && !otaErrorIndicatorActive() && !otaTransferActive) {
+    otaErrorIndicatorUntil = 0;
+    restoreNormalVisualState();
+  }
+}
+
 void showOtaIndicator(uint8_t red, uint8_t green, uint8_t blue, uint8_t brightness = 80) {
   for (uint8_t i = 0; i < STRIP_COUNT; i++) {
     strip[i].setBrightness(brightness);
@@ -533,7 +581,12 @@ void showOtaIndicator(uint8_t red, uint8_t green, uint8_t blue, uint8_t brightne
   }
 }
 void otaTransferStarted() {
-  logEvent("info", "OTA atvitel elindult - kek fenyes jelzes");
+  otaTransferActive = true;
+  otaPrepareUntil = 0;
+  otaErrorIndicatorUntil = 0;
+  otaLastTransferStartedAt = millis();
+  otaLastErrorCode = 0;
+  logEvent("info", "OTA atvitel elindult - halozati es LED terheles csokkentve");
   showMatrix(MATRIX_OTA);
   showOtaIndicator(0, 70, 255);
 }
@@ -543,8 +596,14 @@ void otaBeforeApply() {
   showOtaIndicator(0, 255, 60);
 }
 void otaTransferError(int code, const char*) {
-  char message[88];
-  snprintf(message, sizeof(message), "OTA hiba: %d - piros jelzes", code);
+  otaTransferActive = false;
+  otaPrepareUntil = 0;
+  otaLastErrorCode = code;
+  otaLastErrorAt = millis();
+  otaErrorIndicatorUntil = millis() + OTA_ERROR_INDICATOR_TIME;
+  char message[96];
+  snprintf(message, sizeof(message), "OTA hiba: %d - piros jelzes %lu mp", code,
+    OTA_ERROR_INDICATOR_TIME / 1000UL);
   logEvent("error", message);
   showMatrix(MATRIX_ERROR);
   showOtaIndicator(255, 0, 0);
@@ -585,8 +644,13 @@ bool restartOtaService() {
 
   otaRestartCount++;
   lastOtaRestartAt = millis();
-  char message[96];
-  snprintf(message, sizeof(message), "OTA listener ujrainditva: %lu. alkalom", otaRestartCount);
+  otaPrepareUntil = millis() + OTA_PREPARE_WINDOW;
+  otaErrorIndicatorUntil = 0;
+  showMatrix(MATRIX_OTA);
+  char message[112];
+  snprintf(message, sizeof(message),
+    "OTA listener ujrainditva: %lu. alkalom | elokeszitesi mod: %lu mp",
+    otaRestartCount, OTA_PREPARE_WINDOW / 1000UL);
   logEvent("info", message);
   return true;
 }
@@ -740,8 +804,6 @@ bool buildStatusJson(size_t& bodyLength) {
   FixedBuffer buffer;
   resetBuffer(buffer, httpBodyBuffer, sizeof(httpBodyBuffer));
   IPAddress currentIp = WiFi.localIP();
-  const char* connected = wifiHasAddress() ? "true" : "false";
-  const char* synced = timeSynced ? "true" : "false";
 
   appendFormat(buffer,
     "{\"connected\":%s,\"timesynced\":%s,"
@@ -749,33 +811,54 @@ bool buildStatusJson(size_t& bodyLength) {
     "\"ipAddress\":\"%u.%u.%u.%u\",\"mdnsEnabled\":false,"
     "\"networkConfigStored\":%s,\"scheduler\":\"arduino-eeprom\","
     "\"scheduleCount\":%u,\"consoleLogCount\":%u,\"consoleLastId\":%lu,"
-    "\"firmwareVersion\":\"%s\",\"httpPort\":%u,\"otaPort\":%u,\"mdnsPort\":%u,"
-    "\"otaEnabled\":%s,\"otaPasswordConfigured\":%s,\"otaRestartCount\":%lu,"
-    "\"otaLastRestartAge\":%lu,\"apiProtected\":%s,"
-    "\"matrixEnabled\":true,\"pirSensorsEnabled\":%s,\"physicalButtonsEnabled\":%s,"
-    "\"uptime\":%lu,\"rssi\":%ld,"
-    "\"http\":{\"requests\":%lu,\"timeouts\":%lu,\"rejected\":%lu,"
-    "\"writeFailures\":%lu,\"maxBatch\":%u,\"lastClientIp\":\"",
-    connected, synced, DEVICE_NAME,
+    "\"firmwareVersion\":\"%s\",\"firmwareFeature\":\"%s\","
+    "\"buildDate\":\"%s\",\"buildTime\":\"%s\",",
+    wifiHasAddress() ? "true" : "false",
+    timeSynced ? "true" : "false",
+    DEVICE_NAME,
     currentIp[0], currentIp[1], currentIp[2], currentIp[3],
     networkSettingsStored ? "true" : "false",
-    scheduleCount, logSize, static_cast<unsigned long>(nextLogId ? nextLogId - 1 : 0),
-    FIRMWARE_VERSION, HTTP_API_PORT, OTA_UPLOAD_PORT, MDNS_PORT,
+    scheduleCount, logSize,
+    static_cast<unsigned long>(nextLogId ? nextLogId - 1 : 0),
+    FIRMWARE_VERSION, FIRMWARE_FEATURE, __DATE__, __TIME__);
+
+  appendFormat(buffer,
+    "\"httpPort\":%u,\"otaPort\":%u,\"mdnsPort\":%u,"
+    "\"otaEnabled\":%s,\"otaPasswordConfigured\":%s,"
+    "\"otaRestartCount\":%lu,\"otaLastRestartAge\":%lu,"
+    "\"otaPrepareActive\":%s,\"otaPrepareSecondsRemaining\":%lu,"
+    "\"otaTransferActive\":%s,\"otaLastTransferAge\":%lu,"
+    "\"otaLastErrorCode\":%d,\"otaLastErrorAge\":%lu,",
+    HTTP_API_PORT, OTA_UPLOAD_PORT, MDNS_PORT,
     otaReady ? "true" : "false",
     networkSettings.otaPassword[0] ? "true" : "false",
     static_cast<unsigned long>(otaRestartCount),
-    static_cast<unsigned long>(lastOtaRestartAt ? (millis() - lastOtaRestartAt) / 1000 : 0),
+    static_cast<unsigned long>(lastOtaRestartAt ? (millis() - lastOtaRestartAt) / 1000UL : 0),
+    otaPrepareModeActive() ? "true" : "false",
+    otaPrepareSecondsRemaining(),
+    otaTransferActive ? "true" : "false",
+    static_cast<unsigned long>(otaLastTransferStartedAt ? (millis() - otaLastTransferStartedAt) / 1000UL : 0),
+    otaLastErrorCode,
+    static_cast<unsigned long>(otaLastErrorAt ? (millis() - otaLastErrorAt) / 1000UL : 0));
+
+  appendFormat(buffer,
+    "\"apiProtected\":%s,\"matrixEnabled\":true,"
+    "\"pirSensorsEnabled\":%s,\"physicalButtonsEnabled\":%s,"
+    "\"uptime\":%lu,\"rssi\":%ld,"
+    "\"http\":{\"requests\":%lu,\"timeouts\":%lu,\"rejected\":%lu,"
+    "\"writeFailures\":%lu,\"maxBatch\":%u,\"lastClientIp\":\"",
     apiSettingsStored ? "true" : "false",
     ENABLE_PIR_SENSORS ? "true" : "false",
     ENABLE_PHYSICAL_BUTTONS ? "true" : "false",
-    millis() / 1000, static_cast<long>(wifiHasAddress() ? WiFi.RSSI() : 0),
+    millis() / 1000UL,
+    static_cast<long>(wifiHasAddress() ? WiFi.RSSI() : 0),
     httpRequests, httpTimeouts, httpRejected, httpWriteFailures, httpMaxBatch);
 
   appendJsonEscaped(buffer, lastHttpClientIp);
   appendRaw(buffer, "\",\"lastPath\":\"");
   appendJsonEscaped(buffer, lastHttpPath);
   appendFormat(buffer, "\",\"lastClientAge\":%lu},\"strips\":[",
-    lastHttpClientAt ? (millis() - lastHttpClientAt) / 1000 : 0);
+    lastHttpClientAt ? (millis() - lastHttpClientAt) / 1000UL : 0);
 
   for (uint8_t i = 0; i < STRIP_COUNT; i++) {
     if (i) appendChar(buffer, ',');
@@ -856,6 +939,32 @@ void sendConsoleStatsJson(WiFiClient& client) {
   sendJsonBuffer(client, httpBodyBuffer, buffer.length);
 }
 
+void sendOtaStatusJson(WiFiClient& client) {
+  FixedBuffer buffer;
+  resetBuffer(buffer, httpBodyBuffer, sizeof(httpBodyBuffer));
+  IPAddress ip = WiFi.localIP();
+  appendFormat(buffer,
+    "{\"success\":true,\"firmwareVersion\":\"%s\","
+    "\"firmwareFeature\":\"%s\",\"buildDate\":\"%s\","
+    "\"buildTime\":\"%s\",\"ipAddress\":\"%u.%u.%u.%u\","
+    "\"otaPort\":%u,\"otaEnabled\":%s,\"otaPrepareActive\":%s,"
+    "\"otaPrepareSecondsRemaining\":%lu,\"otaTransferActive\":%s,"
+    "\"restartCount\":%lu,\"lastErrorCode\":%d,\"uptime\":%lu}",
+    FIRMWARE_VERSION, FIRMWARE_FEATURE, __DATE__, __TIME__,
+    ip[0], ip[1], ip[2], ip[3], OTA_UPLOAD_PORT,
+    otaReady ? "true" : "false",
+    otaPrepareModeActive() ? "true" : "false",
+    otaPrepareSecondsRemaining(),
+    otaTransferActive ? "true" : "false",
+    static_cast<unsigned long>(otaRestartCount), otaLastErrorCode,
+    millis() / 1000UL);
+  if (!buffer.valid) {
+    sendJsonLiteral(client, "{\"success\":false,\"error\":\"OTA statusz memoriahiba\"}", 503);
+    return;
+  }
+  sendJsonBuffer(client, httpBodyBuffer, buffer.length);
+}
+
 void sendJson(WiFiClient& client, const String& body, int code = 200) {
   sendJsonBuffer(client, body.c_str(), body.length(), code);
 }
@@ -871,7 +980,8 @@ void rememberHttpClient(WiFiClient& c, const char* method, const String& path, b
   const bool pollingRequest = strcmp(lastHttpPath, "/api/status") == 0 ||
     strcmp(lastHttpPath, "/api/led/status") == 0 ||
     strcmp(lastHttpPath, "/api/console/logs") == 0 ||
-    strcmp(lastHttpPath, "/api/console/stats") == 0;
+    strcmp(lastHttpPath, "/api/console/stats") == 0 ||
+    strcmp(lastHttpPath, "/api/ota/status") == 0;
   if (timedOut || (!pollingRequest && (!lastHttpClientLog || millis() - lastHttpClientLog >= 15000))) {
     char message[88];
     snprintf(message, sizeof(message), timedOut ? "HTTP kliens %s: adat timeout" : "HTTP kliens %s: %s %s", ip, method, lastHttpPath);
@@ -927,13 +1037,19 @@ void route(WiFiClient& c, const String& path) {
   if (base == "/api/schedules/upload") { String payload = queryAt < 0 ? "" : path.substring(queryAt + 1); if (!payload.startsWith("payload=")) { sendJson(c, "{\"error\":\"Hianyzik a payload\"}", 400); return; } if (!importSchedulesHex(payload.substring(8))) { sendJson(c, "{\"error\":\"Ervenytelen idozitesi adat\"}", 400); return; } char message[64]; snprintf(message, sizeof(message), "Arduino idozites mentve: %d bejegyzes", scheduleCount); logEvent("success", message); sendJson(c, "{\"success\":true,\"count\":" + String(scheduleCount) + "}"); return; }
   if (base == "/api/schedules/chunk") { String query = queryAt < 0 ? "" : path.substring(queryAt + 1); int index = valueInt(query, "index", -1, -1, SCHEDULE_MAX - 1), total = valueInt(query, "total", 0, 0, SCHEDULE_MAX); int payloadAt = query.indexOf("payload="); if (index < 0 || total < 1 || index >= total || payloadAt < 0 || !decodeScheduleHex(query.substring(payloadAt + 8), schedules[index])) { sendJson(c, "{\"error\":\"Ervenytelen idozitesi reszlet\"}", 400); return; } if (index + 1 == total) { saveSchedules(total); char message[64]; snprintf(message, sizeof(message), "Arduino idozites mentve: %d bejegyzes", scheduleCount); logEvent("success", message); } sendJson(c, "{\"success\":true,\"count\":" + String(index + 1 == total ? scheduleCount : 0) + "}"); return; }
   if (base == "/api/schedules/clear") { memset(schedules, 0, sizeof(schedules)); saveSchedules(0); logEvent("info", "Arduino idozites torolve"); sendJson(c, "{\"success\":true}"); return; }
+  if (base == "/api/ota/status") { sendOtaStatusJson(c); return; }
   if (base == "/api/ota/restart") {
     const bool restarted = restartOtaService();
-    char response[112];
+    char response[192];
     const int length = snprintf(response, sizeof(response),
-      "{\"success\":%s,\"otaEnabled\":%s,\"otaPort\":%u,\"restartCount\":%lu}",
-      restarted ? "true" : "false", otaReady ? "true" : "false", OTA_UPLOAD_PORT,
-      static_cast<unsigned long>(otaRestartCount));
+      "{\"success\":%s,\"firmwareVersion\":\"%s\",\"otaEnabled\":%s,"
+      "\"otaPort\":%u,\"restartCount\":%lu,\"prepareActive\":%s,"
+      "\"prepareSecondsRemaining\":%lu}",
+      restarted ? "true" : "false", FIRMWARE_VERSION,
+      otaReady ? "true" : "false", OTA_UPLOAD_PORT,
+      static_cast<unsigned long>(otaRestartCount),
+      otaPrepareModeActive() ? "true" : "false",
+      otaPrepareSecondsRemaining());
     if (length > 0 && static_cast<size_t>(length) < sizeof(response)) {
       sendJsonBuffer(c, response, static_cast<size_t>(length), restarted ? 200 : 503);
     } else {
@@ -1062,6 +1178,8 @@ void setup() {
   char bootInfo[112];
   snprintf(bootInfo, sizeof(bootInfo), "Firmware: %s | Arduino UNO R4 WiFi | Matrix: BE", FIRMWARE_VERSION);
   logEvent("info", bootInfo);
+  snprintf(bootInfo, sizeof(bootInfo), "Build: %s %s | funkcio: %s", __DATE__, __TIME__, FIRMWARE_FEATURE);
+  logEvent("info", bootInfo);
   snprintf(bootInfo, sizeof(bootInfo), "LED szalagok: %d | PIR: %s | Gombok: %s", STRIP_COUNT, ENABLE_PIR_SENSORS ? "BE" : "KI", ENABLE_PHYSICAL_BUTTONS ? "BE" : "KI");
   logEvent("info", bootInfo);
   logEvent("info", ENABLE_PIR_SENSORS ? "PIR figyeles bekapcsolva" : "PIR figyeles kikapcsolva (nincs szenzor)");
@@ -1072,16 +1190,48 @@ void setup() {
   connectWifi(); server.begin();
 }
 void loop() {
+  updateOtaVisualState();
+
   if (!wifiHasAddress()) {
     wifiReported = false;
+    otaTransferActive = false;
+    otaPrepareUntil = 0;
     if (millis() - lastWifi > WIFI_RETRY) { otaReady = false; connectWifi(); }
   }
+
   if (wifiHasAddress()) {
     startOta();
     reportWifiConnected();
+
+    // Az OTA poll kapja a legmagasabb priorítást. Feltöltés közben nem fut
+    // HTTP API, NTP, időzítés vagy LED-animáció, így az RA4M1 a firmware
+    // fogadására koncentrálhat.
     if (otaReady) ArduinoOTA.poll();
-    if (millis() - lastTimeCheck > 60000 || !timeSynced) { lastTimeCheck = millis(); unsigned long epoch = WiFi.getTime(); if (epoch > 1700000000UL) { bool firstSync = !timeSynced; lastClockEpoch = epoch; lastClockMillis = millis(); timeSynced = true; if (firstSync) logEvent("success", "NTP ido szinkronizalva"); } }
-    runArduinoSchedules();
+
+    if (!otaTransferActive) {
+      if (millis() - lastTimeCheck > 60000 || !timeSynced) {
+        lastTimeCheck = millis();
+        unsigned long epoch = WiFi.getTime();
+        if (epoch > 1700000000UL) {
+          bool firstSync = !timeSynced;
+          lastClockEpoch = epoch;
+          lastClockMillis = millis();
+          timeSynced = true;
+          if (firstSync) logEvent("success", "NTP ido szinkronizalva");
+        }
+      }
+      runArduinoSchedules();
+    }
   }
-  handleHttp(); handlePir(); handleButtons(); renderAll();
+
+  if (!otaTransferActive) handleHttp();
+
+  // Az OTA-elokeszitesi idoablakban az aktualis LED-kep megmarad, de az
+  // animaciok es a fizikai bemenetek nem terhelik a vezerlot. Ez az idoablak
+  // automatikusan lejár, ha a feltöltés nem indul el.
+  if (!otaVisualHoldActive()) {
+    handlePir();
+    handleButtons();
+    renderAll();
+  }
 }
