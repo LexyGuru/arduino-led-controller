@@ -8,6 +8,12 @@ export interface ConnectionConfig {
   localArduinoIp: string;
   localArduinoPort: number;
   preferLocal: boolean;
+  /** OTA-cél, például No-IP/DDNS név. Üresen a távoli Arduino címet használja. */
+  otaAddress: string;
+  otaPort: number;
+  /** auto | native | terminal */
+  otaUploadMode: string;
+  otaToolPath: string;
   arduinoApiPath: string;
   arduinoApiKey: string;
 }

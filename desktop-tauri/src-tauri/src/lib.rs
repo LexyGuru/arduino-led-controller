@@ -6,7 +6,8 @@ use std::{
     fs,
     io::{ErrorKind, Read, Write},
     net::{Ipv4Addr, TcpStream, ToSocketAddrs},
-    path::PathBuf,
+    path::{Path, PathBuf},
+    process::Command,
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc, Mutex,
@@ -25,6 +26,12 @@ struct Config {
     local_arduino_ip: String,
     local_arduino_port: u16,
     prefer_local: bool,
+    // OTA cél teljesen független a HTTP API címétől. Üresen a távoli/DDNS Arduino-címet használja.
+    ota_address: String,
+    ota_port: u16,
+    // auto | native | terminal
+    ota_upload_mode: String,
+    ota_tool_path: String,
     arduino_api_path: String,
     arduino_api_key: String,
 }
@@ -37,6 +44,10 @@ impl Default for Config {
             local_arduino_ip: "10.0.0.123".into(),
             local_arduino_port: 80,
             prefer_local: true,
+            ota_address: String::new(),
+            ota_port: 65280,
+            ota_upload_mode: "auto".into(),
+            ota_tool_path: "/usr/local/bin/arduinoOTA".into(),
             arduino_api_path: String::new(),
             arduino_api_key: String::new(),
         }
@@ -231,8 +242,13 @@ fn validate_config(c: &Config) -> Result<(), String> {
     }
     validate_host(remote, "távoli Arduino-cím")?;
     validate_host(local, "helyi Arduino-cím")?;
+    validate_host(c.ota_address.trim(), "OTA DDNS/IP-cím")?;
     if !remote.is_empty() && c.arduino_port == 0 { return Err("Érvénytelen távoli HTTP-port.".into()); }
     if !local.is_empty() && c.local_arduino_port == 0 { return Err("Érvénytelen helyi HTTP-port.".into()); }
+    if c.ota_port == 0 { return Err("Érvénytelen OTA feltöltési port.".into()); }
+    if !matches!(c.ota_upload_mode.as_str(), "auto" | "native" | "terminal") {
+        return Err("Az OTA feltöltési mód csak auto, native vagy terminal lehet.".into());
+    }
     Ok(())
 }
 
@@ -354,7 +370,7 @@ fn raw_get_once(c: &Config, path: &str, timeout: Duration) -> Result<Value, Stri
 
     let request_path = protected_path(c, path)?;
     let request = format!(
-        "GET {request_path} HTTP/1.1\r\nHost: {host}:{}\r\nUser-Agent: Arduino-LED-Controller-Tauri/3.0.14\r\nAccept: application/json\r\nConnection: close\r\n\r\n",
+        "GET {request_path} HTTP/1.1\r\nHost: {host}:{}\r\nUser-Agent: Arduino-LED-Controller-Tauri/3.0.15\r\nAccept: application/json\r\nConnection: close\r\n\r\n",
         c.arduino_port
     );
     stream
@@ -644,24 +660,278 @@ fn ota_target_from_status(config: &Config, status: &Value) -> Result<(String, u1
         return Err("Az Arduino OTA szolgáltatása nem aktív.".into());
     }
 
-    let address = status
+    // Az OTA-cél nem az Arduino által visszaadott belső IP-cím.
+    // Távoli/DDNS használatnál a Tauri gép számára ténylegesen elérhető címet kell használni.
+    let configured_ota = config.ota_address.trim();
+    let remote_http_host = config.arduino_ip.trim();
+    let status_ip = status
         .get("ipAddress")
         .and_then(Value::as_str)
         .map(str::trim)
         .filter(|value| !value.is_empty() && *value != "0.0.0.0")
-        .unwrap_or(config.arduino_ip.trim())
-        .to_string();
+        .unwrap_or("");
+
+    let address = if !configured_ota.is_empty() {
+        configured_ota
+    } else if !remote_http_host.is_empty() {
+        remote_http_host
+    } else {
+        status_ip
+    }
+    .to_string();
+
     if address.is_empty() {
-        return Err("Az OTA célcíme nem állapítható meg.".into());
+        return Err("Az OTA célcíme nem állapítható meg. Add meg az OTA DDNS/IP-címet a Beállításokban.".into());
     }
 
-    let port = status
-        .get("otaPort")
-        .and_then(Value::as_u64)
-        .filter(|value| (1..=u16::MAX as u64).contains(value))
-        .map(|value| value as u16)
-        .unwrap_or(OTA_UPLOAD_PORT);
+    let port = if config.ota_port > 0 {
+        config.ota_port
+    } else {
+        status
+            .get("otaPort")
+            .and_then(Value::as_u64)
+            .filter(|value| (1..=u16::MAX as u64).contains(value))
+            .map(|value| value as u16)
+            .unwrap_or(OTA_UPLOAD_PORT)
+    };
     Ok((address, port))
+}
+
+fn ota_tool_works(path: &Path) -> bool {
+    if !path.is_file() {
+        return false;
+    }
+    Command::new(path)
+        .arg("-version")
+        .output()
+        .map(|output| output.status.success())
+        .unwrap_or(false)
+}
+
+fn find_ota_tool(app: &AppHandle, config: &Config) -> Option<PathBuf> {
+    let mut candidates = Vec::new();
+    let configured = config.ota_tool_path.trim();
+    if !configured.is_empty() {
+        candidates.push(PathBuf::from(configured));
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        candidates.push(PathBuf::from("/usr/local/bin/arduinoOTA"));
+        candidates.push(PathBuf::from("/opt/homebrew/bin/arduinoOTA"));
+    }
+
+    if let Ok(resource_dir) = app.path().resource_dir() {
+        candidates.push(resource_dir.join("tools").join("arduinoOTA").join("arduinoOTA"));
+        candidates.push(resource_dir.join("arduinoOTA"));
+    }
+
+    candidates.into_iter().find(|candidate| ota_tool_works(candidate))
+}
+
+fn use_terminal_ota(app: &AppHandle, config: &Config) -> Result<bool, String> {
+    match config.ota_upload_mode.trim() {
+        "native" => Ok(false),
+        "terminal" => {
+            #[cfg(target_os = "macos")]
+            {
+                if find_ota_tool(app, config).is_none() {
+                    return Err("A Terminal OTA mód van kiválasztva, de nem található működő arduinoOTA feltöltő.".into());
+                }
+                Ok(true)
+            }
+            #[cfg(not(target_os = "macos"))]
+            {
+                Err("A Terminal OTA mód csak macOS-en használható.".into())
+            }
+        }
+        _ => {
+            #[cfg(target_os = "macos")]
+            {
+                Ok(find_ota_tool(app, config).is_some())
+            }
+            #[cfg(not(target_os = "macos"))]
+            {
+                Ok(false)
+            }
+        }
+    }
+}
+
+fn percentage_from_ota_line(line: &str) -> Option<u8> {
+    let percent_at = line.find('%')?;
+    let bytes = line.as_bytes();
+    let mut start = percent_at;
+    while start > 0 && bytes[start - 1].is_ascii_digit() {
+        start -= 1;
+    }
+    if start == percent_at {
+        return None;
+    }
+    line[start..percent_at].parse::<u8>().ok().map(|value| value.min(100))
+}
+
+fn shell_single_quote(value: &str) -> String {
+    format!("'{}'", value.replace('\'', "'\\''"))
+}
+
+#[cfg(target_os = "macos")]
+async fn upload_firmware_in_terminal(
+    app: &AppHandle,
+    config: &Config,
+    address: &str,
+    port: u16,
+    password: &str,
+    binary_path: &Path,
+) -> Result<String, String> {
+    use std::os::unix::fs::PermissionsExt;
+
+    let tool = find_ota_tool(app, config).ok_or_else(|| {
+        "A macOS Terminal módhoz nem található működő arduinoOTA. Ellenőrzött helyek: a beállított útvonal, /usr/local/bin/arduinoOTA és /opt/homebrew/bin/arduinoOTA.".to_string()
+    })?;
+    let work_dir = firmware_dir(app)?.join("terminal-ota");
+    fs::create_dir_all(&work_dir).map_err(|error| format!("Az OTA Terminal munkamappa nem hozható létre: {error}"))?;
+
+    let run_id = unix_millis();
+    let script_path = work_dir.join(format!("ota-upload-{run_id}.command"));
+    let log_path = work_dir.join(format!("ota-upload-{run_id}.log"));
+    let exit_path = work_dir.join(format!("ota-upload-{run_id}.exit"));
+    let secret_path = work_dir.join(format!("ota-upload-{run_id}.secret"));
+
+    fs::write(&secret_path, password.as_bytes())
+        .map_err(|error| format!("Az ideiglenes OTA-jelszófájl nem írható: {error}"))?;
+    fs::set_permissions(&secret_path, fs::Permissions::from_mode(0o600))
+        .map_err(|error| format!("Az OTA-jelszófájl jogosultsága nem állítható be: {error}"))?;
+
+    let script = format!(
+        "#!/bin/zsh\n\
+set -o pipefail\n\
+TOOL={}\n\
+ADDRESS={}\n\
+PORT={}\n\
+BINARY={}\n\
+LOG={}\n\
+EXIT_FILE={}\n\
+SECRET_FILE={}\n\
+trap 'rm -f \"$SECRET_FILE\" \"$0\"' EXIT\n\
+PASSWORD=\"$(cat \"$SECRET_FILE\")\"\n\
+rm -f \"$SECRET_FILE\" \"$EXIT_FILE\"\n\
+print -r -- \"[Tauri OTA] Cél: $ADDRESS:$PORT\" | tee -a \"$LOG\"\n\
+print -r -- \"[Tauri OTA] Firmware: $BINARY\" | tee -a \"$LOG\"\n\
+\"$TOOL\" -v -address \"$ADDRESS\" -port \"$PORT\" -username arduino -password \"$PASSWORD\" -sketch \"$BINARY\" -upload /sketch -b 2>&1 | tee -a \"$LOG\"\n\
+STATUS=${{pipestatus[1]}}\n\
+print -r -- \"$STATUS\" > \"$EXIT_FILE\"\n\
+if [[ \"$STATUS\" == \"0\" ]]; then\n\
+  print -r -- \"[Tauri OTA] Feltöltés sikeresen befejeződött.\" | tee -a \"$LOG\"\n\
+else\n\
+  print -r -- \"[Tauri OTA] Feltöltési hiba, kilépési kód: $STATUS\" | tee -a \"$LOG\"\n\
+fi\n\
+exit \"$STATUS\"\n",
+        shell_single_quote(&tool.to_string_lossy()),
+        shell_single_quote(address),
+        port,
+        shell_single_quote(&binary_path.to_string_lossy()),
+        shell_single_quote(&log_path.to_string_lossy()),
+        shell_single_quote(&exit_path.to_string_lossy()),
+        shell_single_quote(&secret_path.to_string_lossy()),
+    );
+
+    fs::write(&script_path, script.as_bytes())
+        .map_err(|error| format!("Az OTA Terminal parancsfájl nem írható: {error}"))?;
+    fs::set_permissions(&script_path, fs::Permissions::from_mode(0o700))
+        .map_err(|error| format!("Az OTA Terminal parancsfájl nem tehető futtathatóvá: {error}"))?;
+
+    emit_ota_progress(
+        app,
+        "Terminal",
+        "info",
+        format!("macOS Terminal megnyitása: {}", script_path.to_string_lossy()),
+        Some(53),
+    );
+
+    let open_status = Command::new("open")
+        .args(["-a", "Terminal"])
+        .arg(&script_path)
+        .status()
+        .map_err(|error| format!("A macOS Terminal nem indítható: {error}"))?;
+    if !open_status.success() {
+        return Err(format!("A macOS Terminal megnyitása sikertelen: {open_status}"));
+    }
+
+    let app = app.clone();
+    let result = tauri::async_runtime::spawn_blocking(move || -> Result<String, String> {
+        let started = SystemTime::now();
+        let mut consumed = 0usize;
+        let mut pending = String::new();
+        let mut recent_lines: Vec<String> = Vec::new();
+
+        loop {
+            if let Ok(bytes) = fs::read(&log_path) {
+                if bytes.len() > consumed {
+                    pending.push_str(&String::from_utf8_lossy(&bytes[consumed..]));
+                    consumed = bytes.len();
+                    while let Some(newline) = pending.find('\n') {
+                        let line = pending[..newline].trim_end_matches('\r').trim().to_string();
+                        pending = pending[newline + 1..].to_string();
+                        if !line.is_empty() {
+                            let raw = percentage_from_ota_line(&line);
+                            let progress = raw.map(|value| 55 + ((value as u16 * 35) / 100) as u8);
+                            emit_ota_progress(&app, "ArduinoOTA Terminal", "output", line.clone(), progress);
+                            recent_lines.push(line);
+                            if recent_lines.len() > 20 {
+                                recent_lines.remove(0);
+                            }
+                        }
+                    }
+                }
+            }
+
+            if exit_path.exists() {
+                if !pending.trim().is_empty() {
+                    emit_ota_progress(&app, "ArduinoOTA Terminal", "output", pending.trim().to_string(), None);
+                }
+                let code_text = fs::read_to_string(&exit_path).unwrap_or_default();
+                let code = code_text.trim().parse::<i32>().unwrap_or(-1);
+                let _ = fs::remove_file(&exit_path);
+                if code == 0 {
+                    return Ok(tool.to_string_lossy().to_string());
+                }
+                let details = recent_lines.join("\n");
+                return Err(format!("A Terminalban futó arduinoOTA hibával állt le (kód: {code}).\n{details}"));
+            }
+
+            if started.elapsed().unwrap_or_default() > Duration::from_secs(300) {
+                return Err(format!(
+                    "A Terminalban futó arduinoOTA 300 másodperc alatt nem fejeződött be. Napló: {}",
+                    log_path.to_string_lossy()
+                ));
+            }
+            std::thread::sleep(Duration::from_millis(250));
+        }
+    })
+    .await
+    .map_err(|error| format!("Az OTA Terminal naplófigyelő megszakadt: {error}"))??;
+
+    emit_ota_progress(
+        app,
+        "Terminal",
+        "success",
+        format!("A Terminalban futó arduinoOTA sikeresen befejeződött. Feltöltő: {result}"),
+        Some(90),
+    );
+    Ok(result)
+}
+
+#[cfg(not(target_os = "macos"))]
+async fn upload_firmware_in_terminal(
+    _app: &AppHandle,
+    _config: &Config,
+    _address: &str,
+    _port: u16,
+    _password: &str,
+    _binary_path: &Path,
+) -> Result<String, String> {
+    Err("A Terminal + arduinoOTA feltöltési mód csak macOS-en használható.".into())
 }
 
 fn parse_ota_http_response(response: &[u8]) -> Result<(u16, String), String> {
@@ -746,7 +1016,7 @@ async fn upload_firmware_native(
         let header = format!(
             "POST /sketch HTTP/1.1\r\n\
 Host: {address}:{port}\r\n\
-User-Agent: Arduino-LED-Controller-Tauri/3.0.14\r\n\
+User-Agent: Arduino-LED-Controller-Tauri/3.0.15\r\n\
 Authorization: Basic {credentials}\r\n\
 Content-Type: application/octet-stream\r\n\
 Content-Length: {total}\r\n\
@@ -1023,11 +1293,24 @@ async fn firmware_status(app: AppHandle, state: State<'_, AppState>) -> Result<F
         }
     }
 
-    // A 3.0.14-es kiadástól az OTA-feltöltő a Tauri/Rust backend része.
-    // Nem szükséges Arduino IDE, Arduino CLI, külső arduinoOTA bináris vagy szerver.
-    status.ota_tool_installed = true;
-    status.ota_tool_path = Some("Beépített Tauri/Rust HTTP OTA-motor".into());
-    status.ota_tool_error = None;
+    match use_terminal_ota(&app, &config) {
+        Ok(true) => {
+            let tool = find_ota_tool(&app, &config);
+            status.ota_tool_installed = tool.is_some();
+            status.ota_tool_path = tool.map(|path| format!("macOS Terminal + {}", path.to_string_lossy()));
+            status.ota_tool_error = None;
+        }
+        Ok(false) => {
+            status.ota_tool_installed = true;
+            status.ota_tool_path = Some("Beépített Tauri/Rust HTTP OTA-motor".into());
+            status.ota_tool_error = None;
+        }
+        Err(error) => {
+            status.ota_tool_installed = false;
+            status.ota_tool_path = None;
+            status.ota_tool_error = Some(error);
+        }
+    }
     status.ota_password_configured = !read_ota_password(&app)?.is_empty();
 
     match latest_firmware(&config).await {
@@ -1084,11 +1367,18 @@ async fn firmware_update_inner(
         return Err("Hiányzik az OTA-jelszó.".into());
     }
     emit_ota_progress(app, "Előkészítés", "success", "OTA-jelszó betöltve.", Some(3));
+    let terminal_mode = use_terminal_ota(app, &config)?;
+    let ota_engine_label = if terminal_mode {
+        let tool = find_ota_tool(app, &config).ok_or("A Terminal OTA módhoz nem található arduinoOTA.")?;
+        format!("macOS Terminal + arduinoOTA ({})", tool.to_string_lossy())
+    } else {
+        "Beépített Tauri/Rust HTTP OTA-motor".to_string()
+    };
     emit_ota_progress(
         app,
         "Előkészítés",
         "success",
-        "Beépített Tauri/Rust OTA-motor aktív. Külső arduinoOTA, Arduino IDE, CLI vagy Proxmox nem szükséges.",
+        format!("OTA-motor: {ota_engine_label}. Az OTA-cél a külön beállított DDNS/IP és port."),
         Some(5),
     );
 
@@ -1128,7 +1418,7 @@ async fn firmware_update_inner(
         "Arduino",
         "success",
         format!(
-            "Arduino elérhető. Telepített: {} • közvetlen helyi OTA cél: {}:{}",
+            "Arduino elérhető. Telepített: {} • beállított OTA cél: {}:{}",
             installed.clone().unwrap_or_else(|| "ismeretlen".into()),
             ota_address,
             ota_port
@@ -1149,7 +1439,7 @@ async fn firmware_update_inner(
         current.ota_target_address = Some(ota_address.clone());
         current.ota_target_port = Some(ota_port);
         current.ota_tool_installed = true;
-        current.ota_tool_path = Some("Beépített Tauri/Rust HTTP OTA-motor".into());
+        current.ota_tool_path = Some(ota_engine_label.clone());
         current.ota_tool_error = None;
     }
 
@@ -1167,7 +1457,7 @@ async fn firmware_update_inner(
     );
     let firmware = download_client
         .get(&artifact.download_url)
-        .header("User-Agent", "arduino-led-controller-tauri/3.0.14")
+        .header("User-Agent", "arduino-led-controller-tauri/3.0.15")
         .send()
         .await
         .map_err(|error| format!("Firmware letöltési hiba: {error}"))?
@@ -1190,7 +1480,7 @@ async fn firmware_update_inner(
     emit_ota_progress(app, "Ellenőrzés", "info", "SHA-256 ellenőrzőösszeg letöltése…", Some(33));
     let checksum_text = download_client
         .get(&artifact.checksum_url)
-        .header("User-Agent", "arduino-led-controller-tauri/3.0.14")
+        .header("User-Agent", "arduino-led-controller-tauri/3.0.15")
         .send()
         .await
         .map_err(|error| format!("Checksum letöltési hiba: {error}"))?
@@ -1279,32 +1569,50 @@ async fn firmware_update_inner(
         current.state = "uploading".into();
         current.phase = Some("Feltöltés".into());
         current.progress = Some(52);
-        current.message = format!("Beépített OTA feltöltés: {}:{}…", ota_address, ota_port);
+        current.message = format!("OTA feltöltés: {}:{} • {}…", ota_address, ota_port, ota_engine_label);
     }
 
     emit_ota_progress(
         app,
         "Feltöltés",
         "info",
-        format!(
-            "A Tauri alkalmazás közvetlenül küldi a binárist: POST http://{}:{}/sketch • {} bájt",
-            ota_address,
-            ota_port,
-            firmware.len()
-        ),
+        if terminal_mode {
+            format!(
+                "A Tauri macOS Terminal ablakban indítja az arduinoOTA feltöltőt: {}:{} • {} bájt",
+                ota_address, ota_port, firmware.len()
+            )
+        } else {
+            format!(
+                "A Tauri beépített kliense küldi a binárist: POST http://{}:{}/sketch • {} bájt",
+                ota_address, ota_port, firmware.len()
+            )
+        },
         Some(52),
     );
 
     state.ota_in_progress.store(true, Ordering::SeqCst);
-    let upload_result = upload_firmware_native(
-        app,
-        Arc::clone(&state.arduino_request_lock),
-        &ota_address,
-        ota_port,
-        &password,
-        firmware.to_vec(),
-    )
-    .await;
+    let upload_result = if terminal_mode {
+        upload_firmware_in_terminal(
+            app,
+            &config,
+            &ota_address,
+            ota_port,
+            &password,
+            &binary_path,
+        )
+        .await
+        .map(|_| "Terminal + arduinoOTA".to_string())
+    } else {
+        upload_firmware_native(
+            app,
+            Arc::clone(&state.arduino_request_lock),
+            &ota_address,
+            ota_port,
+            &password,
+            firmware.to_vec(),
+        )
+        .await
+    };
     state.ota_in_progress.store(false, Ordering::SeqCst);
     upload_result?;
 
@@ -1330,7 +1638,8 @@ async fn firmware_update_inner(
     let final_status = FirmwareStatus {
         state: "success".into(),
         message: format!(
-            "Firmware sikeresen telepítve a beépített Tauri OTA-motorral: {}",
+            "Firmware sikeresen telepítve a(z) {} használatával: {}",
+            ota_engine_label,
             installed_after_restart
                 .clone()
                 .unwrap_or_else(|| artifact.tag.clone())
@@ -1341,7 +1650,7 @@ async fn firmware_update_inner(
         ota_password_configured: true,
         available_firmware: Some(artifact),
         firmware_lookup_error: None,
-        ota_tool_path: Some("Beépített Tauri/Rust HTTP OTA-motor".into()),
+        ota_tool_path: Some(ota_engine_label),
         ota_tool_error: None,
         ota_target_address: Some(ota_address),
         ota_target_port: Some(ota_port),
@@ -1425,7 +1734,7 @@ mod tests {
     }
 
     #[test]
-    fn ota_target_prefers_arduino_status() {
+    fn ota_target_prefers_configured_ddns() {
         let config = Config {
             arduino_ip: "lexyguruhome.ddns.net".into(),
             arduino_port: 25666,
@@ -1438,7 +1747,7 @@ mod tests {
         });
         assert_eq!(
             ota_target_from_status(&config, &status).expect("OTA cél"),
-            ("10.0.0.123".to_string(), 65280)
+            ("lexyguruhome.ddns.net".to_string(), 65280)
         );
     }
 }

@@ -10,6 +10,10 @@ const fallbackConfig: ConnectionConfig = {
   localArduinoIp: '10.0.0.123',
   localArduinoPort: 80,
   preferLocal: true,
+  otaAddress: 'lexyguruhome.ddns.net',
+  otaPort: 65280,
+  otaUploadMode: 'auto',
+  otaToolPath: '/usr/local/bin/arduinoOTA',
   arduinoApiPath: '',
   arduinoApiKey: ''
 };

@@ -24,7 +24,7 @@ export function FirmwarePage({ firmware, busy, otaLogs, otaProgress, otaStage, o
   const available = firmware?.availableFirmware;
   const otaTarget = firmware?.otaTargetAddress
     ? `${firmware.otaTargetAddress}:${firmware.otaTargetPort ?? 65280}`
-    : 'Az Arduino státuszából lesz meghatározva';
+    : 'A Beállítások OTA-céljából lesz meghatározva';
   const otaActive = busy && otaLogs.length > 0;
   const lastLog = otaLogs.at(-1);
   const consoleRef = useRef<HTMLDivElement | null>(null);
@@ -43,7 +43,7 @@ export function FirmwarePage({ firmware, busy, otaLogs, otaProgress, otaStage, o
     <section className="stats-grid">
       <article className="stat-card"><small>Telepített verzió</small><strong>{firmware?.installedVersion ?? 'Ismeretlen'}</strong></article>
       <article className="stat-card"><small>Elérhető verzió</small><strong>{available?.firmwareVersion ?? available?.tag ?? 'Nincs adat'}</strong></article>
-      <article className="stat-card"><small>OTA feltöltő</small><strong>{firmware?.otaToolInstalled ? 'Beépített' : 'Nem érhető el'}</strong></article>
+      <article className="stat-card"><small>OTA feltöltő</small><strong>{firmware?.otaToolInstalled ? (firmware?.otaToolPath?.includes('Terminal') ? 'macOS Terminal' : 'Beépített') : 'Nem érhető el'}</strong></article>
       <article className="stat-card"><small>OTA cél</small><strong>{otaTarget}</strong></article>
     </section>
 
@@ -51,7 +51,7 @@ export function FirmwarePage({ firmware, busy, otaLogs, otaProgress, otaStage, o
       <div className="firmware-icon"><ShieldCheck size={34}/></div>
       <div>
         <h3>{firmware?.message ?? 'Kattints az ellenőrzésre.'}</h3>
-        <p>{firmware?.otaToolInstalled ? `OTA motor: ${firmware.otaToolPath ?? 'beépített'} • Cél: ${otaTarget}` : firmware?.otaToolError ?? 'A beépített OTA-motor nem érhető el.'}</p>
+        <p>{firmware?.otaToolInstalled ? `OTA motor: ${firmware.otaToolPath ?? 'beépített'} • Cél: ${otaTarget}` : firmware?.otaToolError ?? 'Az OTA-motor nem érhető el.'}</p>
         <p>OTA-jelszó: {firmware?.otaPasswordConfigured ? 'beállítva' : 'hiányzik'}.</p>
         <p>{available ? `${available.name} • ${available.createdAt ?? available.tag}` : firmware?.firmwareLookupError ?? 'A GitHub firmware-kiadás még nincs lekérve.'}</p>
       </div>
@@ -92,6 +92,6 @@ export function FirmwarePage({ firmware, busy, otaLogs, otaProgress, otaStage, o
       </div>
     </section>
 
-    <div className="notice"><DownloadCloud size={18}/> A program a GitHub <b>firmware-latest</b> kiadásából tölti le a `.ino.bin` fájlt, ellenőrzi a SHA-256 értéket, majd az Arduino `/api/status` válaszában kapott belső IP-címre és OTA-portra tölti fel. A Tauri/Rust backend közvetlen HTTP-feltöltésének minden lépése megjelenik a konzolban; külső arduinoOTA program nem szükséges.</div>
+    <div className="notice"><DownloadCloud size={18}/> A program a GitHub <b>firmware-latest</b> kiadásából tölti le a `.ino.bin` fájlt és ellenőrzi a SHA-256 értéket. A feltöltési cél a Beállításokban megadott külön OTA DDNS/IP és külső port. macOS Terminal módban az app megnyitja a Terminalt, ott futtatja az arduinoOTA programot, majd a kimenetet visszaolvassa ebbe a konzolba.</div>
   </div>;
 }

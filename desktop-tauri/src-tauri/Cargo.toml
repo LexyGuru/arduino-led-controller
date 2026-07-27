@@ -1,6 +1,6 @@
 [package]
 name = "arduino-led-controller"
-version = "3.0.14"
+version = "3.0.15"
 description = "Standalone Arduino LED Controller"
 authors = ["LexyGuru"]
 edition = "2021"
