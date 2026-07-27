@@ -14,7 +14,7 @@
 #include <stdarg.h>
 #include "secrets.h"
 
-#define FIRMWARE_VERSION "4.1.12"
+#define FIRMWARE_VERSION "4.1.13"
 #define DEVICE_NAME "arduino-led-controller"
 #ifndef API_SHARED_SECRET
 #define API_SHARED_SECRET "CHANGE_THIS_TO_A_LONG_RANDOM_API_SECRET"
@@ -37,6 +37,8 @@ constexpr uint8_t LED_PINS[STRIP_COUNT] = {6, 7, 8};
 constexpr uint8_t PIR_PINS[STRIP_COUNT] = {2, 3, 4};
 constexpr uint8_t BUTTON_MODE = A0, BUTTON_UP = A1, BUTTON_DOWN = A2;
 constexpr unsigned long PIR_TIMEOUT = 60000, PIR_DEBOUNCE = 200, WIFI_RETRY = 15000, EFFECT_FRAME = 50, SCHEDULE_AUDIT_INTERVAL = 30000;
+constexpr uint16_t MINUTES_PER_WEEK = 7U * 24U * 60U;
+constexpr uint32_t MANUAL_OVERRIDE_INDEFINITE = 0xFFFFFFFFUL;
 constexpr uint32_t NETWORK_SETTINGS_MAGIC = 0x4C454431UL; // "LED1"
 constexpr uint16_t NETWORK_SETTINGS_VERSION = 1;
 constexpr uint16_t SCHEDULE_EEPROM_OFFSET = 256;
@@ -143,9 +145,15 @@ StoredSchedule schedules[SCHEDULE_MAX] = {};
 uint8_t scheduleCount = 0;
 bool schedulesStored = false;
 unsigned long lastClockEpoch = 0, lastClockMillis = 0, lastScheduleMinute = 0xFFFFFFFFUL, lastScheduleAudit = 0;
+// A kezi vezerles savonkent felulbiralja az aktualis idozitest. A felulbiralas
+// a kovetkezo, az adott LED-savot erinto idozitesi esemenyig marad ervenyben.
+bool manualOverride[STRIP_COUNT] = {};
+uint32_t manualOverrideUntilMinute[STRIP_COUNT] = {};
 char httpBodyBuffer[HTTP_BODY_BUFFER_SIZE] = {};
 
 void renderAll(bool force = false);
+void activateManualOverride(uint8_t stripIndex);
+void refreshManualOverrideDeadlines();
 
 void showMatrix(uint8_t frame[8][12]) { matrix.renderBitmap(frame, 8, 12); }
 
@@ -275,6 +283,10 @@ bool saveSchedules(uint8_t count) {
   EEPROM.put(SCHEDULE_EEPROM_OFFSET, header);
   EEPROM.put(SCHEDULE_EEPROM_OFFSET + sizeof(ScheduleHeader), schedules);
   scheduleCount = count; schedulesStored = true;
+  // Uj idozites feltoltesekor a mar aktiv kezi felulbiralasok kovetkezo
+  // esemenyet ujraszamoljuk az uj naptar alapjan.
+  refreshManualOverrideDeadlines();
+  lastScheduleAudit = 0;
   return true;
 }
 int hexValue(char value) { if (value >= '0' && value <= '9') return value - '0'; if (value >= 'a' && value <= 'f') return value - 'a' + 10; if (value >= 'A' && value <= 'F') return value - 'A' + 10; return -1; }
@@ -322,6 +334,74 @@ bool localScheduleTime(uint8_t& day, uint8_t& hour, uint8_t& minute) {
   tm utc = *gmtime(&utcEpoch); utcEpoch += 3600 + (euSummerTime(utc) ? 3600 : 0);
   tm local = *gmtime(&utcEpoch); day = local.tm_wday == 0 ? 7 : local.tm_wday; hour = local.tm_hour; minute = local.tm_min; return true;
 }
+uint32_t currentClockMinuteKey() {
+  if (!timeSynced) return 0;
+  return static_cast<uint32_t>((lastClockEpoch + (millis() - lastClockMillis) / 1000) / 60);
+}
+
+bool minuteKeyReached(uint32_t current, uint32_t target) {
+  // Előjeles kivonással a millis/epoch túlcsordulása mellett is helyes marad
+  // a rövid időtávú összehasonlítás.
+  return static_cast<int32_t>(current - target) >= 0;
+}
+
+bool nextScheduleDeltaMinutes(uint8_t stripIndex, uint16_t currentWeekMinute, uint16_t& deltaMinutes) {
+  if (stripIndex >= STRIP_COUNT || !scheduleCount) return false;
+
+  int32_t firstEvent = -1;
+  int32_t nextEvent = -1;
+  for (uint8_t s = 0; s < scheduleCount; s++) {
+    if (!schedules[s].leds[stripIndex].apply) continue;
+    const uint16_t eventMinute = (schedules[s].day - 1) * 1440U + schedules[s].hour * 60U + schedules[s].minute;
+    if (firstEvent < 0 || eventMinute < firstEvent) firstEvent = eventMinute;
+    // Szigoruan kesobbi esemenyt keresunk. Ha a felhasznalo az aktualis
+    // idozitesi percben allit kezzel, az ugyanabban a percben mar ne irja felul.
+    if (eventMinute > currentWeekMinute && (nextEvent < 0 || eventMinute < nextEvent)) nextEvent = eventMinute;
+  }
+
+  if (nextEvent >= 0) {
+    deltaMinutes = static_cast<uint16_t>(nextEvent - currentWeekMinute);
+    return true;
+  }
+  if (firstEvent >= 0) {
+    deltaMinutes = static_cast<uint16_t>(MINUTES_PER_WEEK - currentWeekMinute + firstEvent);
+    return true;
+  }
+  return false;
+}
+
+void activateManualOverride(uint8_t stripIndex) {
+  if (stripIndex >= STRIP_COUNT) return;
+  manualOverride[stripIndex] = true;
+  manualOverrideUntilMinute[stripIndex] = MANUAL_OVERRIDE_INDEFINITE;
+
+  uint8_t day, hour, minute;
+  if (!localScheduleTime(day, hour, minute)) return;
+
+  const uint16_t currentWeekMinute = (day - 1) * 1440U + hour * 60U + minute;
+  uint16_t deltaMinutes = 0;
+  if (nextScheduleDeltaMinutes(stripIndex, currentWeekMinute, deltaMinutes)) {
+    manualOverrideUntilMinute[stripIndex] = currentClockMinuteKey() + deltaMinutes;
+  }
+}
+
+void activateManualOverrideAll() {
+  for (uint8_t i = 0; i < STRIP_COUNT; i++) activateManualOverride(i);
+}
+
+void refreshManualOverrideDeadlines() {
+  for (uint8_t i = 0; i < STRIP_COUNT; i++) {
+    if (manualOverride[i]) activateManualOverride(i);
+  }
+}
+
+int32_t manualOverrideMinutesRemaining(uint8_t stripIndex) {
+  if (stripIndex >= STRIP_COUNT || !manualOverride[stripIndex]) return 0;
+  if (!timeSynced || manualOverrideUntilMinute[stripIndex] == MANUAL_OVERRIDE_INDEFINITE) return -1;
+  const int32_t remaining = static_cast<int32_t>(manualOverrideUntilMinute[stripIndex] - currentClockMinuteKey());
+  return remaining > 0 ? remaining : 0;
+}
+
 bool ledMatchesStored(const Led& current, const StoredLed& expected) {
   return current.enabled == (expected.enabled != 0) && current.brightness == expected.brightness &&
     current.effect == expected.effect && current.speed == expected.speed && current.red == expected.red &&
@@ -338,9 +418,25 @@ void reconcileArduinoSchedules(bool forceCheck = false) {
 
   uint8_t day, hour, minute; if (!localScheduleTime(day, hour, minute)) return;
   const uint16_t currentWeekMinute = (day - 1) * 1440U + hour * 60U + minute;
+  const uint32_t currentMinuteKey = currentClockMinuteKey();
   bool changed = false;
 
   for (uint8_t stripIndex = 0; stripIndex < STRIP_COUNT; stripIndex++) {
+    // Kezi beallitas kozben az ellenorzesi ciklus nem allithatja vissza az
+    // aktualis idozites ertekeit. A kovetkezo, ezt a savot erinto idozitesi
+    // esemenynel a felulbiralas automatikusan lejar.
+    if (manualOverride[stripIndex]) {
+      const uint32_t until = manualOverrideUntilMinute[stripIndex];
+      if (until == MANUAL_OVERRIDE_INDEFINITE || !minuteKeyReached(currentMinuteKey, until)) continue;
+
+      manualOverride[stripIndex] = false;
+      manualOverrideUntilMinute[stripIndex] = 0;
+      char overrideMessage[96];
+      snprintf(overrideMessage, sizeof(overrideMessage),
+        "LED %u kezi felulbiralas lejart; idozites ujra aktiv", stripIndex + 1);
+      logEvent("info", overrideMessage);
+    }
+
     int16_t selected = -1;
     int32_t selectedMinute = -1;
 
@@ -404,8 +500,8 @@ void reportWifiConnected() {
 
   char message[128];
   snprintf(message, sizeof(message),
-    "WiFi kesz: %u.%u.%u.%u, jel: %d dBm, HTTP: %u, OTA: %u",
-    ip[0], ip[1], ip[2], ip[3], WiFi.RSSI(), HTTP_API_PORT, OTA_UPLOAD_PORT);
+    "WiFi kesz: %u.%u.%u.%u, jel: %ld dBm, HTTP: %u, OTA: %u",
+    ip[0], ip[1], ip[2], ip[3], static_cast<long>(WiFi.RSSI()), HTTP_API_PORT, OTA_UPLOAD_PORT);
   logEvent("success", message);
 
   consoleLine("");
@@ -414,7 +510,7 @@ void reportWifiConnected() {
   snprintf(message, sizeof(message), "Firmware:            %s", FIRMWARE_VERSION); consoleLine(message);
   snprintf(message, sizeof(message), "WiFi modul firmware: %s", WiFi.firmwareVersion()); consoleLine(message);
   snprintf(message, sizeof(message), "IP cim:              %u.%u.%u.%u", ip[0], ip[1], ip[2], ip[3]); consoleLine(message);
-  snprintf(message, sizeof(message), "Jelerosseg:           %d dBm", WiFi.RSSI()); consoleLine(message);
+  snprintf(message, sizeof(message), "Jelerosseg:           %ld dBm", static_cast<long>(WiFi.RSSI())); consoleLine(message);
   consoleLine("------------------------------------------");
   snprintf(message, sizeof(message), "Web API:             http://%u.%u.%u.%u:%u/api/status", ip[0], ip[1], ip[2], ip[3], HTTP_API_PORT); consoleLine(message);
   snprintf(message, sizeof(message), "OTA feltoltes:       %u.%u.%u.%u:%u", ip[0], ip[1], ip[2], ip[3], OTA_UPLOAD_PORT); consoleLine(message);
@@ -515,9 +611,9 @@ void handleButtons() {
   static bool lastMode = HIGH, lastUp = HIGH, lastDown = HIGH; static unsigned long lastCheck = 0;
   if (millis() - lastCheck < 50) return; lastCheck = millis();
   bool mode = digitalRead(BUTTON_MODE), up = digitalRead(BUTTON_UP), down = digitalRead(BUTTON_DOWN);
-  if (mode == LOW && lastMode == HIGH) { for (uint8_t i = 0; i < STRIP_COUNT; i++) leds[i].effect = (leds[i].effect + 1) % 5; logEvent("info", "Gomb: effekt valtas"); renderAll(true); }
-  if (up == LOW && lastUp == HIGH) { for (uint8_t i = 0; i < STRIP_COUNT; i++) leds[i].brightness = min(255, leds[i].brightness + 25); renderAll(true); }
-  if (down == LOW && lastDown == HIGH) { for (uint8_t i = 0; i < STRIP_COUNT; i++) leds[i].brightness = max(0, leds[i].brightness - 25); renderAll(true); }
+  if (mode == LOW && lastMode == HIGH) { for (uint8_t i = 0; i < STRIP_COUNT; i++) leds[i].effect = (leds[i].effect + 1) % 5; activateManualOverrideAll(); logEvent("info", "Gomb: effekt valtas"); renderAll(true); }
+  if (up == LOW && lastUp == HIGH) { for (uint8_t i = 0; i < STRIP_COUNT; i++) leds[i].brightness = min(255, leds[i].brightness + 25); activateManualOverrideAll(); renderAll(true); }
+  if (down == LOW && lastDown == HIGH) { for (uint8_t i = 0; i < STRIP_COUNT; i++) leds[i].brightness = max(0, leds[i].brightness - 25); activateManualOverrideAll(); renderAll(true); }
   lastMode = mode; lastUp = up; lastDown = down;
 #endif
 }
@@ -661,9 +757,12 @@ bool buildStatusJson(size_t& bodyLength) {
     if (i) appendChar(buffer, ',');
     appendFormat(buffer,
       "{\"id\":%u,\"enabled\":%s,\"brightness\":%u,\"effect\":%u,"
-      "\"speed\":%u,\"color\":[%u,%u,%u]}",
+      "\"speed\":%u,\"color\":[%u,%u,%u],\"manualOverride\":%s,"
+      "\"manualOverrideMinutesRemaining\":%ld}",
       i + 1, leds[i].enabled ? "true" : "false", leds[i].brightness,
-      leds[i].effect, leds[i].speed, leds[i].red, leds[i].green, leds[i].blue);
+      leds[i].effect, leds[i].speed, leds[i].red, leds[i].green, leds[i].blue,
+      manualOverride[i] ? "true" : "false",
+      static_cast<long>(manualOverrideMinutesRemaining(i)));
   }
   appendRaw(buffer, "]}");
   bodyLength = buffer.length;
@@ -763,8 +862,19 @@ void updateLed(const String& path) {
   Led& led = leds[id - 1]; String query = question < 0 ? "" : path.substring(question + 1);
   led.enabled = valueBool(query, "enabled", led.enabled); led.brightness = valueInt(query, "brightness", led.brightness, 0, 255); led.effect = valueInt(query, "effect", led.effect, 0, 4); led.speed = valueInt(query, "speed", led.speed, 1, 100);
   int colorAt = query.indexOf("color="); if (colorAt >= 0) { String raw = query.substring(colorAt + 6); int stop = raw.indexOf('&'); if (stop >= 0) raw = raw.substring(0, stop); int a = raw.indexOf(','), b = raw.indexOf(',', a + 1); if (a >= 0 && b >= 0) { led.red = constrain(raw.substring(0, a).toInt(), 0, 255); led.green = constrain(raw.substring(a + 1, b).toInt(), 0, 255); led.blue = constrain(raw.substring(b + 1).toInt(), 0, 255); } }
-  char message[112];
-  snprintf(message, sizeof(message), "LED %d: %s | fenyerő: %d | effekt: %d | sebesseg: %d | RGB: %d,%d,%d", id, led.enabled ? "BE" : "KI", led.brightness, led.effect, led.speed, led.red, led.green, led.blue);
+  activateManualOverride(id - 1);
+  char message[128];
+  const int32_t remaining = manualOverrideMinutesRemaining(id - 1);
+  if (remaining >= 0) {
+    snprintf(message, sizeof(message),
+      "LED %d kezi: %s | fenyerő: %d | effekt: %d | sebesseg: %d | RGB: %d,%d,%d | kovetkezo idozites: %ld perc",
+      id, led.enabled ? "BE" : "KI", led.brightness, led.effect, led.speed, led.red, led.green, led.blue,
+      static_cast<long>(remaining));
+  } else {
+    snprintf(message, sizeof(message),
+      "LED %d kezi: %s | fenyerő: %d | effekt: %d | sebesseg: %d | RGB: %d,%d,%d | idozitesig: korlatlan",
+      id, led.enabled ? "BE" : "KI", led.brightness, led.effect, led.speed, led.red, led.green, led.blue);
+  }
   logEvent("info", message); renderAll(true);
 }
 void route(WiFiClient& c, const String& path) {
@@ -797,7 +907,7 @@ void route(WiFiClient& c, const String& path) {
   if (base == "/api/console/logs") { String query = queryAt < 0 ? "" : path.substring(queryAt + 1); uint32_t afterId = (uint32_t)valueInt(query, "after", 0, 0, 2147483647); sendLogsJson(c, afterId); return; }
   if (base == "/api/console/stats") { sendConsoleStatsJson(c); return; }
   if (base == "/api/console/clear") { logStart = 0; logSize = 0; sendJsonLiteral(c, "{\"success\":true}"); return; }
-  if (base == "/api/all-on" || base == "/api/all-off") { bool state = base == "/api/all-on"; for (uint8_t i = 0; i < STRIP_COUNT; i++) leds[i].enabled = state; logEvent("info", state ? "Minden LED bekapcsolva" : "Minden LED kikapcsolva"); renderAll(true); sendStatusJson(c); return; }
+  if (base == "/api/all-on" || base == "/api/all-off") { bool state = base == "/api/all-on"; for (uint8_t i = 0; i < STRIP_COUNT; i++) leds[i].enabled = state; activateManualOverrideAll(); logEvent("info", state ? "Minden LED kezzel bekapcsolva" : "Minden LED kezzel kikapcsolva"); renderAll(true); sendStatusJson(c); return; }
   if (base.startsWith("/api/led/")) { updateLed(path); sendStatusJson(c); return; }
   sendJson(c, "{\"error\":\"Ismeretlen API vegpont\"}", 400);
 }
