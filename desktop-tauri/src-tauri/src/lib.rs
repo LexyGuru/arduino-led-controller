@@ -7,15 +7,15 @@ use std::{
     io::{ErrorKind, Read, Write},
     net::{Ipv4Addr, TcpStream, ToSocketAddrs},
     path::{Path, PathBuf},
-    process::Command,
+    process::{Command, Stdio},
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc, Mutex,
     },
     thread,
-    time::{Duration, SystemTime, UNIX_EPOCH},
+    time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
-use tauri::{AppHandle, Manager, State};
+use tauri::{AppHandle, Emitter, Manager, State};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
@@ -152,6 +152,18 @@ struct FirmwareStatus {
     ota_target_address: Option<String>,
     ota_target_port: Option<u16>,
     update_available: bool,
+    progress: Option<u8>,
+    phase: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct OtaProgressEvent {
+    timestamp: u64,
+    stage: String,
+    level: String,
+    message: String,
+    progress: Option<u8>,
 }
 
 struct AppState {
@@ -178,6 +190,105 @@ fn firmware_dir(app: &AppHandle) -> Result<PathBuf, String> {
     let p = app_dir(app)?.join("firmware");
     fs::create_dir_all(&p).map_err(|e| e.to_string())?;
     Ok(p)
+}
+
+
+fn unix_millis() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis() as u64
+}
+
+fn emit_ota_progress(
+    app: &AppHandle,
+    stage: &str,
+    level: &str,
+    message: impl Into<String>,
+    progress: Option<u8>,
+) {
+    let payload = OtaProgressEvent {
+        timestamp: unix_millis(),
+        stage: stage.to_string(),
+        level: level.to_string(),
+        message: message.into(),
+        progress,
+    };
+    let _ = app.emit("ota-progress", payload);
+}
+
+fn percentage_from_line(line: &str) -> Option<u8> {
+    let percent_index = line.find('%')?;
+    let prefix = &line[..percent_index];
+    let digits_reversed: String = prefix
+        .chars()
+        .rev()
+        .take_while(|value| value.is_ascii_digit() || value.is_ascii_whitespace())
+        .filter(|value| value.is_ascii_digit())
+        .collect();
+    if digits_reversed.is_empty() {
+        return None;
+    }
+    let digits: String = digits_reversed.chars().rev().collect();
+    digits.parse::<u8>().ok().map(|value| value.min(100))
+}
+
+fn stream_ota_output<R: Read + Send + 'static>(
+    mut reader: R,
+    app: AppHandle,
+    level: &'static str,
+) -> thread::JoinHandle<Vec<String>> {
+    thread::spawn(move || {
+        let mut collected = Vec::new();
+        let mut pending = Vec::<u8>::new();
+        let mut chunk = [0_u8; 256];
+
+        let flush_line = |bytes: &mut Vec<u8>, collected: &mut Vec<String>| {
+            if bytes.is_empty() {
+                return;
+            }
+            let line = String::from_utf8_lossy(bytes).trim().to_string();
+            bytes.clear();
+            if line.is_empty() {
+                return;
+            }
+            let raw_progress = percentage_from_line(&line);
+            let mapped_progress = raw_progress.map(|value| 55_u8.saturating_add(((value as u16 * 35) / 100) as u8).min(90));
+            emit_ota_progress(&app, "arduinoOTA", level, line.clone(), mapped_progress);
+            collected.push(line);
+        };
+
+        loop {
+            match reader.read(&mut chunk) {
+                Ok(0) => break,
+                Ok(length) => {
+                    for value in &chunk[..length] {
+                        if *value == b'\n' || *value == b'\r' {
+                            flush_line(&mut pending, &mut collected);
+                        } else {
+                            pending.push(*value);
+                            if pending.len() >= 1024 {
+                                flush_line(&mut pending, &mut collected);
+                            }
+                        }
+                    }
+                }
+                Err(error) if error.kind() == ErrorKind::Interrupted => continue,
+                Err(error) => {
+                    emit_ota_progress(
+                        &app,
+                        "arduinoOTA",
+                        "error",
+                        format!("A feltöltő kimenete nem olvasható: {error}"),
+                        None,
+                    );
+                    break;
+                }
+            }
+        }
+        flush_line(&mut pending, &mut collected);
+        collected
+    })
 }
 
 fn validate_host(host: &str, label: &str) -> Result<(), String> {
@@ -319,7 +430,7 @@ fn raw_get_once(c: &Config, path: &str, timeout: Duration) -> Result<Value, Stri
 
     let request_path = protected_path(c, path)?;
     let request = format!(
-        "GET {request_path} HTTP/1.1\r\nHost: {host}:{}\r\nUser-Agent: Arduino-LED-Controller-Tauri/3.0.10\r\nAccept: application/json\r\nConnection: close\r\n\r\n",
+        "GET {request_path} HTTP/1.1\r\nHost: {host}:{}\r\nUser-Agent: Arduino-LED-Controller-Tauri/3.0.11\r\nAccept: application/json\r\nConnection: close\r\n\r\n",
         c.arduino_port
     );
     stream
@@ -732,7 +843,11 @@ fn ota_target_from_status(config: &Config, status: &Value) -> Result<(String, u1
     Ok((address, port))
 }
 
-async fn confirm_restart(state: &AppState, expected: Option<String>) -> Result<Option<String>, String> {
+async fn confirm_restart(
+    app: &AppHandle,
+    state: &AppState,
+    expected: Option<String>,
+) -> Result<Option<String>, String> {
     for attempt in 0..30 {
         tokio::time::sleep(if attempt == 0 {
             Duration::from_secs(3)
@@ -740,6 +855,16 @@ async fn confirm_restart(state: &AppState, expected: Option<String>) -> Result<O
             Duration::from_secs(2)
         })
         .await;
+
+        let progress = 92_u8.saturating_add(((attempt as u16 * 7) / 29) as u8).min(99);
+        emit_ota_progress(
+            app,
+            "Újraindítás",
+            "info",
+            format!("Arduino visszajelentkezésének ellenőrzése ({}/30)…", attempt + 1),
+            Some(progress),
+        );
+
         if let Ok(status) = get_json(state, "/api/status").await {
             let installed = status
                 .get("firmwareVersion")
@@ -749,9 +874,34 @@ async fn confirm_restart(state: &AppState, expected: Option<String>) -> Result<O
                 (Some(wanted), Some(actual))
                     if normalize_version(wanted) == normalize_version(actual) =>
                 {
+                    emit_ota_progress(
+                        app,
+                        "Ellenőrzés",
+                        "success",
+                        format!("Az Arduino elérhető, telepített firmware: {actual}."),
+                        Some(100),
+                    );
                     return Ok(installed.clone());
                 }
-                (None, Some(_)) => return Ok(installed.clone()),
+                (None, Some(actual)) => {
+                    emit_ota_progress(
+                        app,
+                        "Ellenőrzés",
+                        "success",
+                        format!("Az Arduino elérhető, telepített firmware: {actual}."),
+                        Some(100),
+                    );
+                    return Ok(installed.clone());
+                }
+                (Some(wanted), Some(actual)) => {
+                    emit_ota_progress(
+                        app,
+                        "Ellenőrzés",
+                        "info",
+                        format!("Az Arduino válaszol, de még {actual} verziót jelent; várt verzió: {wanted}."),
+                        Some(progress),
+                    );
+                }
                 _ => {}
             }
         }
@@ -915,6 +1065,8 @@ async fn firmware_update_inner(
     app: &AppHandle,
     state: &AppState,
 ) -> Result<FirmwareStatus, String> {
+    emit_ota_progress(app, "Indítás", "info", "OTA-frissítés előkészítése…", Some(1));
+
     let config = state
         .config
         .lock()
@@ -924,9 +1076,33 @@ async fn firmware_update_inner(
     if password.is_empty() {
         return Err("Hiányzik az OTA-jelszó.".into());
     }
+    emit_ota_progress(app, "Előkészítés", "success", "OTA-jelszó betöltve.", Some(3));
 
     let ota_tool = find_ota_tool(app)?;
+    emit_ota_progress(
+        app,
+        "Előkészítés",
+        "success",
+        format!("OTA feltöltő megtalálva: {}", ota_tool.to_string_lossy()),
+        Some(5),
+    );
+
+    emit_ota_progress(app, "GitHub", "info", "Legfrissebb firmware-kiadás lekérdezése…", Some(7));
     let artifact = latest_firmware(&config).await?;
+    let available = artifact
+        .firmware_version
+        .as_deref()
+        .unwrap_or(&artifact.tag)
+        .to_string();
+    emit_ota_progress(
+        app,
+        "GitHub",
+        "success",
+        format!("Elérhető firmware: {available} ({})", artifact.name),
+        Some(10),
+    );
+
+    emit_ota_progress(app, "Arduino", "info", "Arduino státuszának és OTA-céljának ellenőrzése…", Some(12));
     let status_json = get_json(state, "/api/status")
         .await
         .map_err(|error| format!("OTA indítás előtt nem olvasható az Arduino státusza: {error}"))?;
@@ -934,24 +1110,34 @@ async fn firmware_update_inner(
         .get("firmwareVersion")
         .and_then(Value::as_str)
         .map(str::to_string);
-    let available = artifact
-        .firmware_version
-        .as_deref()
-        .unwrap_or(&artifact.tag);
-    if installed.as_deref().map(normalize_version) == Some(normalize_version(available)) {
+    if installed.as_deref().map(normalize_version) == Some(normalize_version(&available)) {
         return Err(format!(
             "Nincs szükség frissítésre. A telepített és az elérhető firmware-verzió egyaránt {}.",
-            installed.unwrap_or_else(|| available.to_string())
+            installed.unwrap_or(available)
         ));
     }
 
     let (ota_address, ota_port) = ota_target_from_status(&config, &status_json)?;
+    emit_ota_progress(
+        app,
+        "Arduino",
+        "success",
+        format!(
+            "Arduino elérhető. Telepített: {} • OTA cél: {}:{}",
+            installed.clone().unwrap_or_else(|| "ismeretlen".into()),
+            ota_address,
+            ota_port
+        ),
+        Some(15),
+    );
     {
         let mut current = state
             .firmware_status
             .lock()
             .map_err(|_| "Firmware állapot zárolva".to_string())?;
         current.state = "downloading".into();
+        current.phase = Some("Letöltés".into());
+        current.progress = Some(15);
         current.message = "Firmware letöltése…".into();
         current.available_firmware = Some(artifact.clone());
         current.ota_target_address = Some(ota_address.clone());
@@ -962,9 +1148,17 @@ async fn firmware_update_inner(
         .timeout(Duration::from_secs(90))
         .build()
         .map_err(|e| e.to_string())?;
+
+    emit_ota_progress(
+        app,
+        "Letöltés",
+        "info",
+        format!("Firmware letöltése: {}", artifact.download_url),
+        Some(18),
+    );
     let firmware = client
         .get(&artifact.download_url)
-        .header("User-Agent", "arduino-led-controller-tauri/3.0.10")
+        .header("User-Agent", "arduino-led-controller-tauri/3.0.11")
         .send()
         .await
         .map_err(|e| format!("Firmware letöltési hiba: {e}"))?
@@ -976,10 +1170,18 @@ async fn firmware_update_inner(
     if firmware.len() < 1024 {
         return Err("A firmware túl kicsi vagy sérült.".into());
     }
+    emit_ota_progress(
+        app,
+        "Letöltés",
+        "success",
+        format!("Firmware letöltve: {} bájt.", firmware.len()),
+        Some(30),
+    );
 
+    emit_ota_progress(app, "Ellenőrzés", "info", "SHA-256 ellenőrzőösszeg letöltése…", Some(33));
     let checksum_text = client
         .get(&artifact.checksum_url)
-        .header("User-Agent", "arduino-led-controller-tauri/3.0.10")
+        .header("User-Agent", "arduino-led-controller-tauri/3.0.11")
         .send()
         .await
         .map_err(|e| format!("Checksum letöltési hiba: {e}"))?
@@ -995,22 +1197,46 @@ async fn firmware_update_inner(
         .to_lowercase();
     let actual = hex::encode(Sha256::digest(&firmware));
     if expected.len() != 64 || expected != actual {
-        return Err("A firmware SHA-256 ellenőrzése sikertelen.".into());
+        return Err(format!(
+            "A firmware SHA-256 ellenőrzése sikertelen. Várt: {expected}, kapott: {actual}."
+        ));
     }
+    emit_ota_progress(
+        app,
+        "Ellenőrzés",
+        "success",
+        format!("SHA-256 rendben: {actual}"),
+        Some(42),
+    );
 
     let binary_path = firmware_dir(app)?.join("latest-arduino-firmware.bin");
-    fs::write(&binary_path, &firmware).map_err(|e| e.to_string())?;
+    fs::write(&binary_path, &firmware)
+        .map_err(|e| format!("A firmware nem menthető ideiglenesen: {e}"))?;
+    emit_ota_progress(
+        app,
+        "Előkészítés",
+        "success",
+        format!("Firmware mentve: {}", binary_path.to_string_lossy()),
+        Some(48),
+    );
     {
         let mut current = state
             .firmware_status
             .lock()
             .map_err(|_| "Firmware állapot zárolva".to_string())?;
         current.state = "uploading".into();
-        current.message = format!(
-            "Firmware feltöltése: {}:{}…",
-            ota_address, ota_port
-        );
+        current.phase = Some("Feltöltés".into());
+        current.progress = Some(50);
+        current.message = format!("Firmware feltöltése: {}:{}…", ota_address, ota_port);
     }
+
+    emit_ota_progress(
+        app,
+        "Feltöltés",
+        "info",
+        format!("arduinoOTA indítása: {}:{}", ota_address, ota_port),
+        Some(52),
+    );
 
     let ota_tool_for_command = ota_tool.clone();
     let ota_address_for_command = ota_address.clone();
@@ -1018,14 +1244,14 @@ async fn firmware_update_inner(
     let password_for_command = password.clone();
     let binary_string = binary_path.to_string_lossy().to_string();
     let ota_request_lock = Arc::clone(&state.arduino_request_lock);
+    let app_for_command = app.clone();
     state.ota_in_progress.store(true, Ordering::SeqCst);
-    let output_result = tauri::async_runtime::spawn_blocking(move || -> Result<std::process::Output, String> {
-        // Ugyanazt a zárat tartjuk a teljes OTA alatt, amelyet a HTTP-kérések is
-        // használnak, ezért státusz- vagy konzollekérés nem zavarhatja a feltöltést.
+    let output_result = tauri::async_runtime::spawn_blocking(move || -> Result<(std::process::ExitStatus, Vec<String>, Vec<String>), String> {
         let _guard = ota_request_lock
             .lock()
             .map_err(|_| "Az Arduino kérési sor zárolása megsérült.".to_string())?;
-        Command::new(&ota_tool_for_command)
+
+        let mut child = Command::new(&ota_tool_for_command)
             .args([
                 "-address",
                 ota_address_for_command.as_str(),
@@ -1041,38 +1267,113 @@ async fn firmware_update_inner(
                 "/sketch",
                 "-b",
             ])
-            .output()
-            .map_err(|e| format!("Az OTA feltöltő nem indítható: {e}"))
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .map_err(|e| format!("Az OTA feltöltő nem indítható: {e}"))?;
+
+        emit_ota_progress(
+            &app_for_command,
+            "Feltöltés",
+            "success",
+            format!("arduinoOTA elindult, PID: {}", child.id()),
+            Some(55),
+        );
+
+        let stdout = child.stdout.take().ok_or("Az arduinoOTA stdout nem érhető el.")?;
+        let stderr = child.stderr.take().ok_or("Az arduinoOTA stderr nem érhető el.")?;
+        let stdout_thread = stream_ota_output(stdout, app_for_command.clone(), "output");
+        let stderr_thread = stream_ota_output(stderr, app_for_command.clone(), "output");
+        let started = Instant::now();
+        let mut last_heartbeat = Instant::now();
+        let status = loop {
+            if let Some(status) = child
+                .try_wait()
+                .map_err(|e| format!("Az arduinoOTA állapota nem kérdezhető le: {e}"))?
+            {
+                break status;
+            }
+            if started.elapsed() >= Duration::from_secs(180) {
+                let _ = child.kill();
+                let _ = child.wait();
+                let stdout_lines = stdout_thread.join().unwrap_or_else(|_| vec!["stdout olvasó szál megszakadt".into()]);
+                let stderr_lines = stderr_thread.join().unwrap_or_else(|_| vec!["stderr olvasó szál megszakadt".into()]);
+                let details = stderr_lines
+                    .iter()
+                    .chain(stdout_lines.iter())
+                    .cloned()
+                    .collect::<Vec<_>>()
+                    .join("\n");
+                return Err(format!(
+                    "Az arduinoOTA 180 másodperc után sem fejeződött be, ezért leállítottam. {}",
+                    details
+                ));
+            }
+            if last_heartbeat.elapsed() >= Duration::from_secs(10) {
+                emit_ota_progress(
+                    &app_for_command,
+                    "Feltöltés",
+                    "info",
+                    format!("arduinoOTA fut… eltelt {} másodperc.", started.elapsed().as_secs()),
+                    None,
+                );
+                last_heartbeat = Instant::now();
+            }
+            thread::sleep(Duration::from_millis(200));
+        };
+        let stdout_lines = stdout_thread.join().unwrap_or_else(|_| vec!["stdout olvasó szál megszakadt".into()]);
+        let stderr_lines = stderr_thread.join().unwrap_or_else(|_| vec!["stderr olvasó szál megszakadt".into()]);
+        Ok((status, stdout_lines, stderr_lines))
     })
     .await;
     state.ota_in_progress.store(false, Ordering::SeqCst);
-    let output = output_result
+    let (exit_status, stdout_lines, stderr_lines) = output_result
         .map_err(|e| format!("Az OTA háttérfeladat megszakadt: {e}"))??;
 
-    if !output.status.success() {
-        let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
-        let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
-        let details = match (stdout.is_empty(), stderr.is_empty()) {
-            (false, false) => format!("{stderr}\n{stdout}"),
-            (false, true) => stdout,
-            (true, false) => stderr,
-            (true, true) => format!("Az arduinoOTA hibakóddal állt le: {}", output.status),
-        };
+    if !exit_status.success() {
+        let details = stderr_lines
+            .iter()
+            .chain(stdout_lines.iter())
+            .filter(|line| !line.trim().is_empty())
+            .cloned()
+            .collect::<Vec<_>>()
+            .join("\n");
         return Err(format!(
-            "OTA feltöltési hiba ({}:{}): {}. A HTTP/API kapcsolat címe: {}:{}.",
-            ota_address, ota_port, details, config.arduino_ip, config.arduino_port
+            "OTA feltöltési hiba ({}:{}; kilépési állapot: {}): {}. A HTTP/API kapcsolat címe: {}:{}.",
+            ota_address,
+            ota_port,
+            exit_status,
+            if details.is_empty() { "Az arduinoOTA nem adott részletes hibaüzenetet." } else { details.as_str() },
+            config.arduino_ip,
+            config.arduino_port
         ));
     }
 
+    emit_ota_progress(
+        app,
+        "Feltöltés",
+        "success",
+        format!("arduinoOTA sikeresen befejeződött: {exit_status}."),
+        Some(91),
+    );
     {
         let mut current = state
             .firmware_status
             .lock()
             .map_err(|_| "Firmware állapot zárolva".to_string())?;
         current.state = "restarting".into();
+        current.phase = Some("Újraindítás".into());
+        current.progress = Some(92);
         current.message = "Az Arduino újraindul és visszaellenőrzésre vár…".into();
     }
-    let installed_after_restart = confirm_restart(state, artifact.firmware_version.clone()).await?;
+    emit_ota_progress(
+        app,
+        "Újraindítás",
+        "info",
+        "A feltöltés kész. Várakozás az Arduino újraindulására…",
+        Some(92),
+    );
+    let installed_after_restart = confirm_restart(app, state, artifact.firmware_version.clone()).await?;
     let final_status = FirmwareStatus {
         state: "success".into(),
         message: format!(
@@ -1092,6 +1393,8 @@ async fn firmware_update_inner(
         ota_target_address: Some(ota_address),
         ota_target_port: Some(ota_port),
         update_available: false,
+        progress: Some(100),
+        phase: Some("Kész".into()),
     };
     *state
         .firmware_status
@@ -1106,8 +1409,10 @@ async fn firmware_update(app: AppHandle, state: State<'_, AppState>) -> Result<F
         Ok(status) => Ok(status),
         Err(error) => {
             state.ota_in_progress.store(false, Ordering::SeqCst);
+            emit_ota_progress(&app, "Hiba", "error", error.clone(), None);
             if let Ok(mut current) = state.firmware_status.lock() {
                 current.state = "error".into();
+                current.phase = Some("Hiba".into());
                 current.message = error.clone();
             }
             Err(error)
@@ -1148,6 +1453,12 @@ mod tests {
         ]);
         let output = normalize_console_response(input).expect("normalizálható konzoltömb");
         assert_eq!(output.get("lastId").and_then(Value::as_u64), Some(9));
+    }
+
+    #[test]
+    fn ota_percentage_is_detected() {
+        assert_eq!(percentage_from_line("Uploading: 73%"), Some(73));
+        assert_eq!(percentage_from_line("No progress here"), None);
     }
 
     #[test]

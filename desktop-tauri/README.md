@@ -1,4 +1,10 @@
-# Arduino LED Controller Desktop v3.0.10
+# Arduino LED Controller Desktop v3.0.11
+
+## 3.0.11 – valós idejű OTA-konzol
+
+A Firmware OTA oldalon a GitHub-letöltés, SHA-256 ellenőrzés, `arduinoOTA`
+indítás, nyers stdout/stderr kimenet, feltöltési százalék, újraindulás és
+végső firmware-verzió ellenőrzése valós időben követhető.
 
 Önálló React + Tauri + Rust asztali alkalmazás Arduino UNO R4 WiFi LED-vezérléshez. Közvetlenül az Arduinóhoz kapcsolódik; Node.js vagy LXC köztes szerver nem szükséges.
 
@@ -52,7 +58,7 @@ npm run tauri:build
 
 ## Firmware-kompatibilitás
 
-A jelenlegi ajánlott firmware a csomagban található `firmware/ArduinoLedController-4.1.9-stable.ino`. Ez tartalmazza a konzol-, időzítés-export-, státusz- és OTA-végpontokat, miközben az instabil mDNS-réteg ki van kapcsolva. A `4.1.2` és `4.1.4` fájlok csak korábbi kompatibilitási változatként maradtak a csomagban.
+A jelenlegi ajánlott firmware a csomagban található `firmware/ArduinoLedController-4.1.13-manual-override.ino`. Ez tartalmazza a stabil konzol- és OTA-végpontokat, az EEPROM-időzítést, valamint a következő időzített eseményig megmaradó kézi LED-felülbírálást. A régebbi firmware-fájlok csak kompatibilitási és visszaállítási célból maradtak a csomagban.
 
 ## 3.0.5 / firmware 4.1.2
 

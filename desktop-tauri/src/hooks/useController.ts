@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { listen } from '@tauri-apps/api/event';
 import { tauriApi } from '../services/tauriApi';
-import type { ArduinoLog, ArduinoStatus, ConnectionConfig, FirmwareStatus, LedSchedule, LedStrip, NetworkLog, PageId } from '../types';
+import type { ArduinoLog, ArduinoStatus, ConnectionConfig, FirmwareStatus, LedSchedule, LedStrip, NetworkLog, OtaProgressEvent, PageId } from '../types';
 import type { LedTestPreset } from '../pages/LedsPage';
 
 const fallbackConfig: ConnectionConfig = {
@@ -20,6 +21,9 @@ export function useController(activePage: PageId) {
   const [networkLogs, setNetworkLogs] = useState<NetworkLog[]>([]);
   const [schedules, setSchedules] = useState<LedSchedule[]>([]);
   const [firmware, setFirmware] = useState<FirmwareStatus | null>(null);
+  const [otaLogs, setOtaLogs] = useState<OtaProgressEvent[]>([]);
+  const [otaProgress, setOtaProgress] = useState(0);
+  const [otaStage, setOtaStage] = useState('Készen áll');
   const [otaPassword, setOtaPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [initialized, setInitialized] = useState(false);
@@ -112,6 +116,30 @@ export function useController(activePage: PageId) {
     } finally {
       setBusy(false);
     }
+  }, []);
+
+  useEffect(() => {
+    let disposed = false;
+    const unlistenPromise = listen<OtaProgressEvent>('ota-progress', (event) => {
+      if (disposed) return;
+      const entry = event.payload;
+      setOtaLogs((current) => [...current, entry].slice(-300));
+      setOtaStage(entry.stage || 'OTA');
+      if (typeof entry.progress === 'number') {
+        setOtaProgress(Math.max(0, Math.min(100, entry.progress)));
+      }
+      setFirmware((current) => current ? {
+        ...current,
+        state: entry.level === 'error' ? 'error' : entry.progress === 100 ? 'success' : 'updating',
+        message: entry.message,
+        progress: entry.progress ?? current.progress,
+        phase: entry.stage
+      } : current);
+    });
+    return () => {
+      disposed = true;
+      void unlistenPromise.then((unlisten) => unlisten());
+    };
   }, []);
 
   useEffect(() => {
@@ -249,17 +277,30 @@ export function useController(activePage: PageId) {
 
   const updateFirmware = async () => {
     setBusy(true);
+    setOtaLogs([]);
+    setOtaProgress(0);
+    setOtaStage('Indítás');
     try {
       const result = await tauriApi.firmwareUpdate();
       setFirmware(result);
+      setOtaProgress(100);
+      setOtaStage('Kész');
       setMessage(result.message);
     } catch (error) {
-      setMessage(`OTA-frissítési hiba: ${String(error)}`);
+      const text = String(error);
+      setOtaStage('Hiba');
+      setOtaLogs((current) => current.at(-1)?.message === text ? current : [...current, {
+        timestamp: Date.now(),
+        stage: 'Hiba',
+        level: 'error',
+        message: text
+      }].slice(-300));
+      setMessage(`OTA-frissítési hiba: ${text}`);
     } finally {
       setBusy(false);
     }
     window.setTimeout(() => void refresh(), 1_500);
   };
 
-  return { config, setConfig, status, logs, consoleError, networkLogs, schedules, firmware, otaPassword, setOtaPassword, busy, message, refresh, refreshFirmware, saveConfig, updateStrip, runLedTest, stopLedTest, saveSchedules, syncSchedulesFromArduino, updateFirmware };
+  return { config, setConfig, status, logs, consoleError, networkLogs, schedules, firmware, otaLogs, otaProgress, otaStage, otaPassword, setOtaPassword, busy, message, refresh, refreshFirmware, saveConfig, updateStrip, runLedTest, stopLedTest, saveSchedules, syncSchedulesFromArduino, updateFirmware };
 }
