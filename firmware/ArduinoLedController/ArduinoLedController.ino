@@ -1,7 +1,7 @@
 /*
  * Arduino LED Controller Lite 3.1
  * UNO R4 WiFi: LED, PIR, vedett helyi API, EEPROM heti idozites es OTA.
- * A 4.1.17 kiadas tartosan nyitva tartja az OTA-listenert, letiltja
+ * A 4.1.18 kiadas tartosan nyitva tartja az OTA-listenert, letiltja
  * az ArduinoOTA beepitett mDNS-et, es leallitas nelkuli elokeszitest ad.
  *
  * Elso feltoltes USB-n. A firmware ezutan OTA-frissitest fogad a halozaton.
@@ -16,8 +16,8 @@
 #include <stdarg.h>
 #include "secrets.h"
 
-#define FIRMWARE_VERSION "4.1.17"
-#define FIRMWARE_FEATURE "ota-stable-listener"
+#define FIRMWARE_VERSION "4.1.18"
+#define FIRMWARE_FEATURE "ota-stable-listener-target"
 #define DEVICE_NAME "arduino-led-controller"
 #ifndef API_SHARED_SECRET
 #define API_SHARED_SECRET "CHANGE_THIS_TO_A_LONG_RANDOM_API_SECRET"
