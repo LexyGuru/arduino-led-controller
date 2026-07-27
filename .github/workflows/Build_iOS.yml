@@ -1,0 +1,51 @@
+name: Build iOS IPA
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build-ios:
+    # Kizárólag macOS-en futtatható az Xcode miatt
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-node-version: lts/*
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          # Az iOS-hez szükséges Rust célplatformok hozzáadása
+          targets: aarch64-apple-ios, x86_64-apple-ios
+
+      - name: Install dependencies
+        run: npm install
+
+      # Itt kell importálni az Apple tanúsítványokat a kulcskarikába (Keychain)
+      # Ehhez a GitHub Secrets-be kell feltöltened a tanúsítványodat base64 formátumban
+      - name: Install Apple Certificates
+        uses: apple-actions/import-codesign-certs@v3
+        with:
+          p12-file-base64: ${{ secrets.APP_STORE_CERTIFICATE_BASE64 }}
+          p12-password: ${{ secrets.APP_STORE_CERTIFICATE_PASSWORD }}
+
+      # A Provisioning Profile letöltése és másolása a megfelelő helyre
+      - name: Install Provisioning Profile
+        env:
+          PROVISIONING_PROFILE_BASE64: ${{ secrets.PROVISIONING_PROFILE_BASE64 }}
+        run: |
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          echo -n "$PROVISIONING_PROFILE_BASE64" | base64 --decode --output ~/Library/MobileDevice/Provisioning\ Profiles/profile.mobileprovision
+
+      # A Tauri Action automatikusan felismeri az iOS projektet és elkészíti az IPA-t
+      - name: Build Tauri App for iOS
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          args: --target universal-apple-ios
