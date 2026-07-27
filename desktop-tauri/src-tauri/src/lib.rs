@@ -370,7 +370,7 @@ fn raw_get_once(c: &Config, path: &str, timeout: Duration) -> Result<Value, Stri
 
     let request_path = protected_path(c, path)?;
     let request = format!(
-        "GET {request_path} HTTP/1.1\r\nHost: {host}:{}\r\nUser-Agent: Arduino-LED-Controller-Tauri/3.0.15\r\nAccept: application/json\r\nConnection: close\r\n\r\n",
+        "GET {request_path} HTTP/1.1\r\nHost: {host}:{}\r\nUser-Agent: Arduino-LED-Controller-Tauri/3.0.16\r\nAccept: application/json\r\nConnection: close\r\n\r\n",
         c.arduino_port
     );
     stream
@@ -842,7 +842,7 @@ exit \"$STATUS\"\n",
         .map_err(|error| format!("Az OTA Terminal parancsfájl nem tehető futtathatóvá: {error}"))?;
 
     emit_ota_progress(
-        app,
+        &app,
         "Terminal",
         "info",
         format!("macOS Terminal megnyitása: {}", script_path.to_string_lossy()),
@@ -858,7 +858,7 @@ exit \"$STATUS\"\n",
         return Err(format!("A macOS Terminal megnyitása sikertelen: {open_status}"));
     }
 
-    let app = app.clone();
+    let event_app = app.clone();
     let result = tauri::async_runtime::spawn_blocking(move || -> Result<String, String> {
         let started = SystemTime::now();
         let mut consumed = 0usize;
@@ -876,7 +876,7 @@ exit \"$STATUS\"\n",
                         if !line.is_empty() {
                             let raw = percentage_from_ota_line(&line);
                             let progress = raw.map(|value| 55 + ((value as u16 * 35) / 100) as u8);
-                            emit_ota_progress(&app, "ArduinoOTA Terminal", "output", line.clone(), progress);
+                            emit_ota_progress(&event_app, "ArduinoOTA Terminal", "output", line.clone(), progress);
                             recent_lines.push(line);
                             if recent_lines.len() > 20 {
                                 recent_lines.remove(0);
@@ -888,7 +888,7 @@ exit \"$STATUS\"\n",
 
             if exit_path.exists() {
                 if !pending.trim().is_empty() {
-                    emit_ota_progress(&app, "ArduinoOTA Terminal", "output", pending.trim().to_string(), None);
+                    emit_ota_progress(&event_app, "ArduinoOTA Terminal", "output", pending.trim().to_string(), None);
                 }
                 let code_text = fs::read_to_string(&exit_path).unwrap_or_default();
                 let code = code_text.trim().parse::<i32>().unwrap_or(-1);
@@ -1016,7 +1016,7 @@ async fn upload_firmware_native(
         let header = format!(
             "POST /sketch HTTP/1.1\r\n\
 Host: {address}:{port}\r\n\
-User-Agent: Arduino-LED-Controller-Tauri/3.0.15\r\n\
+User-Agent: Arduino-LED-Controller-Tauri/3.0.16\r\n\
 Authorization: Basic {credentials}\r\n\
 Content-Type: application/octet-stream\r\n\
 Content-Length: {total}\r\n\
@@ -1457,7 +1457,7 @@ async fn firmware_update_inner(
     );
     let firmware = download_client
         .get(&artifact.download_url)
-        .header("User-Agent", "arduino-led-controller-tauri/3.0.15")
+        .header("User-Agent", "arduino-led-controller-tauri/3.0.16")
         .send()
         .await
         .map_err(|error| format!("Firmware letöltési hiba: {error}"))?
@@ -1480,7 +1480,7 @@ async fn firmware_update_inner(
     emit_ota_progress(app, "Ellenőrzés", "info", "SHA-256 ellenőrzőösszeg letöltése…", Some(33));
     let checksum_text = download_client
         .get(&artifact.checksum_url)
-        .header("User-Agent", "arduino-led-controller-tauri/3.0.15")
+        .header("User-Agent", "arduino-led-controller-tauri/3.0.16")
         .send()
         .await
         .map_err(|error| format!("Checksum letöltési hiba: {error}"))?

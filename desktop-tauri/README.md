@@ -141,6 +141,12 @@ A firmware 4.1.14 `/api/ota/restart` végpontja feltöltés előtt újraindítja
 
 A desktop alkalmazás közvetlenül, a Rust backendből küldi a letöltött és SHA-256-tal ellenőrzött `.ino.bin` fájlt az Arduino `http://IP:65280/sketch` végpontjára. Nem használ külső `arduinoOTA` futtatható fájlt, Arduino IDE-t, Arduino CLI-t, Proxmoxot vagy egyéb szervert. A feltöltés a macOS/Windows/Linux Tauri folyamat saját hálózati jogosultságával fut, és a valós idejű OTA-konzol 5%-os lépésekben mutatja a bináris küldését.
 
+
+## 3.0.16 – macOS Terminal OTA Rust build fix
+
+- Javítva az `AppHandle` referencia átadása a Terminal OTA sikeres befejezési eseményénél.
+- A háttérszál külön `event_app` klónt használ, így nincs névárnyékolás vagy tulajdonjogi bizonytalanság.
+
 ## 3.0.15 – DDNS OTA és macOS Terminal
 
 Az OTA-cél külön állítható a HTTP API címétől. Ha a Tauri folyamat nem éri el az Arduino belső IP-címét, az OTA DDNS/IP mezőben megadható a No-IP név és a routerben továbbított külső OTA-port.
