@@ -12,7 +12,7 @@ use std::{
         atomic::{AtomicBool, Ordering},
         Arc, Mutex,
     },
-    time::{Duration, SystemTime, UNIX_EPOCH},
+    time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 use tauri::{AppHandle, Emitter, Manager, State};
 
@@ -899,6 +899,8 @@ STATUS=${{pipestatus[1]}}
 print -r -- "$STATUS" > "$EXIT_FILE"
 if [[ "$STATUS" == "0" ]]; then
   print -r -- "[Tauri OTA] Feltöltés sikeresen befejeződött." | tee -a "$LOG"
+elif /usr/bin/grep -E -q "Uploading sketch.*done" "$LOG"; then
+  print -r -- "[Tauri OTA] A teljes bináris átment, de a feltöltő hibakóddal zárt. A Tauri legfeljebb 3 percig ellenőrzi az Arduino visszatérését és a firmware-verziót." | tee -a "$LOG"
 else
   print -r -- "[Tauri OTA] Feltöltési hiba, kilépési kód: $STATUS" | tee -a "$LOG"
 fi
@@ -985,17 +987,21 @@ exit "$STATUS"
                     line.contains("Flashing sketch") && line.contains("Error flashing the sketch")
                 });
 
-                // UNO R4 WiFi esetén az arduinoOTA régebbi feltöltője a firmware
-                // teljes átvitele után is kiléphet 1-es kóddal, ha az Arduino
-                // alkalmazása/újraindulása tovább tart a feltöltő időkorlátjánál.
-                // Ilyenkor nem tekintjük azonnal hibának: a következő lépés az
-                // Arduino /api/status válaszából ellenőrzi a tényleges verziót.
-                if upload_completed && flash_timeout_pattern {
+                // Ha az arduinoOTA már visszaigazolta a teljes bináris átvitelét,
+                // a nem nulla kilépési kód önmagában nem bizonyít sikertelen OTA-t.
+                // UNO R4 WiFi esetén a flash alkalmazása és az újraindulás tovább
+                // tarthat, mint a feltöltő visszaigazolási időkorlátja. A döntést
+                // ezért a következő, legfeljebb 3 perces /api/status ellenőrzés hozza meg.
+                if upload_completed {
                     emit_ota_progress(
                         &event_app,
                         "ArduinoOTA Terminal",
                         "info",
-                        "A bináris feltöltése befejeződött, de az arduinoOTA a flash-visszaigazolásnál hibakóddal állt le. Ez UNO R4 WiFi időkorlátos hamis hiba lehet; az alkalmazás most a tényleges firmware-verziót ellenőrzi.",
+                        if flash_timeout_pattern {
+                            "A teljes bináris átment. Az arduinoOTA a flash-visszaigazolásnál hibakóddal állt le, ezért a Tauri legfeljebb 3 percig várja az Arduino életjelét és a várt firmware-verziót."
+                        } else {
+                            "A teljes bináris átment, de az arduinoOTA hibakóddal zárt. A Tauri legfeljebb 3 percig ellenőrzi az Arduino életjelét és a várt firmware-verziót."
+                        },
                         Some(90),
                     );
                     return Ok(format!(
@@ -1255,68 +1261,122 @@ async fn confirm_restart(
     state: &AppState,
     expected: Option<String>,
 ) -> Result<Option<String>, String> {
-    for attempt in 0..30 {
-        tokio::time::sleep(if attempt == 0 {
-            Duration::from_secs(3)
-        } else {
-            Duration::from_secs(2)
-        })
-        .await;
+    const CONFIRM_TIMEOUT: Duration = Duration::from_secs(180);
+    const POLL_INTERVAL: Duration = Duration::from_secs(3);
 
-        let progress = 92_u8.saturating_add(((attempt as u16 * 7) / 29) as u8).min(99);
+    let started = Instant::now();
+    let mut attempt: u32 = 0;
+    let mut last_seen_version: Option<String> = None;
+    let mut last_error: Option<String> = None;
+
+    emit_ota_progress(
+        app,
+        "Újraindítás",
+        "info",
+        "Az Arduino alkalmazza a firmware-t. Legfeljebb 3 percig, 3 másodpercenként ellenőrzöm az életjelet és a telepített verziót…",
+        Some(92),
+    );
+
+    while started.elapsed() < CONFIRM_TIMEOUT {
+        tokio::time::sleep(POLL_INTERVAL).await;
+        attempt += 1;
+
+        let elapsed = started.elapsed().as_secs().min(CONFIRM_TIMEOUT.as_secs());
+        let progress = 92_u8
+            .saturating_add(((elapsed * 7) / CONFIRM_TIMEOUT.as_secs()) as u8)
+            .min(99);
+
         emit_ota_progress(
             app,
             "Újraindítás",
             "info",
-            format!("Arduino visszajelentkezésének ellenőrzése ({}/30)…", attempt + 1),
+            format!(
+                "Arduino életjel ellenőrzése: {}. próba • eltelt {} / {} másodperc…",
+                attempt,
+                elapsed,
+                CONFIRM_TIMEOUT.as_secs()
+            ),
             Some(progress),
         );
 
-        if let Ok(status) = get_json(state, "/api/status").await {
-            let installed = status
-                .get("firmwareVersion")
-                .and_then(Value::as_str)
-                .map(str::to_string);
-            match (&expected, &installed) {
-                (Some(wanted), Some(actual))
-                    if normalize_version(wanted) == normalize_version(actual) =>
-                {
-                    emit_ota_progress(
-                        app,
-                        "Ellenőrzés",
-                        "success",
-                        format!("Az Arduino elérhető, telepített firmware: {actual}."),
-                        Some(100),
-                    );
-                    return Ok(installed.clone());
+        match get_json(state, "/api/status").await {
+            Ok(status) => {
+                last_error = None;
+                let installed = status
+                    .get("firmwareVersion")
+                    .and_then(Value::as_str)
+                    .map(str::to_string);
+
+                match (&expected, &installed) {
+                    (Some(wanted), Some(actual))
+                        if normalize_version(wanted) == normalize_version(actual) =>
+                    {
+                        emit_ota_progress(
+                            app,
+                            "Ellenőrzés",
+                            "success",
+                            format!(
+                                "Az Arduino visszatért és a várt firmware fut: {actual}. OTA sikeres."
+                            ),
+                            Some(100),
+                        );
+                        return Ok(installed.clone());
+                    }
+                    (None, Some(actual)) => {
+                        emit_ota_progress(
+                            app,
+                            "Ellenőrzés",
+                            "success",
+                            format!("Az Arduino visszatért, telepített firmware: {actual}."),
+                            Some(100),
+                        );
+                        return Ok(installed.clone());
+                    }
+                    (Some(wanted), Some(actual)) => {
+                        last_seen_version = Some(actual.clone());
+                        emit_ota_progress(
+                            app,
+                            "Ellenőrzés",
+                            "info",
+                            format!(
+                                "Életjel érkezett, de az Arduino még {actual} verziót jelent; várt verzió: {wanted}. Folytatom az ellenőrzést."
+                            ),
+                            Some(progress),
+                        );
+                    }
+                    _ => {
+                        emit_ota_progress(
+                            app,
+                            "Ellenőrzés",
+                            "info",
+                            "Az Arduino válaszol, de a firmware-verzió még nem olvasható. Folytatom az ellenőrzést.",
+                            Some(progress),
+                        );
+                    }
                 }
-                (None, Some(actual)) => {
-                    emit_ota_progress(
-                        app,
-                        "Ellenőrzés",
-                        "success",
-                        format!("Az Arduino elérhető, telepített firmware: {actual}."),
-                        Some(100),
-                    );
-                    return Ok(installed.clone());
-                }
-                (Some(wanted), Some(actual)) => {
-                    emit_ota_progress(
-                        app,
-                        "Ellenőrzés",
-                        "info",
-                        format!("Az Arduino válaszol, de még {actual} verziót jelent; várt verzió: {wanted}."),
-                        Some(progress),
-                    );
-                }
-                _ => {}
+            }
+            Err(error) => {
+                last_error = Some(error.clone());
+                emit_ota_progress(
+                    app,
+                    "Újraindítás",
+                    "info",
+                    format!(
+                        "Az Arduino még nem elérhető ({elapsed} / {} mp). Ez a flash és az újraindítás alatt normális. Részlet: {error}",
+                        CONFIRM_TIMEOUT.as_secs()
+                    ),
+                    Some(progress),
+                );
             }
         }
     }
-    match expected {
-        Some(version) => Err(format!("Az Arduino újra elérhetővé válása vagy a(z) {version} firmware visszaigazolása nem történt meg.")),
-        None => Err("Az Arduino az OTA-frissítés után nem jelentkezett vissza.".into()),
-    }
+
+    let expected_text = expected.unwrap_or_else(|| "ismeretlen".into());
+    let last_seen_text = last_seen_version.unwrap_or_else(|| "nem érkezett verzió".into());
+    let last_error_text = last_error.unwrap_or_else(|| "nem érkezett további hálózati hiba".into());
+    Err(format!(
+        "Az OTA ellenőrzési idő lejárt: az Arduino 3 percen belül nem igazolta a(z) {expected_text} firmware-t. Utoljára látott verzió: {last_seen_text}. Utolsó kapcsolati állapot: {last_error_text}."
+    ))
 }
 
 #[tauri::command] fn load_config(state: State<AppState>) -> Result<Config, String> { Ok(state.config.lock().map_err(|_| "Beállítás zárolva".to_string())?.clone()) }
@@ -1777,7 +1837,6 @@ async fn firmware_update_inner(
         )
         .await
     };
-    state.ota_in_progress.store(false, Ordering::SeqCst);
     upload_result?;
 
     {
@@ -1799,6 +1858,7 @@ async fn firmware_update_inner(
     );
 
     let installed_after_restart = confirm_restart(app, state, artifact.firmware_version.clone()).await?;
+    state.ota_in_progress.store(false, Ordering::SeqCst);
     let final_status = FirmwareStatus {
         state: "success".into(),
         message: format!(
@@ -1936,6 +1996,7 @@ mod tests {
     }
 }
 
+#[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())

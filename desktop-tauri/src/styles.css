@@ -28,3 +28,69 @@
 
 /* OTA live console v3.0.12 */
 .ota-progress-panel{display:grid;gap:18px}.ota-state-badge{display:inline-flex;align-items:center;gap:7px;padding:8px 11px;border-radius:999px;background:#172135;border:1px solid #2a3850;color:#a9b7c9;font-size:12px;font-weight:800}.ota-state-badge.success{color:#42e5bf;border-color:rgba(66,229,191,.35);background:rgba(66,229,191,.08)}.ota-state-badge.error{color:#ff8798;border-color:rgba(255,135,152,.35);background:rgba(255,135,152,.08)}.ota-state-badge.output,.ota-state-badge.info{color:#5bc8ef;border-color:rgba(91,200,239,.35);background:rgba(91,200,239,.08)}.ota-progress-summary{display:flex;justify-content:space-between;align-items:flex-end;gap:18px}.ota-progress-summary strong,.ota-progress-summary span{display:block}.ota-progress-summary span{margin-top:5px;color:#8793a7;font-size:12px}.ota-progress-summary b{font-size:24px;font-variant-numeric:tabular-nums}.ota-progress-track{height:12px;border-radius:999px;background:#080d17;border:1px solid #263249;overflow:hidden}.ota-progress-track>div{height:100%;min-width:0;border-radius:inherit;background:linear-gradient(90deg,#1999d0,#4f63e7,#42e5bf);transition:width .25s ease}.ota-console{min-height:180px;max-height:420px;overflow:auto;border:1px solid #263249;border-radius:12px;background:#050912;padding:8px 12px;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}.ota-console-empty{display:grid;place-items:center;min-height:160px;color:#68758b;font-family:Inter,ui-sans-serif,system-ui,sans-serif}.ota-console-line{display:grid;grid-template-columns:82px 110px minmax(0,1fr) 48px;gap:10px;align-items:start;padding:9px 3px;border-bottom:1px solid #151d2b;font-size:12px}.ota-console-line:last-child{border-bottom:0}.ota-console-line time{color:#65738a}.ota-console-line b{color:#5bc8ef;text-transform:uppercase;font-size:10px;letter-spacing:.08em}.ota-console-line span{white-space:pre-wrap;overflow-wrap:anywhere;color:#c4cedd}.ota-console-line code{text-align:right;color:#8793a7}.ota-console-line.error span,.ota-console-line.error b{color:#ff8798}.ota-console-line.success span,.ota-console-line.success b{color:#42e5bf}@media(max-width:900px){.ota-console-line{grid-template-columns:72px 90px minmax(0,1fr)}.ota-console-line code{display:none}}
+
+/* v3.0.20 mobile layout */
+html,body,#root{width:100%;min-height:100%;overflow-x:hidden}body{min-width:0;-webkit-text-size-adjust:100%;touch-action:manipulation}button,input,select{min-height:44px}input,select{font-size:16px}
+@media(max-width:800px){
+  .app-shell{display:block;min-height:100dvh}
+  .content-shell{grid-column:auto;min-width:0;padding-bottom:calc(82px + env(safe-area-inset-bottom))}
+  .sidebar{position:fixed;inset:auto 0 0 0;width:100%;height:auto;padding:7px max(6px,env(safe-area-inset-right)) calc(7px + env(safe-area-inset-bottom)) max(6px,env(safe-area-inset-left));border-right:0;border-top:1px solid #202a3a;background:rgba(8,13,23,.98);z-index:50;backdrop-filter:blur(18px)}
+  .brand,.sidebar-footer{display:none}
+  .sidebar nav{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:4px;width:100%}
+  .sidebar nav button{min-width:0;min-height:58px;padding:7px 2px;border-radius:10px;flex-direction:column;gap:4px;text-align:center;font-size:9px;line-height:1.15;white-space:normal}
+  .sidebar nav button svg{width:20px;height:20px;flex:none}
+  .sidebar nav button.active{box-shadow:inset 0 3px #38bdf8}
+  .topbar{min-height:auto;padding:calc(12px + env(safe-area-inset-top)) 13px 12px;gap:10px;align-items:flex-start}
+  .topbar h1{font-size:20px;line-height:1.15;margin-top:2px}
+  .topbar .eyebrow{display:none}
+  .status-line{font-size:11px;line-height:1.35;margin-top:5px;max-width:72vw;overflow-wrap:anywhere}
+  .topbar .secondary{width:44px;height:44px;min-height:44px;padding:0;flex:none;border-radius:12px}
+  .refresh-label{display:none}
+  .content{padding:14px 12px 24px}
+  .page{gap:14px}
+  .page-heading,.panel-title,.led-card-head,.ota-progress-summary{align-items:flex-start;gap:10px;flex-wrap:wrap}
+  .page-heading h2,.panel h2{font-size:19px}
+  .panel,.stat-card{border-radius:14px}
+  .panel{padding:16px}
+  .stat-grid,.details-grid,.details-grid.compact,.dashboard-grid,.led-grid,.schedule-led-grid,.logs-layout{grid-template-columns:1fr}
+  .stat-grid{gap:10px}
+  .stat-card{padding:15px}
+  .details-grid{gap:9px;margin-top:14px}
+  .form-grid,.schedule-top-row,.test-panel{grid-template-columns:1fr;gap:13px;margin:15px 0}
+  .form-grid .wide{grid-column:auto}
+  .firmware-panel{grid-template-columns:1fr;align-items:start}
+  .firmware-icon{display:none}
+  .page-actions,.test-actions{display:grid;grid-template-columns:1fr;width:100%}
+  .page-actions button,.test-actions button,.schedule-add{width:100%}
+  .schedule-row{grid-template-columns:1fr;gap:8px;align-items:stretch}
+  .schedule-summary{grid-template-columns:1fr auto;padding:8px}
+  .summary-main{grid-template-columns:64px 1fr;padding:9px}
+  .day-group-title{padding:14px}
+  .day-buttons{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}
+  .day-buttons button{min-width:0;padding:9px 4px}
+  .slider-number-row{grid-template-columns:minmax(0,1fr) 76px;gap:8px}
+  .color-row{flex-wrap:wrap}
+  .log-list{max-height:none}
+  .log-list>div{grid-template-columns:68px 62px minmax(0,1fr);gap:6px;font-size:11px}
+  .ota-console{min-height:210px;max-height:52dvh;padding:6px 9px}
+  .ota-console-line{grid-template-columns:58px minmax(0,1fr);gap:5px 8px;padding:8px 2px}
+  .ota-console-line time{grid-column:1;grid-row:1}
+  .ota-console-line b{grid-column:2;grid-row:1}
+  .ota-console-line span{grid-column:1/-1;grid-row:2;font-size:11px;line-height:1.45}
+  .ota-console-line code{display:none}
+  .ota-progress-summary b{font-size:20px}
+  .notice{padding:12px}
+}
+@media(max-width:430px){
+  .sidebar nav button{font-size:8px;min-height:55px}
+  .sidebar nav button svg{width:18px;height:18px}
+  .stat-card{grid-template-columns:auto minmax(0,1fr)}
+  .details-grid div{padding:12px}
+  .summary-main{grid-template-columns:1fr}
+  .log-list>div{grid-template-columns:56px minmax(0,1fr)}
+  .log-list>div b{grid-column:2}
+  .log-list>div span{grid-column:1/-1}
+}
+.stats-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
+@media(max-width:1150px){.stats-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:800px){.stats-grid{grid-template-columns:1fr;gap:10px}}

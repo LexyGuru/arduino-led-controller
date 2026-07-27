@@ -92,6 +92,6 @@ export function FirmwarePage({ firmware, busy, otaLogs, otaProgress, otaStage, o
       </div>
     </section>
 
-    <div className="notice"><DownloadCloud size={18}/> A program a GitHub <b>firmware-latest</b> kiadásából tölti le a `.ino.bin` fájlt és ellenőrzi a SHA-256 értéket. macOS Terminal módban a feltöltési cél az Arduino státuszából frissen kiolvasott aktuális IP és OTA-port. Az app megnyitja a Terminalt, ott futtatja az arduinoOTA programot, majd a kimenetet visszaolvassa ebbe a konzolba.</div>
+    <div className="notice"><DownloadCloud size={18}/> A program a GitHub <b>firmware-latest</b> kiadásából tölti le a `.ino.bin` fájlt és ellenőrzi a SHA-256 értéket. macOS Terminal módban a feltöltési cél az Arduino státuszából frissen kiolvasott aktuális IP és OTA-port. Mobilon és más rendszereken az automatikus mód a beépített Tauri/Rust OTA-motort használja. A frissítés után az app legfeljebb 3 percig ellenőrzi az Arduino életjelét és a várt firmware-verziót.</div>
   </div>;
 }
