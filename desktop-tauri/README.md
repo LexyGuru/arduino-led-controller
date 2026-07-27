@@ -1,3 +1,4 @@
+@ -1,156 +0,0 @@
 # Arduino LED Controller Desktop v3.0.11
 
 ## 3.0.11 – valós idejű OTA-konzol
