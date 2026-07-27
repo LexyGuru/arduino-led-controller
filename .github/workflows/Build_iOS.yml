@@ -7,6 +7,11 @@ jobs:
   build-ios:
     runs-on: macos-latest
 
+    defaults:
+      run:
+        # Kényszerítjük, hogy minden parancs a desktop-tauri mappában fusson
+        working-directory: desktop-tauri
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -34,17 +39,20 @@ jobs:
           CODE_SIGN_IDENTITY: ""
           PROVISIONING_PROFILE_SPECIFIER: ""
         with:
+          # Megmondjuk a Tauri Action-nek is, hogy hol találja a projektet
+          projectPath: desktop-tauri
           args: --target aarch64-apple-ios
 
       # Automatikus IPA generálás a Sideloadly számára
       - name: Package IPA for Sideloadly
         run: |
           mkdir -p Payload
-          # Megkeresi a generált .app fájlt és átmásolja a Payload mappába
+          # Átmásoljuk a generált .app fájlt a Payload mappába
           cp -r src-tauri/gen/apple/build/arm64/*.app Payload/
-          # Becsomagolja ZIP-be, majd átnevezi .ipa kiterjesztésre
-          zip -r sideload_app.ipa Payload
-          
+          # Becsomagoljuk ZIP-be, majd átnevezzük .ipa kiterjesztésre
+          zip -r ../sideload_app.ipa Payload
+        # Ez a lépés egy szinttel feljebb menti az IPA-t a gyökérbe
+
       # A kész IPA fájl feltöltése a GitHub Actions futási naplójához letölthetőként
       - name: Upload IPA Artifact
         uses: actions/upload-artifact@v4
