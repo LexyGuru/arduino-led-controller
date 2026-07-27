@@ -28,14 +28,14 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-       # 1. LÉPÉS: Az iOS projekt kényszerített, automatikus legenerálása interakció nélkül
+      # 1. LÉPÉS: Az Xcode projekt automatikus generálása üres bemenettel (Enter küldésével)
       - name: Initialize Tauri iOS Project
-        run: npx tauri ios init --yes
+        run: echo "" | npx tauri ios init
 
       # 2. LÉPÉS: A Tauri iOS app fordítása kódaláírás nélkül, kamu Team ID-val
       - name: Build Tauri App for iOS
         env:
-          APPLE_DEVELOPMENT_TEAM: "12345ABCDE" # Kamu azonosító, hogy a Tauri ne dobjon hibát
+          APPLE_DEVELOPMENT_TEAM: "12345ABCDE" # Kamu azonosító a Tauri megnyugtatására
           CODE_SIGNING_ALLOWED: "NO"
           CODE_SIGNING_REQUIRED: "NO"
           CODE_SIGN_IDENTITY: ""
