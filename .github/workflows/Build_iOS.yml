@@ -28,9 +28,9 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      # 1. LÉPÉS: Az iOS/Xcode projektfájlok legenerálása a felhőben
+       # 1. LÉPÉS: Az iOS projekt kényszerített, automatikus legenerálása interakció nélkül
       - name: Initialize Tauri iOS Project
-        run: npx tauri ios init
+        run: npx tauri ios init --yes
 
       # 2. LÉPÉS: A Tauri iOS app fordítása kódaláírás nélkül, kamu Team ID-val
       - name: Build Tauri App for iOS
