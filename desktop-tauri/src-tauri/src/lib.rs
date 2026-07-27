@@ -370,7 +370,7 @@ fn raw_get_once(c: &Config, path: &str, timeout: Duration) -> Result<Value, Stri
 
     let request_path = protected_path(c, path)?;
     let request = format!(
-        "GET {request_path} HTTP/1.1\r\nHost: {host}:{}\r\nUser-Agent: Arduino-LED-Controller-Tauri/3.0.16\r\nAccept: application/json\r\nConnection: close\r\n\r\n",
+        "GET {request_path} HTTP/1.1\r\nHost: {host}:{}\r\nUser-Agent: Arduino-LED-Controller-Tauri/3.0.18\r\nAccept: application/json\r\nConnection: close\r\n\r\n",
         c.arduino_port
     );
     stream
@@ -644,6 +644,28 @@ fn normalize_version(value: &str) -> String {
     value.trim().trim_start_matches('v').to_ascii_lowercase()
 }
 
+fn safe_firmware_filename(name: &str) -> String {
+    let original = Path::new(name)
+        .file_name()
+        .and_then(|value| value.to_str())
+        .unwrap_or("ArduinoLedController.ino.bin");
+    let sanitized: String = original
+        .chars()
+        .map(|value| {
+            if value.is_ascii_alphanumeric() || matches!(value, '.' | '_' | '-') {
+                value
+            } else {
+                '_'
+            }
+        })
+        .collect();
+    if sanitized.is_empty() || !sanitized.to_ascii_lowercase().ends_with(".bin") {
+        "ArduinoLedController.ino.bin".to_string()
+    } else {
+        sanitized
+    }
+}
+
 fn read_ota_password(app: &AppHandle) -> Result<String, String> { Ok(fs::read_to_string(secret_path(app)?).unwrap_or_default().trim().to_string()) }
 fn write_ota_password(app: &AppHandle, password: &str) -> Result<(), String> {
     let path = secret_path(app)?;
@@ -655,13 +677,43 @@ fn write_ota_password(app: &AppHandle, password: &str) -> Result<(), String> {
     Ok(())
 }
 
-fn ota_target_from_status(config: &Config, status: &Value) -> Result<(String, u16), String> {
+fn status_ota_target(status: &Value) -> Result<(String, u16), String> {
     if status.get("otaEnabled").and_then(Value::as_bool) == Some(false) {
         return Err("Az Arduino OTA szolgáltatása nem aktív.".into());
     }
 
-    // Az OTA-cél nem az Arduino által visszaadott belső IP-cím.
-    // Távoli/DDNS használatnál a Tauri gép számára ténylegesen elérhető címet kell használni.
+    let address = status
+        .get("ipAddress")
+        .and_then(Value::as_str)
+        .map(str::trim)
+        .filter(|value| !value.is_empty() && *value != "0.0.0.0")
+        .ok_or("Az Arduino státuszválasza nem tartalmaz használható ipAddress mezőt.")?
+        .to_string();
+
+    let port = status
+        .get("otaPort")
+        .and_then(Value::as_u64)
+        .filter(|value| (1..=u16::MAX as u64).contains(value))
+        .map(|value| value as u16)
+        .unwrap_or(OTA_UPLOAD_PORT);
+
+    Ok((address, port))
+}
+
+fn ota_target_from_status(config: &Config, status: &Value, terminal_mode: bool) -> Result<(String, u16), String> {
+    // A macOS Terminal külön folyamatként fut, ezért ott mindig az Arduino
+    // saját, aktuális LAN-címét használjuk. Ezt minden OTA előtt frissen az
+    // /api/status ipAddress és otaPort mezőiből olvassuk ki; nincs beégetett IP.
+    if terminal_mode {
+        return status_ota_target(status);
+    }
+
+    if status.get("otaEnabled").and_then(Value::as_bool) == Some(false) {
+        return Err("Az Arduino OTA szolgáltatása nem aktív.".into());
+    }
+
+    // A beépített Tauri kliensnél megmarad a külön beállítható cél, mert a
+    // macOS alkalmazásfolyamat hálózati jogosultságai eltérhetnek a Terminalétól.
     let configured_ota = config.ota_address.trim();
     let remote_http_host = config.arduino_ip.trim();
     let status_ip = status
@@ -681,7 +733,7 @@ fn ota_target_from_status(config: &Config, status: &Value) -> Result<(String, u1
     .to_string();
 
     if address.is_empty() {
-        return Err("Az OTA célcíme nem állapítható meg. Add meg az OTA DDNS/IP-címet a Beállításokban.".into());
+        return Err("Az OTA célcíme nem állapítható meg.".into());
     }
 
     let port = if config.ota_port > 0 {
@@ -804,29 +856,47 @@ async fn upload_firmware_in_terminal(
         .map_err(|error| format!("Az OTA-jelszófájl jogosultsága nem állítható be: {error}"))?;
 
     let script = format!(
-        "#!/bin/zsh\n\
-set -o pipefail\n\
-TOOL={}\n\
-ADDRESS={}\n\
-PORT={}\n\
-BINARY={}\n\
-LOG={}\n\
-EXIT_FILE={}\n\
-SECRET_FILE={}\n\
-trap 'rm -f \"$SECRET_FILE\" \"$0\"' EXIT\n\
-PASSWORD=\"$(cat \"$SECRET_FILE\")\"\n\
-rm -f \"$SECRET_FILE\" \"$EXIT_FILE\"\n\
-print -r -- \"[Tauri OTA] Cél: $ADDRESS:$PORT\" | tee -a \"$LOG\"\n\
-print -r -- \"[Tauri OTA] Firmware: $BINARY\" | tee -a \"$LOG\"\n\
-\"$TOOL\" -v -address \"$ADDRESS\" -port \"$PORT\" -username arduino -password \"$PASSWORD\" -sketch \"$BINARY\" -upload /sketch -b 2>&1 | tee -a \"$LOG\"\n\
-STATUS=${{pipestatus[1]}}\n\
-print -r -- \"$STATUS\" > \"$EXIT_FILE\"\n\
-if [[ \"$STATUS\" == \"0\" ]]; then\n\
-  print -r -- \"[Tauri OTA] Feltöltés sikeresen befejeződött.\" | tee -a \"$LOG\"\n\
-else\n\
-  print -r -- \"[Tauri OTA] Feltöltési hiba, kilépési kód: $STATUS\" | tee -a \"$LOG\"\n\
-fi\n\
-exit \"$STATUS\"\n",
+        r#"#!/bin/zsh
+set -o pipefail
+TOOL={}
+ADDRESS={}
+PORT={}
+BINARY={}
+LOG={}
+EXIT_FILE={}
+SECRET_FILE={}
+trap 'rm -f "$SECRET_FILE" "$0"' EXIT
+PASSWORD="$(cat "$SECRET_FILE")"
+rm -f "$SECRET_FILE" "$EXIT_FILE"
+print -r -- "[Tauri OTA] Aktuális Arduino IP: $ADDRESS" | tee -a "$LOG"
+print -r -- "[Tauri OTA] OTA port: $PORT" | tee -a "$LOG"
+print -r -- "[Tauri OTA] Firmware: $BINARY" | tee -a "$LOG"
+print -r -- "[Tauri OTA] OTA-port ellenőrzése..." | tee -a "$LOG"
+PORT_READY=0
+for ATTEMPT in {{1..15}}; do
+  if /usr/bin/nc -z -w 1 "$ADDRESS" "$PORT" >/dev/null 2>&1; then
+    PORT_READY=1
+    print -r -- "[Tauri OTA] OTA-port elérhető (próba: $ATTEMPT/15)." | tee -a "$LOG"
+    break
+  fi
+  print -r -- "[Tauri OTA] OTA-port még zárva; újrapróbálás $ATTEMPT/15..." | tee -a "$LOG"
+  /bin/sleep 1
+done
+if [[ "$PORT_READY" != "1" ]]; then
+  print -r -- "[Tauri OTA] HIBA: az Arduino HTTP API-ja elérhető, de az aktuális $ADDRESS:$PORT OTA-port nem hallgat. Indítsd újra az Arduinót vagy használj olyan firmware-t, amely nem zárja le az OTA-listenert." | tee -a "$LOG"
+  print -r -- "2" > "$EXIT_FILE"
+  exit 2
+fi
+"$TOOL" -v -address "$ADDRESS" -port "$PORT" -username arduino -password "$PASSWORD" -sketch "$BINARY" -upload /sketch -b 2>&1 | tee -a "$LOG"
+STATUS=${{pipestatus[1]}}
+print -r -- "$STATUS" > "$EXIT_FILE"
+if [[ "$STATUS" == "0" ]]; then
+  print -r -- "[Tauri OTA] Feltöltés sikeresen befejeződött." | tee -a "$LOG"
+else
+  print -r -- "[Tauri OTA] Feltöltési hiba, kilépési kód: $STATUS" | tee -a "$LOG"
+fi
+exit "$STATUS"
+"#,
         shell_single_quote(&tool.to_string_lossy()),
         shell_single_quote(address),
         port,
@@ -857,6 +927,10 @@ exit \"$STATUS\"\n",
     if !open_status.success() {
         return Err(format!("A macOS Terminal megnyitása sikertelen: {open_status}"));
     }
+
+    let connection_hint = format!(
+        "\n\nA Terminal az Arduino /api/status válaszából kiolvasott aktuális LAN-címet használta: {address}:{port}. Ha a portteszt zárt portot jelez, az nem DNS- vagy firmware-fájlnév-hiba: az Arduino OTA-listenere nem hallgat."
+    );
 
     let event_app = app.clone();
     let result = tauri::async_runtime::spawn_blocking(move || -> Result<String, String> {
@@ -897,7 +971,12 @@ exit \"$STATUS\"\n",
                     return Ok(tool.to_string_lossy().to_string());
                 }
                 let details = recent_lines.join("\n");
-                return Err(format!("A Terminalban futó arduinoOTA hibával állt le (kód: {code}).\n{details}"));
+                let mut message = format!("A Terminalban futó arduinoOTA hibával állt le (kód: {code}).\n{details}");
+                if details.contains("Connecting to board") && details.contains("failed") {
+                    message.push_str("\n\nA feltöltő még az Arduino-kapcsolat létrehozása előtt állt le. Ezt nem a firmware fájlneve és nem a bináris tartalma okozza; a fájl SHA-256 ellenőrzése már sikeres volt.");
+                    message.push_str(&connection_hint);
+                }
+                return Err(message);
             }
 
             if started.elapsed().unwrap_or_default() > Duration::from_secs(300) {
@@ -1016,7 +1095,7 @@ async fn upload_firmware_native(
         let header = format!(
             "POST /sketch HTTP/1.1\r\n\
 Host: {address}:{port}\r\n\
-User-Agent: Arduino-LED-Controller-Tauri/3.0.16\r\n\
+User-Agent: Arduino-LED-Controller-Tauri/3.0.18\r\n\
 Authorization: Basic {credentials}\r\n\
 Content-Type: application/octet-stream\r\n\
 Content-Length: {total}\r\n\
@@ -1281,13 +1360,15 @@ async fn firmware_status(app: AppHandle, state: State<'_, AppState>) -> Result<F
         ..Default::default()
     };
 
+    let terminal_mode = use_terminal_ota(&app, &config).unwrap_or(false);
+
     if let Ok(value) = get_json(&state, "/api/status").await {
         status.arduino_online = true;
         status.installed_version = value
             .get("firmwareVersion")
             .and_then(Value::as_str)
             .map(str::to_string);
-        if let Ok((address, port)) = ota_target_from_status(&config, &value) {
+        if let Ok((address, port)) = ota_target_from_status(&config, &value, terminal_mode) {
             status.ota_target_address = Some(address);
             status.ota_target_port = Some(port);
         }
@@ -1378,7 +1459,7 @@ async fn firmware_update_inner(
         app,
         "Előkészítés",
         "success",
-        format!("OTA-motor: {ota_engine_label}. Az OTA-cél a külön beállított DDNS/IP és port."),
+        format!("OTA-motor: {ota_engine_label}. Terminal módban az OTA-célt az Arduino aktuális státuszából olvasom ki."),
         Some(5),
     );
 
@@ -1412,20 +1493,19 @@ async fn firmware_update_inner(
         ));
     }
 
-    let (ota_address, ota_port) = ota_target_from_status(&config, &status_json)?;
+    let (ota_address, ota_port) = ota_target_from_status(&config, &status_json, terminal_mode)?;
     emit_ota_progress(
         app,
         "Arduino",
         "success",
         format!(
-            "Arduino elérhető. Telepített: {} • beállított OTA cél: {}:{}",
+            "Arduino elérhető. Telepített: {} • aktuális OTA cél az Arduino státuszából: {}:{}",
             installed.clone().unwrap_or_else(|| "ismeretlen".into()),
             ota_address,
             ota_port
         ),
         Some(15),
     );
-
     {
         let mut current = state
             .firmware_status
@@ -1457,7 +1537,7 @@ async fn firmware_update_inner(
     );
     let firmware = download_client
         .get(&artifact.download_url)
-        .header("User-Agent", "arduino-led-controller-tauri/3.0.16")
+        .header("User-Agent", "arduino-led-controller-tauri/3.0.18")
         .send()
         .await
         .map_err(|error| format!("Firmware letöltési hiba: {error}"))?
@@ -1480,7 +1560,7 @@ async fn firmware_update_inner(
     emit_ota_progress(app, "Ellenőrzés", "info", "SHA-256 ellenőrzőösszeg letöltése…", Some(33));
     let checksum_text = download_client
         .get(&artifact.checksum_url)
-        .header("User-Agent", "arduino-led-controller-tauri/3.0.16")
+        .header("User-Agent", "arduino-led-controller-tauri/3.0.18")
         .send()
         .await
         .map_err(|error| format!("Checksum letöltési hiba: {error}"))?
@@ -1508,58 +1588,96 @@ async fn firmware_update_inner(
         Some(42),
     );
 
-    let binary_path = firmware_dir(app)?.join("latest-arduino-firmware.bin");
+    let local_filename = safe_firmware_filename(&artifact.name);
+    let binary_path = firmware_dir(app)?.join(&local_filename);
     fs::write(&binary_path, &firmware)
         .map_err(|error| format!("A firmware nem menthető ideiglenesen: {error}"))?;
+    let persisted_firmware = fs::read(&binary_path)
+        .map_err(|error| format!("A helyben mentett firmware nem olvasható vissza: {error}"))?;
+    let persisted_hash = hex::encode(Sha256::digest(&persisted_firmware));
+    if persisted_firmware.len() != firmware.len() || persisted_hash != actual {
+        return Err(format!(
+            "A helyben mentett firmware eltér a letöltött GitHub-fájltól. Letöltött: {} bájt / {}, helyi: {} bájt / {}.",
+            firmware.len(), actual, persisted_firmware.len(), persisted_hash
+        ));
+    }
     emit_ota_progress(
         app,
         "Előkészítés",
         "success",
-        format!("Firmware helyben mentve: {}", binary_path.to_string_lossy()),
+        format!(
+            "A GitHub-fájl eredeti neve megőrizve: {} • helyi útvonal: {} • SHA-256 egyezik: {}",
+            artifact.name,
+            binary_path.to_string_lossy(),
+            actual
+        ),
         Some(46),
     );
 
-    // Közvetlenül feltöltés előtt indítjuk újra az OTA-listenert. Így a
-    // diagnosztikai időablak nem jár le a GitHub-letöltés közben.
+    // A 4.1.15 firmware /api/ota/restart végpontja ArduinoOTA.end() után
+    // próbálta ugyanazt a WiFiS3 szervert újranyitni. Ez egyes futásokban zárt
+    // portot hagyott maga után. Terminal módban ezért nem zárjuk le a már futó
+    // listenert. Újabb firmware-nél a /api/ota/prepare csak tehermentesít.
     emit_ota_progress(
         app,
         "Arduino",
         "info",
-        "OTA-listener előkészítése közvetlenül a helyi feltöltés előtt…",
+        "OTA-listener előkészítése a feltöltés előtt…",
         Some(48),
     );
-    match get_json(state, "/api/ota/restart").await {
-        Ok(value) if value.get("success").and_then(Value::as_bool) == Some(true) => {
-            emit_ota_progress(
-                app,
-                "Arduino",
-                "success",
-                "OTA-listener újraindítva; 2,5 másodperc stabilizálási idő következik.",
-                Some(50),
-            );
-            tokio::time::sleep(Duration::from_millis(2500)).await;
+
+    let firmware_feature = status_json
+        .get("firmwareFeature")
+        .and_then(Value::as_str)
+        .unwrap_or("");
+
+    let installed_normalized = installed.as_deref().map(normalize_version);
+    if firmware_feature == "ota-diagnostics"
+        && installed_normalized.as_deref() == Some("4.1.15")
+    {
+        emit_ota_progress(
+            app,
+            "Arduino",
+            "info",
+            "A 4.1.15 ismert restart-listener hibája miatt az API-s újraindítást kihagyom. A Terminal közvetlenül ellenőrzi a már futó OTA-portot.",
+            Some(50),
+        );
+    } else {
+        let mut prepared = false;
+        for endpoint in ["/api/ota/prepare", "/api/ota/restart"] {
+            match get_json(state, endpoint).await {
+                Ok(value) if value.get("success").and_then(Value::as_bool) == Some(true) => {
+                    emit_ota_progress(
+                        app,
+                        "Arduino",
+                        "success",
+                        format!("OTA-listener előkészítve ezen a végponton: {endpoint}"),
+                        Some(50),
+                    );
+                    prepared = true;
+                    break;
+                }
+                Ok(value) => emit_ota_progress(
+                    app,
+                    "Arduino",
+                    "info",
+                    format!("Az {endpoint} nem igazolta az előkészítést: {value}"),
+                    Some(49),
+                ),
+                Err(error) => emit_ota_progress(
+                    app,
+                    "Arduino",
+                    "info",
+                    format!("Az {endpoint} nem érhető el: {error}"),
+                    Some(49),
+                ),
+            }
         }
-        Ok(value) => {
-            emit_ota_progress(
-                app,
-                "Arduino",
-                "info",
-                format!("Az OTA-listener újraindítása nem igazolt ({value}); közvetlenül megpróbálom a feltöltést."),
-                Some(50),
-            );
-            tokio::time::sleep(Duration::from_millis(1000)).await;
-        }
-        Err(error) => {
-            emit_ota_progress(
-                app,
-                "Arduino",
-                "info",
-                format!("Az OTA-listener újraindító API nem érhető el ({error}); régebbi firmware-rel közvetlen feltöltés indul."),
-                Some(50),
-            );
-            tokio::time::sleep(Duration::from_millis(1000)).await;
+        if prepared {
+            tokio::time::sleep(Duration::from_millis(1200)).await;
         }
     }
+
 
     {
         let mut current = state
@@ -1734,10 +1852,12 @@ mod tests {
     }
 
     #[test]
-    fn ota_target_prefers_configured_ddns() {
+    fn terminal_ota_uses_current_status_ip() {
         let config = Config {
             arduino_ip: "lexyguruhome.ddns.net".into(),
             arduino_port: 25666,
+            ota_address: "lexyguruhome.ddns.net".into(),
+            ota_port: 25667,
             ..Config::default()
         };
         let status = serde_json::json!({
@@ -1746,8 +1866,26 @@ mod tests {
             "otaEnabled": true
         });
         assert_eq!(
-            ota_target_from_status(&config, &status).expect("OTA cél"),
-            ("lexyguruhome.ddns.net".to_string(), 65280)
+            ota_target_from_status(&config, &status, true).expect("Terminal OTA cél"),
+            ("10.0.0.123".to_string(), 65280)
+        );
+    }
+
+    #[test]
+    fn native_ota_can_use_configured_address() {
+        let config = Config {
+            ota_address: "lexyguruhome.ddns.net".into(),
+            ota_port: 25667,
+            ..Config::default()
+        };
+        let status = serde_json::json!({
+            "ipAddress": "10.0.0.123",
+            "otaPort": 65280,
+            "otaEnabled": true
+        });
+        assert_eq!(
+            ota_target_from_status(&config, &status, false).expect("Natív OTA cél"),
+            ("lexyguruhome.ddns.net".to_string(), 25667)
         );
     }
 }
