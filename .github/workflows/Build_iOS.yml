@@ -9,7 +9,6 @@ jobs:
 
     defaults:
       run:
-        # Kényszerítjük, hogy minden parancs a desktop-tauri mappában fusson
         working-directory: desktop-tauri
 
     steps:
@@ -39,21 +38,36 @@ jobs:
           CODE_SIGN_IDENTITY: ""
           PROVISIONING_PROFILE_SPECIFIER: ""
         with:
-          # Megmondjuk a Tauri Action-nek is, hogy hol találja a projektet
           projectPath: desktop-tauri
           args: --target aarch64-apple-ios
 
-      # Automatikus IPA generálás a Sideloadly számára
+      # Intelligens keresés és IPA csomagolás a Sideloadly számára
       - name: Package IPA for Sideloadly
         run: |
           mkdir -p Payload
-          # Átmásoljuk a generált .app fájlt a Payload mappába
-          cp -r src-tauri/gen/apple/build/arm64/*.app Payload/
-          # Becsomagoljuk ZIP-be, majd átnevezzük .ipa kiterjesztésre
+          
+          # Megkeressük, hova rakta az Xcode a fordítás eredményét (.app mappa)
+          APP_PATH=$(find src-tauri/gen/apple/build -name "*.app" -type d | head -n 1)
+          
+          if [ -n "$APP_PATH" ]; then
+            echo "Megtalált .app fájl: $APP_PATH"
+            cp -r "$APP_PATH" Payload/
+          else
+            echo "Nem találtam .app fájlt, ellenőrzöm az xcarchive-ot..."
+            # Ha archívum készült, abból szedjük ki az appot
+            ARCHIVE_PATH=$(find src-tauri/gen/apple/build -name "*.xcarchive" -type d | head -n 1)
+            if [ -n "$ARCHIVE_PATH" ]; then
+              cp -r "$ARCHIVE_PATH/Products/Applications/"*.app Payload/
+            else
+              echo "Hiba: Egyik formátumot sem találtam a build mappában!"
+              exit 1
+            fi
+          fi
+          
+          # Becsomagoljuk és kimentjük a gyökérbe
           zip -r ../sideload_app.ipa Payload
-        # Ez a lépés egy szinttel feljebb menti az IPA-t a gyökérbe
 
-      # A kész IPA fájl feltöltése a GitHub Actions futási naplójához letölthetőként
+      # A kész IPA feltöltése a GitHub felületére
       - name: Upload IPA Artifact
         uses: actions/upload-artifact@v4
         with:
