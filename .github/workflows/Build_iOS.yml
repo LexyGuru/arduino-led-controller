@@ -36,7 +36,7 @@ jobs:
           CODE_SIGNING_REQUIRED: "NO"
           CODE_SIGN_IDENTITY: ""
           PROVISIONING_PROFILE_SPECIFIER: ""
-        run: npx tauri ios build --no-bundle
+        run: npx tauri ios build -- --skip-packaging
 
       # Csomagolás a Sideloadly számára
       - name: Package IPA for Sideloadly
