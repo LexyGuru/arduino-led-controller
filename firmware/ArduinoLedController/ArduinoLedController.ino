@@ -1,13 +1,14 @@
 /*
  * Arduino LED Controller Lite 3.1
  * UNO R4 WiFi: LED, PIR, vedett helyi API, EEPROM heti idozites es OTA.
- * A 4.1.16 kiadas az OTA-diagnosztikai alapverzio frissitesi celja, es
- * valtozatlan diagnosztikaval bizonyitja a sikeres halozati frissitest.
+ * A 4.1.17 kiadas tartosan nyitva tartja az OTA-listenert, letiltja
+ * az ArduinoOTA beepitett mDNS-et, es leallitas nelkuli elokeszitest ad.
  *
  * Elso feltoltes USB-n. A firmware ezutan OTA-frissitest fogad a halozaton.
  */
 #include <WiFiS3.h>
 #include <Adafruit_NeoPixel.h>
+#define NO_OTA_PORT
 #include <ArduinoOTA.h>
 #include <EEPROM.h>
 #include <Arduino_LED_Matrix.h>
@@ -15,8 +16,8 @@
 #include <stdarg.h>
 #include "secrets.h"
 
-#define FIRMWARE_VERSION "4.1.16"
-#define FIRMWARE_FEATURE "ota-validation-target"
+#define FIRMWARE_VERSION "4.1.17"
+#define FIRMWARE_FEATURE "ota-stable-listener"
 #define DEVICE_NAME "arduino-led-controller"
 #ifndef API_SHARED_SECRET
 #define API_SHARED_SECRET "CHANGE_THIS_TO_A_LONG_RANDOM_API_SECRET"
@@ -630,16 +631,14 @@ void startOta() {
   consoleLine(message);
 }
 
-bool restartOtaService() {
+bool prepareOtaService() {
   if (!wifiHasAddress()) return false;
 
-  if (otaReady) {
-    ArduinoOTA.end();
-    otaReady = false;
-    delay(150);
-  }
-
-  startOta();
+  // A WiFiS3 OTA-szervert nem állítjuk le és nem indítjuk újra. Az
+  // ArduinoOTA.end() után ugyanazon WiFiServer újranyitása egyes esetekben
+  // zárt 65280-as portot hagyott. Ha még nem indult el, egyszer elindítjuk;
+  // egyébként csak OTA-előkészítési módba lépünk.
+  if (!otaReady) startOta();
   if (!otaReady) return false;
 
   otaRestartCount++;
@@ -647,9 +646,9 @@ bool restartOtaService() {
   otaPrepareUntil = millis() + OTA_PREPARE_WINDOW;
   otaErrorIndicatorUntil = 0;
   showMatrix(MATRIX_OTA);
-  char message[112];
+  char message[128];
   snprintf(message, sizeof(message),
-    "OTA listener ujrainditva: %lu. alkalom | elokeszitesi mod: %lu mp",
+    "OTA listener elokeszitve leallitas nelkul: %lu. alkalom | ablak: %lu mp",
     otaRestartCount, OTA_PREPARE_WINDOW / 1000UL);
   logEvent("info", message);
   return true;
@@ -1038,8 +1037,8 @@ void route(WiFiClient& c, const String& path) {
   if (base == "/api/schedules/chunk") { String query = queryAt < 0 ? "" : path.substring(queryAt + 1); int index = valueInt(query, "index", -1, -1, SCHEDULE_MAX - 1), total = valueInt(query, "total", 0, 0, SCHEDULE_MAX); int payloadAt = query.indexOf("payload="); if (index < 0 || total < 1 || index >= total || payloadAt < 0 || !decodeScheduleHex(query.substring(payloadAt + 8), schedules[index])) { sendJson(c, "{\"error\":\"Ervenytelen idozitesi reszlet\"}", 400); return; } if (index + 1 == total) { saveSchedules(total); char message[64]; snprintf(message, sizeof(message), "Arduino idozites mentve: %d bejegyzes", scheduleCount); logEvent("success", message); } sendJson(c, "{\"success\":true,\"count\":" + String(index + 1 == total ? scheduleCount : 0) + "}"); return; }
   if (base == "/api/schedules/clear") { memset(schedules, 0, sizeof(schedules)); saveSchedules(0); logEvent("info", "Arduino idozites torolve"); sendJson(c, "{\"success\":true}"); return; }
   if (base == "/api/ota/status") { sendOtaStatusJson(c); return; }
-  if (base == "/api/ota/restart") {
-    const bool restarted = restartOtaService();
+  if (base == "/api/ota/prepare" || base == "/api/ota/restart") {
+    const bool restarted = prepareOtaService();
     char response[192];
     const int length = snprintf(response, sizeof(response),
       "{\"success\":%s,\"firmwareVersion\":\"%s\",\"otaEnabled\":%s,"
