@@ -370,7 +370,7 @@ fn raw_get_once(c: &Config, path: &str, timeout: Duration) -> Result<Value, Stri
 
     let request_path = protected_path(c, path)?;
     let request = format!(
-        "GET {request_path} HTTP/1.1\r\nHost: {host}:{}\r\nUser-Agent: Arduino-LED-Controller-Tauri/3.0.18\r\nAccept: application/json\r\nConnection: close\r\n\r\n",
+        "GET {request_path} HTTP/1.1\r\nHost: {host}:{}\r\nUser-Agent: Arduino-LED-Controller-Tauri/3.0.19\r\nAccept: application/json\r\nConnection: close\r\n\r\n",
         c.arduino_port
     );
     stream
@@ -887,7 +887,14 @@ if [[ "$PORT_READY" != "1" ]]; then
   print -r -- "2" > "$EXIT_FILE"
   exit 2
 fi
-"$TOOL" -v -address "$ADDRESS" -port "$PORT" -username arduino -password "$PASSWORD" -sketch "$BINARY" -upload /sketch -b 2>&1 | tee -a "$LOG"
+TIMEOUT_ARGS=()
+if "$TOOL" -h 2>&1 | /usr/bin/grep -q -- "-t"; then
+  TIMEOUT_ARGS=(-t 90)
+  print -r -- "[Tauri OTA] Az arduinoOTA támogatja a hosszabb időkorlátot: 90 másodperc." | tee -a "$LOG"
+else
+  print -r -- "[Tauri OTA] Az arduinoOTA nem jelzett -t támogatást; a feltöltés után az alkalmazás firmware-verzióval ellenőrzi a tényleges eredményt." | tee -a "$LOG"
+fi
+"$TOOL" -v "${{TIMEOUT_ARGS[@]}}" -address "$ADDRESS" -port "$PORT" -username arduino -password "$PASSWORD" -sketch "$BINARY" -upload /sketch -b 2>&1 | tee -a "$LOG"
 STATUS=${{pipestatus[1]}}
 print -r -- "$STATUS" > "$EXIT_FILE"
 if [[ "$STATUS" == "0" ]]; then
@@ -971,6 +978,32 @@ exit "$STATUS"
                     return Ok(tool.to_string_lossy().to_string());
                 }
                 let details = recent_lines.join("\n");
+                let upload_completed = recent_lines.iter().any(|line| {
+                    line.contains("Uploading sketch") && line.contains("done")
+                });
+                let flash_timeout_pattern = recent_lines.iter().any(|line| {
+                    line.contains("Flashing sketch") && line.contains("Error flashing the sketch")
+                });
+
+                // UNO R4 WiFi esetén az arduinoOTA régebbi feltöltője a firmware
+                // teljes átvitele után is kiléphet 1-es kóddal, ha az Arduino
+                // alkalmazása/újraindulása tovább tart a feltöltő időkorlátjánál.
+                // Ilyenkor nem tekintjük azonnal hibának: a következő lépés az
+                // Arduino /api/status válaszából ellenőrzi a tényleges verziót.
+                if upload_completed && flash_timeout_pattern {
+                    emit_ota_progress(
+                        &event_app,
+                        "ArduinoOTA Terminal",
+                        "info",
+                        "A bináris feltöltése befejeződött, de az arduinoOTA a flash-visszaigazolásnál hibakóddal állt le. Ez UNO R4 WiFi időkorlátos hamis hiba lehet; az alkalmazás most a tényleges firmware-verziót ellenőrzi.",
+                        Some(90),
+                    );
+                    return Ok(format!(
+                        "VERIFY_REQUIRED:{}",
+                        tool.to_string_lossy()
+                    ));
+                }
+
                 let mut message = format!("A Terminalban futó arduinoOTA hibával állt le (kód: {code}).\n{details}");
                 if details.contains("Connecting to board") && details.contains("failed") {
                     message.push_str("\n\nA feltöltő még az Arduino-kapcsolat létrehozása előtt állt le. Ezt nem a firmware fájlneve és nem a bináris tartalma okozza; a fájl SHA-256 ellenőrzése már sikeres volt.");
@@ -990,6 +1023,19 @@ exit "$STATUS"
     })
     .await
     .map_err(|error| format!("Az OTA Terminal naplófigyelő megszakadt: {error}"))??;
+
+    if let Some(tool) = result.strip_prefix("VERIFY_REQUIRED:") {
+        emit_ota_progress(
+            app,
+            "Terminal",
+            "info",
+            format!(
+                "Az arduinoOTA nem kapta meg időben a flash-visszaigazolást, de a teljes bináris átment. Következik az Arduino újraindulásának és firmware-verziójának ellenőrzése. Feltöltő: {tool}"
+            ),
+            Some(90),
+        );
+        return Ok(tool.to_string());
+    }
 
     emit_ota_progress(
         app,
@@ -1095,7 +1141,7 @@ async fn upload_firmware_native(
         let header = format!(
             "POST /sketch HTTP/1.1\r\n\
 Host: {address}:{port}\r\n\
-User-Agent: Arduino-LED-Controller-Tauri/3.0.18\r\n\
+User-Agent: Arduino-LED-Controller-Tauri/3.0.19\r\n\
 Authorization: Basic {credentials}\r\n\
 Content-Type: application/octet-stream\r\n\
 Content-Length: {total}\r\n\
@@ -1537,7 +1583,7 @@ async fn firmware_update_inner(
     );
     let firmware = download_client
         .get(&artifact.download_url)
-        .header("User-Agent", "arduino-led-controller-tauri/3.0.18")
+        .header("User-Agent", "arduino-led-controller-tauri/3.0.19")
         .send()
         .await
         .map_err(|error| format!("Firmware letöltési hiba: {error}"))?
@@ -1560,7 +1606,7 @@ async fn firmware_update_inner(
     emit_ota_progress(app, "Ellenőrzés", "info", "SHA-256 ellenőrzőösszeg letöltése…", Some(33));
     let checksum_text = download_client
         .get(&artifact.checksum_url)
-        .header("User-Agent", "arduino-led-controller-tauri/3.0.18")
+        .header("User-Agent", "arduino-led-controller-tauri/3.0.19")
         .send()
         .await
         .map_err(|error| format!("Checksum letöltési hiba: {error}"))?
@@ -1890,7 +1936,6 @@ mod tests {
     }
 }
 
-#[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
