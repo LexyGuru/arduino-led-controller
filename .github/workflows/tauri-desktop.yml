@@ -6,7 +6,7 @@ on:
     branches: [main]
     paths:
       - "desktop-tauri/**"
-      - ".github/workflows/build-desktop.yml"
+      - ".github/workflows/tauri-desktop.yml"
 
 # A build jobok csak olvasnak, a külön release job kap írási jogot.
 permissions:
