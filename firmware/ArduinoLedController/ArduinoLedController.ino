@@ -14,7 +14,7 @@
 #include <stdarg.h>
 #include "secrets.h"
 
-#define FIRMWARE_VERSION "4.1.13"
+#define FIRMWARE_VERSION "4.1.14"
 #define DEVICE_NAME "arduino-led-controller"
 #ifndef API_SHARED_SECRET
 #define API_SHARED_SECRET "CHANGE_THIS_TO_A_LONG_RANDOM_API_SECRET"
@@ -134,6 +134,7 @@ uint8_t logStart = 0, logSize = 0;
 uint32_t nextLogId = 1;
 unsigned long httpRequests = 0, httpTimeouts = 0;
 unsigned long httpRejected = 0, httpWriteFailures = 0;
+unsigned long otaRestartCount = 0, lastOtaRestartAt = 0;
 uint8_t httpMaxBatch = 0;
 char lastHttpClientIp[16] = "-", lastHttpPath[48] = "-";
 unsigned long lastHttpClientAt = 0, lastHttpClientLog = 0;
@@ -570,6 +571,26 @@ void startOta() {
   consoleLine(message);
 }
 
+bool restartOtaService() {
+  if (!wifiHasAddress()) return false;
+
+  if (otaReady) {
+    ArduinoOTA.end();
+    otaReady = false;
+    delay(150);
+  }
+
+  startOta();
+  if (!otaReady) return false;
+
+  otaRestartCount++;
+  lastOtaRestartAt = millis();
+  char message[96];
+  snprintf(message, sizeof(message), "OTA listener ujrainditva: %lu. alkalom", otaRestartCount);
+  logEvent("info", message);
+  return true;
+}
+
 float effectScale(uint8_t speed) { return 0.25f + (constrain(speed, 1, 100) / 100.0f) * 3.75f; }
 unsigned long effectDuration(unsigned long base, uint8_t speed) { return max(1UL, static_cast<unsigned long>(base / effectScale(speed))); }
 uint32_t color(uint8_t i, float scale = 1.0f) { return strip[i].Color(leds[i].red * scale, leds[i].green * scale, leds[i].blue * scale); }
@@ -729,7 +750,8 @@ bool buildStatusJson(size_t& bodyLength) {
     "\"networkConfigStored\":%s,\"scheduler\":\"arduino-eeprom\","
     "\"scheduleCount\":%u,\"consoleLogCount\":%u,\"consoleLastId\":%lu,"
     "\"firmwareVersion\":\"%s\",\"httpPort\":%u,\"otaPort\":%u,\"mdnsPort\":%u,"
-    "\"otaEnabled\":%s,\"otaPasswordConfigured\":%s,\"apiProtected\":%s,"
+    "\"otaEnabled\":%s,\"otaPasswordConfigured\":%s,\"otaRestartCount\":%lu,"
+    "\"otaLastRestartAge\":%lu,\"apiProtected\":%s,"
     "\"matrixEnabled\":true,\"pirSensorsEnabled\":%s,\"physicalButtonsEnabled\":%s,"
     "\"uptime\":%lu,\"rssi\":%ld,"
     "\"http\":{\"requests\":%lu,\"timeouts\":%lu,\"rejected\":%lu,"
@@ -741,6 +763,8 @@ bool buildStatusJson(size_t& bodyLength) {
     FIRMWARE_VERSION, HTTP_API_PORT, OTA_UPLOAD_PORT, MDNS_PORT,
     otaReady ? "true" : "false",
     networkSettings.otaPassword[0] ? "true" : "false",
+    static_cast<unsigned long>(otaRestartCount),
+    static_cast<unsigned long>(lastOtaRestartAt ? (millis() - lastOtaRestartAt) / 1000 : 0),
     apiSettingsStored ? "true" : "false",
     ENABLE_PIR_SENSORS ? "true" : "false",
     ENABLE_PHYSICAL_BUTTONS ? "true" : "false",
@@ -903,6 +927,20 @@ void route(WiFiClient& c, const String& path) {
   if (base == "/api/schedules/upload") { String payload = queryAt < 0 ? "" : path.substring(queryAt + 1); if (!payload.startsWith("payload=")) { sendJson(c, "{\"error\":\"Hianyzik a payload\"}", 400); return; } if (!importSchedulesHex(payload.substring(8))) { sendJson(c, "{\"error\":\"Ervenytelen idozitesi adat\"}", 400); return; } char message[64]; snprintf(message, sizeof(message), "Arduino idozites mentve: %d bejegyzes", scheduleCount); logEvent("success", message); sendJson(c, "{\"success\":true,\"count\":" + String(scheduleCount) + "}"); return; }
   if (base == "/api/schedules/chunk") { String query = queryAt < 0 ? "" : path.substring(queryAt + 1); int index = valueInt(query, "index", -1, -1, SCHEDULE_MAX - 1), total = valueInt(query, "total", 0, 0, SCHEDULE_MAX); int payloadAt = query.indexOf("payload="); if (index < 0 || total < 1 || index >= total || payloadAt < 0 || !decodeScheduleHex(query.substring(payloadAt + 8), schedules[index])) { sendJson(c, "{\"error\":\"Ervenytelen idozitesi reszlet\"}", 400); return; } if (index + 1 == total) { saveSchedules(total); char message[64]; snprintf(message, sizeof(message), "Arduino idozites mentve: %d bejegyzes", scheduleCount); logEvent("success", message); } sendJson(c, "{\"success\":true,\"count\":" + String(index + 1 == total ? scheduleCount : 0) + "}"); return; }
   if (base == "/api/schedules/clear") { memset(schedules, 0, sizeof(schedules)); saveSchedules(0); logEvent("info", "Arduino idozites torolve"); sendJson(c, "{\"success\":true}"); return; }
+  if (base == "/api/ota/restart") {
+    const bool restarted = restartOtaService();
+    char response[112];
+    const int length = snprintf(response, sizeof(response),
+      "{\"success\":%s,\"otaEnabled\":%s,\"otaPort\":%u,\"restartCount\":%lu}",
+      restarted ? "true" : "false", otaReady ? "true" : "false", OTA_UPLOAD_PORT,
+      static_cast<unsigned long>(otaRestartCount));
+    if (length > 0 && static_cast<size_t>(length) < sizeof(response)) {
+      sendJsonBuffer(c, response, static_cast<size_t>(length), restarted ? 200 : 503);
+    } else {
+      sendJsonLiteral(c, "{\"success\":false,\"error\":\"OTA restart valaszhiba\"}", 503);
+    }
+    return;
+  }
   if (base == "/api/status" || base == "/api/led/status") { sendStatusJson(c); return; }
   if (base == "/api/console/logs") { String query = queryAt < 0 ? "" : path.substring(queryAt + 1); uint32_t afterId = (uint32_t)valueInt(query, "after", 0, 0, 2147483647); sendLogsJson(c, afterId); return; }
   if (base == "/api/console/stats") { sendConsoleStatsJson(c); return; }
