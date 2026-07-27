@@ -23,51 +23,48 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
+          # Az iOS-hez szükséges natív célarchitektúra
           targets: aarch64-apple-ios
 
       - name: Install dependencies
         run: npm install
 
-      # Tauri iOS app fordítása kódaláírás nélkül
+      # A tauri-action helyett közvetlenül a Tauri CLI-vel kényszerítjük ki az iOS buildet kódaláírás nélkül
       - name: Build Tauri App for iOS
-        uses: tauri-apps/tauri-action@v0
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CODE_SIGNING_ALLOWED: "NO"
           CODE_SIGNING_REQUIRED: "NO"
           CODE_SIGN_IDENTITY: ""
           PROVISIONING_PROFILE_SPECIFIER: ""
-        with:
-          projectPath: desktop-tauri
-          args: --target aarch64-apple-ios
+        run: npx tauri ios build --no-bundle
 
-      # Intelligens keresés és IPA csomagolás a Sideloadly számára
+      # Csomagolás a Sideloadly számára
       - name: Package IPA for Sideloadly
         run: |
           mkdir -p Payload
           
-          # Megkeressük, hova rakta az Xcode a fordítás eredményét (.app mappa)
+          # Megkeressük az igazi Xcode build mappát, ami most már létrejön
           APP_PATH=$(find src-tauri/gen/apple/build -name "*.app" -type d | head -n 1)
           
           if [ -n "$APP_PATH" ]; then
-            echo "Megtalált .app fájl: $APP_PATH"
+            echo "Megtalált .app mappa: $APP_PATH"
             cp -r "$APP_PATH" Payload/
           else
-            echo "Nem találtam .app fájlt, ellenőrzöm az xcarchive-ot..."
-            # Ha archívum készült, abból szedjük ki az appot
-            ARCHIVE_PATH=$(find src-tauri/gen/apple/build -name "*.xcarchive" -type d | head -n 1)
-            if [ -n "$ARCHIVE_PATH" ]; then
-              cp -r "$ARCHIVE_PATH/Products/Applications/"*.app Payload/
+            echo "Közvetlen .app nem található, keresés az xcode-products mappában..."
+            # Biztonsági mentés, ha az Xcode máshova tenné az un-signed terméket
+            APP_BACKUP=$(find src-tauri/gen/apple -name "*.app" -type d | grep -v "Artifacts" | head -n 1)
+            if [ -n "$APP_BACKUP" ]; then
+              cp -r "$APP_BACKUP" Payload/
             else
-              echo "Hiba: Egyik formátumot sem találtam a build mappában!"
+              echo "Hiba: Nem található generált iOS .app fájl!"
               exit 1
             fi
           fi
           
-          # Becsomagoljuk és kimentjük a gyökérbe
+          # Becsomagoljuk az IPA-t a gyökérkönyvtárba
           zip -r ../sideload_app.ipa Payload
 
-      # A kész IPA feltöltése a GitHub felületére
+      # Az IPA fájl feltöltése a GitHub felületére
       - name: Upload IPA Artifact
         uses: actions/upload-artifact@v4
         with:
