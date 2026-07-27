@@ -24,7 +24,7 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      # Kódaláírás kikényszerített kihagyása környezeti változókkal
+      # Tauri iOS app fordítása kódaláírás nélkül
       - name: Build Tauri App for iOS
         uses: tauri-apps/tauri-action@v0
         env:
@@ -35,3 +35,19 @@ jobs:
           PROVISIONING_PROFILE_SPECIFIER: ""
         with:
           args: --target aarch64-apple-ios
+
+      # Automatikus IPA generálás a Sideloadly számára
+      - name: Package IPA for Sideloadly
+        run: |
+          mkdir -p Payload
+          # Megkeresi a generált .app fájlt és átmásolja a Payload mappába
+          cp -r src-tauri/gen/apple/build/arm64/*.app Payload/
+          # Becsomagolja ZIP-be, majd átnevezi .ipa kiterjesztésre
+          zip -r sideload_app.ipa Payload
+          
+      # A kész IPA fájl feltöltése a GitHub Actions futási naplójához letölthetőként
+      - name: Upload IPA Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tauri-ios-sideload-ipa
+          path: sideload_app.ipa
