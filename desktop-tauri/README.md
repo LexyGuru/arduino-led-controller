@@ -130,3 +130,13 @@ Részletesen: `V3.0.10_FIXES.md`.
 - Az összes időzítés törlése most a firmware `/api/schedules/clear` végpontját használja, majd visszaellenőrzi a nulla darabos állapotot.
 - Az OTA utáni ellenőrzés csak a várt firmware-verzió visszajelzését fogadja el sikernek.
 - A teljes válasz után érkező TCP reset nem okoz hamis JSON-hibát; a kliens a fejléc és `Content-Length` alapján ellenőrzi a választ.
+
+
+## 3.0.14 OTA listener javítás
+
+A firmware 4.1.14 `/api/ota/restart` végpontja feltöltés előtt újraindítja a 65280-as ArduinoOTA szervert. A desktop alkalmazás részletes arduinoOTA naplót és kapcsolódási diagnózist jelenít meg.
+
+
+## Beépített, önálló OTA (3.0.14)
+
+A desktop alkalmazás közvetlenül, a Rust backendből küldi a letöltött és SHA-256-tal ellenőrzött `.ino.bin` fájlt az Arduino `http://IP:65280/sketch` végpontjára. Nem használ külső `arduinoOTA` futtatható fájlt, Arduino IDE-t, Arduino CLI-t, Proxmoxot vagy egyéb szervert. A feltöltés a macOS/Windows/Linux Tauri folyamat saját hálózati jogosultságával fut, és a valós idejű OTA-konzol 5%-os lépésekben mutatja a bináris küldését.

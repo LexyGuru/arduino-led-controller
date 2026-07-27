@@ -1,8 +1,8 @@
 /*
  * Arduino LED Controller Lite 3.1
  * UNO R4 WiFi: LED, PIR, vedett helyi API, EEPROM heti idozites es OTA.
- * A 4.1.15 kiadas biztonsagos OTA-elokeszitesi modot es reszletes
- * OTA-diagnosztikat ad a Tauri klienshez.
+ * A 4.1.16 kiadas az OTA-diagnosztikai alapverzio frissitesi celja, es
+ * valtozatlan diagnosztikaval bizonyitja a sikeres halozati frissitest.
  *
  * Elso feltoltes USB-n. A firmware ezutan OTA-frissitest fogad a halozaton.
  */
@@ -15,8 +15,8 @@
 #include <stdarg.h>
 #include "secrets.h"
 
-#define FIRMWARE_VERSION "4.1.15"
-#define FIRMWARE_FEATURE "ota-diagnostics"
+#define FIRMWARE_VERSION "4.1.16"
+#define FIRMWARE_FEATURE "ota-validation-target"
 #define DEVICE_NAME "arduino-led-controller"
 #ifndef API_SHARED_SECRET
 #define API_SHARED_SECRET "CHANGE_THIS_TO_A_LONG_RANDOM_API_SECRET"
