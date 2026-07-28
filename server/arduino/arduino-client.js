@@ -115,6 +115,10 @@ class ArduinoClient {
 
     this.logger = logger;
     this.transport = transport;
+
+    // Az UNO R4 WiFi HTTP-kiszolgálója egyszerre egy kapcsolatot kezel
+    // megbízhatóan. Minden kérés ugyanazon a soron halad át.
+    this.requestQueue = Promise.resolve();
   }
 
   configurationChecks() {
@@ -232,7 +236,33 @@ class ArduinoClient {
     return url;
   }
 
-  async request(
+  request(
+    method,
+    endpoint,
+    options = {}
+  ) {
+    const execute = () =>
+      this.requestDirect(
+        method,
+        endpoint,
+        options
+      );
+
+    const queued =
+      this.requestQueue.then(
+        execute,
+        execute
+      );
+
+    this.requestQueue =
+      queued.catch(
+        () => undefined
+      );
+
+    return queued;
+  }
+
+  async requestDirect(
     method,
     endpoint,
     {
@@ -292,6 +322,52 @@ class ArduinoClient {
 
       throw mappedError;
     }
+  }
+
+  get(endpoint, options = {}) {
+    return this.request(
+      'get',
+      endpoint,
+      options
+    );
+  }
+
+  post(
+    endpoint,
+    data,
+    options = {}
+  ) {
+    return this.request(
+      'post',
+      endpoint,
+      {
+        ...options,
+        data
+      }
+    );
+  }
+
+  put(
+    endpoint,
+    data,
+    options = {}
+  ) {
+    return this.request(
+      'put',
+      endpoint,
+      {
+        ...options,
+        data
+      }
+    );
+  }
+
+  delete(endpoint, options = {}) {
+    return this.request(
+      'delete',
+      endpoint,
+      options
+    );
   }
 
   async getStatus({

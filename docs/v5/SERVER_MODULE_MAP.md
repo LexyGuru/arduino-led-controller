@@ -28,12 +28,15 @@ végpontok tovább működnek.
 | `server/core/logger.js` | Winston logger létrehozása |
 | `server/core/runtime-context.js` | Megosztott futásidejű objektumok |
 
-## Arduino modulok
+## Arduino és LED modulok
 
 | Modul | Feladat |
 |---|---|
-| `server/arduino/arduino-client.js` | Közös Arduino HTTP-kliens |
+| `server/arduino/arduino-client.js` | Sorba állított közös Arduino HTTP-kliens |
 | `server/arduino/arduino-error.js` | Egységes Arduino klienshibák |
+| `server/led/led-validation.js` | LED-parancsok és színek validációja |
+| `server/led/led-service.js` | LED állapot és vezérlési szolgáltatás |
+| `server/led/led-error.js` | LED validációs és szolgáltatáshibák |
 
 ## Express platform
 
@@ -47,11 +50,13 @@ végpontok tovább működnek.
 
 | Modul | Feladat |
 |---|---|
-| `auth.js` | Bearer token feldolgozás és hitelesítés |
+| `auth.js` | Bearer token feldolgozás, szerepkör és principal |
 | `cors-security.js` | CORS és security response headerek |
 | `readiness.js` | API- és könyvtárkészenléti ellenőrzés |
 | `arduino-error-mapper.js` | Arduino klienshiba → HTTP-hiba |
-| `routes.js` | Végpontkezelők |
+| `routes.js` | Rendszer- és Arduino-végpontkezelők |
+| `authorize.js` | Jogosultsági middleware |
+| `led-routes.js` | API v2 LED-végpontok |
 | `error-handler.js` | 404 és központi hibakezelés |
 | `http-error.js` | HTTP hibaosztály |
 | `http-response.js` | Egységes sikeres és hibaválasz |

@@ -82,22 +82,30 @@ check_node_files() {
   node --check "${root_dir}/server/core/config.js"
   node --check "${root_dir}/server/core/logger.js"
   node --check "${root_dir}/server/core/runtime-context.js"
+  node --check "${root_dir}/server/security/roles.js"
   node --check "${root_dir}/server/arduino/arduino-error.js"
   node --check "${root_dir}/server/arduino/arduino-client.js"
+  node --check "${root_dir}/server/led/led-error.js"
+  node --check "${root_dir}/server/led/led-validation.js"
+  node --check "${root_dir}/server/led/led-service.js"
   node --check "${root_dir}/server/express/express-bootstrap-registry.js"
   node --check "${root_dir}/server/health-bootstrap.js"
   node --check "${root_dir}/server/api/v2/http-error.js"
   node --check "${root_dir}/server/api/v2/http-response.js"
   node --check "${root_dir}/server/api/v2/auth.js"
+  node --check "${root_dir}/server/api/v2/authorize.js"
   node --check "${root_dir}/server/api/v2/cors-security.js"
   node --check "${root_dir}/server/api/v2/readiness.js"
   node --check "${root_dir}/server/api/v2/arduino-error-mapper.js"
   node --check "${root_dir}/server/api/v2/error-handler.js"
   node --check "${root_dir}/server/api/v2/routes.js"
+  node --check "${root_dir}/server/api/v2/led-routes.js"
   node --check "${root_dir}/server/api/v2/api-v2-bootstrap.js"
   node --check "${root_dir}/scripts/test-core-modules.js"
   node --check "${root_dir}/scripts/test-arduino-client.js"
   node --check "${root_dir}/scripts/test-server-platform-modules.js"
+  node --check "${root_dir}/scripts/test-led-service.js"
+  node --check "${root_dir}/scripts/test-api-v2-led.js"
   node --check "${root_dir}/scripts/test-health-endpoints.js"
   node --check "${root_dir}/scripts/test-api-v2.js"
 }
@@ -352,6 +360,8 @@ check_node_files "${CHECK_DIR}"
   npm run test:core
   npm run test:arduino-client
   npm run test:server-platform
+  npm run test:led-service
+  npm run test:api-v2-led
   npm run test:health
   npm run test:api-v2
 )

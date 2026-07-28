@@ -11,6 +11,11 @@ const {
 } = require('../../core/runtime-context');
 
 const {
+  createPrincipal,
+  normalizeRole
+} = require('../../security/roles');
+
+const {
   HttpError
 } = require('./http-error');
 
@@ -115,6 +120,16 @@ function createApiV2AuthMiddleware({
         HttpError.unauthorized()
       );
     }
+
+    req.apiPrincipal =
+      createPrincipal({
+        subject:
+          'api-v2-token',
+        role:
+          normalizeRole(
+            runtime.config.apiV2.role
+          )
+      });
 
     return next();
   };

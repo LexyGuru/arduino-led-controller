@@ -244,6 +244,21 @@ function loadRuntimeConfig(options = {}) {
       token: String(
         environment.API_V2_TOKEN || ''
       ).trim(),
+      role: [
+        'admin',
+        'operator',
+        'viewer'
+      ].includes(
+        String(
+          environment.API_V2_ROLE ||
+          'admin'
+        ).trim().toLowerCase()
+      )
+        ? String(
+            environment.API_V2_ROLE ||
+            'admin'
+          ).trim().toLowerCase()
+        : 'admin',
       allowedOrigins:
         allowedOriginsFromEnvironment(
           environment

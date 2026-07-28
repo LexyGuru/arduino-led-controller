@@ -77,7 +77,7 @@ function createApiV2CorsMiddleware({
 
     res.set({
       'Access-Control-Allow-Methods':
-        'GET, OPTIONS',
+        'GET, POST, PUT, OPTIONS',
       'Access-Control-Allow-Headers':
         'Authorization, Content-Type, X-Request-ID',
       'Access-Control-Expose-Headers':

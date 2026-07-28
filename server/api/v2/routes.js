@@ -75,7 +75,12 @@ function createApiV2Handlers({
               'Authorization',
             protectedEndpoints: [
               '/api/v2/system/status',
-              '/api/v2/arduino/status'
+              '/api/v2/arduino/status',
+              '/api/v2/leds',
+              '/api/v2/leds/:id',
+              '/api/v2/leds/actions/all-on',
+              '/api/v2/leds/actions/all-off',
+              '/api/v2/leds/actions/reset'
             ]
           },
           endpoints: {
@@ -86,7 +91,17 @@ function createApiV2Handlers({
             systemStatus:
               '/api/v2/system/status',
             arduinoStatus:
-              '/api/v2/arduino/status'
+              '/api/v2/arduino/status',
+            leds:
+              '/api/v2/leds',
+            led:
+              '/api/v2/leds/:id',
+            ledAllOn:
+              '/api/v2/leds/actions/all-on',
+            ledAllOff:
+              '/api/v2/leds/actions/all-off',
+            ledReset:
+              '/api/v2/leds/actions/reset'
           }
         }
       );
@@ -164,6 +179,16 @@ function createApiV2Handlers({
                 runtime
               )
           },
+          principal:
+            req.apiPrincipal
+              ? {
+                  role:
+                    req.apiPrincipal.role,
+                  permissions:
+                    req.apiPrincipal
+                      .permissions
+                }
+              : null,
           compatibility: {
             legacyApiEnabled:
               true,

@@ -9,6 +9,14 @@ const {
 } = require('./auth');
 
 const {
+  createPermissionMiddleware
+} = require('./authorize');
+
+const {
+  PERMISSIONS
+} = require('../../security/roles');
+
+const {
   apiV2CorsAndSecurity,
   apiV2OptionsHandler
 } = require('./cors-security');
@@ -26,12 +34,26 @@ const {
   createApiV2Handlers
 } = require('./routes');
 
+const {
+  installLedRoutes
+} = require('./led-routes');
+
 function installApiV2Routes(app) {
   const handlers =
     createApiV2Handlers({
       readinessCollector:
         collectApiV2ReadinessChecks
     });
+
+  const systemRead =
+    createPermissionMiddleware(
+      PERMISSIONS.SYSTEM_READ
+    );
+
+  const arduinoRead =
+    createPermissionMiddleware(
+      PERMISSIONS.ARDUINO_READ
+    );
 
   app.use(
     '/api/v2',
@@ -62,14 +84,18 @@ function installApiV2Routes(app) {
   app.get(
     '/api/v2/system/status',
     requireApiV2Auth,
+    systemRead,
     handlers.systemStatus
   );
 
   app.get(
     '/api/v2/arduino/status',
     requireApiV2Auth,
+    arduinoRead,
     handlers.arduinoStatus
   );
+
+  installLedRoutes(app);
 
   app.use(
     '/api/v2',

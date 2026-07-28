@@ -16,80 +16,65 @@ Munkacsomag: `feature/v5-server-modularization`
 - [x] `next/v5-rearchitecture` integrációs ág
 - [x] Feature branch alapú fejlesztés
 - [x] V5 verziószinkron: `5.0.0-alpha.1`
-- [x] Gyökér és Tauri lockfile-ok
-- [x] `.editorconfig`
-- [x] Baseline dokumentáció
-- [x] Verzióellenőrző
-- [x] Repository-validátor
+- [x] Lockfile-ok, `.editorconfig`, baseline
+- [x] Verzióellenőrző és repository-validátor
 - [x] Titkos fájlok Git-ellenőrzése
 
 ## LXC futtatás és frissítés
 
-- [x] Node-függőségek tulajdonosának ellenőrzése
-- [x] Hibás/root tulajdonú `node_modules` javítása
-- [x] `npm ci` helyes alkalmazáskönyvtárból fut
-- [x] Frissítés előtti külön worktree ellenőrzés
-- [x] Systemd szolgáltatásellenőrzés
-- [x] HTTP live és ready ellenőrzés
-- [ ] Automatikus rollback sikertelen frissítés után
-- [ ] Verziózott release-csomag telepítése Git pull helyett
+- [x] Függőségtulajdonos-ellenőrzés és javítás
+- [x] `npm ci` helyes alkalmazáskönyvtárból
+- [x] Külön worktree frissítés előtti teszt
+- [x] Systemd, live és ready ellenőrzés
+- [ ] Automatikus rollback
+- [ ] Verziózott release-csomag telepítése
 
-## Health rendszer
+## Health és API v2 platform
 
-- [x] `GET /health/live`
-- [x] `GET /health/ready`
-- [x] `GET /health/arduino`
-- [x] Központi runtime context
-- [x] Megosztott Arduino-kliens
-- [x] Duplikált Axios- és Arduino URL-kód eltávolítása
-- [x] Közös Express bootstrap-regiszter használata
-- [x] Mac és izolált LXC smoke teszt
-
-## API v2 alapok
-
-- [x] API v2 szerződés
-- [x] Egységes sikeres és hibaválasz
-- [x] Request ID
+- [x] Live, ready és Arduino health
+- [x] Egységes API v2 siker- és hibaválasz
+- [x] Request ID és CORS/security
 - [x] Bearer token hitelesítés
-- [x] CORS és security headerek
-- [x] `GET /api/v2`
-- [x] `GET /api/v2/system/health`
-- [x] `GET /api/v2/system/status`
-- [x] `GET /api/v2/arduino/status`
-- [x] Központi runtime context
-- [x] Megosztott Arduino-kliens
-- [x] Auth külön modulban
-- [x] CORS/security külön modulban
-- [x] Readiness külön modulban
-- [x] Route kezelők külön modulban
-- [x] Hibakezelés külön modulban
-- [x] Arduino hibaleképezés külön modulban
-- [x] Régi `/api/...` kompatibilitás
-- [ ] API v2 LED vezérlési végpontok
-- [ ] API v2 naptárvégpontok
-- [ ] API v2 firmware-végpontok
+- [x] `admin`, `operator`, `viewer` szerepkör
+- [x] Központi jogosultsági modell
+- [x] Külön permission middleware
+- [x] Rendszer- és Arduino-státusz végpontok
+- [x] Express bootstrap-regiszter
+- [x] API middleware-ek, route-ok és hibakezelés külön modulban
+- [ ] Több külön API token és tokenrotáció
 - [ ] OpenAPI gépi séma
+
+## LED szolgáltatás és API
+
+- [x] Sorba állított Arduino HTTP-kérések
+- [x] LED azonosító-validáció
+- [x] Fényerő-, effekt- és sebességvalidáció
+- [x] RGB tömb, objektum és hex szín
+- [x] Közös LED szolgáltatás
+- [x] `GET /api/v2/leds`
+- [x] `GET /api/v2/leds/:id`
+- [x] `PUT /api/v2/leds/:id`
+- [x] `POST /api/v2/leds/actions/all-on`
+- [x] `POST /api/v2/leds/actions/all-off`
+- [x] `POST /api/v2/leds/actions/reset`
+- [x] Viewer/operator/admin jogosultságok
+- [x] LED szolgáltatás és route smoke tesztek
+- [ ] Legacy LED route-ok átállítása a közös szolgáltatásra
+- [ ] Socket.IO LED események közös eseménybuszon
 
 ## Szerver modularizálása
 
 - [x] Legacy szerver elkülönítése
 - [x] Rövid V5 indítófájl
-- [x] Futásidejű útvonalmodul
-- [x] Központi konfiguráció
-- [x] Központi logger factory
-- [x] Központi runtime context
-- [x] Megosztott Arduino HTTP-kliens
-- [x] Egységes Arduino klienshibák
-- [x] Közös Express bootstrap-regiszter
-- [x] Health külön route installer
-- [x] API v2 külön route installer
-- [x] API v2 middleware-ek és route-ok szétválasztása
-- [-] Legacy hitelesítési modul kiemelése
-- [ ] LED szolgáltatás kiemelése
-- [ ] Schedule szolgáltatás kiemelése
-- [ ] Firmware/OTA szolgáltatás kiemelése
-- [ ] Socket.IO modul kiemelése
-- [ ] Statikus webes felület kiemelése
+- [x] Core konfiguráció, útvonalak, logger, runtime context
+- [x] Arduino kliens és egységes hibák
+- [x] LED szolgáltatás és validáció
+- [x] API v2 moduláris platform
+- [-] Legacy felhasználói hitelesítés kiemelése
+- [ ] Schedule szolgáltatás
+- [ ] Firmware/OTA szolgáltatás
+- [ ] Socket.IO modul
+- [ ] Statikus webes felület
 - [ ] `server2_legacy.js` megszüntetése
 
 ## Arduino firmware
@@ -97,32 +82,30 @@ Munkacsomag: `feature/v5-server-modularization`
 - [ ] Firmware API-szerződés verziózása
 - [ ] Query API-kulcs lecserélése fejléces hitelesítésre
 - [ ] Egységes firmware hibakódok
-- [ ] Állapotválasz sémájának rögzítése
-- [ ] LED- és schedule-parancsok validációja
+- [ ] LED- és schedule-parancsok firmware-validációja
 - [ ] OTA visszaállítási stratégia
 
 ## Desktop és mobil kliens
 
-- [ ] Tauri kliens átállítása API v2-re
+- [ ] Tauri átállítása API v2-re
 - [ ] Közös TypeScript API-típusok
 - [ ] Token biztonságos tárolása
-- [ ] Kapcsolati állapot és offline mód
-- [ ] macOS, Windows és Linux teszt
-- [ ] iOS és Android teszt
+- [ ] Offline és kapcsolati állapot
+- [ ] macOS, Windows, Linux, iOS és Android tesztek
 
 ## Kiadás
 
 - [ ] `5.0.0-alpha.2`
 - [ ] Teljes izolált LXC integrációs teszt
 - [ ] Staging telepítés
-- [ ] Migrációs és visszaállítási dokumentáció
+- [ ] Migrációs és rollback dokumentáció
 - [ ] Release notes
-- [ ] Beolvasztás a `main` ágba
+- [ ] Beolvasztás `main` ágba
 - [ ] V5 produkciós kiadás
 
-## Következő nagyobb munkacsomag
+## Következő nagy munkacsomag
 
-1. Legacy felhasználói hitelesítés kiemelése.
-2. LED szolgáltatás és API v2 LED route-ok.
-3. Schedule szolgáltatás alapjainak kiemelése.
-4. A teljes modularizációs branch izolált LXC-tesztje.
+1. Legacy felhasználói hitelesítés külön szolgáltatásba.
+2. Schedule adattár, validáció és API v2 végpontok.
+3. Legacy LED route-ok átállítása az új LED szolgáltatásra.
+4. Teljes branch izolált LXC integrációs tesztje.

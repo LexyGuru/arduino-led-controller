@@ -10,8 +10,9 @@ Az API v2 egységes HTTP-válaszformátumot ad a webes felület, a Tauri
 alkalmazás és a későbbi külső kliensek számára.
 
 A meglévő `/api/...` végpontok változatlanul működnek. Az API v2 első
-változata csak olvasási végpontokat tartalmaz, ezért a jelenlegi felületet,
-mobilalkalmazást és Arduino firmware-t nem töri el.
+változata olvasási és LED-vezérlési végpontokat tartalmaz. A jelenlegi
+felületet, mobilalkalmazást és Arduino firmware-t nem töri el, mert a
+legacy `/api/...` végpontok változatlanul megmaradnak.
 
 ## 2. Tartalomtípus és kódolás
 
@@ -64,6 +65,18 @@ Követelmények:
 
 - `GET /api/v2/system/status`
 - `GET /api/v2/arduino/status`
+- `GET /api/v2/leds`
+- `GET /api/v2/leds/:id`
+- `PUT /api/v2/leds/:id`
+- `POST /api/v2/leds/actions/all-on`
+- `POST /api/v2/leds/actions/all-off`
+- `POST /api/v2/leds/actions/reset`
+
+A token szerepkörét az `API_V2_ROLE` adja meg:
+
+- `viewer`: rendszer-, Arduino- és LED-állapot olvasása;
+- `operator`: olvasás és LED-vezérlés;
+- `admin`: minden művelet, beleértve a LED resetet.
 
 Hiányzó vagy hibás token esetén:
 
@@ -164,6 +177,89 @@ Lehetséges hibák:
 - `ARDUINO_AUTH_FAILED` – `502`
 - `ARDUINO_BAD_RESPONSE` – `502`
 - `ARDUINO_TIMEOUT` – `504`
+
+
+### `GET /api/v2/leds`
+
+Visszaadja az Arduino `/api/led/status` válaszából normalizált LED-listát.
+
+**Jogosultság:** `led:read`  
+**Szerepkörök:** `viewer`, `operator`, `admin`
+
+### `GET /api/v2/leds/:id`
+
+Visszaadja az 1–3 közötti azonosítójú LED-szalag állapotát.
+
+**Jogosultság:** `led:read`
+
+### `PUT /api/v2/leds/:id`
+
+Részleges LED-beállítás. Legalább egy mező kötelező.
+
+```json
+{
+  "enabled": true,
+  "brightness": 180,
+  "effect": 2,
+  "speed": 50,
+  "color": [255, 40, 0]
+}
+```
+
+A `color` elfogadott formái:
+
+```json
+[255, 40, 0]
+```
+
+```json
+{"red": 255, "green": 40, "blue": 0}
+```
+
+```text
+#FF2800
+```
+
+Határértékek:
+
+- `brightness`: 0–255;
+- `effect`: 0–4;
+- `speed`: 1–100;
+- RGB komponensek: 0–255.
+
+**Jogosultság:** `led:write`  
+**Szerepkörök:** `operator`, `admin`
+
+### `POST /api/v2/leds/actions/all-on`
+
+Bekapcsolja mindhárom LED-szalagot.
+
+**Jogosultság:** `led:write`
+
+### `POST /api/v2/leds/actions/all-off`
+
+Kikapcsolja mindhárom LED-szalagot.
+
+**Jogosultság:** `led:write`
+
+### `POST /api/v2/leds/actions/reset`
+
+Alaphelyzetbe állítja a LED-vezérlést.
+
+**Jogosultság:** `led:admin`  
+**Szerepkör:** `admin`
+
+Lehetséges LED-hibák:
+
+- `INVALID_LED_ID` – 400
+- `EMPTY_LED_COMMAND` – 400
+- `INVALID_LED_ENABLED` – 400
+- `INVALID_LED_BRIGHTNESS` – 400
+- `INVALID_LED_EFFECT` – 400
+- `INVALID_LED_SPEED` – 400
+- `INVALID_LED_COLOR` – 400
+- `LED_NOT_FOUND` – 404
+- `PERMISSION_REQUIRED` – 403
 
 ## 7. Ismeretlen végpont
 
