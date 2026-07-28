@@ -1,13 +1,15 @@
 {
   "name": "arduino-led-controller",
-  "version": "1.0.0",
+  "version": "5.0.0-alpha.1",
   "private": true,
   "description": "Arduino UNO R4 WiFi LED controller and weekly scheduler",
   "main": "server2_final.js",
   "type": "commonjs",
   "scripts": {
     "start": "node server2_final.js",
-    "check": "node --check server2_final.js"
+    "check": "node --check server2_final.js",
+    "check:versions": "python3 scripts/check-versions.py",
+    "validate": "bash scripts/validate-repository.sh"
   },
   "engines": {
     "node": ">=20"
