@@ -4,8 +4,8 @@
  * V5 kompatibilitási indítófájl.
  *
  * A monolitikus alkalmazás továbbra is a server2_legacy.js fájlban marad.
- * Ez az indító elkészíti a központi runtime contextet és a megosztott
- * Arduino-klienst, majd beépíti a health és API v2 modulokat.
+ * Az új V5 réteg központi runtime contextet és egyetlen Express factory
+ * bootstrap-regisztert használ.
  */
 
 require('dotenv').config();
@@ -31,11 +31,16 @@ const {
 } = require('./server/arduino/arduino-client');
 
 const {
-  installExpressHealthBootstrap
+  installExpressFactoryPatch,
+  registerExpressInstaller
+} = require('./server/express/express-bootstrap-registry');
+
+const {
+  installHealthRoutes
 } = require('./server/health-bootstrap');
 
 const {
-  installExpressApiV2Bootstrap
+  installApiV2Routes
 } = require('./server/api/v2/api-v2-bootstrap');
 
 const paths = createRuntimePaths();
@@ -70,7 +75,16 @@ setRuntimeContext({
   arduinoClient
 });
 
-installExpressHealthBootstrap();
-installExpressApiV2Bootstrap();
+registerExpressInstaller(
+  'health',
+  installHealthRoutes
+);
+
+registerExpressInstaller(
+  'api-v2',
+  installApiV2Routes
+);
+
+installExpressFactoryPatch();
 
 require('./server2_legacy');

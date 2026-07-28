@@ -8,15 +8,15 @@ ROOT_DIR="$(
 
 cd "${ROOT_DIR}"
 
-echo "[1/9] Verziók ellenőrzése"
+echo "[1/10] Verziók ellenőrzése"
 python3 scripts/check-versions.py
 
 echo
-echo "[2/9] Node.js fájlok szintaktikai ellenőrzése"
+echo "[2/10] Node.js fájlok szintaktikai ellenőrzése"
 npm run check --silent
 
 echo
-echo "[3/9] Bash scriptek szintaktikai ellenőrzése"
+echo "[3/10] Bash scriptek szintaktikai ellenőrzése"
 
 while IFS= read -r -d '' script; do
   bash -n "${script}"
@@ -28,7 +28,7 @@ done < <(
 )
 
 echo
-echo "[4/9] Kötelező fájlok ellenőrzése"
+echo "[4/10] Kötelező fájlok ellenőrzése"
 
 required_files=(
   "VERSION"
@@ -44,15 +44,24 @@ required_files=(
   "server/core/runtime-context.js"
   "server/arduino/arduino-error.js"
   "server/arduino/arduino-client.js"
+  "server/express/express-bootstrap-registry.js"
   "server/health-bootstrap.js"
   "server/api/v2/http-error.js"
   "server/api/v2/http-response.js"
+  "server/api/v2/auth.js"
+  "server/api/v2/cors-security.js"
+  "server/api/v2/readiness.js"
+  "server/api/v2/arduino-error-mapper.js"
+  "server/api/v2/error-handler.js"
+  "server/api/v2/routes.js"
   "server/api/v2/api-v2-bootstrap.js"
   "scripts/test-core-modules.js"
   "scripts/test-arduino-client.js"
+  "scripts/test-server-platform-modules.js"
   "scripts/test-health-endpoints.js"
   "scripts/test-api-v2.js"
   "docs/api/API_V2_CONTRACT.md"
+  "docs/v5/SERVER_MODULE_MAP.md"
   "docs/v5/V5_REARCHITECTURE_CHECKLIST.md"
   "desktop-tauri/package.json"
   "desktop-tauri/package-lock.json"
@@ -71,23 +80,27 @@ for file in "${required_files[@]}"; do
 done
 
 echo
-echo "[5/9] Core modul smoke teszt"
+echo "[5/10] Core modul smoke teszt"
 node scripts/test-core-modules.js
 
 echo
-echo "[6/9] Arduino kliens smoke teszt"
+echo "[6/10] Arduino kliens smoke teszt"
 node scripts/test-arduino-client.js
 
 echo
-echo "[7/9] Health endpoint smoke teszt"
+echo "[7/10] Szerverplatform modul smoke teszt"
+node scripts/test-server-platform-modules.js
+
+echo
+echo "[8/10] Health endpoint smoke teszt"
 node scripts/test-health-endpoints.js
 
 echo
-echo "[8/9] API v2 smoke teszt"
+echo "[9/10] API v2 smoke teszt"
 node scripts/test-api-v2.js
 
 echo
-echo "[9/9] Titkos fájlok ellenőrzése"
+echo "[10/10] Titkos fájlok ellenőrzése"
 
 if git ls-files |
   grep -E \

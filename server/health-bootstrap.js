@@ -10,10 +10,6 @@ const {
   getRuntimeContext
 } = require('./core/runtime-context');
 
-const BOOTSTRAP_STATE = Symbol.for(
-  'arduino-led-controller.health-bootstrap-installed'
-);
-
 function runtimeStartedAt(runtime) {
   const value = runtime.startedAt;
 
@@ -152,20 +148,23 @@ function arduinoHealthErrorCode(error) {
 }
 
 function installHealthRoutes(app) {
-  app.get('/health/live', (req, res) => {
-    const runtime =
-      getRuntimeContext();
+  app.get(
+    '/health/live',
+    (req, res) => {
+      const runtime =
+        getRuntimeContext();
 
-    setHealthHeaders(res);
+      setHealthHeaders(res);
 
-    res.status(200).json(
-      healthBase(
-        runtime,
-        'live',
-        true
-      )
-    );
-  });
+      res.status(200).json(
+        healthBase(
+          runtime,
+          'live',
+          true
+        )
+      );
+    }
+  );
 
   app.get(
     '/health/ready',
@@ -178,9 +177,10 @@ function installHealthRoutes(app) {
           runtime
         );
 
-      const ready = checks.every(
-        (check) => check.ok
-      );
+      const ready =
+        checks.every(
+          (check) => check.ok
+        );
 
       setHealthHeaders(res);
 
@@ -256,95 +256,7 @@ function installHealthRoutes(app) {
   );
 }
 
-function copyExpressProperties(
-  target,
-  source
-) {
-  for (
-    const key
-    of Reflect.ownKeys(source)
-  ) {
-    if (
-      key === 'length' ||
-      key === 'name' ||
-      key === 'prototype' ||
-      key === 'arguments' ||
-      key === 'caller'
-    ) {
-      continue;
-    }
-
-    const descriptor =
-      Object.getOwnPropertyDescriptor(
-        source,
-        key
-      );
-
-    if (!descriptor) continue;
-
-    try {
-      Object.defineProperty(
-        target,
-        key,
-        descriptor
-      );
-    } catch (_) {
-      // Egyes függvénytulajdonságok
-      // nem definiálhatók újra.
-    }
-  }
-
-  Object.assign(
-    target,
-    source
-  );
-}
-
-function installExpressHealthBootstrap() {
-  if (globalThis[BOOTSTRAP_STATE]) {
-    return;
-  }
-
-  const expressModulePath =
-    require.resolve('express');
-
-  const originalExpress =
-    require(expressModulePath);
-
-  function patchedExpress(...args) {
-    const app =
-      originalExpress(...args);
-
-    installHealthRoutes(app);
-
-    return app;
-  }
-
-  copyExpressProperties(
-    patchedExpress,
-    originalExpress
-  );
-
-  const cacheEntry =
-    require.cache[
-      expressModulePath
-    ];
-
-  if (!cacheEntry) {
-    throw new Error(
-      'Az Express modul gyorsítótár-bejegyzése nem található.'
-    );
-  }
-
-  cacheEntry.exports =
-    patchedExpress;
-
-  globalThis[BOOTSTRAP_STATE] =
-    true;
-}
-
 module.exports = {
   collectReadinessChecks,
-  installExpressHealthBootstrap,
   installHealthRoutes
 };
