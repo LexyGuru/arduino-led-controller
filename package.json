@@ -7,7 +7,8 @@
   "type": "commonjs",
   "scripts": {
     "start": "node server2_final.js",
-    "check": "node --check server2_final.js",
+    "check": "node --check server2_final.js && node --check server2_legacy.js && node --check server/health-bootstrap.js",
+    "test:health": "node scripts/test-health-endpoints.js",
     "check:versions": "python3 scripts/check-versions.py",
     "validate": "bash scripts/validate-repository.sh"
   },

@@ -1,18 +1,26 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ROOT_DIR="$(
+  cd "$(dirname "${BASH_SOURCE[0]}")/.." &&
+  pwd
+)"
+
 cd "${ROOT_DIR}"
 
-echo "[1/5] Verziók ellenőrzése"
+echo "[1/6] Verziók ellenőrzése"
 python3 scripts/check-versions.py
 
 echo
-echo "[2/5] Node.js szerver szintaktikai ellenőrzése"
+echo "[2/6] Node.js fájlok szintaktikai ellenőrzése"
 node --check server2_final.js
+node --check server2_legacy.js
+node --check server/health-bootstrap.js
+node --check scripts/test-health-endpoints.js
 
 echo
-echo "[3/5] Bash scriptek szintaktikai ellenőrzése"
+echo "[3/6] Bash scriptek szintaktikai ellenőrzése"
+
 while IFS= read -r -d '' script; do
   bash -n "${script}"
 done < <(
@@ -23,12 +31,18 @@ done < <(
 )
 
 echo
-echo "[4/5] Kötelező fájlok ellenőrzése"
+echo "[4/6] Kötelező fájlok ellenőrzése"
+
 required_files=(
   "VERSION"
   ".editorconfig"
+  ".env.example"
   "package.json"
   "package-lock.json"
+  "server2_final.js"
+  "server2_legacy.js"
+  "server/health-bootstrap.js"
+  "scripts/test-health-endpoints.js"
   "desktop-tauri/package.json"
   "desktop-tauri/package-lock.json"
   "desktop-tauri/src-tauri/Cargo.toml"
@@ -46,12 +60,25 @@ for file in "${required_files[@]}"; do
 done
 
 echo
-echo "[5/5] Titkos fájlok ellenőrzése"
+echo "[5/6] Health endpoint smoke teszt"
+node scripts/test-health-endpoints.js
+
+echo
+echo "[6/6] Titkos fájlok ellenőrzése"
+
 if git ls-files |
-  grep -E '(^|/)(secrets\.h|\.env|connection\.json)$' >/dev/null; then
-  echo "HIBA: titkos vagy helyi konfigurációs fájl van Git-követés alatt:" >&2
+  grep -E \
+    '(^|/)(secrets\.h|\.env|connection\.json)$' \
+    >/dev/null; then
+  echo \
+    "HIBA: titkos vagy helyi konfigurációs fájl van Git-követés alatt:" \
+    >&2
+
   git ls-files |
-    grep -E '(^|/)(secrets\.h|\.env|connection\.json)$' >&2
+    grep -E \
+      '(^|/)(secrets\.h|\.env|connection\.json)$' \
+      >&2
+
   exit 1
 fi
 
