@@ -175,6 +175,14 @@ struct OtaProgressEvent {
     progress: Option<u8>,
 }
 
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct RuntimeCapabilities {
+    platform: String,
+    mobile: bool,
+    ota_supported: bool,
+}
+
 struct AppState {
     config: Mutex<Config>,
     network_logs: Mutex<Vec<NetworkLog>>,
@@ -1379,6 +1387,25 @@ async fn confirm_restart(
     ))
 }
 
+#[tauri::command]
+fn runtime_capabilities() -> RuntimeCapabilities {
+    let mobile = cfg!(any(target_os = "android", target_os = "ios"));
+    let platform = if cfg!(target_os = "android") {
+        "android"
+    } else if cfg!(target_os = "ios") {
+        "ios"
+    } else if cfg!(target_os = "macos") {
+        "macos"
+    } else if cfg!(target_os = "windows") {
+        "windows"
+    } else if cfg!(target_os = "linux") {
+        "linux"
+    } else {
+        "unknown"
+    };
+    RuntimeCapabilities { platform: platform.into(), mobile, ota_supported: !mobile }
+}
+
 #[tauri::command] fn load_config(state: State<AppState>) -> Result<Config, String> { Ok(state.config.lock().map_err(|_| "Beállítás zárolva".to_string())?.clone()) }
 #[tauri::command] fn save_config(app: AppHandle, state: State<AppState>, config: Config) -> Result<(), String> {
     validate_config(&config)?;
@@ -1387,7 +1414,13 @@ async fn confirm_restart(
     if let Ok(mut cached) = state.last_known_local_ip.lock() { *cached = None; }
     Ok(())
 }
-#[tauri::command] fn save_ota_password(app: AppHandle, password: String) -> Result<(), String> { write_ota_password(&app, &password) }
+#[tauri::command]
+fn save_ota_password(app: AppHandle, password: String) -> Result<(), String> {
+    if cfg!(any(target_os = "android", target_os = "ios")) {
+        return Err("Mobilplatformon az OTA-jelszó mentése és a firmware-frissítés le van tiltva.".into());
+    }
+    write_ota_password(&app, &password)
+}
 #[tauri::command]
 async fn arduino_status(state: State<'_, AppState>) -> Result<Value, String> {
     get_json(&state, "/api/status").await
@@ -1465,6 +1498,14 @@ async fn firmware_status(app: AppHandle, state: State<'_, AppState>) -> Result<F
         message: "Nincs folyamatban firmware-frissítés.".into(),
         ..Default::default()
     };
+
+    if cfg!(any(target_os = "android", target_os = "ios")) {
+        status.state = "unsupported".into();
+        status.message = "Mobilalkalmazásból firmware-frissítés nem indítható. Használj Windows, macOS vagy Linux gépet.".into();
+        status.ota_tool_installed = false;
+        status.ota_tool_error = Some("OTA mobilplatformon letiltva".into());
+        return Ok(status);
+    }
 
     let terminal_mode = use_terminal_ota(&app, &config).unwrap_or(false);
 
@@ -1891,6 +1932,9 @@ async fn firmware_update_inner(
 
 #[tauri::command]
 async fn firmware_update(app: AppHandle, state: State<'_, AppState>) -> Result<FirmwareStatus, String> {
+    if cfg!(any(target_os = "android", target_os = "ios")) {
+        return Err("Mobilalkalmazásból firmware-frissítés nem indítható. Használj Windows, macOS vagy Linux gépet.".into());
+    }
     match firmware_update_inner(&app, &state).await {
         Ok(status) => Ok(status),
         Err(error) => {
@@ -2013,7 +2057,7 @@ pub fn run() {
             });
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![load_config, save_config, save_ota_password, arduino_status, arduino_logs, network_logs, set_led, load_schedules, import_schedules_file, export_schedules_file, load_schedules_from_arduino, save_and_sync_schedules, firmware_status, firmware_update])
+        .invoke_handler(tauri::generate_handler![runtime_capabilities, load_config, save_config, save_ota_password, arduino_status, arduino_logs, network_logs, set_led, load_schedules, import_schedules_file, export_schedules_file, load_schedules_from_arduino, save_and_sync_schedules, firmware_status, firmware_update])
         .run(tauri::generate_context!())
         .expect("Tauri application error");
 }

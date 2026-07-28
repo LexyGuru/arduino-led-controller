@@ -33,7 +33,6 @@ jobs:
 
           arduino-cli lib install "Adafruit NeoPixel"
           arduino-cli lib install "ArduinoOTA"
-          arduino-cli lib install "ArduinoMDNS"
 
           echo "Installed Arduino cores:"
           arduino-cli core list

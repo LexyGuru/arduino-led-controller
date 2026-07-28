@@ -19,17 +19,21 @@ export default function App() {
   useEffect(() => {
     void getVersion().then(setAppVersion).catch(() => setAppVersion('ismeretlen'));
   }, []);
+
+  useEffect(() => {
+    if (!c.capabilities.otaSupported && page === 'firmware') setPage('dashboard');
+  }, [c.capabilities.otaSupported, page]);
   return <div className="app-shell">
-    <Sidebar page={page} onChange={setPage} appVersion={appVersion} firmwareVersion={c.status?.firmwareVersion}/>
+    <Sidebar page={page} onChange={setPage} appVersion={appVersion} firmwareVersion={c.status?.firmwareVersion} otaSupported={c.capabilities.otaSupported}/>
     <div className="content-shell">
       <Topbar online={Boolean(c.status?.connected)} message={c.message} busy={c.busy} onRefresh={() => void c.refresh()}/>
       <main className="content">
         {page === 'dashboard' && <DashboardPage status={c.status} schedules={c.schedules}/>} 
         {page === 'leds' && <LedsPage strips={c.status?.strips ?? []} busy={c.busy} onUpdate={(s) => void c.updateStrip(s)} onTest={(preset) => void c.runLedTest(preset)} onStopTest={() => void c.stopLedTest()}/>} 
         {page === 'schedules' && <SchedulesPage schedules={c.schedules} busy={c.busy} onSave={(x) => void c.saveSchedules(x)} onSync={() => void c.syncSchedulesFromArduino()}/>} 
-        {page === 'firmware' && <FirmwarePage firmware={c.firmware} busy={c.busy} otaLogs={c.otaLogs} otaProgress={c.otaProgress} otaStage={c.otaStage} onRefresh={() => void c.refreshFirmware()} onUpdate={() => void c.updateFirmware()}/>} 
+        {c.capabilities.otaSupported && page === 'firmware' && <FirmwarePage firmware={c.firmware} busy={c.busy} otaLogs={c.otaLogs} otaProgress={c.otaProgress} otaStage={c.otaStage} onRefresh={() => void c.refreshFirmware()} onUpdate={() => void c.updateFirmware()}/>} 
         {page === 'logs' && <LogsPage arduino={c.logs} network={c.networkLogs} error={c.consoleError}/>} 
-        {page === 'settings' && <SettingsPage config={c.config} busy={c.busy} onChange={c.setConfig} onSave={() => void c.saveConfig()} otaPassword={c.otaPassword} onOtaPasswordChange={c.setOtaPassword}/>} 
+        {page === 'settings' && <SettingsPage otaSupported={c.capabilities.otaSupported} config={c.config} busy={c.busy} onChange={c.setConfig} onSave={() => void c.saveConfig()} otaPassword={c.otaPassword} onOtaPasswordChange={c.setOtaPassword}/>} 
       </main>
     </div>
   </div>;

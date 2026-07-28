@@ -1,7 +1,8 @@
 import { invoke } from '@tauri-apps/api/core';
-import type { ArduinoConsoleResponse, ArduinoStatus, ConnectionConfig, FirmwareStatus, LedSchedule, LedStrip, NetworkLog } from '../types';
+import type { ArduinoConsoleResponse, ArduinoStatus, ConnectionConfig, FirmwareStatus, LedSchedule, LedStrip, NetworkLog, RuntimeCapabilities } from '../types';
 
 export const tauriApi = {
+  runtimeCapabilities: () => invoke<RuntimeCapabilities>('runtime_capabilities'),
   loadConfig: () => invoke<ConnectionConfig>('load_config'),
   saveConfig: (config: ConnectionConfig) => invoke<void>('save_config', { config }),
   saveOtaPassword: (password: string) => invoke<void>('save_ota_password', { password }),

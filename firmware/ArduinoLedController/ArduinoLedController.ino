@@ -16,8 +16,8 @@
 #include <stdarg.h>
 #include "secrets.h"
 
-#define FIRMWARE_VERSION "4.1.19"
-#define FIRMWARE_FEATURE "ota-result-validation-target"
+#define FIRMWARE_VERSION "4.1.20"
+#define FIRMWARE_FEATURE "ota-validation-4.1.20"
 #define DEVICE_NAME "arduino-led-controller"
 #ifndef API_SHARED_SECRET
 #define API_SHARED_SECRET "CHANGE_THIS_TO_A_LONG_RANDOM_API_SECRET"

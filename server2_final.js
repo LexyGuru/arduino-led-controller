@@ -851,87 +851,188 @@ app.put('/api/settings/arduino', (req, res) => {
 
 // ========================= ARDUINO OTA FIRMWARE =========================
 
+const FIRMWARE_LOG_LIMIT = 300;
+const FIRMWARE_CONFIRM_TIMEOUT = 180000;
+const FIRMWARE_CONFIRM_INTERVAL = 3000;
 const firmwareUpdate = {
   state: 'idle',
+  phase: 'Készenlét',
+  progress: 0,
   message: 'Nincs folyamatban firmware-frissítés.',
   startedAt: null,
   finishedAt: null,
   artifact: null,
-  installedVersion: null
+  installedVersion: null,
+  lastSeenVersion: null,
+  otaTarget: null,
+  logs: [],
+  nextLogId: 1
 };
 
 function githubHeaders() {
-  const headers = {
+  return {
     Accept: 'application/vnd.github+json',
     'User-Agent': 'arduino-led-controller'
   };
-  return headers;
 }
 
-function setFirmwareUpdate(state, message, extra = {}) {
+function firmwareBusy() {
+  return ['checking', 'downloading', 'verifying', 'preparing', 'uploading', 'restarting'].includes(firmwareUpdate.state);
+}
+
+function resetFirmwareLogs() {
+  firmwareUpdate.logs = [];
+  firmwareUpdate.nextLogId = 1;
+}
+
+function pushFirmwareLog(stage, level, message, progress = null) {
+  const entry = {
+    id: firmwareUpdate.nextLogId++,
+    timestamp: new Date().toISOString(),
+    stage,
+    level,
+    message: String(message || '')
+  };
+  firmwareUpdate.logs.push(entry);
+  if (firmwareUpdate.logs.length > FIRMWARE_LOG_LIMIT) {
+    firmwareUpdate.logs.splice(0, firmwareUpdate.logs.length - FIRMWARE_LOG_LIMIT);
+  }
+  if (Number.isFinite(progress)) firmwareUpdate.progress = Math.max(0, Math.min(100, Number(progress)));
+  firmwareUpdate.phase = stage;
+  firmwareUpdate.message = entry.message;
+  if (io) io.emit('otaProgress', { ...entry, progress: firmwareUpdate.progress, state: firmwareUpdate.state });
+  logger[level === 'error' ? 'error' : level === 'warn' ? 'warn' : 'info'](`Firmware OTA [${stage}]: ${entry.message}`);
+  return entry;
+}
+
+function setFirmwareUpdate(state, message, extra = {}, log = true) {
   Object.assign(firmwareUpdate, { state, message, ...extra });
-  logger.info(`Firmware OTA: ${state} - ${message}`);
+  if (log) pushFirmwareLog(extra.phase || firmwareUpdate.phase || state, extra.level || (state === 'error' ? 'error' : state === 'success' ? 'success' : 'info'), message, extra.progress);
 }
 
 function wait(milliseconds) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
-// Az UNO R4 OTA tárolója a firmware alkalmazásakor maga indítja újra a
-// vezérlőt. Itt nem resetet küldünk (az megszakíthatná a flash-műveletet),
-// hanem addig várunk, amíg az új firmware ténylegesen vissza nem jelentkezik.
-async function confirmFirmwareRestart(artifact) {
-  const deadline = Date.now() + 90000;
-  let lastError = null;
-  let attempt = 0;
-  while (Date.now() < deadline) {
-    await wait(attempt++ === 0 ? 3000 : 2000);
-    try {
-      const status = await arduino.get('/api/status');
-      const installed = status.firmwareVersion || null;
-      if (artifact.firmwareVersion && installed && installed !== artifact.firmwareVersion) {
-        setFirmwareUpdate('restarting', `Az Arduino még újraindul vagy a régi firmware fut (${installed})…`, { artifact });
-        continue;
-      }
-      setFirmwareUpdate('success', `Firmware sikeresen telepítve és újraindítva: ${installed || 'új verzió'}.`, {
-        artifact, installedVersion: installed, finishedAt: new Date().toISOString()
-      });
-      return;
-    } catch (error) {
-      lastError = error;
-    }
-  }
-  setFirmwareUpdate('error', `A firmware átadása sikeres volt, de az Arduino 90 másodpercen belül nem jelentkezett vissza: ${lastError?.message || 'ismeretlen hiba'}`, {
-    artifact, finishedAt: new Date().toISOString()
-  });
+function stripAnsi(value) {
+  return String(value || '').replace(/\u001b\[[0-9;]*m/g, '');
 }
 
-function runProgram(command, args, timeout = 180000, binary = false) {
+function runProgramStreaming(command, args, timeout = 240000, onLine = () => {}) {
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, { shell: false });
-    const chunks = [];
+    const outputChunks = [];
     let outputSize = 0;
-    const append = (chunk) => {
-      if (outputSize >= 65536) return;
-      const part = Buffer.from(chunk).subarray(0, 65536 - outputSize);
-      chunks.push(part);
+    let stdoutBuffer = '';
+    let stderrBuffer = '';
+    let timedOut = false;
+
+    const keepOutput = (chunk) => {
+      if (outputSize >= 131072) return;
+      const part = Buffer.from(chunk).subarray(0, 131072 - outputSize);
+      outputChunks.push(part);
       outputSize += part.length;
     };
-    child.stdout.on('data', append);
-    child.stderr.on('data', append);
-    const timer = setTimeout(() => child.kill('SIGTERM'), timeout);
+
+    const consume = (chunk, streamName) => {
+      keepOutput(chunk);
+      let pending = (streamName === 'stderr' ? stderrBuffer : stdoutBuffer) + chunk.toString('utf8');
+      const lines = pending.split(/\r?\n/);
+      pending = lines.pop() || '';
+      if (streamName === 'stderr') stderrBuffer = pending; else stdoutBuffer = pending;
+      for (const line of lines) {
+        const clean = stripAnsi(line).trim();
+        if (clean) onLine(clean, streamName);
+      }
+    };
+
+    child.stdout.on('data', (chunk) => consume(chunk, 'stdout'));
+    child.stderr.on('data', (chunk) => consume(chunk, 'stderr'));
+
+    const timer = setTimeout(() => {
+      timedOut = true;
+      child.kill('SIGTERM');
+    }, timeout);
+
     child.on('error', (error) => {
       clearTimeout(timer);
       reject(error);
     });
+
     child.on('close', (code, signal) => {
       clearTimeout(timer);
-      const output = Buffer.concat(chunks);
-      if (code === 0) return resolve(binary ? output : output.toString('utf8'));
-      const detail = output.toString('utf8').trim() || `kilépési kód: ${code}${signal ? ` (${signal})` : ''}`;
-      reject(new Error(detail.slice(0, 2000)));
+      for (const pending of [stdoutBuffer, stderrBuffer]) {
+        const clean = stripAnsi(pending).trim();
+        if (clean) onLine(clean, 'output');
+      }
+      resolve({
+        code: Number.isInteger(code) ? code : -1,
+        signal: signal || null,
+        timedOut,
+        output: stripAnsi(Buffer.concat(outputChunks).toString('utf8')).trim()
+      });
     });
   });
+}
+
+async function confirmFirmwareRestart(artifact, initialDetail = '') {
+  const deadline = Date.now() + FIRMWARE_CONFIRM_TIMEOUT;
+  const expected = artifact.firmwareVersion || null;
+  let attempt = 0;
+  let lastError = initialDetail || null;
+  let lastSeenVersion = null;
+
+  setFirmwareUpdate('restarting', 'Az Arduino alkalmazza a firmware-t; legfeljebb 3 percig ellenőrzöm a visszatérését…', {
+    artifact,
+    phase: 'ÚJRAINDÍTÁS',
+    progress: 90,
+    level: 'info'
+  });
+
+  while (Date.now() < deadline) {
+    await wait(FIRMWARE_CONFIRM_INTERVAL);
+    attempt += 1;
+    const elapsed = Math.min(FIRMWARE_CONFIRM_TIMEOUT, FIRMWARE_CONFIRM_INTERVAL * attempt);
+    const progress = 90 + Math.min(9, Math.floor((elapsed / FIRMWARE_CONFIRM_TIMEOUT) * 9));
+    if (attempt === 1 || attempt % 5 === 0) {
+      pushFirmwareLog('ÚJRAINDÍTÁS', 'info', `Arduino életjel ellenőrzése: ${attempt}. próba • eltelt ${Math.floor(elapsed / 1000)} / 180 másodperc…`, progress);
+    }
+
+    try {
+      const status = await arduino.get('/api/status');
+      const installed = status.firmwareVersion || null;
+      lastSeenVersion = installed;
+      firmwareUpdate.lastSeenVersion = installed;
+
+      if (expected && installed !== expected) {
+        if (attempt === 1 || attempt % 5 === 0) {
+          pushFirmwareLog('ELLENŐRZÉS', 'info', `Az Arduino válaszol, de még ${installed || 'ismeretlen'} verziót jelent; várt verzió: ${expected}. Folytatom az ellenőrzést.`, progress);
+        }
+        continue;
+      }
+
+      setFirmwareUpdate('success', `Firmware sikeresen telepítve: ${installed || expected || 'új verzió'}.`, {
+        artifact,
+        installedVersion: installed || expected,
+        lastSeenVersion: installed,
+        finishedAt: new Date().toISOString(),
+        phase: 'SIKER',
+        progress: 100,
+        level: 'success'
+      });
+      return { success: true, installedVersion: installed || expected };
+    } catch (error) {
+      lastError = error.message;
+      if (attempt === 1 || attempt % 5 === 0) {
+        pushFirmwareLog('ÚJRAINDÍTÁS', 'info', `Az Arduino még nem elérhető; ez a flash és az újraindítás alatt normális. Utolsó állapot: ${error.message}`, progress);
+      }
+    }
+  }
+
+  const expectedText = expected || 'ismeretlen';
+  const lastSeenText = lastSeenVersion || 'nem érkezett verzió';
+  const lastErrorText = lastError || 'nem érkezett további hálózati hiba';
+  throw new Error(`Az OTA ellenőrzési idő lejárt: az Arduino 3 percen belül nem igazolta a(z) ${expectedText} firmware-t. Utoljára látott verzió: ${lastSeenText}. Utolsó kapcsolati állapot: ${lastErrorText}.`);
 }
 
 async function getLatestFirmwareArtifact() {
@@ -947,7 +1048,7 @@ async function getLatestFirmwareArtifact() {
   const commitMatch = releaseBody.match(/Forrás commit:\s*([a-f0-9]{7,40})/i);
   return {
     id: release.id,
-    name: binary.name,
+    name: path.basename(binary.name),
     digest: binary.digest || '',
     downloadUrl: binary.browser_download_url,
     checksumUrl: checksum.browser_download_url,
@@ -964,13 +1065,11 @@ async function getFirmwareStatus() {
   let networkConfigStored = false;
   let availableFirmware = null;
   let firmwareLookupError = null;
+  let currentArduinoStatus = null;
   try {
-    const status = await arduino.get('/api/status');
-    installedVersion = status.firmwareVersion || null;
-    networkConfigStored = status.networkConfigStored === true;
-    firmwareUpdate.deviceHostname = status.localHostname || (status.hostname ? `${status.hostname}.local` : null);
-    firmwareUpdate.deviceIpAddress = status.ipAddress || null;
-    firmwareUpdate.mdnsEnabled = status.mdnsEnabled === true;
+    currentArduinoStatus = await arduino.get('/api/status');
+    installedVersion = currentArduinoStatus.firmwareVersion || null;
+    networkConfigStored = currentArduinoStatus.networkConfigStored === true;
     arduinoOnline = true;
   } catch (error) {
     logger.warn(`Firmware állapot: Arduino nem elérhető: ${error.message}`);
@@ -980,87 +1079,145 @@ async function getFirmwareStatus() {
   } catch (error) {
     firmwareLookupError = error.message;
   }
-  const toolReady = Boolean(config.otaPassword) && fs.existsSync(config.otaToolPath);
+  const toolInstalled = fs.existsSync(config.otaToolPath);
+  const toolReady = Boolean(config.otaPassword) && toolInstalled;
+  const lastLogId = firmwareUpdate.logs.length ? firmwareUpdate.logs[firmwareUpdate.logs.length - 1].id : 0;
   return {
-    ...firmwareUpdate,
+    state: firmwareUpdate.state,
+    phase: firmwareUpdate.phase,
+    progress: firmwareUpdate.progress,
+    message: firmwareUpdate.message,
+    startedAt: firmwareUpdate.startedAt,
+    finishedAt: firmwareUpdate.finishedAt,
+    artifact: firmwareUpdate.artifact,
     installedVersion,
+    lastSeenVersion: firmwareUpdate.lastSeenVersion,
+    otaTarget: firmwareUpdate.otaTarget,
+    logCount: firmwareUpdate.logs.length,
+    lastLogId,
     arduinoOnline,
     otaConfigured: toolReady && networkConfigStored,
-    otaToolInstalled: fs.existsSync(config.otaToolPath),
+    otaToolInstalled: toolInstalled,
     otaPasswordConfigured: Boolean(config.otaPassword),
     networkConfigStored,
     availableFirmware,
     firmwareLookupError,
     repository: config.firmwareRepo,
-    releaseTag: config.firmwareReleaseTag
+    releaseTag: config.firmwareReleaseTag,
+    currentArduinoStatus
   };
 }
 
-function normalizeMdnsHostname(value) {
-  const raw = String(value || '').trim().toLowerCase();
-  if (!raw) return null;
-  const hostname = raw.endsWith('.local') ? raw : `${raw}.local`;
-  if (!/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*\.local$/.test(hostname)) return null;
-  return hostname;
-}
-
-async function resolveArduinoOtaTarget() {
-  const status = await arduino.get('/api/status');
-  const mdnsTarget = normalizeMdnsHostname(status.localHostname || status.hostname);
-  if (status.mdnsEnabled === true && mdnsTarget) {
-    return { address: mdnsTarget, source: 'mdns', status };
+async function prepareArduinoOtaListener() {
+  try {
+    const result = await arduino.get('/api/ota/prepare');
+    pushFirmwareLog('ARDUINO', 'success', 'OTA-listener előkészítve a /api/ota/prepare végponton.', 49);
+    return result;
+  } catch (error) {
+    pushFirmwareLog('ARDUINO', 'warn', `Az OTA-előkészítő végpont nem érhető el (${error.message}); közvetlen feltöltéssel folytatom.`, 49);
+    return null;
   }
-  return { address: String(config.arduinoIP), source: 'configured', status };
 }
 
 async function downloadAndApplyFirmware() {
+  resetFirmwareLogs();
   const startedAt = new Date().toISOString();
-  setFirmwareUpdate('checking', 'A GitHub firmware-csomag ellenőrzése…', { startedAt, finishedAt: null, artifact: null });
-  if (!config.otaPassword) throw new Error('Hiányzik az OTA jelszó a helyi beállításokból.');
-  if (!fs.existsSync(config.otaToolPath)) throw new Error('Az OTA feltöltőeszköz nincs telepítve ezen a rendszeren.');
+  Object.assign(firmwareUpdate, {
+    state: 'checking',
+    phase: 'INDÍTÁS',
+    progress: 1,
+    message: 'OTA-frissítés előkészítése…',
+    startedAt,
+    finishedAt: null,
+    artifact: null,
+    installedVersion: null,
+    lastSeenVersion: null,
+    otaTarget: null
+  });
+  pushFirmwareLog('INDÍTÁS', 'info', 'Proxmox/LXC OTA-frissítés előkészítése…', 1);
 
+  if (!config.otaPassword) throw new Error('Hiányzik az OTA jelszó a helyi beállításokból.');
+  if (!fs.existsSync(config.otaToolPath)) throw new Error(`Az OTA feltöltőeszköz nem található: ${config.otaToolPath}`);
+  pushFirmwareLog('ELŐKÉSZÍTÉS', 'success', 'OTA-jelszó és feltöltőeszköz elérhető.', 4);
+
+  setFirmwareUpdate('checking', 'A GitHub firmware-csomag ellenőrzése…', { phase: 'GITHUB', progress: 7, level: 'info' });
   const artifact = await getLatestFirmwareArtifact();
-  setFirmwareUpdate('downloading', 'A sikeresen lefordított firmware letöltése…', { artifact });
+  firmwareUpdate.artifact = artifact;
+  pushFirmwareLog('GITHUB', 'success', `Elérhető firmware: ${artifact.firmwareVersion || 'ismeretlen'} (${artifact.name}).`, 10);
+
+  const currentStatus = await arduino.get('/api/status');
+  const otaAddress = String(currentStatus.ipAddress || config.arduinoIP);
+  const otaPort = Number(currentStatus.otaPort || 65280);
+  firmwareUpdate.otaTarget = `${otaAddress}:${otaPort}`;
+  pushFirmwareLog('ARDUINO', 'success', `Arduino elérhető. Telepített: ${currentStatus.firmwareVersion || 'ismeretlen'} • OTA cél: ${otaAddress}:${otaPort}`, 15);
+
+  setFirmwareUpdate('downloading', `Firmware letöltése: ${artifact.downloadUrl}`, { artifact, phase: 'LETÖLTÉS', progress: 18, level: 'info' });
   await fs.ensureDir(config.firmwareDir);
-  const binaryPath = path.join(config.firmwareDir, 'latest-arduino-firmware.bin');
+  const binaryPath = path.join(config.firmwareDir, path.basename(artifact.name));
 
   const download = await axios.get(artifact.downloadUrl, {
     headers: githubHeaders(), responseType: 'arraybuffer', maxRedirects: 5, timeout: 60000, maxContentLength: 16 * 1024 * 1024
   });
   const firmware = Buffer.from(download.data);
   if (firmware.length < 1024) throw new Error('A firmware-fájl túl kicsi vagy sérült.');
+  pushFirmwareLog('LETÖLTÉS', 'success', `Firmware letöltve: ${firmware.length} bájt.`, 30);
+
+  setFirmwareUpdate('verifying', 'SHA-256 ellenőrzőösszeg letöltése…', { artifact, phase: 'ELLENŐRZÉS', progress: 33, level: 'info' });
   const actual = crypto.createHash('sha256').update(firmware).digest('hex');
   const checksumResponse = await axios.get(artifact.checksumUrl, { headers: githubHeaders(), responseType: 'text', timeout: 20000 });
   const expected = String(checksumResponse.data).trim().split(/\s+/)[0];
   if (!/^[a-f0-9]{64}$/i.test(expected) || actual.toLowerCase() !== expected.toLowerCase()) throw new Error('A nyilvános firmware ellenőrzőösszege hibás.');
   if (artifact.digest.startsWith('sha256:') && actual.toLowerCase() !== artifact.digest.slice(7).toLowerCase()) throw new Error('A GitHub firmware-digest ellenőrzése hibás.');
-  await fs.writeFile(binaryPath, firmware, { mode: 0o600 });
+  pushFirmwareLog('ELLENŐRZÉS', 'success', `SHA-256 rendben: ${actual}`, 42);
 
-  const otaTarget = await resolveArduinoOtaTarget();
-  setFirmwareUpdate('uploading', `Firmware átvitele: ${otaTarget.address}:${otaTarget.status.otaPort || 65280} (${otaTarget.source === 'mdns' ? 'mDNS' : 'beállított cím'})…`, {
-    artifact,
-    otaTarget: otaTarget.address,
-    otaTargetSource: otaTarget.source
-  });
-  await runProgram(config.otaToolPath, [
-    '-address', otaTarget.address, '-port', String(otaTarget.status.otaPort || 65280), '-username', 'arduino',
+  await fs.writeFile(binaryPath, firmware, { mode: 0o600 });
+  const saved = await fs.readFile(binaryPath);
+  const savedHash = crypto.createHash('sha256').update(saved).digest('hex');
+  if (saved.length !== firmware.length || savedHash !== actual) throw new Error('A helyben mentett firmware ellenőrzése sikertelen.');
+  pushFirmwareLog('ELŐKÉSZÍTÉS', 'success', `Firmware mentve: ${binaryPath} • SHA-256 egyezik.`, 46);
+
+  setFirmwareUpdate('preparing', 'OTA-listener előkészítése…', { artifact, phase: 'ARDUINO', progress: 48, level: 'info' });
+  await prepareArduinoOtaListener();
+  await wait(1000);
+
+  setFirmwareUpdate('uploading', `Firmware átvitele: ${otaAddress}:${otaPort}`, { artifact, phase: 'FELTÖLTÉS', progress: 52, level: 'info' });
+  const result = await runProgramStreaming(config.otaToolPath, [
+    '-v', '-address', otaAddress, '-port', String(otaPort), '-username', 'arduino',
     '-password', config.otaPassword, '-sketch', binaryPath, '-upload', '/sketch', '-b'
-  ], 240000);
-  setFirmwareUpdate('restarting', 'Az Arduino újraindul; várakozás az új firmware-re…', { artifact });
-  void confirmFirmwareRestart(artifact);
+  ], 240000, (line) => pushFirmwareLog('ARDUINOOTA', 'output', line, 55));
+
+  const uploadCompleted = /Uploading\s+sketch\s*\.\.\.\s*done/i.test(result.output) || /Uploading.*done/i.test(result.output);
+  if (result.timedOut && !uploadCompleted) throw new Error('Az arduinoOTA időtúllépés miatt leállt, mielőtt a teljes bináris átment volna.');
+  if (result.code !== 0 && !uploadCompleted) {
+    throw new Error(`OTA feltöltési hiba (kilépési kód: ${result.code}): ${result.output || 'nincs részletes kimenet'}`);
+  }
+  if (result.code !== 0 && uploadCompleted) {
+    pushFirmwareLog('FELTÖLTÉS', 'warn', `A teljes bináris átment, de az arduinoOTA ${result.code} kóddal zárt a flash-visszaigazolásnál. A tényleges firmware-verzió ellenőrzése következik.`, 88);
+  } else {
+    pushFirmwareLog('FELTÖLTÉS', 'success', 'Az arduinoOTA sikeresen átadta a firmware-t.', 88);
+  }
+
+  await confirmFirmwareRestart(artifact, result.output);
+  return firmwareUpdate;
 }
 
 app.get('/api/firmware/status', async (req, res) => {
   try {
-    const status = await getFirmwareStatus();
-    res.json(status);
+    res.json(await getFirmwareStatus());
   } catch (error) {
     res.status(500).json({ error: error.message || 'A firmware állapota nem kérhető le.' });
   }
 });
 
+app.get('/api/firmware/logs', (req, res) => {
+  const after = Math.max(0, Number(req.query.after) || 0);
+  const logs = firmwareUpdate.logs.filter((entry) => entry.id > after);
+  const lastId = logs.length ? logs[logs.length - 1].id : after;
+  res.json({ lastId, progress: firmwareUpdate.progress, phase: firmwareUpdate.phase, state: firmwareUpdate.state, logs });
+});
+
 app.post('/api/firmware/update', async (req, res) => {
-  if (['checking', 'downloading', 'uploading', 'restarting'].includes(firmwareUpdate.state)) {
+  if (firmwareBusy()) {
     return res.status(409).json({ error: 'Már folyamatban van firmware-frissítés.', state: firmwareUpdate.state });
   }
   if (!config.otaPassword || !fs.existsSync(config.otaToolPath)) {
@@ -1069,15 +1226,21 @@ app.post('/api/firmware/update', async (req, res) => {
   try {
     const status = await arduino.get('/api/status');
     if (status.networkConfigStored !== true) {
-      return res.status(409).json({ error: 'Az Arduino még nem mentette el a WiFi- és OTA-beállításait. USB-n töltsd fel egyszer a 3.1.0 vagy újabb firmware-t a saját secrets.h fájloddal.' });
+      return res.status(409).json({ error: 'Az Arduino még nem mentette el a WiFi- és OTA-beállításait. USB-n töltsd fel egyszer a jelenlegi firmware-t a saját secrets.h fájloddal.' });
     }
   } catch (error) {
     return res.status(503).json({ error: `Az Arduino nem érhető el a biztonságos OTA ellenőrzéséhez: ${error.message}` });
   }
+
   res.status(202).json({ success: true, message: 'A firmware-frissítés elindult.' });
   downloadAndApplyFirmware().catch((error) => {
     logger.error(`Firmware OTA hiba: ${error.message}`);
-    setFirmwareUpdate('error', `A frissítés nem sikerült: ${error.message}`, { finishedAt: new Date().toISOString() });
+    setFirmwareUpdate('error', `A frissítés nem sikerült: ${error.message}`, {
+      finishedAt: new Date().toISOString(),
+      phase: 'HIBA',
+      progress: firmwareUpdate.progress,
+      level: 'error'
+    });
   });
 });
 
@@ -1295,39 +1458,6 @@ app.get('/api/files', async (req, res) => {
 
 // ========================= WEBC UI ROUTES =========================
 
-function renderControlDashboard() {
-  return `<!doctype html>
-<html lang="hu"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Arduino LED vezérlő</title>
-<style>
-:root{color-scheme:dark;font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;--bg:#07111f;--surface:#101e32cc;--edge:#294564;--text:#edf6ff;--muted:#9bb2c9;--blue:#38a5ff;--green:#45d49a;--red:#ff6378}*{box-sizing:border-box}body{min-height:100vh;margin:0;color:var(--text);background:radial-gradient(circle at 10% 0,#16446e 0,transparent 30rem),radial-gradient(circle at 100% 15%,#24366f 0,transparent 28rem),var(--bg)}.wrap{max-width:1200px;margin:auto;padding:36px 24px 48px}.top{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:28px;padding:24px 26px;border:1px solid #3a6384;border-radius:24px;background:linear-gradient(120deg,#102840d9,#172a52c7);box-shadow:0 24px 70px #0006}.top h1{margin:0 0 7px;font-size:clamp(1.65rem,4vw,2.25rem);letter-spacing:-.04em}.top h1::first-letter{color:#8bd0ff}.toolbar,.section-actions{display:flex;gap:10px;flex-wrap:wrap}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px}.card{background:linear-gradient(145deg,#12243bd9,#0d192ad9);border:1px solid var(--edge);border-radius:20px;padding:20px;box-shadow:0 16px 38px #0004;backdrop-filter:blur(10px)}.card h2{margin:0;font-size:1.2rem;letter-spacing:-.02em}.line{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:13px 0}.line label{color:#c8d9e9}.value{min-width:38px;text-align:right;color:#7bc4ff;font-weight:700}.switch{width:52px;height:30px;appearance:none;background:#526378;border:0;border-radius:20px;position:relative;cursor:pointer;transition:.2s}.switch:checked{background:var(--green)}.switch:before{content:"";position:absolute;width:22px;height:22px;border-radius:50%;background:#fff;top:4px;left:4px;transition:.2s;box-shadow:0 2px 5px #0004}.switch:checked:before{left:26px}input[type=range]{width:100%;accent-color:var(--blue)}input[type=color]{width:48px;height:34px;border:0;background:none;cursor:pointer}select,button,input[type=time]{font:inherit;border-radius:10px;border:1px solid #3a6384;padding:10px 12px}select,input[type=time]{background:#0b1727;color:#fff;flex:1}button{cursor:pointer;background:linear-gradient(135deg,#188ce5,#4771ec);color:#fff;font-weight:700;box-shadow:0 5px 15px #0d52a144;transition:transform .15s,filter .15s}button:hover{filter:brightness(1.13);transform:translateY(-1px)}button:disabled{opacity:.6;cursor:wait;transform:none}button.secondary{background:#1a344d;border-color:#416482}button.danger{background:linear-gradient(135deg,#cd4059,#ef5e72);border-color:#ef5e72}button.full{width:100%;margin-top:15px;padding:12px}.status{font-size:.85rem;color:var(--muted);min-height:1.2em}.notice{position:fixed;right:20px;bottom:20px;z-index:5;max-width:390px;padding:14px 16px;border-radius:12px;background:#123a5d;border:1px solid #58b4ff;box-shadow:0 12px 32px #0009;display:none}.notice.error{background:#592b39;border-color:#ff7485}.system{margin-top:20px}.muted{color:var(--muted);font-size:.9rem;line-height:1.5}.section-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;padding-bottom:16px;border-bottom:1px solid #27425e}.eyebrow{display:block;margin-bottom:5px;color:#70c2ff;font-size:.74rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase}.days{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:12px 0}.day-choice{display:flex;align-items:center;gap:6px;padding:8px;border:1px solid #294864;border-radius:10px;background:#0b1727;font-size:.88rem}.schedule-led{border-top:1px solid #29425d;padding-top:13px;margin-top:13px}.schedule-list{margin-top:18px}.schedule-item{display:flex;align-items:center;justify-content:space-between;gap:12px;background:#091727;border:1px solid #284561;border-radius:12px;padding:12px;margin:9px 0}.schedule-item small{color:#c7d8e8;line-height:1.45}.schedule-item button{padding:7px 10px;font-size:.82rem}@media(max-width:700px){.top,.section-heading{align-items:flex-start;flex-direction:column}.wrap{padding:16px}.top{padding:20px}.days{grid-template-columns:repeat(2,1fr)}.schedule-item{align-items:flex-start;flex-direction:column}}
-</style></head><body><main class="wrap"><div class="top"><div><h1>💡 Arduino LED vezérlő</h1><div class="muted">UNO R4 WiFi · <span id="connection">Kapcsolódás…</span></div></div><div class="toolbar"><button id="allOn">Összes be</button><button id="allOff" class="danger">Összes ki</button><button id="refresh" class="secondary">Frissítés</button></div></div><section class="grid" id="leds"></section><section class="card system"><div class="section-heading"><div><span class="eyebrow">Automatizálás</span><h2>📅 Heti időzítés</h2></div><div class="section-actions"><button id="exportSchedules" class="secondary">Letöltés</button><button id="importSchedules" class="secondary">Feltöltés</button><input id="scheduleImportFile" type="file" accept="application/json,.json" hidden></div></div><div class="line"><label>Idő</label><input id="scheduleTime" type="time" value="19:30"></div><div class="line"><label><input id="allScheduleDays" type="checkbox"> Összes nap kijelölése</label></div><div class="days"><label class="day-choice"><input class="schedule-day" type="checkbox" value="1"> Hétfő</label><label class="day-choice"><input class="schedule-day" type="checkbox" value="2"> Kedd</label><label class="day-choice"><input class="schedule-day" type="checkbox" value="3"> Szerda</label><label class="day-choice"><input class="schedule-day" type="checkbox" value="4"> Csütörtök</label><label class="day-choice"><input class="schedule-day" type="checkbox" value="5"> Péntek</label><label class="day-choice"><input class="schedule-day" type="checkbox" value="6"> Szombat</label><label class="day-choice"><input class="schedule-day" type="checkbox" value="7"> Vasárnap</label></div><div id="scheduleLedEditor"></div><button id="saveSchedule" class="full">Új időzítés mentése</button><p class="muted">Minden mentés új bejegyzést hoz létre, tehát egy naphoz több időpontot is hozzáadhatsz. A feltöltés a jelenlegi listát lecseréli, de előtte automatikusan mentést készít.</p><div class="schedule-list" id="scheduleList"></div></section><section class="card system"><span class="eyebrow">Élő információ</span><h2>Rendszerállapot</h2><div id="systemStatus" class="muted" style="margin-top:12px">Betöltés…</div></section></main><div class="notice" id="notice" role="status"></div>
-<script>
-const effects=['Statikus','Villogás','Lélegzés','Szivárvány','Futófény'];
-const ledRoot=document.getElementById('leds');const notice=document.getElementById('notice');
-const dayNames=['','Hétfő','Kedd','Szerda','Csütörtök','Péntek','Szombat','Vasárnap'];
-const scheduleEditor=document.getElementById('scheduleLedEditor');
-function scheduleLedRow(id){const row=document.createElement('div');row.className='schedule-led';row.dataset.id=id;row.innerHTML='<strong>LED '+id+'</strong><div class="line"><label>Művelet</label><select class="schedule-state"><option value="ignore">Nincs módosítás</option><option value="on">Bekapcsolás</option><option value="off">Kikapcsolás</option></select></div><div class="line"><label>Szín</label><input class="schedule-color" type="color" value="#0000ff"></div><div class="line"><label>Fényerő</label><span class="schedule-value">10</span></div><input class="schedule-brightness" type="range" min="0" max="255" value="10"><div class="line"><label>Effekt</label><select class="schedule-effect"></select></div>';const slider=row.querySelector('.schedule-brightness');slider.addEventListener('input',()=>row.querySelector('.schedule-value').textContent=slider.value);effects.forEach((name,index)=>row.querySelector('.schedule-effect').add(new Option(name,index)));return row}
-scheduleEditor.replaceChildren(scheduleLedRow(1),scheduleLedRow(2),scheduleLedRow(3));
-function hex(rgb){return '#'+rgb.map(v=>Number(v).toString(16).padStart(2,'0')).join('')}
-function rgb(value){return [value.slice(1,3),value.slice(3,5),value.slice(5,7)].map(x=>parseInt(x,16))}
-function message(text,error=false){notice.textContent=text;notice.className='notice'+(error?' error':'');notice.style.display='block';clearTimeout(window.noticeTimer);window.noticeTimer=setTimeout(()=>notice.style.display='none',5000)}
-async function request(url,options={}){const response=await fetch(url,{headers:{'Content-Type':'application/json'},...options});const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.error||'Ismeretlen szerverhiba');return data}
-function card(led){const el=document.createElement('article');el.className='card';el.dataset.id=led.id;el.innerHTML='<h2>LED szalag '+led.id+'</h2><div class="line"><label>Bekapcsolva</label><input class="switch enabled" type="checkbox"></div><div class="line"><label>Szín</label><input class="color" type="color"></div><div class="line"><label>Fényerő</label><span class="value"></span></div><input class="brightness" type="range" min="0" max="255"><div class="line"><label>Effekt</label><select class="effect"></select></div><button class="full apply">Beállítások elküldése</button><div class="status"></div>';el.querySelector('.enabled').checked=Boolean(led.enabled);el.querySelector('.color').value=hex(led.color||[255,255,255]);const slider=el.querySelector('.brightness');slider.value=led.brightness??100;el.querySelector('.value').textContent=slider.value;slider.addEventListener('input',()=>el.querySelector('.value').textContent=slider.value);const select=el.querySelector('.effect');effects.forEach((name,index)=>{const option=new Option(name,index);option.selected=Number(led.effect)===index;select.add(option)});el.querySelector('.apply').addEventListener('click',()=>apply(el));return el}
-async function apply(cardEl){const id=Number(cardEl.dataset.id);const button=cardEl.querySelector('.apply');const status=cardEl.querySelector('.status');button.disabled=true;status.textContent='Küldés…';try{const data={enabled:cardEl.querySelector('.enabled').checked,brightness:Number(cardEl.querySelector('.brightness').value),effect:Number(cardEl.querySelector('.effect').value),color:rgb(cardEl.querySelector('.color').value)};await request('/api/arduino/led/'+id,{method:'POST',body:JSON.stringify(data)});status.textContent='✓ Beállítás elküldve';message('LED '+id+' beállítva');await load()}catch(error){status.textContent='✕ '+error.message;message('LED '+id+': '+error.message,true)}finally{button.disabled=false}}
-async function all(state){try{await request('/api/arduino/'+(state?'all-on':'all-off'),{method:'POST'});message(state?'Minden LED bekapcsolva':'Minden LED kikapcsolva');await load()}catch(error){message(error.message,true)}}
-function describeSchedule(schedule){return schedule.leds.map(led=>'LED '+led.id+' '+(led.enabled?'be':'ki')+' · '+led.brightness+' · RGB('+led.color.join(',')+')').join(' | ')}
-async function loadSchedules(){try{const data=await request('/api/local-schedules');const list=document.getElementById('scheduleList');list.replaceChildren();if(!data.schedules.length){list.textContent='Még nincs mentett időzítés.';return}data.schedules.forEach(schedule=>{const row=document.createElement('div');row.className='schedule-item';const text=document.createElement('small');text.textContent=dayNames[schedule.day]+' '+schedule.time+' — '+describeSchedule(schedule);const remove=document.createElement('button');remove.className='danger';remove.textContent='Törlés';remove.addEventListener('click',async()=>{try{await request('/api/local-schedules/'+schedule.id,{method:'DELETE'});message('Időzítés törölve');loadSchedules()}catch(error){message(error.message,true)}});row.append(text,remove);list.append(row)})}catch(error){message('Időzítések: '+error.message,true)}}
-async function saveSchedule(){const days=[...document.querySelectorAll('.schedule-day:checked')].map(input=>Number(input.value));const leds=[];document.querySelectorAll('.schedule-led').forEach(row=>{const state=row.querySelector('.schedule-state').value;if(state==='ignore')return;leds.push({id:Number(row.dataset.id),enabled:state==='on',brightness:Number(row.querySelector('.schedule-brightness').value),effect:Number(row.querySelector('.schedule-effect').value),color:rgb(row.querySelector('.schedule-color').value)})});try{const result=await request('/api/local-schedules',{method:'POST',body:JSON.stringify({days,time:document.getElementById('scheduleTime').value,leds})});message(result.schedules.length+' időzítés elmentve');loadSchedules()}catch(error){message(error.message,true)}}
-async function exportSchedules(){try{const response=await fetch('/api/local-schedules/export');if(!response.ok)throw new Error('A letöltés nem sikerült.');const blob=await response.blob();const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download='weekly-led-schedules.json';document.body.append(link);link.click();link.remove();URL.revokeObjectURL(url);message('Időzítések letöltve')}catch(error){message(error.message,true)}}
-async function importSchedules(file){if(!file)return;try{const content=await file.text();const data=JSON.parse(content);const result=await request('/api/local-schedules/import',{method:'POST',body:JSON.stringify(data)});message(result.count+' időzítés feltöltve. Biztonsági mentés: '+result.backupFile);loadSchedules()}catch(error){message('Feltöltési hiba: '+error.message,true)}finally{document.getElementById('scheduleImportFile').value=''}}
-async function load(){document.getElementById('connection').textContent='Kapcsolódás…';try{const status=await request('/api/arduino/status');const strips=status.strips||[];ledRoot.replaceChildren(...strips.map(card));document.getElementById('connection').textContent='Arduino elérhető';document.getElementById('systemStatus').textContent='WiFi: '+(status.connected?'kapcsolódva':'nincs kapcsolat')+' · Idő: '+(status.timesynced?'szinkronizálva':'nincs szinkron')+' · SD: '+(status.sdCard?'elérhető':'nincs')+' · Uptime: '+(status.uptime??'?')+' mp';}catch(error){document.getElementById('connection').textContent='Kapcsolati hiba';ledRoot.replaceChildren();document.getElementById('systemStatus').textContent=error.message;message(error.message,true)}}
-document.getElementById('allOn').addEventListener('click',()=>all(true));document.getElementById('allOff').addEventListener('click',()=>all(false));document.getElementById('refresh').addEventListener('click',load);document.getElementById('saveSchedule').addEventListener('click',saveSchedule);document.getElementById('exportSchedules').addEventListener('click',exportSchedules);document.getElementById('importSchedules').addEventListener('click',()=>document.getElementById('scheduleImportFile').click());document.getElementById('scheduleImportFile').addEventListener('change',event=>importSchedules(event.target.files[0]));document.getElementById('allScheduleDays').addEventListener('change',event=>document.querySelectorAll('.schedule-day').forEach(input=>input.checked=event.target.checked));document.querySelectorAll('.schedule-day').forEach(input=>input.addEventListener('change',()=>document.getElementById('allScheduleDays').checked=[...document.querySelectorAll('.schedule-day')].every(day=>day.checked)));load();loadSchedules();
-</script></body></html>`;
-}
-
-// Modern, többnézetes kezelőfelület. A régi renderelő megmarad visszaesési
-// lehetőségként, az alkalmazás ezt az új felületet szolgálja ki.
 function renderControlDashboardV2() {
   return `<!doctype html>
 <html lang="hu"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>LED Control Center</title>
@@ -1375,7 +1505,7 @@ function renderConfiguredDashboard() {
     const section = document.createElement('section');
     section.className = 'view';
     section.id = 'settings';
-    section.innerHTML = '<div class="panel scheduler"><div class="panel-head"><div><h2>Kapcsolati beállítások</h2><div class="muted">Itt állíthatod át, melyik Arduino vezérlőt használja a szerver.</div></div></div><div class="line"><label>Arduino IP-címe vagy neve</label><input id="settingsArduinoIP" type="text" inputmode="url" placeholder="például: 10.0.0.117"></div><div class="line"><label>Arduino port</label><input id="settingsArduinoPort" type="number" min="1" max="65535" value="80"></div><button id="saveArduinoSettings" class="primary" style="width:100%;margin-top:10px">Kapcsolat mentése</button><p id="settingsConnection" class="muted">A mentett cím betöltése…</p><div class="schedule-led"><div class="panel-head"><div><h2>Arduino firmware</h2><div class="muted">A GitHubon sikeresen lefordított firmware biztonságos OTA telepítése.</div></div></div><button id="checkFirmware" class="ghost">Frissítés ellenőrzése</button><button id="startFirmwareUpdate" class="primary" style="margin-left:8px">Firmware telepítése</button><p id="firmwareState" class="muted">Firmware állapot betöltése…</p></div></div>';
+    section.innerHTML = '<div class="panel scheduler"><div class="panel-head"><div><h2>Kapcsolati beállítások</h2><div class="muted">Itt állíthatod át, melyik Arduino vezérlőt használja a szerver.</div></div></div><div class="line"><label>Arduino IP-címe vagy neve</label><input id="settingsArduinoIP" type="text" inputmode="url" placeholder="például: 10.0.0.117"></div><div class="line"><label>Arduino port</label><input id="settingsArduinoPort" type="number" min="1" max="65535" value="80"></div><button id="saveArduinoSettings" class="primary" style="width:100%;margin-top:10px">Kapcsolat mentése</button><p id="settingsConnection" class="muted">A mentett cím betöltése…</p><div class="schedule-led"><div class="panel-head"><div><h2>Arduino firmware</h2><div class="muted">A GitHubon sikeresen lefordított firmware biztonságos OTA telepítése.</div></div></div><button id="checkFirmware" class="ghost">Frissítés ellenőrzése</button><button id="startFirmwareUpdate" class="primary" style="margin-left:8px">Firmware telepítése</button><p id="firmwareState" class="muted">Firmware állapot betöltése…</p><div id="firmwareProgressWrap" style="margin-top:12px"><div style="height:10px;border-radius:999px;background:#ffffff12;overflow:hidden"><div id="firmwareProgressBar" style="width:0%;height:100%;background:linear-gradient(90deg,#ff6b43,#ffc15a);transition:width .25s ease"></div></div><div id="firmwareProgressText" class="muted" style="margin-top:6px">0% · Készenlét</div></div><div id="firmwareConsole" class="console" style="min-height:150px;max-height:300px;margin-top:12px;white-space:pre-wrap">Nincs OTA napló.</div></div></div>';
     main.append(section);
 
     if (window.desktopApp) {
@@ -1463,13 +1593,41 @@ function renderConfiguredDashboard() {
       }
     }
 
+    let firmwareLogAfter = 0;
+
+    function appendFirmwareLogs(payload) {
+      const consoleRoot = document.getElementById('firmwareConsole');
+      const entries = payload && Array.isArray(payload.logs) ? payload.logs : [];
+      if (firmwareLogAfter === 0 && entries.length) consoleRoot.textContent = '';
+      entries.forEach(function (entry) {
+        const time = entry.timestamp ? new Date(entry.timestamp).toLocaleTimeString('hu-HU') : '';
+        const row = document.createElement('div');
+        row.textContent = time + ' [' + String(entry.stage || 'OTA').toUpperCase() + '] ' + entry.message;
+        row.style.color = entry.level === 'error' ? '#ff8f7a' : entry.level === 'warn' ? '#ffd166' : entry.level === 'success' ? '#8ce99a' : '';
+        consoleRoot.append(row);
+      });
+      if (payload && Number.isFinite(payload.lastId)) firmwareLogAfter = payload.lastId;
+      consoleRoot.scrollTop = consoleRoot.scrollHeight;
+    }
+
+    async function loadFirmwareLogs() {
+      try {
+        appendFirmwareLogs(await request('/api/firmware/logs?after=' + firmwareLogAfter));
+      } catch (error) {
+        document.getElementById('firmwareConsole').textContent = 'Az OTA napló nem kérhető le: ' + error.message;
+      }
+    }
+
     function showFirmwareState(data) {
       const state = document.getElementById('firmwareState');
       const button = document.getElementById('startFirmwareUpdate');
       const installed = data.installedVersion ? 'Telepített verzió: ' + data.installedVersion + '. ' : '';
       const available = data.availableFirmware ? 'GitHub csomag: ' + (data.availableFirmware.firmwareVersion ? 'v' + data.availableFirmware.firmwareVersion + ' · ' : '') + data.availableFirmware.commit.slice(0, 7) + '. ' : '';
       const updateAvailable = Boolean(data.availableFirmware && data.availableFirmware.firmwareVersion && data.installedVersion && data.availableFirmware.firmwareVersion !== data.installedVersion);
-      const busy = ['checking', 'downloading', 'uploading', 'restarting'].indexOf(data.state) >= 0;
+      const busy = ['checking', 'downloading', 'verifying', 'preparing', 'uploading', 'restarting'].indexOf(data.state) >= 0;
+      const progress = Number.isFinite(Number(data.progress)) ? Number(data.progress) : 0;
+      document.getElementById('firmwareProgressBar').style.width = Math.max(0, Math.min(100, progress)) + '%';
+      document.getElementById('firmwareProgressText').textContent = progress + '% · ' + (data.phase || 'Készenlét');
       button.disabled = busy || !data.otaConfigured;
       if (!data.otaConfigured) {
         const reason = !data.otaPasswordConfigured ? 'hiányzik az OTA jelszó a Proxmox beállításaiból.' : !data.otaToolInstalled ? 'hiányzik az OTA feltöltőeszköz.' : !data.arduinoOnline ? 'az Arduino nem érhető el.' : 'előbb USB-n töltsd fel a 3.1.0 vagy újabb firmware-t a saját secrets.h fájloddal, hogy az Arduino elmentse a hálózati beállításait.';
@@ -1478,7 +1636,11 @@ function renderConfiguredDashboard() {
       }
       const idleMessage = updateAvailable ? 'Új firmware érhető el, telepítésre kész.' : 'A telepített firmware naprakész.';
       state.textContent = installed + available + (data.state === 'idle' ? idleMessage : data.message || data.firmwareLookupError || 'Készen áll a frissítésre.');
-      if (busy) window.setTimeout(loadFirmwareStatus, 3000);
+      loadFirmwareLogs();
+      if (busy) {
+        window.setTimeout(loadFirmwareStatus, 3000);
+        window.setTimeout(loadFirmwareLogs, 1200);
+      }
     }
 
     async function loadFirmwareStatus() {
@@ -1492,6 +1654,8 @@ function renderConfiguredDashboard() {
     async function startFirmwareUpdate() {
       if (!window.confirm('Biztosan telepíted a GitHubon lévő legutóbbi, sikeresen lefordított firmware-t az Arduino eszközre?')) return;
       try {
+        firmwareLogAfter = 0;
+        document.getElementById('firmwareConsole').textContent = 'OTA-frissítés indítása…';
         await request('/api/firmware/update', { method: 'POST' });
         document.getElementById('firmwareState').textContent = 'A firmware-frissítés elindult…';
         msg('Firmware-frissítés elindítva');
@@ -1502,6 +1666,7 @@ function renderConfiguredDashboard() {
       }
     }
 
+    let ledTestSnapshot = null;
     const ledPresets = {
       night: { label: 'Éjszakai kék', enabled: true, brightness: 18, effect: 0, speed: 50, color: [0, 25, 255] },
       rainbow: { label: 'Szivárvány teszt', enabled: true, brightness: 70, effect: 3, speed: 65, color: [255, 255, 255] },
@@ -1513,10 +1678,34 @@ function renderConfiguredDashboard() {
       buttons.forEach(function (button) { button.disabled = true; });
       try {
         if (name === 'off') {
-          await request('/api/arduino/all-off', { method: 'POST' });
-          state.textContent = 'Teszt leállítva: mindhárom LED kikapcsolva.';
-          msg('LED teszt leállítva');
+          if (Array.isArray(ledTestSnapshot) && ledTestSnapshot.length) {
+            state.textContent = 'A teszt előtti LED-állapot visszaállítása…';
+            for (const strip of ledTestSnapshot) {
+              const rgb = Array.isArray(strip.color) ? strip.color : [strip.red || 0, strip.green || 0, strip.blue || 0];
+              await request('/api/arduino/led/' + strip.id, {
+                method: 'POST',
+                body: JSON.stringify({
+                  enabled: Boolean(strip.enabled),
+                  brightness: Number(strip.brightness || 0),
+                  effect: Number(strip.effect || 0),
+                  speed: Number(strip.speed || 50),
+                  color: rgb
+                })
+              });
+            }
+            ledTestSnapshot = null;
+            state.textContent = 'Teszt leállítva: a korábbi LED-állapot visszaállítva.';
+            msg('LED teszt előtti állapot visszaállítva');
+          } else {
+            await request('/api/arduino/all-off', { method: 'POST' });
+            state.textContent = 'Teszt leállítva: nem volt mentett állapot, ezért mindhárom LED kikapcsolva.';
+            msg('LED teszt leállítva');
+          }
         } else {
+          if (!ledTestSnapshot) {
+            const current = await request('/api/arduino/status');
+            ledTestSnapshot = Array.isArray(current.strips) ? current.strips.map(function (strip) { return JSON.parse(JSON.stringify(strip)); }) : [];
+          }
           const preset = ledPresets[name];
           state.textContent = preset.label + ' elküldése mindhárom LED-re…';
           for (let id = 1; id <= 3; id++) {
@@ -1597,418 +1786,11 @@ function renderLoginPage(setupNeeded) {
 }
 
 // Main dashboard
-app.get('/', async (req, res) => {
+app.get('/', (req, res) => {
   if (!sessionUser(req)) return res.type('html').send(renderLoginPage(authData.users.length === 0));
-  // A kezelőfelület azonnal töltődjön be akkor is, ha az Arduino épp lassan
-  // válaszol. Az állapotot a böngésző külön kéréssel frissíti.
+  // A kezelőfelület azonnal töltődjön be akkor is, ha az Arduino éppen lassan
+  // válaszol. Az állapotot a böngésző külön API-kérésekkel frissíti.
   return res.type('html').send(renderConfiguredDashboard());
-
-  try {
-    const status = await arduino.get('/api/status');
-    return res.type('html').send(renderControlDashboard());
-    
-    if (fs.existsSync(path.join(__dirname, 'public', 'index.html'))) {
-      res.sendFile(path.join(__dirname, 'public', 'index.html'));
-    } else {
-      res.send(`
-        <!DOCTYPE html>
-        <html lang="hu">
-        <head>
-          <meta charset="UTF-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>Arduino LED Vezérlő</title>
-          <style>
-            * { margin: 0; padding: 0; box-sizing: border-box; }
-            body { 
-              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-              min-height: 100vh;
-              padding: 20px;
-            }
-            .container {
-              max-width: 1200px;
-              margin: 0 auto;
-              background: white;
-              border-radius: 20px;
-              box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-              overflow: hidden;
-            }
-            .header {
-              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-              color: white;
-              padding: 30px;
-              text-align: center;
-            }
-            .header h1 {
-              font-size: 2em;
-              margin-bottom: 10px;
-            }
-            .status-bar {
-              display: flex;
-              justify-content: center;
-              gap: 20px;
-              margin-top: 15px;
-            }
-            .status-item {
-              display: flex;
-              align-items: center;
-              gap: 10px;
-              padding: 8px 15px;
-              background: rgba(255,255,255,0.2);
-              border-radius: 20px;
-            }
-            .status-icon {
-              font-size: 1.5em;
-            }
-            .status-content {
-              font-size: 0.9em;
-            }
-            .status-content strong {
-              color: #ffd700;
-            }
-            .content {
-              padding: 30px;
-            }
-            .info-grid {
-              display: grid;
-              grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-              gap: 20px;
-              margin-bottom: 30px;
-            }
-            .info-card {
-              background: #f8f9fa;
-              padding: 20px;
-              border-radius: 15px;
-              border-left: 4px solid #667eea;
-            }
-            .info-card h3 {
-              color: #667eea;
-              margin-bottom: 10px;
-              font-size: 1.2em;
-            }
-            .info-row {
-              display: flex;
-              justify-content: space-between;
-              padding: 8px 0;
-              border-bottom: 1px solid #e9ecef;
-            }
-            .info-row:last-child {
-              border-bottom: none;
-            }
-            .info-label {
-              color: #6c757d;
-              font-weight: 500;
-            }
-            .info-value {
-              font-weight: 600;
-              color: #212529;
-            }
-            .api-section {
-              background: #f8f9fa;
-              padding: 25px;
-              border-radius: 15px;
-              margin-bottom: 20px;
-            }
-            .api-section h2 {
-              color: #667eea;
-              margin-bottom: 15px;
-              padding-bottom: 10px;
-              border-bottom: 2px solid #667eea;
-            }
-            .api-endpoint {
-              background: white;
-              padding: 12px 15px;
-              border-radius: 10px;
-              margin: 8px 0;
-              border-left: 3px solid #28a745;
-              display: flex;
-              align-items: center;
-              gap: 10px;
-            }
-            .api-endpoint.disabled {
-              border-left-color: #dc3545;
-              opacity: 0.6;
-            }
-            .endpoint-icon {
-              font-size: 1.2em;
-            }
-            .endpoint-url {
-              font-family: 'Courier New', monospace;
-              font-size: 0.9em;
-              color: #495057;
-              flex: 1;
-            }
-            .endpoint-desc {
-              font-size: 0.85em;
-              color: #6c757d;
-            }
-            .method-badge {
-              display: inline-block;
-              padding: 4px 8px;
-              border-radius: 4px;
-              font-size: 0.75em;
-              font-weight: 700;
-              text-transform: uppercase;
-            }
-            .method-get {
-              background: #d4edda;
-              color: #155724;
-            }
-            .method-post {
-              background: #f8d7da;
-              color: #721c24;
-            }
-            .method-put {
-              background: #cce5ff;
-              color: #004085;
-            }
-            .method-delete {
-              background: #fff3cd;
-              color: #856404;
-            }
-            .console-section {
-              background: #2d2d2d;
-              padding: 20px;
-              border-radius: 15px;
-              margin-top: 20px;
-            }
-            .console-header {
-              display: flex;
-              justify-content: space-between;
-              align-items: center;
-              margin-bottom: 15px;
-            }
-            .console-title {
-              color: white;
-              font-size: 1.1em;
-            }
-            .console-actions {
-              display: flex;
-              gap: 10px;
-            }
-            .btn {
-              padding: 8px 16px;
-              border: none;
-              border-radius: 6px;
-              cursor: pointer;
-              font-weight: 500;
-              transition: all 0.3s ease;
-            }
-            .btn-primary {
-              background: #667eea;
-              color: white;
-            }
-            .btn-danger {
-              background: #dc3545;
-              color: white;
-            }
-            .btn-warning {
-              background: #ffc107;
-              color: #212529;
-            }
-            .btn:hover {
-              transform: translateY(-2px);
-              box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-            }
-            .console-output {
-              background: #1a1a1a;
-              color: #00ff00;
-              padding: 15px;
-              border-radius: 8px;
-              font-family: 'Courier New', monospace;
-              font-size: 0.85em;
-              max-height: 300px;
-              overflow-y: auto;
-              white-space: pre-wrap;
-              word-wrap: break-word;
-            }
-            .footer {
-              background: #f8f9fa;
-              padding: 20px;
-              text-align: center;
-              border-top: 1px solid #e9ecef;
-            }
-            .footer p {
-              color: #6c757d;
-              font-size: 0.9em;
-            }
-            @keyframes pulse {
-              0%, 100% { opacity: 1; }
-              50% { opacity: 0.5; }
-            }
-            .online {
-              animation: pulse 2s infinite;
-            }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <div class="header">
-              <h1>🤖 Arduino LED Vezérlő</h1>
-              <p>Webes kezelőfelület Arduino UNO R4 WiFi + LED szalagok + Ütemezés</p>
-              <div class="status-bar">
-                <div class="status-item">
-                  <span class="status-icon" id="wifiStatus">📡</span>
-                  <div class="status-content">
-                    <div id="wifiText">Kapcsolódás...</div>
-                    <div style="font-size: 0.75em; opacity: 0.8;">WiFi</div>
-                  </div>
-                </div>
-                <div class="status-item">
-                  <span class="status-icon" id="timeStatus">🕐</span>
-                  <div class="status-content">
-                    <div id="timeText">Idő szinkronizálás...</div>
-                    <div style="font-size: 0.75em; opacity: 0.8;">Idő</div>
-                  </div>
-                </div>
-                <div class="status-item">
-                  <span class="status-icon" id="sdStatus">💾</span>
-                  <div class="status-content">
-                    <div id="sdText">SD kártya...</div>
-                    <div style="font-size: 0.75em; opacity: 0.8;">SD Kártya</div>
-                  </div>
-                </div>
-                <div class="status-item">
-                  <span class="status-icon" id="serverStatus">🌐</span>
-                  <div class="status-content">
-                    <div id="serverText">Webszerver státusz...</div>
-                    <div style="font-size: 0.75em; opacity: 0.8;">Webszerver</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <div class="content">
-              <div class="info-grid">
-                <div class="info-card">
-                  <h3>📊 Rendszer Állapot</h3>
-                  <div class="info-row"><span class="info-label">Verzió:</span><span class="info-value" id="systemVersion">--</span></div>
-                  <div class="info-row"><span class="info-label">Uptime:</span><span class="info-value" id="uptime">--</span></div>
-                  <div class="info-row"><span class="info-label">Memória:</span><span class="info-value" id="memory">--</span></div>
-                </div>
-                <div class="info-card">
-                  <h3>💡 LED Információk</h3>
-                  <div class="info-row"><span class="info-label">LED szalagok:</span><span class="info-value" id="ledCount">--</span></div>
-                  <div class="info-row"><span class="info-label">PIR szenzorok:</span><span class="info-value" id="pirCount">--</span></div>
-                </div>
-              </div>
-
-              <div class="api-section">
-                <h2>🔗 API Végpontok</h2>
-                <div id="apiEndpoints"></div>
-              </div>
-            </div>
-            
-            <div class="footer">
-              <p>Arduino LED Controller v${config.version} | Web szerver: port ${config.port}</p>
-            </div>
-          </div>
-        </body>
-        </html>
-      `);
-    }
-  } catch (error) {
-    res.send(`
-      <!DOCTYPE html>
-      <html lang="hu">
-      <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Hiba - Arduino LED Vezérlő</title>
-        <style>
-          body { 
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-          }
-          .error-container {
-            background: white;
-            padding: 40px;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            max-width: 600px;
-            text-align: center;
-          }
-          .error-icon {
-            font-size: 4em;
-            margin-bottom: 20px;
-          }
-          .error-title {
-            color: #dc3545;
-            font-size: 2em;
-            margin-bottom: 10px;
-          }
-          .error-message {
-            color: #6c757d;
-            font-size: 1.1em;
-            margin-bottom: 20px;
-          }
-          .error-details {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 10px;
-            margin: 20px 0;
-            font-family: 'Courier New', monospace;
-            font-size: 0.9em;
-            color: #495057;
-            text-align: left;
-          }
-          .btn-primary {
-            background: #667eea;
-            color: white;
-            padding: 12px 30px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 1em;
-            font-weight: 600;
-            transition: all 0.3s ease;
-          }
-          .btn-primary:hover {
-            background: #5568d3;
-            transform: translateY(-2px);
-          }
-        </style>
-      </head>
-      <body>
-        <div class="error-container">
-          <div class="error-icon">⚠️</div>
-          <h1 class="error-title">Kapcsolati Hiba</h1>
-          <p class="error-message">Az Arduino eszköz nem elérhető.</p>
-          <div class="error-details">
-            <strong>Cél IP cím:</strong> ${config.arduinoIP}:${config.arduinoPort}<br>
-            <strong>Hiba:</strong> ${error.message}<br>
-            <strong>Időpont:</strong> ${new Date().toISOString()}
-          </div>
-          <button onclick="location.reload()" class="btn-primary">Újrapróbálás</button>
-        </div>
-      </body>
-      </html>
-    `);
-  }
-});
-
-// App version
-app.get('/api/app/version', (req, res) => {
-  try {
-    const versionPath = path.join(__dirname, 'version.json');
-    if (fs.existsSync(versionPath)) {
-      const versionData = JSON.parse(fs.readFileSync(versionPath, 'utf8'));
-      res.json(versionData);
-    } else {
-      res.json({
-        version: config.version,
-        timestamp: new Date().toISOString(),
-        message: "Version file not found, using default"
-      });
-    }
-  } catch (error) {
-    res.status(500).json({ error: 'Verzió információ nem elérhető' });
-  }
 });
 
 // ========================= SOCKET.IO HANDLERS =========================

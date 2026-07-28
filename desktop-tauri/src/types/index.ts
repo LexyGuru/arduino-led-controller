@@ -1,4 +1,5 @@
 export type PageId = 'dashboard' | 'leds' | 'schedules' | 'firmware' | 'logs' | 'settings';
+export interface RuntimeCapabilities { platform: string; mobile: boolean; otaSupported: boolean; }
 
 export interface ConnectionConfig {
   /** Távoli/DDNS HTTP elérés. */

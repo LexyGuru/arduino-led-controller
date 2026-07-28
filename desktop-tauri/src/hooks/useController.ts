@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { listen } from '@tauri-apps/api/event';
 import { tauriApi } from '../services/tauriApi';
-import type { ArduinoLog, ArduinoStatus, ConnectionConfig, FirmwareStatus, LedSchedule, LedStrip, NetworkLog, OtaProgressEvent, PageId } from '../types';
+import type { ArduinoLog, ArduinoStatus, ConnectionConfig, FirmwareStatus, LedSchedule, LedStrip, NetworkLog, OtaProgressEvent, PageId, RuntimeCapabilities } from '../types';
 import type { LedTestPreset } from '../pages/LedsPage';
 
 const fallbackConfig: ConnectionConfig = {
@@ -19,6 +19,7 @@ const fallbackConfig: ConnectionConfig = {
 };
 
 export function useController(activePage: PageId) {
+  const [capabilities, setCapabilities] = useState<RuntimeCapabilities>({ platform: 'unknown', mobile: false, otaSupported: true });
   const [config, setConfig] = useState<ConnectionConfig>(fallbackConfig);
   const [status, setStatus] = useState<ArduinoStatus | null>(null);
   const [logs, setLogs] = useState<ArduinoLog[]>([]);
@@ -149,10 +150,12 @@ export function useController(activePage: PageId) {
   useEffect(() => {
     let active = true;
     void (async () => {
+      const runtime = await tauriApi.runtimeCapabilities().catch(() => ({ platform: 'unknown', mobile: false, otaSupported: true }));
       const saved = await tauriApi.loadConfig().catch(() => fallbackConfig);
       const merged = { ...fallbackConfig, ...saved };
       const localSchedules = await tauriApi.loadSchedules().catch(() => []);
       if (!active) return;
+      setCapabilities(runtime);
       setConfig(merged);
       setSchedules(localSchedules);
       // Nem olvassuk be automatikusan az összes Arduino-időzítést. 28 rekord
@@ -183,7 +186,7 @@ export function useController(activePage: PageId) {
     setBusy(true);
     try {
       await tauriApi.saveConfig(config);
-      if (otaPassword) {
+      if (capabilities.otaSupported && otaPassword) {
         await tauriApi.saveOtaPassword(otaPassword);
         setOtaPassword('');
       }
@@ -280,6 +283,10 @@ export function useController(activePage: PageId) {
   };
 
   const updateFirmware = async () => {
+    if (!capabilities.otaSupported) {
+      setMessage('Mobilalkalmazásból firmware-frissítés nem indítható. Használj Windows, macOS vagy Linux gépet.');
+      return;
+    }
     setBusy(true);
     setOtaLogs([]);
     setOtaProgress(0);
@@ -311,5 +318,5 @@ export function useController(activePage: PageId) {
     window.setTimeout(() => void refresh(), 1_500);
   };
 
-  return { config, setConfig, status, logs, consoleError, networkLogs, schedules, firmware, otaLogs, otaProgress, otaStage, otaPassword, setOtaPassword, busy, message, refresh, refreshFirmware, saveConfig, updateStrip, runLedTest, stopLedTest, saveSchedules, syncSchedulesFromArduino, updateFirmware };
+  return { capabilities, config, setConfig, status, logs, consoleError, networkLogs, schedules, firmware, otaLogs, otaProgress, otaStage, otaPassword, setOtaPassword, busy, message, refresh, refreshFirmware, saveConfig, updateStrip, runLedTest, stopLedTest, saveSchedules, syncSchedulesFromArduino, updateFirmware };
 }

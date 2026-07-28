@@ -6,10 +6,26 @@ config/
 schedules/
 *.log
 release/
+artifacts/
+
+# Tauri / frontend
 desktop-tauri/dist/
+desktop-tauri/artifacts/
 desktop-tauri/src-tauri/target/
 desktop-tauri/src-tauri/gen/
+
+# Android / iOS signing secrets
+*.jks
+*.keystore
+*.p12
+*.mobileprovision
+
+# Editor / operating system
 .DS_Store
+.idea/
+.vscode/
+
+# Historical local files
 Node.js Express Arduino.html
 server.js
 server2.js
@@ -17,6 +33,7 @@ server2_fixed.js
 2026_MAX_LED.ino
 2026_MAX_LED.txt
 SD_Diagnostic/
-secrets.example.h
+
+# Firmware secrets
 firmware/**/secrets.h
 !firmware/**/secrets.example.h

@@ -10,12 +10,13 @@ interface SidebarProps {
   onChange: (page: PageId) => void;
   appVersion: string;
   firmwareVersion?: string;
+  otaSupported: boolean;
 }
 
-export function Sidebar({ page, onChange, appVersion, firmwareVersion }: SidebarProps) {
+export function Sidebar({ page, onChange, appVersion, firmwareVersion, otaSupported }: SidebarProps) {
   return <aside className="sidebar">
     <div className="brand"><span className="brand-mark">L</span><div><strong>LED Controller</strong><small>Standalone Tauri</small></div></div>
-    <nav>{items.map(({ id, label, icon: Icon }) => <button key={id} className={page === id ? 'active' : ''} onClick={() => onChange(id)}><Icon size={19}/><span>{label}</span></button>)}</nav>
+    <nav>{items.filter((item) => otaSupported || item.id !== 'firmware').map(({ id, label, icon: Icon }) => <button key={id} className={page === id ? 'active' : ''} onClick={() => onChange(id)}><Icon size={19}/><span>{label}</span></button>)}</nav>
     <div className="sidebar-footer">
       <small>Arduino UNO R4 WiFi</small>
       <b>Firmware v{firmwareVersion ?? '–'}</b>
