@@ -70,6 +70,8 @@ cd "${APP_DIR}"
 if [[ "${MODE}" == "--repair" || "${MODE}" == "repair" ]]; then
   log "Kényszerített LXC futásidejű javítás."
   install_runtime_units
+  log "A szolgáltatás leállítása a tiszta függőségtelepítéshez."
+  systemctl stop "${SERVICE_NAME}.service" >/dev/null 2>&1 || true
   repair_runtime --force
   restart_and_verify
   systemctl enable --now "${SERVICE_NAME}-update.timer" >/dev/null
