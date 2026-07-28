@@ -1,8 +1,12 @@
 [Unit]
-Description=Arduino LED Controller GitHub update check
+Description=Arduino LED Controller GitHub update and runtime repair
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=oneshot
+User=root
+Group=root
+Environment=NODE_ENV=production
 ExecStart=/bin/bash /opt/arduino-led-controller/deploy/update.sh
+TimeoutStartSec=10min

@@ -1,5 +1,5 @@
 [Unit]
-Description=Arduino LED Controller hourly GitHub update
+Description=Arduino LED Controller hourly GitHub update and runtime repair
 
 [Timer]
 OnBootSec=10min

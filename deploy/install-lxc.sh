@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Telepítő Debian 12 alapú Proxmox LXC konténerhez.
+# Telepítő Debian 12/13 alapú Proxmox LXC konténerhez.
 set -euo pipefail
 
 if [[ "${EUID}" -ne 0 ]]; then
@@ -15,7 +15,7 @@ ARDUINO_IP="${ARDUINO_IP:-10.0.0.117}"
 
 echo "==> Alapcsomagok telepítése"
 apt-get update
-apt-get install -y ca-certificates curl git gnupg rsync unzip bzip2
+apt-get install -y ca-certificates curl git gnupg rsync unzip bzip2 util-linux
 
 if ! command -v node >/dev/null 2>&1 || [[ "$(node -p 'process.versions.node.split(".")[0]')" -lt 20 ]]; then
   echo "==> Node.js 22 telepítése"
@@ -27,33 +27,33 @@ if ! id -u arduino-led >/dev/null 2>&1; then
   useradd --system --home "${STATE_DIR}" --shell /usr/sbin/nologin arduino-led
 fi
 
-# Az npm gyorsítótára ne az alkalmazáskód mellé kerüljön. Így az alkalmazás
-# telepítése akkor is működik, ha /opt külön csatolt kötet vagy korlátozott LXC.
-install -d -o arduino-led -g arduino-led -m 0750 "${STATE_DIR}/npm-cache"
+install -d -o arduino-led -g arduino-led -m 0750 "${STATE_DIR}" "${STATE_DIR}/npm-cache"
 
 echo "==> Alkalmazás telepítése: ${APP_DIR}"
 mkdir -p "${APP_DIR}"
-rsync -a --delete \
-  --exclude node_modules --exclude .git --exclude data --exclude config --exclude schedules --exclude .env \
-  "${SOURCE_DIR}/" "${APP_DIR}/"
+
+SOURCE_REAL="$(readlink -f "${SOURCE_DIR}")"
+APP_REAL="$(readlink -f "${APP_DIR}")"
+if [[ "${SOURCE_REAL}" != "${APP_REAL}" ]]; then
+  rsync -a --delete \
+    --exclude node_modules --exclude .git --exclude data --exclude config --exclude schedules --exclude .env \
+    "${SOURCE_DIR}/" "${APP_DIR}/"
+else
+  echo "==> A forrás már az APP_DIR könyvtárban van; rsync kihagyva."
+fi
 
 mkdir -p "${APP_DIR}/data" "${APP_DIR}/config" "${APP_DIR}/schedules"
 chown -R arduino-led:arduino-led "${APP_DIR}"
-# A Git munkakönyvtárat a root kezeli (a frissítő szolgáltatás is rootként fut).
-# Így a kézi `git pull` nem akad el a Git tulajdonosi biztonsági ellenőrzésén.
 if [[ -d "${APP_DIR}/.git" ]]; then
   chown -R root:root "${APP_DIR}/.git"
 fi
+chmod +x "${APP_DIR}/deploy/"*.sh
 
 echo "==> Arduino OTA feltöltőeszköz telepítése"
 APP_DIR="${APP_DIR}" bash "${APP_DIR}/deploy/install-ota-tool.sh"
 
-echo "==> Node függőségek telepítése"
-cd "${APP_DIR}"
-runuser -u arduino-led -- env \
-  HOME="${STATE_DIR}" \
-  npm_config_cache="${STATE_DIR}/npm-cache" \
-  npm install --omit=dev --no-audit --no-fund
+echo "==> Node függőségek ellenőrzése és telepítése"
+APP_DIR="${APP_DIR}" STATE_DIR="${STATE_DIR}" bash "${APP_DIR}/deploy/ensure-node-dependencies.sh" --force
 
 if [[ ! -f /etc/arduino-led-controller.env ]]; then
   cp "${APP_DIR}/.env.example" /etc/arduino-led-controller.env
@@ -69,8 +69,11 @@ install -m 644 "${APP_DIR}/deploy/arduino-led-controller.service" "/etc/systemd/
 install -m 644 "${APP_DIR}/deploy/arduino-led-controller-update.service" "/etc/systemd/system/${SERVICE_NAME}-update.service"
 install -m 644 "${APP_DIR}/deploy/arduino-led-controller-update.timer" "/etc/systemd/system/${SERVICE_NAME}-update.timer"
 systemctl daemon-reload
-systemctl enable --now "${SERVICE_NAME}"
-systemctl enable --now "${SERVICE_NAME}-update.timer"
+systemctl enable "${SERVICE_NAME}"
+systemctl enable "${SERVICE_NAME}-update.timer"
+systemctl restart "${SERVICE_NAME}"
+systemctl restart "${SERVICE_NAME}-update.timer"
+
 HTTPS_HOST="${HTTPS_HOST:-}" PORT="${PORT:-3000}" bash "${APP_DIR}/deploy/install-https.sh"
 
 echo
@@ -81,3 +84,5 @@ echo "Frissítő: systemctl status ${SERVICE_NAME}-update.timer"
 echo "Web:      https://<LXC-IP>"
 echo "Arduino IP beállítás: /etc/arduino-led-controller.env"
 echo "OTA jelszó: add meg az OTA_PASSWORD értéket ugyanebben a fájlban."
+echo "Kézi frissítéshez ne sima git pull-t használj, hanem: bash deploy/update.sh"
+echo "Javításhoz: bash deploy/update.sh --repair"

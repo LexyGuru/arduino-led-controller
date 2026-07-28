@@ -9,13 +9,17 @@ User=arduino-led
 Group=arduino-led
 WorkingDirectory=/opt/arduino-led-controller
 EnvironmentFile=-/etc/arduino-led-controller.env
+Environment=NODE_ENV=production
+ExecStartPre=/bin/bash /opt/arduino-led-controller/deploy/ensure-node-dependencies.sh
 ExecStart=/usr/bin/node /opt/arduino-led-controller/server2_final.js
 Restart=always
 RestartSec=5
+TimeoutStartSec=5min
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=full
-ReadWritePaths=/opt/arduino-led-controller/data /opt/arduino-led-controller/config /opt/arduino-led-controller/schedules
+ReadWritePaths=/opt/arduino-led-controller/data /opt/arduino-led-controller/config /opt/arduino-led-controller/schedules /var/lib/arduino-led-controller
+UMask=0027
 
 [Install]
 WantedBy=multi-user.target
