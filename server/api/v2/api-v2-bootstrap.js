@@ -1,11 +1,24 @@
 'use strict';
 
-const axios = require('axios');
 const crypto = require('crypto');
 const fs = require('fs');
-const path = require('path');
 
-const { HttpError } = require('./http-error');
+const {
+  ArduinoClientError
+} = require('../../arduino/arduino-error');
+
+const {
+  isConfiguredSecret
+} = require('../../core/config');
+
+const {
+  getRuntimeContext
+} = require('../../core/runtime-context');
+
+const {
+  HttpError
+} = require('./http-error');
+
 const {
   API_VERSION,
   apiV2RequestContext,
@@ -18,213 +31,60 @@ const BOOTSTRAP_STATE = Symbol.for(
   'arduino-led-controller.api-v2-bootstrap-installed'
 );
 
-const PROJECT_ROOT = path.resolve(__dirname, '../../..');
-const SERVER_STARTED_AT = Date.now();
-const SERVICE_NAME = 'arduino-led-controller';
+function runtimeStartedAt(runtime) {
+  const value = runtime.startedAt;
 
-function readJsonFile(filePath) {
-  try {
-    if (!fs.existsSync(filePath)) return null;
-
-    return JSON.parse(
-      fs.readFileSync(filePath, 'utf8')
-    );
-  } catch (_) {
-    return null;
-  }
-}
-
-function readProjectVersion() {
-  const packageData = readJsonFile(
-    path.join(PROJECT_ROOT, 'package.json')
-  );
-
-  if (
-    packageData &&
-    typeof packageData.version === 'string' &&
-    packageData.version.trim()
-  ) {
-    return packageData.version.trim();
+  if (value instanceof Date) {
+    return value.toISOString();
   }
 
-  return 'unknown';
+  const parsed = new Date(value);
+
+  return Number.isNaN(parsed.getTime())
+    ? new Date().toISOString()
+    : parsed.toISOString();
 }
 
-function numberInRange(
-  value,
-  fallback,
-  minimum,
-  maximum
+function apiConfigurationChecks(
+  runtime
 ) {
-  const parsed = Number(value);
-
-  if (!Number.isFinite(parsed)) return fallback;
-
-  return Math.min(
-    maximum,
-    Math.max(minimum, parsed)
-  );
-}
-
-function normalizePrivatePath(value) {
-  const normalized = String(value || '')
-    .trim()
-    .replace(/\/+$/, '');
-
-  if (!normalized) return '';
-
-  return normalized.startsWith('/')
-    ? normalized
-    : `/${normalized}`;
-}
-
-function isConfiguredSecret(value, minimumLength) {
-  const normalized = String(value || '').trim();
-
-  return normalized.length >= minimumLength &&
-    !/CHANGE_THIS|CHANGEME|REPLACE_ME/i.test(
-      normalized
-    );
-}
-
-function loadApiV2Configuration() {
-  const configDir =
-    process.env.CONFIG_DIR ||
-    path.join(PROJECT_ROOT, 'config');
-
-  const runtimeSettings = readJsonFile(
-    path.join(configDir, 'server-settings.json')
-  ) || {};
-
-  const environmentPort = Number(
-    process.env.ARDUINO_PORT
-  );
-  const runtimePort = Number(
-    runtimeSettings.arduinoPort
-  );
-
-  let arduinoPort = Number.isInteger(
-    environmentPort
-  )
-    ? environmentPort
-    : 80;
-
-  if (
-    Number.isInteger(runtimePort) &&
-    runtimePort > 0 &&
-    runtimePort <= 65535
-  ) {
-    arduinoPort = runtimePort;
-  }
-
-  let arduinoIP = String(
-    process.env.ARDUINO_IP || '10.0.0.117'
-  ).trim();
-
-  if (
-    typeof runtimeSettings.arduinoIP === 'string' &&
-    runtimeSettings.arduinoIP.trim()
-  ) {
-    arduinoIP = runtimeSettings.arduinoIP.trim();
-  }
-
-  return {
-    version: readProjectVersion(),
-    environment:
-      process.env.NODE_ENV || 'production',
-    apiV2Token: String(
-      process.env.API_V2_TOKEN || ''
-    ).trim(),
-    apiV2AllowedOrigins: String(
-      process.env.API_V2_ALLOWED_ORIGIN ||
-      process.env.ALLOWED_ORIGIN ||
-      '*'
-    )
-      .split(',')
-      .map((origin) => origin.trim())
-      .filter(Boolean),
-    arduinoIP,
-    arduinoPort,
-    arduinoApiPath: normalizePrivatePath(
-      process.env.ARDUINO_API_PATH
+  const tokenCheck = {
+    name: 'apiV2Token',
+    ok: isConfiguredSecret(
+      runtime.config.apiV2.token,
+      32
     ),
-    arduinoApiKey: String(
-      process.env.ARDUINO_API_KEY || ''
-    ).trim(),
-    arduinoTimeoutMs: numberInRange(
-      process.env.ARDUINO_HEALTH_TIMEOUT_MS ||
-      process.env.ARDUINO_TIMEOUT_MS,
-      2500,
-      500,
-      10000
-    ),
-    directories: {
-      dataDir:
-        process.env.DATA_DIR ||
-        path.join(PROJECT_ROOT, 'data'),
-      configDir,
-      schedulesDir:
-        process.env.SCHEDULES_DIR ||
-        path.join(PROJECT_ROOT, 'schedules'),
-      firmwareDir:
-        process.env.FIRMWARE_DIR ||
-        path.join(
-          PROJECT_ROOT,
-          'data',
-          'firmware'
-        )
-    }
+    code:
+      'API_V2_TOKEN_INVALID'
   };
-}
 
-function configurationChecks(configuration) {
-  return [
-    {
-      name: 'apiV2Token',
-      ok: isConfiguredSecret(
-        configuration.apiV2Token,
-        32
-      ),
-      code: 'API_V2_TOKEN_INVALID'
-    },
-    {
-      name: 'arduinoTarget',
-      ok:
-        Boolean(configuration.arduinoIP) &&
-        Number.isInteger(
-          configuration.arduinoPort
-        ) &&
-        configuration.arduinoPort > 0 &&
-        configuration.arduinoPort <= 65535,
-      code: 'ARDUINO_TARGET_INVALID'
-    },
-    {
-      name: 'arduinoApiPath',
-      ok:
-        configuration.arduinoApiPath
-          .startsWith('/') &&
-        isConfiguredSecret(
-          configuration.arduinoApiPath,
-          8
-        ),
-      code: 'ARDUINO_API_PATH_INVALID'
-    },
-    {
-      name: 'arduinoApiKey',
-      ok: isConfiguredSecret(
-        configuration.arduinoApiKey,
-        16
-      ),
-      code: 'ARDUINO_API_KEY_INVALID'
-    }
-  ].map((check) => (
-    check.ok
+  const normalizedTokenCheck =
+    tokenCheck.ok
       ? {
-          name: check.name,
+          name:
+            tokenCheck.name,
           ok: true
         }
-      : check
-  ));
+      : tokenCheck;
+
+  return [
+    normalizedTokenCheck,
+    ...runtime.arduinoClient
+      .configurationChecks()
+  ];
+}
+
+function runtimeDirectories(runtime) {
+  return {
+    dataDir:
+      runtime.paths.dataDir,
+    configDir:
+      runtime.paths.configDir,
+    schedulesDir:
+      runtime.paths.schedulesDir,
+    firmwareDir:
+      runtime.paths.firmwareDir
+  };
 }
 
 async function checkRuntimeDirectory(
@@ -232,9 +92,10 @@ async function checkRuntimeDirectory(
   directoryPath
 ) {
   try {
-    const stats = await fs.promises.stat(
-      directoryPath
-    );
+    const stats =
+      await fs.promises.stat(
+        directoryPath
+      );
 
     if (!stats.isDirectory()) {
       return {
@@ -246,7 +107,8 @@ async function checkRuntimeDirectory(
 
     await fs.promises.access(
       directoryPath,
-      fs.constants.R_OK | fs.constants.W_OK
+      fs.constants.R_OK |
+      fs.constants.W_OK
     );
 
     return {
@@ -257,115 +119,62 @@ async function checkRuntimeDirectory(
     return {
       name,
       ok: false,
-      code: error.code || 'DIRECTORY_ERROR'
+      code:
+        error.code ||
+        'DIRECTORY_ERROR'
     };
   }
 }
 
 async function collectReadinessChecks(
-  configuration
+  runtime
 ) {
-  const directoryChecks = await Promise.all(
-    Object.entries(configuration.directories)
-      .map(([name, directoryPath]) =>
-        checkRuntimeDirectory(
-          name,
-          directoryPath
-        )
+  const directoryChecks =
+    await Promise.all(
+      Object.entries(
+        runtimeDirectories(runtime)
+      ).map(
+        ([name, directoryPath]) =>
+          checkRuntimeDirectory(
+            name,
+            directoryPath
+          )
       )
-  );
+    );
 
   return [
-    ...configurationChecks(configuration),
+    ...apiConfigurationChecks(
+      runtime
+    ),
     ...directoryChecks
   ];
 }
 
-function formatHttpHost(host) {
-  const normalized = String(host || '').trim();
+function mapArduinoClientError(error) {
+  if (error instanceof HttpError) {
+    return error;
+  }
 
   if (
-    normalized.includes(':') &&
-    !normalized.startsWith('[') &&
-    !normalized.endsWith(']')
+    error instanceof
+    ArduinoClientError
   ) {
-    return `[${normalized}]`;
-  }
+    const details =
+      error.details ||
+      (
+        error.upstreamStatus
+          ? {
+              upstreamStatus:
+                error.upstreamStatus
+            }
+          : null
+      );
 
-  return normalized;
-}
-
-function buildArduinoStatusUrl(configuration) {
-  const host = formatHttpHost(
-    configuration.arduinoIP
-  );
-
-  const url = new URL(
-    `http://${host}:${configuration.arduinoPort}`
-  );
-
-  url.pathname =
-    `${configuration.arduinoApiPath}/api/status`;
-
-  // Átmeneti kompatibilitás a jelenlegi firmware-rel.
-  // A kliens -> LXC API v2 már Bearer fejlécet használ.
-  url.searchParams.set(
-    'k',
-    configuration.arduinoApiKey
-  );
-
-  return url.toString();
-}
-
-function arduinoConfigurationIsValid(
-  configuration
-) {
-  return configurationChecks(configuration)
-    .filter((check) =>
-      check.name.startsWith('arduino')
-    )
-    .every((check) => check.ok);
-}
-
-function mapArduinoError(error) {
-  if (error?.code === 'ECONNABORTED') {
-    return HttpError.gatewayTimeout(
-      'ARDUINO_TIMEOUT',
-      'Az Arduino nem válaszolt a megadott időkorláton belül.',
-      null,
-      {
-        cause: error
-      }
-    );
-  }
-
-  const responseStatus = error?.response?.status;
-
-  if (
-    responseStatus === 401 ||
-    responseStatus === 403
-  ) {
     return new HttpError(
-      502,
-      'ARDUINO_AUTH_FAILED',
-      'Az Arduino elutasította a szerver hitelesítését.',
-      {
-        upstreamStatus: responseStatus
-      },
-      {
-        cause: error
-      }
-    );
-  }
-
-  if (Number.isInteger(responseStatus)) {
-    return new HttpError(
-      502,
-      'ARDUINO_BAD_RESPONSE',
-      'Az Arduino hibás HTTP-választ adott.',
-      {
-        upstreamStatus: responseStatus
-      },
+      error.statusCode,
+      error.code,
+      error.message,
+      details,
       {
         cause: error
       }
@@ -382,59 +191,6 @@ function mapArduinoError(error) {
   );
 }
 
-async function fetchArduinoStatus(configuration) {
-  if (
-    !arduinoConfigurationIsValid(
-      configuration
-    )
-  ) {
-    throw HttpError.serviceUnavailable(
-      'ARDUINO_CONFIG_INVALID',
-      'Az Arduino-kapcsolat konfigurációja hiányos.',
-      {
-        checks: configurationChecks(
-          configuration
-        ).filter((check) =>
-          check.name.startsWith('arduino')
-        )
-      }
-    );
-  }
-
-  const startedAt = Date.now();
-
-  try {
-    const response = await axios({
-      method: 'get',
-      url: buildArduinoStatusUrl(
-        configuration
-      ),
-      timeout: configuration.arduinoTimeoutMs,
-      maxRedirects: 0,
-      proxy: false,
-      headers: {
-        Accept: 'application/json',
-        'X-Request-Source':
-          'arduino-led-controller-api-v2'
-      }
-    });
-
-    return {
-      status:
-        response.data &&
-        typeof response.data === 'object'
-          ? response.data
-          : {
-              raw: response.data
-            },
-      latencyMs:
-        Date.now() - startedAt
-    };
-  } catch (error) {
-    throw mapArduinoError(error);
-  }
-}
-
 function parseBearerToken(req) {
   const authorization = String(
     req.get?.('Authorization') ||
@@ -442,22 +198,31 @@ function parseBearerToken(req) {
     ''
   ).trim();
 
-  const match = authorization.match(
-    /^Bearer[ \t]+(.+)$/i
-  );
+  const match =
+    authorization.match(
+      /^Bearer[ \t]+(.+)$/i
+    );
 
-  return match ? match[1].trim() : '';
+  return match
+    ? match[1].trim()
+    : '';
 }
 
-function safeTokenEquals(received, expected) {
-  const receivedBuffer = Buffer.from(
-    String(received || ''),
-    'utf8'
-  );
-  const expectedBuffer = Buffer.from(
-    String(expected || ''),
-    'utf8'
-  );
+function safeTokenEquals(
+  received,
+  expected
+) {
+  const receivedBuffer =
+    Buffer.from(
+      String(received || ''),
+      'utf8'
+    );
+
+  const expectedBuffer =
+    Buffer.from(
+      String(expected || ''),
+      'utf8'
+    );
 
   if (
     receivedBuffer.length !==
@@ -472,13 +237,20 @@ function safeTokenEquals(received, expected) {
   );
 }
 
-function requireApiV2Auth(req, res, next) {
-  const configuration =
-    loadApiV2Configuration();
+function requireApiV2Auth(
+  req,
+  res,
+  next
+) {
+  const runtime =
+    getRuntimeContext();
+
+  const expectedToken =
+    runtime.config.apiV2.token;
 
   if (
     !isConfiguredSecret(
-      configuration.apiV2Token,
+      expectedToken,
       32
     )
   ) {
@@ -492,13 +264,14 @@ function requireApiV2Auth(req, res, next) {
     );
   }
 
-  const receivedToken = parseBearerToken(req);
+  const receivedToken =
+    parseBearerToken(req);
 
   if (
     !receivedToken ||
     !safeTokenEquals(
       receivedToken,
-      configuration.apiV2Token
+      expectedToken
     )
   ) {
     res.set(
@@ -516,25 +289,33 @@ function requireApiV2Auth(req, res, next) {
   return next();
 }
 
-function resolveAllowedOrigin(req, configuration) {
+function resolveAllowedOrigin(
+  req,
+  allowedOrigins
+) {
   const requestOrigin = String(
     req.get?.('Origin') ||
     req.headers?.origin ||
     ''
   ).trim();
 
-  const allowedOrigins =
-    configuration.apiV2AllowedOrigins.length
-      ? configuration.apiV2AllowedOrigins
+  const normalizedOrigins =
+    Array.isArray(allowedOrigins) &&
+    allowedOrigins.length
+      ? allowedOrigins
       : ['*'];
 
-  if (allowedOrigins.includes('*')) {
+  if (
+    normalizedOrigins.includes('*')
+  ) {
     return '*';
   }
 
   if (
     requestOrigin &&
-    allowedOrigins.includes(requestOrigin)
+    normalizedOrigins.includes(
+      requestOrigin
+    )
   ) {
     return requestOrigin;
   }
@@ -542,14 +323,20 @@ function resolveAllowedOrigin(req, configuration) {
   return '';
 }
 
-function apiV2CorsAndSecurity(req, res, next) {
-  const configuration =
-    loadApiV2Configuration();
+function apiV2CorsAndSecurity(
+  req,
+  res,
+  next
+) {
+  const runtime =
+    getRuntimeContext();
 
-  const allowedOrigin = resolveAllowedOrigin(
-    req,
-    configuration
-  );
+  const allowedOrigin =
+    resolveAllowedOrigin(
+      req,
+      runtime.config.apiV2
+        .allowedOrigins
+    );
 
   if (allowedOrigin) {
     res.set(
@@ -574,6 +361,7 @@ function apiV2CorsAndSecurity(req, res, next) {
   });
 
   setApiResponseHeaders(res);
+
   next();
 }
 
@@ -592,153 +380,234 @@ function installApiV2Routes(app) {
     apiV2CorsAndSecurity
   );
 
-  app.options('/api/v2', (req, res) => {
-    res.status(204).end();
-  });
+  app.options(
+    '/api/v2',
+    (req, res) => {
+      res.status(204).end();
+    }
+  );
 
-  app.options('/api/v2/*', (req, res) => {
-    res.status(204).end();
-  });
+  app.options(
+    '/api/v2/*',
+    (req, res) => {
+      res.status(204).end();
+    }
+  );
 
-  app.get('/api/v2', (req, res) => {
-    const configuration =
-      loadApiV2Configuration();
+  app.get(
+    '/api/v2',
+    (req, res) => {
+      const runtime =
+        getRuntimeContext();
 
-    return sendSuccess(req, res, {
-      name: SERVICE_NAME,
-      version: configuration.version,
-      apiVersion: API_VERSION,
-      stability: 'alpha',
-      authentication: {
-        scheme: 'Bearer',
-        header: 'Authorization',
-        protectedEndpoints: [
-          '/api/v2/system/status',
-          '/api/v2/arduino/status'
-        ]
-      },
-      endpoints: {
-        discovery: '/api/v2',
-        systemHealth:
-          '/api/v2/system/health',
-        systemStatus:
-          '/api/v2/system/status',
-        arduinoStatus:
-          '/api/v2/arduino/status'
-      }
-    });
-  });
+      return sendSuccess(
+        req,
+        res,
+        {
+          name:
+            runtime.config.service.name,
+          version:
+            runtime.config.service.version,
+          apiVersion:
+            API_VERSION,
+          stability:
+            'alpha',
+          authentication: {
+            scheme: 'Bearer',
+            header:
+              'Authorization',
+            protectedEndpoints: [
+              '/api/v2/system/status',
+              '/api/v2/arduino/status'
+            ]
+          },
+          endpoints: {
+            discovery:
+              '/api/v2',
+            systemHealth:
+              '/api/v2/system/health',
+            systemStatus:
+              '/api/v2/system/status',
+            arduinoStatus:
+              '/api/v2/arduino/status'
+          }
+        }
+      );
+    }
+  );
 
   app.get(
     '/api/v2/system/health',
-    asyncRoute(async (req, res) => {
-      const configuration =
-        loadApiV2Configuration();
+    asyncRoute(
+      async (req, res) => {
+        const runtime =
+          getRuntimeContext();
 
-      const checks =
-        await collectReadinessChecks(
-          configuration
-        );
+        const checks =
+          await collectReadinessChecks(
+            runtime
+          );
 
-      const ready = checks.every(
-        (check) => check.ok
-      );
+        const ready =
+          checks.every(
+            (check) => check.ok
+          );
 
-      if (!ready) {
-        throw HttpError.serviceUnavailable(
-          'SYSTEM_NOT_READY',
-          'A rendszer még nem áll készen az API v2 kiszolgálására.',
+        if (!ready) {
+          throw HttpError
+            .serviceUnavailable(
+              'SYSTEM_NOT_READY',
+              'A rendszer még nem áll készen az API v2 kiszolgálására.',
+              {
+                status:
+                  'not-ready',
+                checks
+              }
+            );
+        }
+
+        return sendSuccess(
+          req,
+          res,
           {
-            status: 'not-ready',
+            status: 'ready',
+            service:
+              runtime.config.service.name,
+            version:
+              runtime.config.service.version,
             checks
           }
         );
       }
-
-      return sendSuccess(req, res, {
-        status: 'ready',
-        service: SERVICE_NAME,
-        version: configuration.version,
-        checks
-      });
-    })
+    )
   );
 
   app.get(
     '/api/v2/system/status',
     requireApiV2Auth,
     (req, res) => {
-      const configuration =
-        loadApiV2Configuration();
+      const runtime =
+        getRuntimeContext();
 
-      return sendSuccess(req, res, {
-        service: {
-          name: SERVICE_NAME,
-          version: configuration.version,
-          apiVersion: API_VERSION,
-          environment:
-            configuration.environment,
-          nodeVersion: process.version,
-          uptimeSeconds:
-            Math.floor(process.uptime()),
-          startedAt:
-            new Date(
-              SERVER_STARTED_AT
-            ).toISOString()
-        },
-        compatibility: {
-          legacyApiEnabled: true,
-          healthEndpointsEnabled: true,
-          apiV2Enabled: true
+      return sendSuccess(
+        req,
+        res,
+        {
+          service: {
+            name:
+              runtime.config.service.name,
+            version:
+              runtime.config.service.version,
+            apiVersion:
+              API_VERSION,
+            environment:
+              runtime.config.service
+                .environment,
+            nodeVersion:
+              process.version,
+            uptimeSeconds:
+              Math.floor(
+                process.uptime()
+              ),
+            startedAt:
+              runtimeStartedAt(
+                runtime
+              )
+          },
+          compatibility: {
+            legacyApiEnabled:
+              true,
+            healthEndpointsEnabled:
+              true,
+            apiV2Enabled:
+              true
+          }
         }
-      });
+      );
     }
   );
 
   app.get(
     '/api/v2/arduino/status',
     requireApiV2Auth,
-    asyncRoute(async (req, res) => {
-      const configuration =
-        loadApiV2Configuration();
+    asyncRoute(
+      async (req, res) => {
+        const runtime =
+          getRuntimeContext();
 
-      const result =
-        await fetchArduinoStatus(
-          configuration
-        );
+        let result;
 
-      return sendSuccess(req, res, {
-        connected: true,
-        latencyMs: result.latencyMs,
-        status: result.status
-      });
-    })
-  );
-
-  app.use('/api/v2', (req, res) => {
-    return sendError(
-      req,
-      res,
-      HttpError.notFound(
-        'API_ROUTE_NOT_FOUND',
-        'Az API v2 útvonal nem található.',
-        {
-          method: req.method,
-          path: req.originalUrl
+        try {
+          result =
+            await runtime.arduinoClient
+              .getStatus({
+                timeoutMs:
+                  runtime.config.arduino
+                    .healthTimeoutMs,
+                source:
+                  'arduino-led-controller-api-v2'
+              });
+        } catch (error) {
+          throw mapArduinoClientError(
+            error
+          );
         }
-      )
-    );
-  });
+
+        return sendSuccess(
+          req,
+          res,
+          {
+            connected: true,
+            latencyMs:
+              result.latencyMs,
+            status:
+              result.status
+          }
+        );
+      }
+    )
+  );
 
   app.use(
     '/api/v2',
-    (error, req, res, next) => {
+    (req, res) => {
+      return sendError(
+        req,
+        res,
+        HttpError.notFound(
+          'API_ROUTE_NOT_FOUND',
+          'Az API v2 útvonal nem található.',
+          {
+            method:
+              req.method,
+            path:
+              req.originalUrl
+          }
+        )
+      );
+    }
+  );
+
+  app.use(
+    '/api/v2',
+    (
+      error,
+      req,
+      res,
+      next
+    ) => {
       if (res.headersSent) {
         return next(error);
       }
 
-      if (error instanceof HttpError) {
-        return sendError(req, res, error);
+      if (
+        error instanceof HttpError
+      ) {
+        return sendError(
+          req,
+          res,
+          error
+        );
       }
 
       return sendError(
@@ -757,8 +626,14 @@ function installApiV2Routes(app) {
   );
 }
 
-function copyExpressProperties(target, source) {
-  for (const key of Reflect.ownKeys(source)) {
+function copyExpressProperties(
+  target,
+  source
+) {
+  for (
+    const key
+    of Reflect.ownKeys(source)
+  ) {
     if (
       key === 'length' ||
       key === 'name' ||
@@ -784,28 +659,34 @@ function copyExpressProperties(target, source) {
         descriptor
       );
     } catch (_) {
-      // Egyes függvénytulajdonságok nem
-      // definiálhatók újra minden platformon.
+      // Egyes függvénytulajdonságok
+      // nem definiálhatók újra.
     }
   }
 
-  Object.assign(target, source);
+  Object.assign(
+    target,
+    source
+  );
 }
 
 function installExpressApiV2Bootstrap() {
-  if (globalThis[BOOTSTRAP_STATE]) return;
+  if (globalThis[BOOTSTRAP_STATE]) {
+    return;
+  }
 
   const expressModulePath =
     require.resolve('express');
 
-  const currentExpress = require(
-    expressModulePath
-  );
+  const currentExpress =
+    require(expressModulePath);
 
   function patchedExpress(...args) {
-    const app = currentExpress(...args);
+    const app =
+      currentExpress(...args);
 
     installApiV2Routes(app);
+
     return app;
   }
 
@@ -815,7 +696,9 @@ function installExpressApiV2Bootstrap() {
   );
 
   const cacheEntry =
-    require.cache[expressModulePath];
+    require.cache[
+      expressModulePath
+    ];
 
   if (!cacheEntry) {
     throw new Error(
@@ -823,11 +706,17 @@ function installExpressApiV2Bootstrap() {
     );
   }
 
-  cacheEntry.exports = patchedExpress;
-  globalThis[BOOTSTRAP_STATE] = true;
+  cacheEntry.exports =
+    patchedExpress;
+
+  globalThis[BOOTSTRAP_STATE] =
+    true;
 }
 
 module.exports = {
+  apiConfigurationChecks,
+  collectReadinessChecks,
   installApiV2Routes,
-  installExpressApiV2Bootstrap
+  installExpressApiV2Bootstrap,
+  mapArduinoClientError
 };

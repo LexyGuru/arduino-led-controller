@@ -41,6 +41,9 @@ Munkacsomag: `feature/v5-server-modularization`
 - [x] `GET /health/arduino`
 - [x] Könyvtár- és konfigurációellenőrzés
 - [x] Arduino offline állapot kezelése
+- [x] Központi runtime context használata
+- [x] Megosztott Arduino-kliens használata
+- [x] Duplikált Axios- és Arduino URL-kód eltávolítása
 - [x] Mac és izolált LXC smoke teszt
 
 ## API v2 alapok
@@ -53,6 +56,10 @@ Munkacsomag: `feature/v5-server-modularization`
 - [x] `GET /api/v2/system/health`
 - [x] `GET /api/v2/system/status`
 - [x] `GET /api/v2/arduino/status`
+- [x] Központi runtime context használata
+- [x] Megosztott Arduino-kliens használata
+- [x] Arduino klienshibák HTTP-hibává alakítása
+- [x] Duplikált konfiguráció- és Axios-kód eltávolítása
 - [x] Régi `/api/...` kompatibilitás
 - [ ] API v2 LED vezérlési végpontok
 - [ ] API v2 naptárvégpontok
@@ -69,9 +76,10 @@ Munkacsomag: `feature/v5-server-modularization`
 - [x] Központi runtime context
 - [x] Megosztott Arduino HTTP-kliens
 - [x] Egységes Arduino klienshibák
-- [-] Health átállítása a megosztott kliensre
-- [ ] API v2 átállítása a megosztott kliensre
-- [ ] Hitelesítési modul kiemelése
+- [x] Health átállítása a megosztott kliensre
+- [x] API v2 átállítása a megosztott kliensre
+- [x] Duplikált Arduino-kapcsolati kód eltávolítása
+- [-] Hitelesítési modul kiemelése
 - [ ] Express alkalmazás factory kiemelése
 - [ ] Socket.IO modul kiemelése
 - [ ] Schedule szolgáltatás kiemelése
@@ -110,7 +118,7 @@ Munkacsomag: `feature/v5-server-modularization`
 
 ## Következő közvetlen lépések
 
-1. Health végpontok átállítása a runtime contextre és közös kliensre.
-2. API v2 Arduino státusz átállítása ugyanarra a kliensre.
-3. Duplikált konfiguráció- és Axios-kód törlése.
+1. API v2 Bearer-hitelesítés külön modulba emelése.
+2. CORS és security middleware külön modulba emelése.
+3. Express alkalmazás factory előkészítése.
 4. A modularizációs munkacsomag izolált LXC-tesztje.
