@@ -187,15 +187,15 @@ function generateCSRFToken() {
 function validateCSRFToken(token) {
   const requestTimestamp = Date.now();
   const tokenEntry = csrfStore.get(token);
-  
+
   if (!tokenEntry) return false;
-  
+
   const tokenAge = requestTimestamp - tokenEntry.timestamp;
   if (tokenAge > 300000) { // 5 minutes
     csrfStore.delete(token);
     return false;
   }
-  
+
   return tokenEntry.token === token;
 }
 
@@ -369,7 +369,7 @@ class ArduinoAPI {
 
     const protectedEndpoint = this.protectedEndpoint(endpoint);
     const url = `${this.baseURL}${protectedEndpoint}`;
-    
+
     logger.debug(`Arduino ${method} ${endpoint}`);
 
     try {
@@ -377,7 +377,7 @@ class ArduinoAPI {
       const response = useMacNativeHttp
         ? { data: await this.requestWithMacNativeHttp(method, url, options) }
         : await axios({ ...options, url });
-      
+
       logger.info(`Arduino ${method} ${endpoint}: ✅ Success`);
       return response.data;
     } catch (error) {
@@ -391,8 +391,8 @@ class ArduinoAPI {
 
       logger.error(`Arduino ${method} ${endpoint} ❌ error: ${error.message}`);
       if (error.response) {
-        const errorMsg = error.response.data?.error || 
-                        error.response.data?.message || 
+        const errorMsg = error.response.data?.error ||
+                        error.response.data?.message ||
                         `Arduino ${method} hiba: ${error.response.status}`;
         throw new Error(errorMsg);
       } else if (error.code === 'ECONNABORTED') {
@@ -562,7 +562,7 @@ class LEDAPI {
     try {
       const response = await arduino.get('/api/led/status');
       const leds = response.leds || response.strips || [];
-      
+
       if (id !== -1) {
         const led = leds.find(l => l.id === id);
         if (led) {
@@ -570,7 +570,7 @@ class LEDAPI {
         }
         return null;
       }
-      
+
       return { leds };
     } catch (error) {
       logger.error(`LED ${id} STATUS ❌ error: ${error.message}`);
@@ -808,8 +808,8 @@ const readArduino = (endpoint) => async (req, res) => {
     res.json(await arduino.get(endpoint));
   } catch (error) {
     logger.error(`Read Arduino ${endpoint} error:`, error);
-    res.status(502).json({ 
-      error: error.message, 
+    res.status(502).json({
+      error: error.message,
       code: 'ARDUINO_TIMEOUT',
       timestamp: new Date().toISOString()
     });
@@ -823,8 +823,8 @@ const commandArduino = (endpoint, event = null) => async (req, res) => {
     res.json(result);
   } catch (error) {
     logger.error(`Command Arduino ${endpoint} error:`, error);
-    res.status(502).json({ 
-      error: error.message, 
+    res.status(502).json({
+      error: error.message,
       code: 'ARDUINO_TIMEOUT',
       timestamp: new Date().toISOString()
     });
@@ -854,9 +854,9 @@ app.get('/api/arduino/schedules/debug', readArduino('/api/schedule/debug'));
 app.get('/api/arduino/schedules/day/:day', async (req, res) => {
   const day = Number(req.params.day);
   if (!Number.isInteger(day) || day < 0 || day > 6) {
-    return res.status(400).json({ 
-      error: 'A nap indexe 0 (Hétfő) és 6 (Vasárnap) közötti egész szám legyen.', 
-      code: 'INVALID_DAY' 
+    return res.status(400).json({
+      error: 'A nap indexe 0 (Hétfő) és 6 (Vasárnap) közötti egész szám legyen.',
+      code: 'INVALID_DAY'
     });
   }
   try {
@@ -870,9 +870,9 @@ app.get('/api/arduino/schedules/day/:day', async (req, res) => {
 app.get('/api/arduino/schedules/file/:filename', async (req, res) => {
   const filename = req.params.filename;
   if (!/^S[0-6]L[1-3]\.JS$/i.test(filename)) {
-    return res.status(400).json({ 
-      error: 'Érvénytelen ütemezésfájl-név. Formátum: S0-L1.JS', 
-      code: 'INVALID_FILENAME' 
+    return res.status(400).json({
+      error: 'Érvénytelen ütemezésfájl-név. Formátum: S0-L1.JS',
+      code: 'INVALID_FILENAME'
     });
   }
   try {
@@ -1304,9 +1304,9 @@ app.delete('/api/local-schedules/:id', (req, res) => {
 app.post('/api/arduino/schedules/test', async (req, res) => {
   const { time } = req.body;
   if (typeof time !== 'string' || !/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) {
-    return res.status(400).json({ 
-      error: 'Az idő formátuma HH:MM legyen.', 
-      code: 'INVALID_TIME' 
+    return res.status(400).json({
+      error: 'Az idő formátuma HH:MM legyen.',
+      code: 'INVALID_TIME'
     });
   }
   try {
@@ -1324,9 +1324,9 @@ app.post('/api/arduino/schedules/test', async (req, res) => {
 app.post('/api/upload/schedule', upload.single('file'), async (req, res) => {
   try {
     if (!req.file) {
-      return res.status(400).json({ 
-        error: 'Nincs fájl feltöltve', 
-        code: 'NO_FILE' 
+      return res.status(400).json({
+        error: 'Nincs fájl feltöltve',
+        code: 'NO_FILE'
       });
     }
 
@@ -1335,9 +1335,9 @@ app.post('/api/upload/schedule', upload.single('file'), async (req, res) => {
 
     // Validate filename format
     if (!/^S[0-6]L[1-3]\.JS$/i.test(filename)) {
-      return res.status(400).json({ 
-        error: 'Érvénytelen ütemezésfájl-név. Formátum: S0-L1.JS', 
-        code: 'INVALID_FILENAME' 
+      return res.status(400).json({
+        error: 'Érvénytelen ütemezésfájl-név. Formátum: S0-L1.JS',
+        code: 'INVALID_FILENAME'
       });
     }
 
@@ -1345,8 +1345,8 @@ app.post('/api/upload/schedule', upload.single('file'), async (req, res) => {
     try {
       JSON.parse(content);
     } catch (parseError) {
-      return res.status(400).json({ 
-        error: 'Érvénytelen JSON formátum', 
+      return res.status(400).json({
+        error: 'Érvénytelen JSON formátum',
         code: 'INVALID_JSON',
         details: parseError.message
       });
@@ -1365,9 +1365,9 @@ app.post('/api/upload/schedule', upload.single('file'), async (req, res) => {
     });
   } catch (error) {
     logger.error(`Schedule upload error:`, error);
-    res.status(500).json({ 
-      error: error.message, 
-      code: 'UPLOAD_ERROR' 
+    res.status(500).json({
+      error: error.message,
+      code: 'UPLOAD_ERROR'
     });
   }
 });
@@ -1716,7 +1716,7 @@ app.get('/', async (req, res) => {
   try {
     const status = await arduino.get('/api/status');
     return res.type('html').send(renderControlDashboard());
-    
+
     if (fs.existsSync(path.join(__dirname, 'public', 'index.html'))) {
       res.sendFile(path.join(__dirname, 'public', 'index.html'));
     } else {
@@ -1729,7 +1729,7 @@ app.get('/', async (req, res) => {
           <title>Arduino LED Vezérlő</title>
           <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
-            body { 
+            body {
               font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
               background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
               min-height: 100vh;
@@ -1987,7 +1987,7 @@ app.get('/', async (req, res) => {
                 </div>
               </div>
             </div>
-            
+
             <div class="content">
               <div class="info-grid">
                 <div class="info-card">
@@ -2008,7 +2008,7 @@ app.get('/', async (req, res) => {
                 <div id="apiEndpoints"></div>
               </div>
             </div>
-            
+
             <div class="footer">
               <p>Arduino LED Controller v${config.version} | Web szerver: port ${config.port}</p>
             </div>
@@ -2026,7 +2026,7 @@ app.get('/', async (req, res) => {
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Hiba - Arduino LED Vezérlő</title>
         <style>
-          body { 
+          body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
             min-height: 100vh;
@@ -2132,8 +2132,8 @@ io.on('connection', (socket) => {
       socket.emit('arduinoStatus', status);
     })
     .catch(error => {
-      socket.emit('arduinoOffline', { 
-        message: error.message, 
+      socket.emit('arduinoOffline', {
+        message: error.message,
         timestamp: new Date().toISOString(),
         code: 'ARDUINO_OFFLINE'
       });
@@ -2149,8 +2149,8 @@ io.on('connection', (socket) => {
       const status = await arduino.get('/api/status');
       socket.emit('arduinoStatus', status);
     } catch (error) {
-      socket.emit('arduinoOffline', { 
-        message: error.message, 
+      socket.emit('arduinoOffline', {
+        message: error.message,
         timestamp: new Date().toISOString(),
         code: 'ARDUINO_OFFLINE'
       });
@@ -2164,8 +2164,8 @@ cron.schedule('*/30 * * * * *', async () => {
     const status = await arduino.get('/api/status');
     io.emit('arduinoStatus', status);
   } catch (error) {
-    io.emit('arduinoOffline', { 
-      message: 'Arduino nem elérhető', 
+    io.emit('arduinoOffline', {
+      message: 'Arduino nem elérhető',
       timestamp: new Date().toISOString(),
       code: 'ARDUINO_OFFLINE'
     });
@@ -2176,13 +2176,13 @@ cron.schedule('*/30 * * * * *', async () => {
 
 app.use((error, req, res, next) => {
   logger.error('❌ Server error:', error.stack);
-  
+
   const statusCode = error.statusCode || 500;
-  const errorMessage = process.env.NODE_ENV === 'development' 
-    ? (error.message || 'Ismeretlen hiba') 
+  const errorMessage = process.env.NODE_ENV === 'development'
+    ? (error.message || 'Ismeretlen hiba')
     : 'Belső szerver hiba';
-  
-  res.status(statusCode).json({ 
+
+  res.status(statusCode).json({
     error: errorMessage,
     code: error.code || 'INTERNAL_ERROR',
     timestamp: new Date().toISOString()
@@ -2190,7 +2190,7 @@ app.use((error, req, res, next) => {
 });
 
 app.use((err, req, res, next) => {
-  res.status(err.status || 404).json({ 
+  res.status(err.status || 404).json({
     error: err.message || 'Végpont nem található',
     code: err.code || 'NOT_FOUND',
     timestamp: new Date().toISOString()
