@@ -155,19 +155,26 @@ write_stamp() {
   fi
 }
 
+# Az npm-et mindig az APP_DIR könyvtárból indítjuk. A package.json és a
+# package-lock.json abszolút ellenőrzése önmagában nem állítja be az npm
+# munkakönyvtárát.
 run_npm() {
   if [[ "${EUID}" -eq 0 ]]; then
     runuser -u "${SERVICE_USER}" -- env \
       HOME="${STATE_DIR}" \
       NODE_ENV=production \
       npm_config_cache="${CACHE_DIR}" \
-      "$@"
+      bash -c 'cd "$1" && shift && exec "$@"' \
+      bash "${APP_DIR}" "$@"
   else
-    env \
-      HOME="${STATE_DIR}" \
-      NODE_ENV=production \
-      npm_config_cache="${CACHE_DIR}" \
-      "$@"
+    (
+      cd "${APP_DIR}"
+      env \
+        HOME="${STATE_DIR}" \
+        NODE_ENV=production \
+        npm_config_cache="${CACHE_DIR}" \
+        "$@"
+    )
   fi
 }
 
