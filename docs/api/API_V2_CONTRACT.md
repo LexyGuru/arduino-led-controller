@@ -315,3 +315,99 @@ inkompatibilis módosítása új fő API-verziót igényel.
 
 A legacy `/api/...` végpontok csak dokumentált átmeneti időszak után
 vezethetők ki.
+
+
+## 7. Schedule végpontok
+
+Az API v2 schedule végpontjai az Arduino saját SD/EEPROM időzítési
+rendszerét kezelik. A régi helyi `weekly-led-schedules.json` API ebben a
+munkacsomagban még változatlanul a legacy szerverben marad.
+
+### Jogosultságok
+
+- `schedule:read`: `viewer`, `operator`, `admin`
+- `schedule:write`: `operator`, `admin`
+- `schedule:admin`: `admin`
+
+### `GET /api/v2/schedules`
+
+Összesített Arduino schedule-állapot és fájllista.
+
+### `GET /api/v2/schedules/status`
+
+Az Arduino `/api/schedule/status` válasza.
+
+### `GET /api/v2/schedules/files`
+
+Az Arduino schedule-fájllistája.
+
+### `GET /api/v2/schedules/days/:day`
+
+A nap indexe `0` (hétfő) és `6` (vasárnap) közötti egész szám.
+
+### `GET /api/v2/schedules/files/:filename`
+
+A fájlnév formátuma: `S0L1.JS` – `S6L3.JS`.
+
+### `GET /api/v2/schedules/debug`
+
+Adminisztrátori Arduino schedule debug válasz.
+
+### `POST /api/v2/schedules/actions/reload`
+
+Az Arduino schedule-fájljainak újratöltése.
+
+### `POST /api/v2/schedules/actions/generate`
+
+Az Arduino schedule-fájljainak újragenerálása.
+
+### `POST /api/v2/schedules/actions/test`
+
+```json
+{
+  "time": "19:30"
+}
+```
+
+### `POST /api/v2/schedules/actions/sync`
+
+Legfeljebb 60 hordozható heti időzítést kódol 27 bájtos rekordokra, majd
+sorban feltölti az Arduino EEPROM-időzítőjébe.
+
+```json
+{
+  "schedules": [
+    {
+      "day": 1,
+      "time": "19:30",
+      "leds": [
+        {
+          "id": 1,
+          "enabled": true,
+          "brightness": 180,
+          "effect": 2,
+          "speed": 50,
+          "color": [255, 40, 0]
+        }
+      ]
+    }
+  ]
+}
+```
+
+A hordozható időzítés `day` mezője `1` (hétfő) és `7` (vasárnap) közötti.
+
+### `DELETE /api/v2/schedules`
+
+Adminisztrátori művelet, amely törli az Arduino schedule-állományát.
+
+Lehetséges schedule hibák:
+
+- `INVALID_SCHEDULE_DAY_INDEX` – 400
+- `INVALID_SCHEDULE_WEEKDAY` – 400
+- `INVALID_SCHEDULE_TIME` – 400
+- `INVALID_SCHEDULE_FILENAME` – 400
+- `INVALID_SCHEDULE_LED_*` – 400
+- `EMPTY_SCHEDULE_LIST` – 400
+- `TOO_MANY_SCHEDULES` – 400
+- `SCHEDULE_SYNC_MISMATCH` – 502

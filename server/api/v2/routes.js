@@ -73,14 +73,10 @@ function createApiV2Handlers({
             scheme: 'Bearer',
             header:
               'Authorization',
-            protectedEndpoints: [
-              '/api/v2/system/status',
-              '/api/v2/arduino/status',
-              '/api/v2/leds',
-              '/api/v2/leds/:id',
-              '/api/v2/leds/actions/all-on',
-              '/api/v2/leds/actions/all-off',
-              '/api/v2/leds/actions/reset'
+            roles: [
+              'admin',
+              'operator',
+              'viewer'
             ]
           },
           endpoints: {
@@ -96,12 +92,16 @@ function createApiV2Handlers({
               '/api/v2/leds',
             led:
               '/api/v2/leds/:id',
-            ledAllOn:
-              '/api/v2/leds/actions/all-on',
-            ledAllOff:
-              '/api/v2/leds/actions/all-off',
-            ledReset:
-              '/api/v2/leds/actions/reset'
+            schedules:
+              '/api/v2/schedules',
+            scheduleStatus:
+              '/api/v2/schedules/status',
+            scheduleFiles:
+              '/api/v2/schedules/files',
+            scheduleDay:
+              '/api/v2/schedules/days/:day',
+            scheduleFile:
+              '/api/v2/schedules/files/:filename'
           }
         }
       );

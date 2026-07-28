@@ -4,20 +4,18 @@
 
 ```text
 server2_final.js
-  ├─ runtime-paths
-  ├─ config
-  ├─ logger
-  ├─ runtime-context
+  ├─ core konfiguráció és runtime context
   ├─ ArduinoClient
+  ├─ LedService
+  ├─ ScheduleService
   ├─ ExpressBootstrapRegistry
   │    ├─ health route installer
   │    └─ API v2 route installer
   └─ server2_legacy.js
 ```
 
-A `server2_legacy.js` jelenleg még a régi alkalmazás fő része. Az új modulok az
-Express alkalmazás létrehozásakor automatikusan bekerülnek, ezért a legacy
-végpontok tovább működnek.
+A `server2_legacy.js` továbbra is kiszolgálja a régi webes és `/api/...`
+végpontokat. Az új API v2 réteg párhuzamosan működik.
 
 ## Core modulok
 
@@ -25,46 +23,40 @@ végpontok tovább működnek.
 |---|---|
 | `server/core/runtime-paths.js` | Fájlrendszer-útvonalak |
 | `server/core/config.js` | Környezeti és runtime konfiguráció |
-| `server/core/logger.js` | Winston logger létrehozása |
-| `server/core/runtime-context.js` | Megosztott futásidejű objektumok |
+| `server/core/logger.js` | Winston logger factory |
+| `server/core/runtime-context.js` | Megosztott futásidejű szolgáltatások |
 
-## Arduino és LED modulok
+## Arduino, LED és schedule modulok
 
 | Modul | Feladat |
 |---|---|
-| `server/arduino/arduino-client.js` | Sorba állított közös Arduino HTTP-kliens |
+| `server/arduino/arduino-client.js` | Sorba állított Arduino HTTP-kliens |
 | `server/arduino/arduino-error.js` | Egységes Arduino klienshibák |
-| `server/led/led-validation.js` | LED-parancsok és színek validációja |
-| `server/led/led-service.js` | LED állapot és vezérlési szolgáltatás |
-| `server/led/led-error.js` | LED validációs és szolgáltatáshibák |
+| `server/led/led-validation.js` | LED-parancsvalidáció |
+| `server/led/led-service.js` | LED állapot és vezérlés |
+| `server/schedule/schedule-validation.js` | Nap-, idő-, fájl- és LED-validáció |
+| `server/schedule/schedule-codec.js` | 27 bájtos EEPROM schedule-kódolás |
+| `server/schedule/schedule-service.js` | Arduino schedule lekérdezések és műveletek |
+| `server/schedule/schedule-error.js` | Schedule validációs és szolgáltatáshibák |
 
-## Express platform
+## Express és API v2
 
 | Modul | Feladat |
 |---|---|
-| `server/express/express-bootstrap-registry.js` | Route installerek regisztrálása és az Express factory egyszeri bővítése |
+| `server/express/express-bootstrap-registry.js` | Express route installerek |
 | `server/health-bootstrap.js` | Health route-ok |
-| `server/api/v2/api-v2-bootstrap.js` | API v2 route-ok összekapcsolása |
-
-## API v2 modulok
-
-| Modul | Feladat |
-|---|---|
-| `auth.js` | Bearer token feldolgozás, szerepkör és principal |
-| `cors-security.js` | CORS és security response headerek |
-| `readiness.js` | API- és könyvtárkészenléti ellenőrzés |
-| `arduino-error-mapper.js` | Arduino klienshiba → HTTP-hiba |
-| `routes.js` | Rendszer- és Arduino-végpontkezelők |
-| `authorize.js` | Jogosultsági middleware |
-| `led-routes.js` | API v2 LED-végpontok |
-| `error-handler.js` | 404 és központi hibakezelés |
-| `http-error.js` | HTTP hibaosztály |
-| `http-response.js` | Egységes sikeres és hibaválasz |
+| `server/api/v2/auth.js` | Bearer token és principal |
+| `server/api/v2/authorize.js` | Jogosultsági middleware |
+| `server/api/v2/routes.js` | Rendszer- és Arduino-route-ok |
+| `server/api/v2/led-routes.js` | LED API v2 |
+| `server/api/v2/schedule-routes.js` | Arduino schedule API v2 |
+| `server/api/v2/error-handler.js` | Központi hibakezelés |
+| `server/api/v2/http-response.js` | Egységes válaszformátum |
 
 ## Következő kiemelendő területek
 
-1. Legacy felhasználói hitelesítés.
-2. LED szolgáltatás és API v2 LED route-ok.
-3. Schedule szolgáltatás és API v2 naptárroute-ok.
-4. Firmware/OTA szolgáltatás.
-5. Socket.IO és konzolstream.
+1. Helyi schedule repository és legacy schedule memória egységesítése.
+2. Legacy felhasználói hitelesítés külön szolgáltatásba emelése.
+3. Firmware/OTA szolgáltatás és API v2 végpontok.
+4. Socket.IO és konzolstream.
+5. Legacy LED-route-ok átállítása a közös LED szolgáltatásra.

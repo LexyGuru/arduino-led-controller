@@ -38,6 +38,10 @@ const {
   installLedRoutes
 } = require('./led-routes');
 
+const {
+  installScheduleRoutes
+} = require('./schedule-routes');
+
 function installApiV2Routes(app) {
   const handlers =
     createApiV2Handlers({
@@ -96,6 +100,7 @@ function installApiV2Routes(app) {
   );
 
   installLedRoutes(app);
+  installScheduleRoutes(app);
 
   app.use(
     '/api/v2',

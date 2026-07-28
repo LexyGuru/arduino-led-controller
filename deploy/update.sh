@@ -88,6 +88,10 @@ check_node_files() {
   node --check "${root_dir}/server/led/led-error.js"
   node --check "${root_dir}/server/led/led-validation.js"
   node --check "${root_dir}/server/led/led-service.js"
+  node --check "${root_dir}/server/schedule/schedule-error.js"
+  node --check "${root_dir}/server/schedule/schedule-validation.js"
+  node --check "${root_dir}/server/schedule/schedule-codec.js"
+  node --check "${root_dir}/server/schedule/schedule-service.js"
   node --check "${root_dir}/server/express/express-bootstrap-registry.js"
   node --check "${root_dir}/server/health-bootstrap.js"
   node --check "${root_dir}/server/api/v2/http-error.js"
@@ -100,12 +104,15 @@ check_node_files() {
   node --check "${root_dir}/server/api/v2/error-handler.js"
   node --check "${root_dir}/server/api/v2/routes.js"
   node --check "${root_dir}/server/api/v2/led-routes.js"
+  node --check "${root_dir}/server/api/v2/schedule-routes.js"
   node --check "${root_dir}/server/api/v2/api-v2-bootstrap.js"
   node --check "${root_dir}/scripts/test-core-modules.js"
   node --check "${root_dir}/scripts/test-arduino-client.js"
   node --check "${root_dir}/scripts/test-server-platform-modules.js"
   node --check "${root_dir}/scripts/test-led-service.js"
   node --check "${root_dir}/scripts/test-api-v2-led.js"
+  node --check "${root_dir}/scripts/test-schedule-service.js"
+  node --check "${root_dir}/scripts/test-api-v2-schedule.js"
   node --check "${root_dir}/scripts/test-health-endpoints.js"
   node --check "${root_dir}/scripts/test-api-v2.js"
 }
@@ -362,6 +369,8 @@ check_node_files "${CHECK_DIR}"
   npm run test:server-platform
   npm run test:led-service
   npm run test:api-v2-led
+  npm run test:schedule-service
+  npm run test:api-v2-schedule
   npm run test:health
   npm run test:api-v2
 )

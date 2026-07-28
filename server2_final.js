@@ -4,8 +4,8 @@
  * V5 kompatibilitási indítófájl.
  *
  * A monolitikus alkalmazás továbbra is a server2_legacy.js fájlban marad.
- * Az új V5 réteg központi runtime contextet, közös Arduino- és LED
- * szolgáltatást, valamint egyetlen Express bootstrap-regisztert használ.
+ * Az új V5 réteg közös Arduino-, LED- és schedule szolgáltatásokat,
+ * valamint egyetlen Express bootstrap-regisztert használ.
  */
 
 require('dotenv').config();
@@ -33,6 +33,10 @@ const {
 const {
   LedService
 } = require('./server/led/led-service');
+
+const {
+  ScheduleService
+} = require('./server/schedule/schedule-service');
 
 const {
   installExpressFactoryPatch,
@@ -77,13 +81,20 @@ const ledService =
     logger
   });
 
+const scheduleService =
+  new ScheduleService({
+    arduinoClient,
+    logger
+  });
+
 setRuntimeContext({
   startedAt: new Date(),
   config,
   paths,
   logger,
   arduinoClient,
-  ledService
+  ledService,
+  scheduleService
 });
 
 registerExpressInstaller(
