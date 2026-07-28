@@ -10,7 +10,9 @@ const SERVICE_NAME = 'arduino-led-controller';
 
 function readJsonFile(filePath) {
   try {
-    if (!fs.existsSync(filePath)) return null;
+    if (!fs.existsSync(filePath)) {
+      return null;
+    }
 
     return JSON.parse(
       fs.readFileSync(filePath, 'utf8')
@@ -44,37 +46,26 @@ function readProjectVersion(paths) {
   return '1.0.0';
 }
 
-function integerInRange(
-  value,
-  fallback,
-  minimum,
-  maximum
-) {
+function integerInRange(value, fallback, minimum, maximum) {
   const parsed = Number(value);
 
-  if (!Number.isInteger(parsed)) return fallback;
-
-  if (parsed < minimum || parsed > maximum) {
+  if (!Number.isInteger(parsed)) {
     return fallback;
   }
 
-  return parsed;
+  return parsed >= minimum && parsed <= maximum
+    ? parsed
+    : fallback;
 }
 
-function numberInRange(
-  value,
-  fallback,
-  minimum,
-  maximum
-) {
+function numberInRange(value, fallback, minimum, maximum) {
   const parsed = Number(value);
 
-  if (!Number.isFinite(parsed)) return fallback;
+  if (!Number.isFinite(parsed)) {
+    return fallback;
+  }
 
-  return Math.min(
-    maximum,
-    Math.max(minimum, parsed)
-  );
+  return Math.min(maximum, Math.max(minimum, parsed));
 }
 
 function booleanFromEnvironment(value, fallback = false) {
@@ -92,7 +83,9 @@ function normalizePrivatePath(value) {
     .trim()
     .replace(/\/+$/, '');
 
-  if (!normalized) return '';
+  if (!normalized) {
+    return '';
+  }
 
   return normalized.startsWith('/')
     ? normalized
@@ -104,9 +97,7 @@ function isConfiguredSecret(value, minimumLength) {
 
   return (
     normalized.length >= minimumLength &&
-    !/CHANGE_THIS|CHANGEME|REPLACE_ME/i.test(
-      normalized
-    )
+    !/CHANGE_THIS|CHANGEME|REPLACE_ME/i.test(normalized)
   );
 }
 
@@ -121,10 +112,39 @@ function allowedOriginsFromEnvironment(environment) {
     .filter(Boolean);
 }
 
+function apiTokensFromEnvironment(environment) {
+  const raw = String(
+    environment.API_V2_TOKENS_JSON || ''
+  ).trim();
+
+  if (!raw) {
+    return {
+      tokens: [],
+      parseError: null
+    };
+  }
+
+  try {
+    const parsed = JSON.parse(raw);
+
+    if (!Array.isArray(parsed)) {
+      throw new Error('Az API_V2_TOKENS_JSON tömb legyen.');
+    }
+
+    return {
+      tokens: parsed,
+      parseError: null
+    };
+  } catch (error) {
+    return {
+      tokens: [],
+      parseError: error.message
+    };
+  }
+}
+
 function loadRuntimeSettings(paths) {
-  const saved = readJsonFile(
-    paths.runtimeSettingsFile
-  );
+  const saved = readJsonFile(paths.runtimeSettingsFile);
 
   return saved && typeof saved === 'object'
     ? saved
@@ -150,8 +170,7 @@ function deepFreeze(value) {
 }
 
 function loadRuntimeConfig(options = {}) {
-  const environment =
-    options.environment || process.env;
+  const environment = options.environment || process.env;
 
   const paths =
     options.paths ||
@@ -187,14 +206,28 @@ function loadRuntimeConfig(options = {}) {
     65535
   );
 
+  const tokenConfiguration =
+    apiTokensFromEnvironment(environment);
+
+  const runnerMode = ['manual', 'active'].includes(
+    String(
+      environment.LOCAL_SCHEDULE_RUNNER_MODE ||
+      'manual'
+    ).trim().toLowerCase()
+  )
+    ? String(
+        environment.LOCAL_SCHEDULE_RUNNER_MODE ||
+        'manual'
+      ).trim().toLowerCase()
+    : 'manual';
+
   const configuration = {
     service: {
       name: SERVICE_NAME,
       version: readProjectVersion(paths),
       environment:
-        String(
-          environment.NODE_ENV || 'production'
-        ).trim() || 'production'
+        String(environment.NODE_ENV || 'production').trim() ||
+        'production'
     },
     http: {
       port: integerInRange(
@@ -204,13 +237,11 @@ function loadRuntimeConfig(options = {}) {
         65535
       ),
       bindHost:
-        String(
-          environment.BIND_HOST || '0.0.0.0'
-        ).trim() || '0.0.0.0',
+        String(environment.BIND_HOST || '0.0.0.0').trim() ||
+        '0.0.0.0',
       allowedOrigin:
-        String(
-          environment.ALLOWED_ORIGIN || '*'
-        ).trim() || '*'
+        String(environment.ALLOWED_ORIGIN || '*').trim() ||
+        '*'
     },
     arduino: {
       ip: arduinoIP,
@@ -259,10 +290,22 @@ function loadRuntimeConfig(options = {}) {
             'admin'
           ).trim().toLowerCase()
         : 'admin',
+      tokens: tokenConfiguration.tokens,
+      tokensParseError: tokenConfiguration.parseError,
       allowedOrigins:
-        allowedOriginsFromEnvironment(
-          environment
-        )
+        allowedOriginsFromEnvironment(environment)
+    },
+    schedule: {
+      runnerMode,
+      timeZone:
+        String(environment.TZ || 'Europe/Vienna').trim() ||
+        'Europe/Vienna',
+      runnerIntervalMs: numberInRange(
+        environment.LOCAL_SCHEDULE_RUNNER_INTERVAL_MS,
+        15000,
+        5000,
+        60000
+      )
     },
     firmware: {
       repository:
@@ -275,8 +318,36 @@ function loadRuntimeConfig(options = {}) {
           environment.FIRMWARE_RELEASE_TAG ||
           'firmware-latest'
         ).trim(),
-      otaPassword: String(
-        environment.OTA_PASSWORD || ''
+      githubToken:
+        String(environment.GITHUB_TOKEN || '').trim(),
+      otaPassword:
+        String(environment.OTA_PASSWORD || ''),
+      otaPort: integerInRange(
+        environment.OTA_PORT,
+        65280,
+        1,
+        65535
+      ),
+      otaUsername:
+        String(environment.OTA_USERNAME || 'arduino').trim() ||
+        'arduino',
+      maximumBytes: numberInRange(
+        environment.FIRMWARE_MAXIMUM_BYTES,
+        16 * 1024 * 1024,
+        1024,
+        64 * 1024 * 1024
+      ),
+      uploadTimeoutMs: numberInRange(
+        environment.FIRMWARE_UPLOAD_TIMEOUT_MS,
+        240000,
+        30000,
+        600000
+      ),
+      restartTimeoutMs: numberInRange(
+        environment.FIRMWARE_RESTART_TIMEOUT_MS,
+        90000,
+        10000,
+        300000
       )
     },
     security: {
@@ -287,9 +358,8 @@ function loadRuntimeConfig(options = {}) {
     },
     logging: {
       level:
-        String(
-          environment.LOG_LEVEL || 'info'
-        ).trim() || 'info'
+        String(environment.LOG_LEVEL || 'info').trim() ||
+        'info'
     },
     paths
   };
@@ -300,6 +370,7 @@ function loadRuntimeConfig(options = {}) {
 module.exports = {
   SERVICE_NAME,
   allowedOriginsFromEnvironment,
+  apiTokensFromEnvironment,
   booleanFromEnvironment,
   deepFreeze,
   integerInRange,

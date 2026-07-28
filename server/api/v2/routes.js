@@ -17,6 +17,10 @@ const {
   mapArduinoClientError
 } = require('./arduino-error-mapper');
 
+const {
+  resolveApiTokenStore
+} = require('./auth');
+
 function asyncRoute(handler) {
   return (req, res, next) => {
     Promise.resolve(
@@ -71,13 +75,20 @@ function createApiV2Handlers({
             'alpha',
           authentication: {
             scheme: 'Bearer',
-            header:
-              'Authorization',
             roles: [
               'admin',
               'operator',
               'viewer'
-            ]
+            ],
+            configuredTokens:
+              resolveApiTokenStore(
+                runtime
+              )
+                .publicSummary()
+                .filter(
+                  (entry) =>
+                    entry.enabled
+                ).length
           },
           endpoints: {
             discovery:
@@ -90,18 +101,12 @@ function createApiV2Handlers({
               '/api/v2/arduino/status',
             leds:
               '/api/v2/leds',
-            led:
-              '/api/v2/leds/:id',
             schedules:
               '/api/v2/schedules',
-            scheduleStatus:
-              '/api/v2/schedules/status',
-            scheduleFiles:
-              '/api/v2/schedules/files',
-            scheduleDay:
-              '/api/v2/schedules/days/:day',
-            scheduleFile:
-              '/api/v2/schedules/files/:filename'
+            localSchedules:
+              '/api/v2/local-schedules',
+            firmwareStatus:
+              '/api/v2/firmware/status'
           }
         }
       );
@@ -182,13 +187,28 @@ function createApiV2Handlers({
           principal:
             req.apiPrincipal
               ? {
+                  subject:
+                    req.apiPrincipal
+                      .subject,
+                  type:
+                    req.apiPrincipal
+                      .type,
                   role:
-                    req.apiPrincipal.role,
+                    req.apiPrincipal
+                      .role,
                   permissions:
                     req.apiPrincipal
                       .permissions
                 }
               : null,
+          localScheduleRunner:
+            runtime.localScheduleRunner
+              .getStatus(),
+          firmware: {
+            state:
+              runtime.firmwareService
+                .state.state
+          },
           compatibility: {
             legacyApiEnabled:
               true,

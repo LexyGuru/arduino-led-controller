@@ -183,7 +183,7 @@ Lehetséges hibák:
 
 Visszaadja az Arduino `/api/led/status` válaszából normalizált LED-listát.
 
-**Jogosultság:** `led:read`  
+**Jogosultság:** `led:read`
 **Szerepkörök:** `viewer`, `operator`, `admin`
 
 ### `GET /api/v2/leds/:id`
@@ -227,7 +227,7 @@ Határértékek:
 - `speed`: 1–100;
 - RGB komponensek: 0–255.
 
-**Jogosultság:** `led:write`  
+**Jogosultság:** `led:write`
 **Szerepkörök:** `operator`, `admin`
 
 ### `POST /api/v2/leds/actions/all-on`
@@ -246,7 +246,7 @@ Kikapcsolja mindhárom LED-szalagot.
 
 Alaphelyzetbe állítja a LED-vezérlést.
 
-**Jogosultság:** `led:admin`  
+**Jogosultság:** `led:admin`
 **Szerepkör:** `admin`
 
 Lehetséges LED-hibák:
@@ -411,3 +411,124 @@ Lehetséges schedule hibák:
 - `EMPTY_SCHEDULE_LIST` – 400
 - `TOO_MANY_SCHEDULES` – 400
 - `SCHEDULE_SYNC_MISMATCH` – 502
+
+
+## 8. Többtokenes API v2 hitelesítés
+
+Az `API_V2_TOKENS_JSON` több külön Bearer tokent támogat. Minden tokenhez
+azonosító, szerepkör és engedélyezett állapot tartozik. A régi
+`API_V2_TOKEN` és `API_V2_ROLE` beállítás továbbra is működik tartalékként.
+
+Példa:
+
+```json
+[
+  {
+    "id": "desktop",
+    "token": "LEGALÁBB_32_KARAKTERES_VÉLETLEN_TOKEN",
+    "role": "admin",
+    "enabled": true
+  },
+  {
+    "id": "mobile",
+    "token": "MÁSIK_LEGALÁBB_32_KARAKTERES_TOKEN",
+    "role": "operator",
+    "enabled": true
+  }
+]
+```
+
+A nyilvános discovery válasz csak az aktív tokenek darabszámát mutatja;
+tokenazonosítót, szerepkört vagy tokenértéket nem tesz közzé.
+
+## 9. Helyi schedule repository
+
+A helyi repository atomikus fájlcserét, sorba állított írásokat és import
+előtti automatikus backupot használ.
+Alapértelmezésben külön `weekly-led-schedules-v5.json` fájlt használ, így a
+legacy schedule memória nem írja felül közvetlenül.
+
+### `GET /api/v2/local-schedules`
+
+A helyi heti időzítések listája.
+
+### `GET /api/v2/local-schedules/export`
+
+Hordozható exportdokumentumot ad vissza.
+
+### `POST /api/v2/local-schedules`
+
+Egy vagy több napra új időzítést hoz létre.
+
+```json
+{
+  "days": [1, 3, 5],
+  "time": "19:30",
+  "leds": [
+    {
+      "id": 1,
+      "enabled": true,
+      "brightness": 180,
+      "effect": 2,
+      "speed": 50,
+      "color": [255, 40, 0]
+    }
+  ]
+}
+```
+
+### `POST /api/v2/local-schedules/import`
+
+A teljes helyi állományt lecseréli, előtte backupot készít.
+
+### `DELETE /api/v2/local-schedules/:id`
+
+Egy helyi időzítést töröl.
+
+### `POST /api/v2/local-schedules/actions/sync-arduino`
+
+A helyi repository tartalmát az Arduino EEPROM-időzítőjébe szinkronizálja.
+
+### `GET /api/v2/local-schedules/runner`
+
+Az új V5 futtató állapota.
+
+### `POST /api/v2/local-schedules/runner/actions/tick`
+
+Manuálisan lefuttat egy időzítési ellenőrzést. A `force: true` ugyanabban a
+percben is engedélyezi az ismételt tesztet.
+
+Az automatikus runner alapértelmezésben `manual`, mert a legacy szerver még
+saját percenkénti időzítésfuttatót használ.
+
+## 10. Firmware és OTA
+
+### `GET /api/v2/firmware/status`
+
+Visszaadja az Arduino online állapotát, a telepített és elérhető firmware
+adatait, az OTA konfigurációt és az aktuális frissítési állapotgépet.
+
+### `POST /api/v2/firmware/actions/check`
+
+Lekéri és ellenőrzi a konfigurált GitHub release firmware-artifactját.
+
+### `POST /api/v2/firmware/actions/update`
+
+Adminisztrátori művelet. `202 Accepted` választ ad, majd:
+
+1. ellenőrzi az Arduino hálózati és OTA-készenlétét;
+2. lekéri a `.ino.bin` és `.ino.bin.sha256` asseteket;
+3. ellenőrzi a SHA-256 értéket és a GitHub digestet;
+4. méretkorláttal lementi a binárist;
+5. argumentumtömbbel, shell nélkül elindítja az `arduinoOTA` eszközt;
+6. megvárja az Arduino visszajelentkezését és az új verziót.
+
+Lehetséges firmware hibák:
+
+- `FIRMWARE_UPDATE_BUSY` – 409
+- `OTA_NOT_CONFIGURED` – 503
+- `ARDUINO_NETWORK_CONFIG_MISSING` – 409
+- `FIRMWARE_ARTIFACT_INCOMPLETE` – 502
+- `FIRMWARE_BINARY_INVALID` – 502
+- `FIRMWARE_CHECKSUM_MISMATCH` – 502
+- `FIRMWARE_DIGEST_MISMATCH` – 502

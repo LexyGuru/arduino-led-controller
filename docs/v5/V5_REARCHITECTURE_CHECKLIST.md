@@ -1,7 +1,7 @@
 # V5 újraarchitektúra – állapot-checklist
 
-Utolsó frissítés: 2026-07-28  
-Integrációs ág: `next/v5-rearchitecture`  
+Utolsó frissítés: 2026-07-28
+Integrációs ág: `next/v5-rearchitecture`
 Munkacsomag: `feature/v5-server-modularization`
 
 ## Jelmagyarázat
@@ -10,88 +10,103 @@ Munkacsomag: `feature/v5-server-modularization`
 - `[-]` folyamatban
 - `[ ]` még nem kezdődött el
 
-## Repository és LXC alapok
+## Repository és LXC
 
-- [x] Stabil produkciós `main` ág
-- [x] `next/v5-rearchitecture` integrációs ág
-- [x] V5 verziószinkron és lockfile-ok
-- [x] Baseline és repository-validátor
-- [x] LXC függőség- és tulajdonosjavítás
-- [x] Worktree frissítés előtti teszt
+- [x] Stabil `main` és külön `next` ág
+- [x] V5 verziószinkron, lockfile-ok és baseline
+- [x] Repository-validátor és titokellenőrzés
+- [x] LXC dependency javítás és worktree teszt
 - [x] Systemd, live és ready ellenőrzés
 - [ ] Automatikus rollback
 - [ ] Verziózott release-csomag telepítése
 
-## Health és API v2 platform
+## Hitelesítés és jogosultság
 
-- [x] Live, ready és Arduino health
-- [x] Egységes siker- és hibaválasz
-- [x] Request ID és CORS/security
-- [x] Bearer token
+- [x] Egyetlen Bearer token kompatibilitás
+- [x] Többtokenes `API_V2_TOKENS_JSON`
+- [x] Tokenazonosító és külön szerepkör
 - [x] `admin`, `operator`, `viewer`
-- [x] Jogosultsági middleware
-- [x] Express bootstrap-regiszter
-- [ ] Több API token és tokenrotáció
-- [ ] OpenAPI gépi séma
+- [x] Permission middleware
+- [ ] Legacy felhasználói repository kiemelése
+- [ ] Legacy session szolgáltatás kiemelése
+- [ ] API v2 felhasználó-adminisztráció
+- [ ] Tokenrotációs admin API
+- [ ] CSRF modul kiemelése
 
-## LED szolgáltatás
+## LED
 
-- [x] Sorba állított Arduino-kérések
-- [x] LED validáció és RGB-formátumok
-- [x] Közös LED szolgáltatás
-- [x] API v2 LED olvasás, vezérlés és reset
-- [x] LED jogosultságok és tesztek
+- [x] Közös Arduino kliens és request queue
+- [x] LED validáció és szolgáltatás
+- [x] API v2 LED route-ok és jogosultságok
 - [ ] Legacy LED route-ok átállítása
-- [ ] Közös Socket.IO LED eseménybusz
+- [ ] Socket.IO LED eseménybusz
 
-## Schedule szolgáltatás
+## Arduino schedule
 
-- [x] Napindex- és hétköznap-validáció
-- [x] HH:MM idővalidáció
-- [x] Schedule-fájlnév validáció
-- [x] LED-beállítások schedule-validációja
-- [x] 27 bájtos EEPROM-rekord kódolás
-- [x] Legfeljebb 60 bejegyzéses szinkron
-- [x] Arduino schedule állapot és fájllista
-- [x] Nap- és fájllekérdezés
-- [x] Reload, generate, test és clear műveletek
-- [x] API v2 schedule route-ok
-- [x] Viewer/operator/admin schedule jogosultságok
-- [x] Schedule szolgáltatás- és route-tesztek
-- [ ] Helyi schedule repository kiemelése
-- [ ] Legacy `localSchedules` memória egységesítése
-- [ ] Szerveres időzítésfuttató külön modulba emelése
-- [ ] Import/export API v2
+- [x] Validáció és 27 bájtos EEPROM-kódolás
+- [x] Arduino schedule service
+- [x] API v2 Arduino schedule route-ok
+- [x] EEPROM sync és jogosultságok
+
+## Helyi schedule
+
+- [x] Külön `weekly-led-schedules-v5.json` repository
+- [x] Atomikus JSON repository
+- [x] Import előtti automatikus backup
+- [x] Többnapos létrehozás
+- [x] Export/import API v2
+- [x] Arduino EEPROM sync
+- [x] Időzónahelyes V5 runner
+- [x] Percenkénti duplikációvédelem
+- [x] Manuális runner tick
+- [-] Automatikus runner aktiválása
+- [ ] Legacy `localSchedules` memória kiváltása
+- [ ] Legacy cron kikapcsolása
+- [ ] Helyi schedule update végpont
+
+## Firmware és OTA
+
+- [x] GitHub release metadata
+- [x] Bináris és checksum asset kiválasztása
+- [x] SHA-256 és GitHub digest ellenőrzés
+- [x] Firmware méretkorlát
+- [x] Biztonságos OTA folyamatindítás
+- [x] OTA állapotgép
+- [x] Arduino visszajelentkezés ellenőrzése
+- [x] API v2 status/check/update
+- [x] Firmware jogosultságok
+- [ ] OTA megszakítás
+- [ ] Utolsó működő firmware backup
+- [ ] Firmware rollback
+- [ ] Legacy firmware route-ok átállítása
 
 ## Szerver modularizálása
 
-- [x] Legacy szerver elkülönítése
-- [x] Core modulok és runtime context
-- [x] Arduino kliens
-- [x] LED szolgáltatás
-- [x] Arduino schedule szolgáltatás
+- [x] Core és runtime context
+- [x] Arduino, LED és schedule szolgáltatások
+- [x] Helyi schedule repository és runner
+- [x] Többtokenes API-hitelesítés
+- [x] Firmware/OTA szolgáltatás
 - [x] Moduláris API v2 platform
-- [-] Legacy felhasználói hitelesítés
-- [ ] Helyi schedule repository
-- [ ] Firmware/OTA szolgáltatás
+- [-] Legacy route-ok migrációja
 - [ ] Socket.IO modul
 - [ ] Statikus webes felület
 - [ ] `server2_legacy.js` megszüntetése
 
-## Arduino firmware
+## Firmware-oldali fejlesztések
 
 - [ ] Firmware API-szerződés verziózása
 - [ ] Query API-kulcs lecserélése fejlécre
 - [ ] Egységes firmware hibakódok
-- [ ] LED- és schedule-validáció firmware-oldalon
-- [ ] OTA rollback stratégia
+- [ ] Firmware-oldali LED/schedule validáció
+- [ ] OTA rollback támogatás
 
 ## Desktop és mobil
 
 - [ ] Tauri átállítása API v2-re
-- [ ] Közös TypeScript API-típusok
+- [ ] Közös TypeScript típusok
 - [ ] Token biztonságos tárolása
-- [ ] Offline mód és kapcsolati állapot
+- [ ] Offline mód
 - [ ] Platformtesztek
 
 ## Kiadás
@@ -104,9 +119,9 @@ Munkacsomag: `feature/v5-server-modularization`
 - [ ] Beolvasztás `main` ágba
 - [ ] V5 produkciós kiadás
 
-## Következő nagy munkacsomag
+## Következő hatalmas munkacsomag
 
-1. Helyi schedule repository és futtató kiemelése.
-2. Legacy hitelesítési szolgáltatások.
-3. Firmware/OTA szolgáltatás és API v2.
-4. Teljes branch izolált LXC integrációs tesztje.
+1. Legacy LED, schedule, auth és firmware route-adapterek.
+2. Közös eseménybusz és Socket.IO modul.
+3. Automatikus LXC rollback.
+4. Teljes izolált LXC integrációs teszt és `5.0.0-alpha.2`.

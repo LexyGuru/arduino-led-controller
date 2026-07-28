@@ -67,6 +67,16 @@ function createRuntimePaths(
       environment.AUDIT_FILE,
       path.join(dataDir, 'audit-log.jsonl')
     ),
+    localSchedulesFile: resolveFromRoot(
+      root,
+      environment.LOCAL_SCHEDULES_FILE,
+      path.join(schedulesDir, 'weekly-led-schedules.json')
+    ),
+    localScheduleBackupDir: resolveFromRoot(
+      root,
+      environment.LOCAL_SCHEDULE_BACKUP_DIR,
+      path.join(schedulesDir, 'backups')
+    ),
     otaToolPath: resolveFromRoot(
       root,
       environment.OTA_TOOL_PATH,

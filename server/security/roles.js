@@ -14,19 +14,14 @@ const PERMISSIONS = Object.freeze({
   LED_ADMIN: 'led:admin',
   SCHEDULE_READ: 'schedule:read',
   SCHEDULE_WRITE: 'schedule:write',
-  SCHEDULE_ADMIN: 'schedule:admin'
+  SCHEDULE_ADMIN: 'schedule:admin',
+  FIRMWARE_READ: 'firmware:read',
+  FIRMWARE_UPDATE: 'firmware:update'
 });
 
 const ROLE_PERMISSIONS = Object.freeze({
   [ROLES.ADMIN]: Object.freeze([
-    PERMISSIONS.SYSTEM_READ,
-    PERMISSIONS.ARDUINO_READ,
-    PERMISSIONS.LED_READ,
-    PERMISSIONS.LED_WRITE,
-    PERMISSIONS.LED_ADMIN,
-    PERMISSIONS.SCHEDULE_READ,
-    PERMISSIONS.SCHEDULE_WRITE,
-    PERMISSIONS.SCHEDULE_ADMIN
+    ...Object.values(PERMISSIONS)
   ]),
   [ROLES.OPERATOR]: Object.freeze([
     PERMISSIONS.SYSTEM_READ,
@@ -34,13 +29,15 @@ const ROLE_PERMISSIONS = Object.freeze({
     PERMISSIONS.LED_READ,
     PERMISSIONS.LED_WRITE,
     PERMISSIONS.SCHEDULE_READ,
-    PERMISSIONS.SCHEDULE_WRITE
+    PERMISSIONS.SCHEDULE_WRITE,
+    PERMISSIONS.FIRMWARE_READ
   ]),
   [ROLES.VIEWER]: Object.freeze([
     PERMISSIONS.SYSTEM_READ,
     PERMISSIONS.ARDUINO_READ,
     PERMISSIONS.LED_READ,
-    PERMISSIONS.SCHEDULE_READ
+    PERMISSIONS.SCHEDULE_READ,
+    PERMISSIONS.FIRMWARE_READ
   ])
 });
 
@@ -92,9 +89,7 @@ function createPrincipal({
     role:
       normalizedRole,
     permissions:
-      permissionsForRole(
-        normalizedRole
-      )
+      permissionsForRole(normalizedRole)
   });
 }
 

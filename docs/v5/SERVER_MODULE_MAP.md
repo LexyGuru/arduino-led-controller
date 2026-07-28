@@ -1,62 +1,72 @@
 # V5 szervermodulok térképe
 
-## Indítási folyamat
+## Indítás
 
 ```text
 server2_final.js
-  ├─ core konfiguráció és runtime context
+  ├─ core config / runtime paths / logger
+  ├─ ApiTokenStore
   ├─ ArduinoClient
   ├─ LedService
   ├─ ScheduleService
+  ├─ LocalScheduleRepository
+  ├─ LocalScheduleRunner
+  ├─ LocalScheduleService
+  ├─ FirmwareReleaseClient
+  ├─ OtaRunner
+  ├─ FirmwareService
   ├─ ExpressBootstrapRegistry
-  │    ├─ health route installer
-  │    └─ API v2 route installer
+  │    ├─ health
+  │    └─ API v2
   └─ server2_legacy.js
 ```
 
 A `server2_legacy.js` továbbra is kiszolgálja a régi webes és `/api/...`
-végpontokat. Az új API v2 réteg párhuzamosan működik.
+végpontokat. Az új szolgáltatások az API v2 mellett, párhuzamosan működnek.
 
-## Core modulok
-
-| Modul | Feladat |
-|---|---|
-| `server/core/runtime-paths.js` | Fájlrendszer-útvonalak |
-| `server/core/config.js` | Környezeti és runtime konfiguráció |
-| `server/core/logger.js` | Winston logger factory |
-| `server/core/runtime-context.js` | Megosztott futásidejű szolgáltatások |
-
-## Arduino, LED és schedule modulok
+## Biztonsági modulok
 
 | Modul | Feladat |
 |---|---|
-| `server/arduino/arduino-client.js` | Sorba állított Arduino HTTP-kliens |
-| `server/arduino/arduino-error.js` | Egységes Arduino klienshibák |
-| `server/led/led-validation.js` | LED-parancsvalidáció |
-| `server/led/led-service.js` | LED állapot és vezérlés |
-| `server/schedule/schedule-validation.js` | Nap-, idő-, fájl- és LED-validáció |
-| `server/schedule/schedule-codec.js` | 27 bájtos EEPROM schedule-kódolás |
-| `server/schedule/schedule-service.js` | Arduino schedule lekérdezések és műveletek |
-| `server/schedule/schedule-error.js` | Schedule validációs és szolgáltatáshibák |
-
-## Express és API v2
-
-| Modul | Feladat |
-|---|---|
-| `server/express/express-bootstrap-registry.js` | Express route installerek |
-| `server/health-bootstrap.js` | Health route-ok |
-| `server/api/v2/auth.js` | Bearer token és principal |
+| `server/security/roles.js` | Szerepkörök és jogosultságok |
+| `server/security/api-token-store.js` | Több Bearer token, szerepkör és konstans idejű összehasonlítás |
+| `server/api/v2/auth.js` | Tokenfeldolgozás és principal létrehozása |
 | `server/api/v2/authorize.js` | Jogosultsági middleware |
-| `server/api/v2/routes.js` | Rendszer- és Arduino-route-ok |
-| `server/api/v2/led-routes.js` | LED API v2 |
-| `server/api/v2/schedule-routes.js` | Arduino schedule API v2 |
-| `server/api/v2/error-handler.js` | Központi hibakezelés |
-| `server/api/v2/http-response.js` | Egységes válaszformátum |
 
-## Következő kiemelendő területek
+## Helyi schedule modulok
 
-1. Helyi schedule repository és legacy schedule memória egységesítése.
-2. Legacy felhasználói hitelesítés külön szolgáltatásba emelése.
-3. Firmware/OTA szolgáltatás és API v2 végpontok.
-4. Socket.IO és konzolstream.
-5. Legacy LED-route-ok átállítása a közös LED szolgáltatásra.
+| Modul | Feladat |
+|---|---|
+| `local-schedule-repository.js` | Atomikus JSON adattár és automatikus backup |
+| `local-schedule-runner.js` | Időzónahelyes, duplikációvédett futtató |
+| `local-schedule-service.js` | Repository, runner és Arduino sync összekapcsolása |
+| `local-schedule-routes.js` | API v2 CRUD, export/import, sync és manuális tick |
+
+## Firmware modulok
+
+| Modul | Feladat |
+|---|---|
+| `firmware-release-client.js` | GitHub release és ellenőrzött bináris letöltés |
+| `ota-runner.js` | Shell nélküli `arduinoOTA` folyamatindítás |
+| `firmware-service.js` | OTA állapotgép és Arduino-visszajelentkezés |
+| `firmware-routes.js` | API v2 status, check és update |
+
+## Már modularizált területek
+
+- Core konfiguráció és runtime context
+- Arduino HTTP-kliens
+- Health
+- API v2 platform
+- LED szolgáltatás
+- Arduino schedule szolgáltatás
+- Helyi schedule repository és runner
+- Többtokenes API-hitelesítés
+- Firmware release és OTA szolgáltatás
+
+## Következő nagy területek
+
+1. Legacy LED, schedule, auth és firmware route-ok átállítása a közös szolgáltatásokra.
+2. Socket.IO és konzolstream külön modulba emelése.
+3. Statikus webes felület külön modulba emelése.
+4. Automatikus LXC rollback.
+5. OpenAPI séma és Tauri kliensmigráció.

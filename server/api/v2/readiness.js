@@ -3,8 +3,8 @@
 const fs = require('fs');
 
 const {
-  isConfiguredSecret
-} = require('../../core/config');
+  resolveApiTokenStore
+} = require('./auth');
 
 function normalizeCheck(check) {
   return check.ok
@@ -15,37 +15,38 @@ function normalizeCheck(check) {
     : check;
 }
 
-function apiConfigurationChecks(
-  runtime
-) {
-  const tokenCheck = normalizeCheck({
-    name: 'apiV2Token',
-    ok: isConfiguredSecret(
-      runtime.config.apiV2.token,
-      32
-    ),
-    code:
-      'API_V2_TOKEN_INVALID'
-  });
-
+function apiConfigurationChecks(runtime) {
   return [
-    tokenCheck,
+    ...resolveApiTokenStore(runtime)
+      .configurationChecks(),
     ...runtime.arduinoClient
       .configurationChecks()
   ];
 }
 
 function runtimeDirectories(runtime) {
-  return {
+  const directories = {
     dataDir:
       runtime.paths.dataDir,
     configDir:
       runtime.paths.configDir,
     schedulesDir:
       runtime.paths.schedulesDir,
+    localScheduleBackupDir:
+      runtime.paths.localScheduleBackupDir,
     firmwareDir:
       runtime.paths.firmwareDir
   };
+
+  return Object.fromEntries(
+    Object.entries(directories)
+      .filter(
+        ([, directoryPath]) =>
+          typeof directoryPath ===
+            'string' &&
+          directoryPath.trim()
+      )
+  );
 }
 
 async function checkRuntimeDirectory(
@@ -53,6 +54,13 @@ async function checkRuntimeDirectory(
   directoryPath
 ) {
   try {
+    await fs.promises.mkdir(
+      directoryPath,
+      {
+        recursive: true
+      }
+    );
+
     const stats =
       await fs.promises.stat(
         directoryPath
@@ -104,9 +112,7 @@ async function collectApiV2ReadinessChecks(
     );
 
   return [
-    ...apiConfigurationChecks(
-      runtime
-    ),
+    ...apiConfigurationChecks(runtime),
     ...directoryChecks
   ];
 }

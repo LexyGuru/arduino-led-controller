@@ -1,19 +1,13 @@
 'use strict';
 
-const crypto = require('crypto');
-
 const {
-  isConfiguredSecret
-} = require('../../core/config');
+  ApiTokenStore,
+  safeTokenEquals
+} = require('../../security/api-token-store');
 
 const {
   getRuntimeContext
 } = require('../../core/runtime-context');
-
-const {
-  createPrincipal,
-  normalizeRole
-} = require('../../security/roles');
 
 const {
   HttpError
@@ -24,47 +18,34 @@ const {
 } = require('./http-response');
 
 function parseBearerToken(req) {
-  const authorization = String(
-    req.get?.('Authorization') ||
-    req.headers?.authorization ||
-    ''
-  ).trim();
+  const authorization =
+    String(
+      req.get?.('Authorization') ||
+      req.headers?.authorization ||
+      ''
+    ).trim();
 
-  const match = authorization.match(
-    /^Bearer[ \t]+(.+)$/i
-  );
+  const match =
+    authorization.match(
+      /^Bearer[ \t]+(.+)$/i
+    );
 
   return match
     ? match[1].trim()
     : '';
 }
 
-function safeTokenEquals(
-  received,
-  expected
-) {
-  const receivedBuffer =
-    Buffer.from(
-      String(received || ''),
-      'utf8'
-    );
-
-  const expectedBuffer =
-    Buffer.from(
-      String(expected || ''),
-      'utf8'
-    );
-
+function resolveApiTokenStore(runtime) {
   if (
-    receivedBuffer.length !==
-    expectedBuffer.length
+    runtime?.apiTokenStore &&
+    typeof runtime.apiTokenStore.authenticate ===
+      'function'
   ) {
-    return false;
+    return runtime.apiTokenStore;
   }
 
-  return crypto.timingSafeEqual(
-    receivedBuffer,
-    expectedBuffer
+  return ApiTokenStore.fromConfig(
+    runtime?.config?.apiV2 || {}
   );
 }
 
@@ -80,15 +61,10 @@ function createApiV2AuthMiddleware({
     const runtime =
       runtimeProvider();
 
-    const expectedToken =
-      runtime.config.apiV2.token;
+    const tokenStore =
+      resolveApiTokenStore(runtime);
 
-    if (
-      !isConfiguredSecret(
-        expectedToken,
-        32
-      )
-    ) {
+    if (!tokenStore.isConfigured()) {
       return errorSender(
         req,
         res,
@@ -99,16 +75,12 @@ function createApiV2AuthMiddleware({
       );
     }
 
-    const receivedToken =
-      parseBearerToken(req);
+    const principal =
+      tokenStore.authenticate(
+        parseBearerToken(req)
+      );
 
-    if (
-      !receivedToken ||
-      !safeTokenEquals(
-        receivedToken,
-        expectedToken
-      )
-    ) {
+    if (!principal) {
       res.set(
         'WWW-Authenticate',
         'Bearer realm="arduino-led-controller-api-v2"'
@@ -121,16 +93,7 @@ function createApiV2AuthMiddleware({
       );
     }
 
-    req.apiPrincipal =
-      createPrincipal({
-        subject:
-          'api-v2-token',
-        role:
-          normalizeRole(
-            runtime.config.apiV2.role
-          )
-      });
-
+    req.apiPrincipal = principal;
     return next();
   };
 }
@@ -142,5 +105,6 @@ module.exports = {
   createApiV2AuthMiddleware,
   parseBearerToken,
   requireApiV2Auth,
+  resolveApiTokenStore,
   safeTokenEquals
 };

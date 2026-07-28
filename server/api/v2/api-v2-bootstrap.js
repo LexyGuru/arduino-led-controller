@@ -42,6 +42,14 @@ const {
   installScheduleRoutes
 } = require('./schedule-routes');
 
+const {
+  installLocalScheduleRoutes
+} = require('./local-schedule-routes');
+
+const {
+  installFirmwareRoutes
+} = require('./firmware-routes');
+
 function installApiV2Routes(app) {
   const handlers =
     createApiV2Handlers({
@@ -101,6 +109,8 @@ function installApiV2Routes(app) {
 
   installLedRoutes(app);
   installScheduleRoutes(app);
+  installLocalScheduleRoutes(app);
+  installFirmwareRoutes(app);
 
   app.use(
     '/api/v2',

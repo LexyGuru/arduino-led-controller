@@ -1,35 +1,24 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT_DIR="$(
-  cd "$(dirname "${BASH_SOURCE[0]}")/.." &&
-  pwd
-)"
-
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${ROOT_DIR}"
 
-echo "[1/14] Verziók ellenőrzése"
+echo "[1/6] Verziók ellenőrzése"
 python3 scripts/check-versions.py
 
 echo
-echo "[2/14] Node.js fájlok szintaktikai ellenőrzése"
+echo "[2/6] Node.js szintaktikai ellenőrzés"
 npm run check --silent
 
 echo
-echo "[3/14] Bash scriptek szintaktikai ellenőrzése"
-
+echo "[3/6] Bash scriptek szintaktikai ellenőrzése"
 while IFS= read -r -d '' script; do
   bash -n "${script}"
-done < <(
-  find deploy scripts \
-    -type f \
-    -name '*.sh' \
-    -print0
-)
+done < <(find deploy scripts -type f -name '*.sh' -print0)
 
 echo
-echo "[4/14] Kötelező fájlok ellenőrzése"
-
+echo "[4/6] Kötelező fájlok ellenőrzése"
 required_files=(
   "VERSION"
   ".editorconfig"
@@ -43,6 +32,7 @@ required_files=(
   "server/core/logger.js"
   "server/core/runtime-context.js"
   "server/security/roles.js"
+  "server/security/api-token-store.js"
   "server/arduino/arduino-error.js"
   "server/arduino/arduino-client.js"
   "server/led/led-error.js"
@@ -52,6 +42,13 @@ required_files=(
   "server/schedule/schedule-validation.js"
   "server/schedule/schedule-codec.js"
   "server/schedule/schedule-service.js"
+  "server/schedule/local-schedule-repository.js"
+  "server/schedule/local-schedule-runner.js"
+  "server/schedule/local-schedule-service.js"
+  "server/firmware/firmware-error.js"
+  "server/firmware/firmware-release-client.js"
+  "server/firmware/ota-runner.js"
+  "server/firmware/firmware-service.js"
   "server/express/express-bootstrap-registry.js"
   "server/health-bootstrap.js"
   "server/api/v2/http-error.js"
@@ -65,6 +62,8 @@ required_files=(
   "server/api/v2/routes.js"
   "server/api/v2/led-routes.js"
   "server/api/v2/schedule-routes.js"
+  "server/api/v2/local-schedule-routes.js"
+  "server/api/v2/firmware-routes.js"
   "server/api/v2/api-v2-bootstrap.js"
   "scripts/test-core-modules.js"
   "scripts/test-arduino-client.js"
@@ -73,6 +72,11 @@ required_files=(
   "scripts/test-api-v2-led.js"
   "scripts/test-schedule-service.js"
   "scripts/test-api-v2-schedule.js"
+  "scripts/test-api-token-store.js"
+  "scripts/test-local-schedule-repository.js"
+  "scripts/test-local-schedule-runner.js"
+  "scripts/test-firmware-service.js"
+  "scripts/test-api-v2-extended.js"
   "scripts/test-health-endpoints.js"
   "scripts/test-api-v2.js"
   "docs/api/API_V2_CONTRACT.md"
@@ -86,7 +90,6 @@ required_files=(
   "deploy/ensure-node-dependencies.sh"
   "deploy/update.sh"
 )
-
 for file in "${required_files[@]}"; do
   [[ -f "${file}" ]] || {
     echo "HIBA: hiányzik: ${file}" >&2
@@ -95,57 +98,14 @@ for file in "${required_files[@]}"; do
 done
 
 echo
-echo "[5/14] Core modul smoke teszt"
-node scripts/test-core-modules.js
+echo "[5/6] Teljes modul- és endpointteszt"
+npm test --silent
 
 echo
-echo "[6/14] Arduino kliens smoke teszt"
-node scripts/test-arduino-client.js
-
-echo
-echo "[7/14] Szerverplatform modul smoke teszt"
-node scripts/test-server-platform-modules.js
-
-echo
-echo "[8/14] LED szolgáltatás smoke teszt"
-node scripts/test-led-service.js
-
-echo
-echo "[9/14] API v2 LED és jogosultság smoke teszt"
-node scripts/test-api-v2-led.js
-
-echo
-echo "[10/14] Schedule szolgáltatás smoke teszt"
-node scripts/test-schedule-service.js
-
-echo
-echo "[11/14] API v2 schedule és jogosultság smoke teszt"
-node scripts/test-api-v2-schedule.js
-
-echo
-echo "[12/14] Health endpoint smoke teszt"
-node scripts/test-health-endpoints.js
-
-echo
-echo "[13/14] API v2 smoke teszt"
-node scripts/test-api-v2.js
-
-echo
-echo "[14/14] Titkos fájlok ellenőrzése"
-
-if git ls-files |
-  grep -E \
-    '(^|/)(secrets\.h|\.env|connection\.json)$' \
-    >/dev/null; then
-  echo \
-    "HIBA: titkos vagy helyi konfigurációs fájl van Git-követés alatt:" \
-    >&2
-
-  git ls-files |
-    grep -E \
-      '(^|/)(secrets\.h|\.env|connection\.json)$' \
-      >&2
-
+echo "[6/6] Titkos fájlok ellenőrzése"
+if git ls-files | grep -E '(^|/)(secrets\.h|\.env|connection\.json)$' >/dev/null; then
+  echo "HIBA: titkos vagy helyi konfigurációs fájl van Git-követés alatt:" >&2
+  git ls-files | grep -E '(^|/)(secrets\.h|\.env|connection\.json)$' >&2
   exit 1
 fi
 

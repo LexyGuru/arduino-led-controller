@@ -83,6 +83,7 @@ check_node_files() {
   node --check "${root_dir}/server/core/logger.js"
   node --check "${root_dir}/server/core/runtime-context.js"
   node --check "${root_dir}/server/security/roles.js"
+  node --check "${root_dir}/server/security/api-token-store.js"
   node --check "${root_dir}/server/arduino/arduino-error.js"
   node --check "${root_dir}/server/arduino/arduino-client.js"
   node --check "${root_dir}/server/led/led-error.js"
@@ -92,6 +93,13 @@ check_node_files() {
   node --check "${root_dir}/server/schedule/schedule-validation.js"
   node --check "${root_dir}/server/schedule/schedule-codec.js"
   node --check "${root_dir}/server/schedule/schedule-service.js"
+  node --check "${root_dir}/server/schedule/local-schedule-repository.js"
+  node --check "${root_dir}/server/schedule/local-schedule-runner.js"
+  node --check "${root_dir}/server/schedule/local-schedule-service.js"
+  node --check "${root_dir}/server/firmware/firmware-error.js"
+  node --check "${root_dir}/server/firmware/firmware-release-client.js"
+  node --check "${root_dir}/server/firmware/ota-runner.js"
+  node --check "${root_dir}/server/firmware/firmware-service.js"
   node --check "${root_dir}/server/express/express-bootstrap-registry.js"
   node --check "${root_dir}/server/health-bootstrap.js"
   node --check "${root_dir}/server/api/v2/http-error.js"
@@ -105,6 +113,8 @@ check_node_files() {
   node --check "${root_dir}/server/api/v2/routes.js"
   node --check "${root_dir}/server/api/v2/led-routes.js"
   node --check "${root_dir}/server/api/v2/schedule-routes.js"
+  node --check "${root_dir}/server/api/v2/local-schedule-routes.js"
+  node --check "${root_dir}/server/api/v2/firmware-routes.js"
   node --check "${root_dir}/server/api/v2/api-v2-bootstrap.js"
   node --check "${root_dir}/scripts/test-core-modules.js"
   node --check "${root_dir}/scripts/test-arduino-client.js"
@@ -113,6 +123,11 @@ check_node_files() {
   node --check "${root_dir}/scripts/test-api-v2-led.js"
   node --check "${root_dir}/scripts/test-schedule-service.js"
   node --check "${root_dir}/scripts/test-api-v2-schedule.js"
+  node --check "${root_dir}/scripts/test-api-token-store.js"
+  node --check "${root_dir}/scripts/test-local-schedule-repository.js"
+  node --check "${root_dir}/scripts/test-local-schedule-runner.js"
+  node --check "${root_dir}/scripts/test-firmware-service.js"
+  node --check "${root_dir}/scripts/test-api-v2-extended.js"
   node --check "${root_dir}/scripts/test-health-endpoints.js"
   node --check "${root_dir}/scripts/test-api-v2.js"
 }
@@ -364,15 +379,7 @@ check_node_files "${CHECK_DIR}"
   node -e \
     "require.resolve('express'); require.resolve('socket.io'); require.resolve('axios')"
 
-  npm run test:core
-  npm run test:arduino-client
-  npm run test:server-platform
-  npm run test:led-service
-  npm run test:api-v2-led
-  npm run test:schedule-service
-  npm run test:api-v2-schedule
-  npm run test:health
-  npm run test:api-v2
+  npm test --silent
 )
 
 log "Ellenőrzés sikeres; frissítés telepítése."
