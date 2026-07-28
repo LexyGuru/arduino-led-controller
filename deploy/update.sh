@@ -32,15 +32,23 @@ command -v curl >/dev/null 2>&1 || {
   exit 1
 }
 
-[[ -f "${APP_DIR}/server2_final.js" ]] || {
-  log "HIBA: hiányzik a server2_final.js"
-  exit 1
-}
+required_runtime_files=(
+  "server2_final.js"
+  "server2_legacy.js"
+  "server/health-bootstrap.js"
+  "server/api/v2/http-error.js"
+  "server/api/v2/http-response.js"
+  "server/api/v2/api-v2-bootstrap.js"
+  "scripts/test-health-endpoints.js"
+  "scripts/test-api-v2.js"
+)
 
-[[ -f "${APP_DIR}/server2_legacy.js" ]] || {
-  log "HIBA: hiányzik a server2_legacy.js"
-  exit 1
-}
+for runtime_file in "${required_runtime_files[@]}"; do
+  [[ -f "${APP_DIR}/${runtime_file}" ]] || {
+    log "HIBA: hiányzik: ${APP_DIR}/${runtime_file}"
+    exit 1
+  }
+done
 
 [[ -x "${APP_DIR}/deploy/ensure-node-dependencies.sh" ]] ||
   chmod +x "${APP_DIR}/deploy/ensure-node-dependencies.sh"
@@ -65,6 +73,19 @@ install_runtime_units() {
   systemctl enable "${SERVICE_NAME}-update.timer" >/dev/null
 }
 
+check_node_files() {
+  local root_dir="$1"
+
+  node --check "${root_dir}/server2_final.js"
+  node --check "${root_dir}/server2_legacy.js"
+  node --check "${root_dir}/server/health-bootstrap.js"
+  node --check "${root_dir}/server/api/v2/http-error.js"
+  node --check "${root_dir}/server/api/v2/http-response.js"
+  node --check "${root_dir}/server/api/v2/api-v2-bootstrap.js"
+  node --check "${root_dir}/scripts/test-health-endpoints.js"
+  node --check "${root_dir}/scripts/test-api-v2.js"
+}
+
 repair_runtime() {
   local force_arg="${1:-}"
 
@@ -85,10 +106,7 @@ repair_runtime() {
       bash "${APP_DIR}/deploy/ensure-node-dependencies.sh"
   fi
 
-  node --check "${APP_DIR}/server2_final.js"
-  node --check "${APP_DIR}/server2_legacy.js"
-  node --check "${APP_DIR}/server/health-bootstrap.js"
-  node --check "${APP_DIR}/scripts/test-health-endpoints.js"
+  check_node_files "${APP_DIR}"
 }
 
 read_health_port() {
@@ -290,10 +308,7 @@ git -c safe.directory="${APP_DIR}" \
   worktree add --detach "${CHECK_DIR}" "${REMOTE_REF}" \
   >/dev/null
 
-node --check "${CHECK_DIR}/server2_final.js"
-node --check "${CHECK_DIR}/server2_legacy.js"
-node --check "${CHECK_DIR}/server/health-bootstrap.js"
-node --check "${CHECK_DIR}/scripts/test-health-endpoints.js"
+check_node_files "${CHECK_DIR}"
 
 (
   cd "${CHECK_DIR}"
@@ -319,6 +334,7 @@ node --check "${CHECK_DIR}/scripts/test-health-endpoints.js"
     "require.resolve('express'); require.resolve('socket.io'); require.resolve('axios')"
 
   npm run test:health
+  npm run test:api-v2
 )
 
 log "Ellenőrzés sikeres; frissítés telepítése."
