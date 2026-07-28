@@ -8,26 +8,15 @@ ROOT_DIR="$(
 
 cd "${ROOT_DIR}"
 
-echo "[1/8] Verziók ellenőrzése"
+echo "[1/9] Verziók ellenőrzése"
 python3 scripts/check-versions.py
 
 echo
-echo "[2/8] Node.js fájlok szintaktikai ellenőrzése"
-node --check server2_final.js
-node --check server2_legacy.js
-node --check server/core/runtime-paths.js
-node --check server/core/config.js
-node --check server/core/logger.js
-node --check server/health-bootstrap.js
-node --check server/api/v2/http-error.js
-node --check server/api/v2/http-response.js
-node --check server/api/v2/api-v2-bootstrap.js
-node --check scripts/test-core-modules.js
-node --check scripts/test-health-endpoints.js
-node --check scripts/test-api-v2.js
+echo "[2/9] Node.js fájlok szintaktikai ellenőrzése"
+npm run check --silent
 
 echo
-echo "[3/8] Bash scriptek szintaktikai ellenőrzése"
+echo "[3/9] Bash scriptek szintaktikai ellenőrzése"
 
 while IFS= read -r -d '' script; do
   bash -n "${script}"
@@ -39,7 +28,7 @@ done < <(
 )
 
 echo
-echo "[4/8] Kötelező fájlok ellenőrzése"
+echo "[4/9] Kötelező fájlok ellenőrzése"
 
 required_files=(
   "VERSION"
@@ -52,14 +41,19 @@ required_files=(
   "server/core/runtime-paths.js"
   "server/core/config.js"
   "server/core/logger.js"
+  "server/core/runtime-context.js"
+  "server/arduino/arduino-error.js"
+  "server/arduino/arduino-client.js"
   "server/health-bootstrap.js"
   "server/api/v2/http-error.js"
   "server/api/v2/http-response.js"
   "server/api/v2/api-v2-bootstrap.js"
   "scripts/test-core-modules.js"
+  "scripts/test-arduino-client.js"
   "scripts/test-health-endpoints.js"
   "scripts/test-api-v2.js"
   "docs/api/API_V2_CONTRACT.md"
+  "docs/v5/V5_REARCHITECTURE_CHECKLIST.md"
   "desktop-tauri/package.json"
   "desktop-tauri/package-lock.json"
   "desktop-tauri/src-tauri/Cargo.toml"
@@ -77,19 +71,23 @@ for file in "${required_files[@]}"; do
 done
 
 echo
-echo "[5/8] Core modul smoke teszt"
+echo "[5/9] Core modul smoke teszt"
 node scripts/test-core-modules.js
 
 echo
-echo "[6/8] Health endpoint smoke teszt"
+echo "[6/9] Arduino kliens smoke teszt"
+node scripts/test-arduino-client.js
+
+echo
+echo "[7/9] Health endpoint smoke teszt"
 node scripts/test-health-endpoints.js
 
 echo
-echo "[7/8] API v2 smoke teszt"
+echo "[8/9] API v2 smoke teszt"
 node scripts/test-api-v2.js
 
 echo
-echo "[8/8] Titkos fájlok ellenőrzése"
+echo "[9/9] Titkos fájlok ellenőrzése"
 
 if git ls-files |
   grep -E \

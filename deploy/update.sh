@@ -78,10 +78,18 @@ check_node_files() {
 
   node --check "${root_dir}/server2_final.js"
   node --check "${root_dir}/server2_legacy.js"
+  node --check "${root_dir}/server/core/runtime-paths.js"
+  node --check "${root_dir}/server/core/config.js"
+  node --check "${root_dir}/server/core/logger.js"
+  node --check "${root_dir}/server/core/runtime-context.js"
+  node --check "${root_dir}/server/arduino/arduino-error.js"
+  node --check "${root_dir}/server/arduino/arduino-client.js"
   node --check "${root_dir}/server/health-bootstrap.js"
   node --check "${root_dir}/server/api/v2/http-error.js"
   node --check "${root_dir}/server/api/v2/http-response.js"
   node --check "${root_dir}/server/api/v2/api-v2-bootstrap.js"
+  node --check "${root_dir}/scripts/test-core-modules.js"
+  node --check "${root_dir}/scripts/test-arduino-client.js"
   node --check "${root_dir}/scripts/test-health-endpoints.js"
   node --check "${root_dir}/scripts/test-api-v2.js"
 }
@@ -333,6 +341,8 @@ check_node_files "${CHECK_DIR}"
   node -e \
     "require.resolve('express'); require.resolve('socket.io'); require.resolve('axios')"
 
+  npm run test:core
+  npm run test:arduino-client
   npm run test:health
   npm run test:api-v2
 )
