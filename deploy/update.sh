@@ -35,6 +35,7 @@ command -v curl >/dev/null 2>&1 || {
 required_runtime_files=(
   "server2_final.js"
   "server2_legacy.js"
+  "deploy/update-rollback-lib.sh"
   "server/health-bootstrap.js"
   "server/api/v2/http-error.js"
   "server/api/v2/http-response.js"
@@ -49,6 +50,9 @@ for runtime_file in "${required_runtime_files[@]}"; do
     exit 1
   }
 done
+
+# shellcheck source=/dev/null
+source "${APP_DIR}/deploy/update-rollback-lib.sh"
 
 [[ -x "${APP_DIR}/deploy/ensure-node-dependencies.sh" ]] ||
   chmod +x "${APP_DIR}/deploy/ensure-node-dependencies.sh"
@@ -130,6 +134,20 @@ check_node_files() {
   node --check "${root_dir}/scripts/test-api-v2-extended.js"
   node --check "${root_dir}/scripts/test-health-endpoints.js"
   node --check "${root_dir}/scripts/test-api-v2.js"
+  node --check "${root_dir}/server/security/security-error.js"
+  node --check "${root_dir}/server/security/user-repository.js"
+  node --check "${root_dir}/server/security/session-service.js"
+  node --check "${root_dir}/server/events/topics.js"
+  node --check "${root_dir}/server/events/event-bus.js"
+  node --check "${root_dir}/server/socket/socket-bootstrap-registry.js"
+  node --check "${root_dir}/server/socket/socket-gateway.js"
+  node --check "${root_dir}/server/api/v2/session-routes.js"
+  node --check "${root_dir}/server/api/v2/event-routes.js"
+  node --check "${root_dir}/scripts/test-session-service.js"
+  node --check "${root_dir}/scripts/test-event-bus.js"
+  node --check "${root_dir}/scripts/test-socket-gateway.js"
+  node --check "${root_dir}/scripts/test-service-events.js"
+  node --check "${root_dir}/scripts/test-api-v2-session-events.js"
 }
 
 repair_runtime() {
@@ -263,6 +281,94 @@ restart_and_verify() {
   return 1
 }
 
+record_current_as_good() {
+  local commit="$1"
+
+  write_last_known_good \
+    "${STATE_DIR}" \
+    "${commit}" ||
+    log "FIGYELEM: a last-known-good commit nem menthető: ${commit}"
+}
+
+deploy_candidate_update() {
+  git -c safe.directory="${APP_DIR}" \
+    pull --ff-only origin "${BRANCH}" ||
+    return 1
+
+  chmod +x "${APP_DIR}/deploy/"*.sh ||
+    return 1
+
+  chmod +x "${APP_DIR}/scripts/"*.sh \
+    2>/dev/null || true
+
+  install_runtime_units ||
+    return 1
+
+  repair_runtime ||
+    return 1
+
+  restart_and_verify ||
+    return 1
+
+  systemctl enable --now \
+    "${SERVICE_NAME}-update.timer" \
+    >/dev/null ||
+    return 1
+}
+
+rollback_failed_update() {
+  local previous_commit="$1"
+
+  log "A hibás frissítés visszaállítása erre a commitra: ${previous_commit}"
+
+  systemctl stop \
+    "${SERVICE_NAME}.service" \
+    >/dev/null 2>&1 || true
+
+  rollback_repository \
+    "${APP_DIR}" \
+    "${previous_commit}" ||
+    return 1
+
+  chmod +x "${APP_DIR}/deploy/"*.sh ||
+    return 1
+
+  chmod +x "${APP_DIR}/scripts/"*.sh \
+    2>/dev/null || true
+
+  install_runtime_units ||
+    return 1
+
+  install -d \
+    -o arduino-led \
+    -g arduino-led \
+    -m 0750 \
+    "${STATE_DIR}" \
+    "${STATE_DIR}/npm-cache" ||
+    return 1
+
+  APP_DIR="${APP_DIR}" \
+  STATE_DIR="${STATE_DIR}" \
+    bash "${APP_DIR}/deploy/ensure-node-dependencies.sh" --force ||
+    return 1
+
+  node --check \
+    "${APP_DIR}/server2_final.js" ||
+    return 1
+
+  node --check \
+    "${APP_DIR}/server2_legacy.js" ||
+    return 1
+
+  restart_and_verify ||
+    return 1
+
+  record_current_as_good \
+    "${previous_commit}"
+
+  return 0
+}
+
 cd "${APP_DIR}"
 
 if [[ "${MODE}" == "--repair" || "${MODE}" == "repair" ]]; then
@@ -327,6 +433,9 @@ if [[ "${LOCAL_HEAD}" == "${REMOTE_HEAD}" ]]; then
     log "A szolgáltatás és a health ellenőrzések rendben vannak."
   fi
 
+  record_current_as_good \
+    "${LOCAL_HEAD}"
+
   exit 0
 fi
 
@@ -384,18 +493,37 @@ check_node_files "${CHECK_DIR}"
 
 log "Ellenőrzés sikeres; frissítés telepítése."
 
-git -c safe.directory="${APP_DIR}" \
-  pull --ff-only origin "${BRANCH}"
+PREVIOUS_HEAD="${LOCAL_HEAD}"
 
-chmod +x "${APP_DIR}/deploy/"*.sh
-chmod +x "${APP_DIR}/scripts/"*.sh 2>/dev/null || true
+if deploy_candidate_update; then
+  INSTALLED_HEAD="$(
+    git -c safe.directory="${APP_DIR}" \
+      rev-parse HEAD
+  )"
 
-install_runtime_units
-repair_runtime
-restart_and_verify
+  record_current_as_good \
+    "${INSTALLED_HEAD}"
 
-systemctl enable --now \
-  "${SERVICE_NAME}-update.timer" \
-  >/dev/null
+  log "Frissítés sikeresen befejeződött: ${INSTALLED_HEAD}"
+  exit 0
+else
+  UPDATE_STATUS="$?"
+fi
 
-log "Frissítés sikeresen befejeződött."
+log "HIBA: a frissített verzió telepítése vagy health ellenőrzése sikertelen."
+
+if rollback_failed_update \
+  "${PREVIOUS_HEAD}"; then
+  log "ROLLBACK SIKERES: a korábbi működő verzió helyreállt: ${PREVIOUS_HEAD}"
+  exit "${UPDATE_STATUS}"
+fi
+
+log "KRITIKUS HIBA: az automatikus rollback sem sikerült."
+
+journalctl \
+  -u "${SERVICE_NAME}.service" \
+  -n 100 \
+  --no-pager \
+  >&2 || true
+
+exit 1

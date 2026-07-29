@@ -15,6 +15,10 @@ const {
   normalizeScheduleTime
 } = require('./schedule-validation');
 
+const {
+  EVENT_TOPICS
+} = require('../events/topics');
+
 function normalizeArduinoPayload(
   payload
 ) {
@@ -31,7 +35,8 @@ function normalizeArduinoPayload(
 class ScheduleService {
   constructor({
     arduinoClient,
-    logger = null
+    logger = null,
+    eventBus = null
   } = {}) {
     if (
       !arduinoClient ||
@@ -46,6 +51,7 @@ class ScheduleService {
     this.arduinoClient =
       arduinoClient;
     this.logger = logger;
+    this.eventBus = eventBus;
   }
 
   async call(
@@ -146,33 +152,66 @@ class ScheduleService {
   }
 
   async reload() {
-    return this.call(
-      'api/schedule/reload',
+    const result =
+      await this.call(
+        'api/schedule/reload',
+        {
+          source:
+            'arduino-led-controller-schedule-reload'
+        }
+      );
+
+    this.eventBus?.publish?.(
+      EVENT_TOPICS.SCHEDULE_RELOADED,
       {
-        source:
-          'arduino-led-controller-schedule-reload'
+        latencyMs:
+          result.latencyMs
       }
     );
+
+    return result;
   }
 
   async generate() {
-    return this.call(
-      'api/schedule/generate',
+    const result =
+      await this.call(
+        'api/schedule/generate',
+        {
+          source:
+            'arduino-led-controller-schedule-generate'
+        }
+      );
+
+    this.eventBus?.publish?.(
+      EVENT_TOPICS.SCHEDULE_GENERATED,
       {
-        source:
-          'arduino-led-controller-schedule-generate'
+        latencyMs:
+          result.latencyMs
       }
     );
+
+    return result;
   }
 
   async clear() {
-    return this.call(
-      'api/schedule/clear',
+    const result =
+      await this.call(
+        'api/schedule/clear',
+        {
+          source:
+            'arduino-led-controller-schedule-clear'
+        }
+      );
+
+    this.eventBus?.publish?.(
+      EVENT_TOPICS.SCHEDULE_CLEARED,
       {
-        source:
-          'arduino-led-controller-schedule-clear'
+        latencyMs:
+          result.latencyMs
       }
     );
+
+    return result;
   }
 
   async test(value) {
@@ -188,10 +227,21 @@ class ScheduleService {
         }
       );
 
-    return {
+    const response = {
       time,
       ...result
     };
+
+    this.eventBus?.publish?.(
+      EVENT_TOPICS.SCHEDULE_TESTED,
+      {
+        time,
+        latencyMs:
+          result.latencyMs
+      }
+    );
+
+    return response;
   }
 
   async getOverview() {
@@ -272,7 +322,7 @@ class ScheduleService {
       }
     );
 
-    return {
+    const response = {
       count:
         schedules.length,
       arduino:
@@ -282,6 +332,18 @@ class ScheduleService {
       latencyMs:
         totalLatencyMs
     };
+
+    this.eventBus?.publish?.(
+      EVENT_TOPICS.SCHEDULE_SYNCED,
+      {
+        count:
+          schedules.length,
+        latencyMs:
+          totalLatencyMs
+      }
+    );
+
+    return response;
   }
 }
 

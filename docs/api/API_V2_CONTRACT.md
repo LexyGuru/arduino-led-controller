@@ -532,3 +532,70 @@ Lehetséges firmware hibák:
 - `FIRMWARE_BINARY_INVALID` – 502
 - `FIRMWARE_CHECKSUM_MISMATCH` – 502
 - `FIRMWARE_DIGEST_MISMATCH` – 502
+
+
+## 12. Session-alapú API v2 hitelesítés
+
+Az API v2 védett végpontjai a Bearer token mellett elfogadják a meglévő
+`led_session` cookie-t is. A cookie formátuma és a `config/users.json`
+scrypt jelszóadatai kompatibilisek a legacy webes felülettel.
+
+Nyilvános session végpontok:
+
+- `GET /api/v2/auth/status`
+- `POST /api/v2/auth/login`
+- `POST /api/v2/auth/logout`
+
+A login kérése:
+
+```json
+{
+  "username": "admin",
+  "password": "legalább-tizenkét-karakter"
+}
+```
+
+## 13. Események és realtime kapcsolat
+
+Védett HTTP végpontok:
+
+- `GET /api/v2/events/status`
+- `GET /api/v2/events/recent?limit=50`
+- `GET /api/v2/events/recent?topic=led.updated&limit=20`
+
+Socket.IO események:
+
+- `v5:ready` – kapcsolódás utáni szolgáltatás- és eseménytörténet
+- `v5:event` – minden V5 esemény egységes borítékban
+- az esemény témája, például `led.updated` – célzott esemény
+- `v5:events:recent` – kliens által kérhető korlátozott történet
+
+Az eseményboríték:
+
+```json
+{
+  "id": "uuid",
+  "topic": "led.updated",
+  "timestamp": "2026-07-28T20:00:00.000Z",
+  "payload": {},
+  "meta": {}
+}
+```
+
+Az eseménytörténet csak memóriában él, és alapértelmezésben az utolsó 200
+eseményt tartja meg.
+
+## 14. Automatikus LXC rollback
+
+A frissítő minden egészséges commitot `last-known-good-commit` állapotként
+rögzít. Sikertelen telepítés, függőségjavítás, systemd-indítás vagy ready health
+ellenőrzés esetén:
+
+1. leállítja a szolgáltatást;
+2. `git reset --hard` segítségével visszaáll az előző commitra;
+3. újratelepíti a futásidejű függőségeket;
+4. újraindítja a szolgáltatást;
+5. ismét ellenőrzi a live és ready végpontokat.
+
+A rollback nem futtat `git clean` parancsot, így nem törli a repositoryban
+található nem követett futásidejű adatokat.

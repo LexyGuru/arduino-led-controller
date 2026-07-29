@@ -74,7 +74,10 @@ function createApiV2Handlers({
           stability:
             'alpha',
           authentication: {
-            scheme: 'Bearer',
+            schemes: [
+              'Bearer',
+              'led_session'
+            ],
             roles: [
               'admin',
               'operator',
@@ -88,7 +91,11 @@ function createApiV2Handlers({
                 .filter(
                   (entry) =>
                     entry.enabled
-                ).length
+                ).length,
+            sessionAvailable:
+              Boolean(
+                runtime.sessionService
+              )
           },
           endpoints: {
             discovery:
@@ -106,7 +113,13 @@ function createApiV2Handlers({
             localSchedules:
               '/api/v2/local-schedules',
             firmwareStatus:
-              '/api/v2/firmware/status'
+              '/api/v2/firmware/status',
+            authStatus:
+              '/api/v2/auth/status',
+            eventStatus:
+              '/api/v2/events/status',
+            recentEvents:
+              '/api/v2/events/recent'
           }
         }
       );
@@ -208,6 +221,14 @@ function createApiV2Handlers({
             state:
               runtime.firmwareService
                 .state.state
+          },
+          realtime: {
+            eventBus:
+              runtime.eventBus
+                .stats(),
+            socket:
+              runtime.socketGateway
+                .getStatus()
           },
           compatibility: {
             legacyApiEnabled:

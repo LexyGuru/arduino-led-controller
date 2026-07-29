@@ -10,6 +10,10 @@ const {
   toArduinoLedQuery
 } = require('./led-validation');
 
+const {
+  EVENT_TOPICS
+} = require('../events/topics');
+
 function normalizeStatusPayload(payload) {
   const source =
     payload &&
@@ -46,7 +50,8 @@ function normalizeStatusPayload(payload) {
 class LedService {
   constructor({
     arduinoClient,
-    logger = null
+    logger = null,
+    eventBus = null
   } = {}) {
     if (
       !arduinoClient ||
@@ -61,6 +66,7 @@ class LedService {
     this.arduinoClient =
       arduinoClient;
     this.logger = logger;
+    this.eventBus = eventBus;
   }
 
   async getAllStatus() {
@@ -147,7 +153,7 @@ class LedService {
       }
     );
 
-    return {
+    const response = {
       id:
         normalizedId,
       command,
@@ -156,6 +162,19 @@ class LedService {
       latencyMs:
         result.latencyMs
     };
+
+    this.eventBus?.publish?.(
+      EVENT_TOPICS.LED_UPDATED,
+      {
+        id:
+          normalizedId,
+        command,
+        latencyMs:
+          result.latencyMs
+      }
+    );
+
+    return response;
   }
 
   async setAllEnabled(enabled) {
@@ -179,13 +198,24 @@ class LedService {
         }
       );
 
-    return {
+    const response = {
       enabled,
       arduino:
         result.data,
       latencyMs:
         result.latencyMs
     };
+
+    this.eventBus?.publish?.(
+      EVENT_TOPICS.LED_ALL_CHANGED,
+      {
+        enabled,
+        latencyMs:
+          result.latencyMs
+      }
+    );
+
+    return response;
   }
 
   async reset() {
@@ -198,13 +228,23 @@ class LedService {
         }
       );
 
-    return {
+    const response = {
       reset: true,
       arduino:
         result.data,
       latencyMs:
         result.latencyMs
     };
+
+    this.eventBus?.publish?.(
+      EVENT_TOPICS.LED_RESET,
+      {
+        latencyMs:
+          result.latencyMs
+      }
+    );
+
+    return response;
   }
 }
 

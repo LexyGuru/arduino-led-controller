@@ -38,22 +38,70 @@ function parseBearerToken(req) {
 function resolveApiTokenStore(runtime) {
   if (
     runtime?.apiTokenStore &&
-    typeof runtime.apiTokenStore.authenticate ===
+    typeof runtime
+      .apiTokenStore
+      .authenticate ===
       'function'
   ) {
-    return runtime.apiTokenStore;
+    return runtime
+      .apiTokenStore;
   }
 
-  return ApiTokenStore.fromConfig(
-    runtime?.config?.apiV2 || {}
-  );
+  return ApiTokenStore
+    .fromConfig(
+      runtime?.config
+        ?.apiV2 || {}
+    );
+}
+
+async function resolvePrincipal(
+  runtime,
+  req
+) {
+  const tokenStore =
+    resolveApiTokenStore(
+      runtime
+    );
+
+  const bearer =
+    parseBearerToken(req);
+
+  if (
+    bearer &&
+    tokenStore.isConfigured()
+  ) {
+    const principal =
+      tokenStore.authenticate(
+        bearer
+      );
+
+    if (principal) {
+      return principal;
+    }
+  }
+
+  if (
+    runtime?.sessionService &&
+    typeof runtime
+      .sessionService
+      .principalForRequest ===
+      'function'
+  ) {
+    return runtime
+      .sessionService
+      .principalForRequest(req);
+  }
+
+  return null;
 }
 
 function createApiV2AuthMiddleware({
-  runtimeProvider = getRuntimeContext,
-  errorSender = sendError
+  runtimeProvider =
+    getRuntimeContext,
+  errorSender =
+    sendError
 } = {}) {
-  return function requireApiV2Auth(
+  return async function requireApiV2Auth(
     req,
     res,
     next
@@ -62,22 +110,34 @@ function createApiV2AuthMiddleware({
       runtimeProvider();
 
     const tokenStore =
-      resolveApiTokenStore(runtime);
+      resolveApiTokenStore(
+        runtime
+      );
 
-    if (!tokenStore.isConfigured()) {
+    const sessionAvailable =
+      Boolean(
+        runtime?.sessionService
+      );
+
+    if (
+      !tokenStore.isConfigured() &&
+      !sessionAvailable
+    ) {
       return errorSender(
         req,
         res,
-        HttpError.serviceUnavailable(
-          'API_V2_AUTH_NOT_CONFIGURED',
-          'Az API v2 hitelesítése nincs beállítva.'
-        )
+        HttpError
+          .serviceUnavailable(
+            'API_V2_AUTH_NOT_CONFIGURED',
+            'Az API v2 hitelesítése nincs beállítva.'
+          )
       );
     }
 
     const principal =
-      tokenStore.authenticate(
-        parseBearerToken(req)
+      await resolvePrincipal(
+        runtime,
+        req
       );
 
     if (!principal) {
@@ -93,7 +153,9 @@ function createApiV2AuthMiddleware({
       );
     }
 
-    req.apiPrincipal = principal;
+    req.apiPrincipal =
+      principal;
+
     return next();
   };
 }
@@ -106,5 +168,6 @@ module.exports = {
   parseBearerToken,
   requireApiV2Auth,
   resolveApiTokenStore,
+  resolvePrincipal,
   safeTokenEquals
 };

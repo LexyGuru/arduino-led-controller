@@ -1,72 +1,64 @@
 # V5 szervermodulok térképe
 
-## Indítás
+## Indítási folyamat
 
 ```text
 server2_final.js
-  ├─ core config / runtime paths / logger
+  ├─ core config / runtime paths / logger / runtime context
   ├─ ApiTokenStore
+  ├─ UserRepository + SessionService
+  ├─ EventBus
   ├─ ArduinoClient
   ├─ LedService
   ├─ ScheduleService
-  ├─ LocalScheduleRepository
-  ├─ LocalScheduleRunner
-  ├─ LocalScheduleService
-  ├─ FirmwareReleaseClient
-  ├─ OtaRunner
-  ├─ FirmwareService
+  ├─ LocalScheduleRepository + Runner + Service
+  ├─ FirmwareReleaseClient + OtaRunner + FirmwareService
+  ├─ SocketGateway
   ├─ ExpressBootstrapRegistry
-  │    ├─ health
-  │    └─ API v2
+  ├─ SocketBootstrapRegistry
   └─ server2_legacy.js
 ```
-
-A `server2_legacy.js` továbbra is kiszolgálja a régi webes és `/api/...`
-végpontokat. Az új szolgáltatások az API v2 mellett, párhuzamosan működnek.
 
 ## Biztonsági modulok
 
 | Modul | Feladat |
 |---|---|
-| `server/security/roles.js` | Szerepkörök és jogosultságok |
-| `server/security/api-token-store.js` | Több Bearer token, szerepkör és konstans idejű összehasonlítás |
-| `server/api/v2/auth.js` | Tokenfeldolgozás és principal létrehozása |
-| `server/api/v2/authorize.js` | Jogosultsági middleware |
+| `server/security/api-token-store.js` | Több Bearer token és szerepkör |
+| `server/security/user-repository.js` | Legacy `users.json` és scrypt ellenőrzés |
+| `server/security/session-service.js` | `led_session` cookie aláírás és ellenőrzés |
+| `server/api/v2/auth.js` | Bearer vagy session principal feloldása |
+| `server/api/v2/session-routes.js` | Login, logout és session status |
 
-## Helyi schedule modulok
-
-| Modul | Feladat |
-|---|---|
-| `local-schedule-repository.js` | Atomikus JSON adattár és automatikus backup |
-| `local-schedule-runner.js` | Időzónahelyes, duplikációvédett futtató |
-| `local-schedule-service.js` | Repository, runner és Arduino sync összekapcsolása |
-| `local-schedule-routes.js` | API v2 CRUD, export/import, sync és manuális tick |
-
-## Firmware modulok
+## Esemény- és Socket.IO modulok
 
 | Modul | Feladat |
 |---|---|
-| `firmware-release-client.js` | GitHub release és ellenőrzött bináris letöltés |
-| `ota-runner.js` | Shell nélküli `arduinoOTA` folyamatindítás |
-| `firmware-service.js` | OTA állapotgép és Arduino-visszajelentkezés |
-| `firmware-routes.js` | API v2 status, check és update |
+| `server/events/topics.js` | Közös eseménytémák |
+| `server/events/event-bus.js` | Memóriabeli eseménybusz és korlátozott történet |
+| `server/socket/socket-bootstrap-registry.js` | Socket.IO factory egyszeri bővítése |
+| `server/socket/socket-gateway.js` | V5 realtime eseményközvetítés |
+| `server/api/v2/event-routes.js` | Eseményállapot és eseménytörténet HTTP-n |
 
-## Már modularizált területek
+## Eseményforrások
 
-- Core konfiguráció és runtime context
-- Arduino HTTP-kliens
-- Health
-- API v2 platform
-- LED szolgáltatás
-- Arduino schedule szolgáltatás
-- Helyi schedule repository és runner
-- Többtokenes API-hitelesítés
-- Firmware release és OTA szolgáltatás
+- LED módosítás, összes LED és reset
+- Arduino schedule reload, generate, clear, test és sync
+- helyi schedule create, remove, import és runner végrehajtás
+- firmware OTA állapotváltozás
+- login, logout és Socket.IO kapcsolatok
 
-## Következő nagy területek
+## LXC rollback
 
-1. Legacy LED, schedule, auth és firmware route-ok átállítása a közös szolgáltatásokra.
-2. Socket.IO és konzolstream külön modulba emelése.
+| Fájl | Feladat |
+|---|---|
+| `deploy/update-rollback-lib.sh` | Last-known-good commit és Git-visszaállítás |
+| `deploy/update.sh` | Sikertelen frissítés automatikus rollbackje |
+| `scripts/test-update-rollback.sh` | Izolált Git rollback smoke teszt |
+
+## Még hátralévő nagy területek
+
+1. Legacy LED, schedule, auth és firmware route-ok átállítása.
+2. Legacy Socket.IO események bekötése a közös eseménybuszba.
 3. Statikus webes felület külön modulba emelése.
-4. Automatikus LXC rollback.
-5. OpenAPI séma és Tauri kliensmigráció.
+4. OpenAPI gépi séma és közös TypeScript kliens.
+5. `server2_legacy.js` fokozatos megszüntetése.

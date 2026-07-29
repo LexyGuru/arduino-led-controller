@@ -93,7 +93,7 @@ function createRequest(token) {
   };
 }
 
-function main() {
+async function main() {
   const adminToken =
     'admin-token-1234567890-abcdefghijkl';
 
@@ -126,7 +126,7 @@ function main() {
 
   let nextCalled = false;
 
-  middleware(
+  await middleware(
     request,
     createResponse(),
     () => {
@@ -147,7 +147,7 @@ function main() {
   const unauthorized =
     createResponse();
 
-  middleware(
+  await middleware(
     createRequest(
       'wrong-token'
     ),
@@ -200,9 +200,7 @@ function main() {
   );
 }
 
-try {
-  main();
-} catch (error) {
+main().catch((error) => {
   console.error(`HIBA: ${error.message}`);
   process.exitCode = 1;
-}
+});

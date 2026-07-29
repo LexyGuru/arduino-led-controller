@@ -354,6 +354,26 @@ function loadRuntimeConfig(options = {}) {
       cookieSecure: booleanFromEnvironment(
         environment.COOKIE_SECURE,
         false
+      ),
+      sessionDurationMs: numberInRange(
+        environment.SESSION_DURATION_MS,
+        12 * 60 * 60 * 1000,
+        5 * 60 * 1000,
+        7 * 24 * 60 * 60 * 1000
+      )
+    },
+    events: {
+      historyLimit: integerInRange(
+        environment.EVENT_HISTORY_LIMIT,
+        200,
+        10,
+        2000
+      ),
+      socketRecentLimit: integerInRange(
+        environment.SOCKET_RECENT_EVENT_LIMIT,
+        25,
+        1,
+        100
       )
     },
     logging: {

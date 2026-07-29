@@ -4,8 +4,8 @@
  * V5 kompatibilitási indítófájl.
  *
  * A legacy alkalmazás továbbra is a server2_legacy.js fájlban marad.
- * Az új réteg közös Arduino-, LED-, schedule- és firmware
- * szolgáltatásokat biztosít az API v2 számára.
+ * Az új réteg közös runtime-, biztonsági, esemény-, Socket.IO-, Arduino-,
+ * LED-, schedule- és firmware-szolgáltatásokat biztosít.
  */
 
 require('dotenv').config();
@@ -23,12 +23,25 @@ const {
 } = require('./server/core/logger');
 
 const {
+  getRuntimeContext,
   setRuntimeContext
 } = require('./server/core/runtime-context');
 
 const {
   ApiTokenStore
 } = require('./server/security/api-token-store');
+
+const {
+  UserRepository
+} = require('./server/security/user-repository');
+
+const {
+  SessionService
+} = require('./server/security/session-service');
+
+const {
+  EventBus
+} = require('./server/events/event-bus');
 
 const {
   ArduinoClient
@@ -72,6 +85,15 @@ const {
 } = require('./server/express/express-bootstrap-registry');
 
 const {
+  installSocketFactoryPatch,
+  registerSocketInstaller
+} = require('./server/socket/socket-bootstrap-registry');
+
+const {
+  SocketGateway
+} = require('./server/socket/socket-gateway');
+
+const {
   installHealthRoutes
 } = require('./server/health-bootstrap');
 
@@ -102,10 +124,36 @@ const logger =
       'test'
   });
 
+const eventBus =
+  new EventBus({
+    historyLimit:
+      config.events.historyLimit,
+    logger
+  });
+
 const apiTokenStore =
   ApiTokenStore.fromConfig(
     config.apiV2
   );
+
+const userRepository =
+  new UserRepository({
+    filePath:
+      paths.authFile,
+    logger
+  });
+
+const sessionService =
+  new SessionService({
+    userRepository,
+    cookieSecure:
+      config.security
+        .cookieSecure,
+    sessionDurationMs:
+      config.security
+        .sessionDurationMs,
+    eventBus
+  });
 
 const arduinoClient =
   new ArduinoClient({
@@ -117,13 +165,15 @@ const arduinoClient =
 const ledService =
   new LedService({
     arduinoClient,
-    logger
+    logger,
+    eventBus
   });
 
 const scheduleService =
   new ScheduleService({
     arduinoClient,
-    logger
+    logger,
+    eventBus
   });
 
 const localScheduleRepository =
@@ -132,7 +182,8 @@ const localScheduleRepository =
       paths.localSchedulesFile,
     backupDir:
       paths.localScheduleBackupDir,
-    logger
+    logger,
+    eventBus
   });
 
 const localScheduleRunner =
@@ -141,6 +192,7 @@ const localScheduleRunner =
       localScheduleRepository,
     ledService,
     logger,
+    eventBus,
     timeZone:
       config.schedule.timeZone,
     intervalMs:
@@ -204,9 +256,21 @@ const firmwareService =
     releaseTag:
       config.firmware.releaseTag,
     logger,
+    eventBus,
     restartTimeoutMs:
       config.firmware
         .restartTimeoutMs
+  });
+
+const socketGateway =
+  new SocketGateway({
+    eventBus,
+    runtimeProvider:
+      getRuntimeContext,
+    logger,
+    recentLimit:
+      config.events
+        .socketRecentLimit
   });
 
 setRuntimeContext({
@@ -215,7 +279,10 @@ setRuntimeContext({
   config,
   paths,
   logger,
+  eventBus,
   apiTokenStore,
+  userRepository,
+  sessionService,
   arduinoClient,
   ledService,
   scheduleService,
@@ -224,7 +291,8 @@ setRuntimeContext({
   localScheduleService,
   firmwareReleaseClient,
   otaRunner,
-  firmwareService
+  firmwareService,
+  socketGateway
 });
 
 if (
@@ -248,6 +316,13 @@ registerExpressInstaller(
   installApiV2Routes
 );
 
+registerSocketInstaller(
+  'v5-event-gateway',
+  (io) =>
+    socketGateway.install(io)
+);
+
 installExpressFactoryPatch();
+installSocketFactoryPatch();
 
 require('./server2_legacy');

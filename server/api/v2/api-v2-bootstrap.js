@@ -1,5 +1,7 @@
 'use strict';
 
+const express = require('express');
+
 const {
   apiV2RequestContext
 } = require('./http-response');
@@ -35,6 +37,14 @@ const {
 } = require('./routes');
 
 const {
+  installSessionRoutes
+} = require('./session-routes');
+
+const {
+  installEventRoutes
+} = require('./event-routes');
+
+const {
   installLedRoutes
 } = require('./led-routes');
 
@@ -51,6 +61,17 @@ const {
 } = require('./firmware-routes');
 
 function installApiV2Routes(app) {
+  app.use(
+    '/api/v2',
+    express.json({
+      limit: '2mb'
+    }),
+    express.urlencoded({
+      extended: false,
+      limit: '2mb'
+    })
+  );
+
   const handlers =
     createApiV2Handlers({
       readinessCollector:
@@ -93,6 +114,8 @@ function installApiV2Routes(app) {
     handlers.systemHealth
   );
 
+  installSessionRoutes(app);
+
   app.get(
     '/api/v2/system/status',
     requireApiV2Auth,
@@ -107,6 +130,7 @@ function installApiV2Routes(app) {
     handlers.arduinoStatus
   );
 
+  installEventRoutes(app);
   installLedRoutes(app);
   installScheduleRoutes(app);
   installLocalScheduleRoutes(app);

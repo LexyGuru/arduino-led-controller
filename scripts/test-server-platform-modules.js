@@ -176,7 +176,7 @@ async function main() {
 
   let nextCalled = false;
 
-  authMiddleware(
+  await authMiddleware(
     authRequest,
     createResponse(),
     () => {
@@ -215,7 +215,7 @@ async function main() {
   const unauthorizedResponse =
     createResponse();
 
-  authMiddleware(
+  await authMiddleware(
     {
       ...authRequest,
       headers: {}

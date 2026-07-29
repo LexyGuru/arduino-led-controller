@@ -1,5 +1,9 @@
 'use strict';
 
+const {
+  EVENT_TOPICS
+} = require('../events/topics');
+
 const WEEKDAY_MAP = Object.freeze({
   Mon: 1,
   Tue: 2,
@@ -39,6 +43,7 @@ class LocalScheduleRunner {
     repository,
     ledService,
     logger = null,
+    eventBus = null,
     timeZone = 'Europe/Vienna',
     intervalMs = 15000,
     clock = () => new Date()
@@ -52,6 +57,7 @@ class LocalScheduleRunner {
     this.repository = repository;
     this.ledService = ledService;
     this.logger = logger;
+    this.eventBus = eventBus;
     this.timeZone = timeZone;
     this.intervalMs = Math.max(5000, Number(intervalMs) || 15000);
     this.clock = clock;
@@ -159,8 +165,18 @@ class LocalScheduleRunner {
       ...local,
       schedules: due.length,
       executions: executions.length,
-      failures: executions.filter((execution) => !execution.success).length
+      failures: executions.filter(
+        (execution) =>
+          !execution.success
+      ).length
     };
+
+    this.eventBus?.publish?.(
+      EVENT_TOPICS.LOCAL_SCHEDULE_RUN,
+      {
+        ...this.lastRun
+      }
+    );
 
     return {
       skipped: false,

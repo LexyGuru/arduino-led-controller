@@ -7,6 +7,10 @@ const {
   FirmwareServiceError
 } = require('./firmware-error');
 
+const {
+  EVENT_TOPICS
+} = require('../events/topics');
+
 const BUSY_STATES = Object.freeze([
   'checking',
   'downloading',
@@ -31,6 +35,7 @@ class FirmwareService {
     repository,
     releaseTag,
     logger = null,
+    eventBus = null,
     waitImplementation = wait,
     restartTimeoutMs = 90000
   } = {}) {
@@ -43,6 +48,7 @@ class FirmwareService {
     this.repository = repository;
     this.releaseTag = releaseTag;
     this.logger = logger;
+    this.eventBus = eventBus;
     this.wait = waitImplementation;
     this.restartTimeoutMs = Number(restartTimeoutMs);
 
@@ -67,6 +73,25 @@ class FirmwareService {
       state,
       message
     });
+
+    this.eventBus?.publish?.(
+      EVENT_TOPICS.FIRMWARE_STATE,
+      {
+        state,
+        message,
+        startedAt:
+          this.state.startedAt,
+        finishedAt:
+          this.state.finishedAt,
+        firmwareVersion:
+          this.state
+            .artifact
+            ?.firmwareVersion ||
+          this.state
+            .installedVersion ||
+          null
+      }
+    );
   }
 
   isBusy() {

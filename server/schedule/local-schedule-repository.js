@@ -15,6 +15,10 @@ const {
   ScheduleValidationError
 } = require('./schedule-error');
 
+const {
+  EVENT_TOPICS
+} = require('../events/topics');
+
 function toPlainSchedule(schedule, id = null) {
   const normalized = normalizePortableSchedule(schedule);
 
@@ -42,7 +46,12 @@ function sortSchedules(schedules) {
 }
 
 class LocalScheduleRepository {
-  constructor({ filePath, backupDir, logger = null } = {}) {
+  constructor({
+    filePath,
+    backupDir,
+    logger = null,
+    eventBus = null
+  } = {}) {
     if (typeof filePath !== 'string' || !filePath.trim()) {
       throw new TypeError('A helyi schedule fájlútvonala kötelező.');
     }
@@ -50,6 +59,7 @@ class LocalScheduleRepository {
     this.filePath = filePath;
     this.backupDir = backupDir || path.join(path.dirname(filePath), 'backups');
     this.logger = logger;
+    this.eventBus = eventBus;
     this.writeQueue = Promise.resolve();
   }
 
@@ -173,6 +183,19 @@ class LocalScheduleRepository {
         ...created
       ]);
 
+      this.eventBus?.publish?.(
+        EVENT_TOPICS.LOCAL_SCHEDULE_CREATED,
+        {
+          ids:
+            created.map(
+              (schedule) =>
+                schedule.id
+            ),
+          count:
+            created.length
+        }
+      );
+
       return created;
     });
   }
@@ -192,6 +215,13 @@ class LocalScheduleRepository {
       }
 
       await this.writeAtomic(filtered);
+
+      this.eventBus?.publish?.(
+        EVENT_TOPICS.LOCAL_SCHEDULE_REMOVED,
+        {
+          id
+        }
+      );
 
       return {
         removed: true,
@@ -217,6 +247,15 @@ class LocalScheduleRepository {
         : null;
 
       await this.writeAtomic(normalized);
+
+      this.eventBus?.publish?.(
+        EVENT_TOPICS.LOCAL_SCHEDULE_IMPORTED,
+        {
+          count:
+            normalized.length,
+          backupFile
+        }
+      );
 
       return {
         count: normalized.length,
