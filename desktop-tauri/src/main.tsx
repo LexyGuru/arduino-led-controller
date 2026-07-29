@@ -10,6 +10,7 @@ import {
 
 import './styles.css';
 import './api-v2.css';
+import './dashboard-led-api-v2.css';
 
 createRoot(
   document.getElementById(

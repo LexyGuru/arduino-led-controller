@@ -18,7 +18,8 @@
     "tauri:ios:dev": "tauri ios dev",
     "tauri:ios:build": "tauri ios build",
     "api:test-runtime": "node ../scripts/test-desktop-server-profile.js && node ../scripts/test-desktop-credential-vault.js && node ../scripts/test-desktop-connectivity.js && node ../scripts/test-desktop-auth-controller.js && node ../scripts/test-desktop-event-stream.js && node ../scripts/test-desktop-api-runtime.js && node ../scripts/test-desktop-domain-adapters.js",
-    "api:test-system-ui": "node ../scripts/test-desktop-api-payload.js && node ../scripts/test-desktop-v5-models.js && node ../scripts/test-desktop-system-domain.js && node ../scripts/test-desktop-v5-ui-contract.js"
+    "api:test-system-ui": "node ../scripts/test-desktop-api-payload.js && node ../scripts/test-desktop-v5-models.js && node ../scripts/test-desktop-system-domain.js && node ../scripts/test-desktop-v5-ui-contract.js",
+    "api:test-dashboard-led": "node ../scripts/test-desktop-dashboard-led-models.js && node ../scripts/test-desktop-arduino-led-domains.js && node ../scripts/test-desktop-dashboard-led-ui-contract.js && node ../scripts/test-desktop-dashboard-led-generated-compat.js"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.0.0",

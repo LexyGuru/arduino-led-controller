@@ -3,17 +3,32 @@ export class DesktopLedApi {
     client,
     runtime
   } = {}) {
+    if (!client) {
+      throw new TypeError(
+        'Az API kliens kötelező.'
+      );
+    }
+
+    if (!runtime) {
+      throw new TypeError(
+        'A desktop runtime kötelező.'
+      );
+    }
+
     this.client = client;
     this.runtime = runtime;
   }
 
-  list() {
+  list({
+    allowStaleOnError = true
+  } = {}) {
     return this.runtime.read(
       'leds:list',
       () =>
         this.client.getLeds(),
       {
-        ttlMs: 5000
+        ttlMs: 3000,
+        allowStaleOnError
       }
     );
   }
@@ -29,7 +44,7 @@ export class DesktopLedApi {
             }
           }),
       {
-        ttlMs: 5000
+        ttlMs: 3000
       }
     );
   }
@@ -45,6 +60,26 @@ export class DesktopLedApi {
             body:
               command
           })
+    );
+  }
+
+  updateMany(commands) {
+    if (
+      !Array.isArray(commands)
+    ) {
+      throw new TypeError(
+        'A LED parancslista tömb legyen.'
+      );
+    }
+
+    return Promise.all(
+      commands.map(
+        (entry) =>
+          this.update(
+            entry.id,
+            entry.command
+          )
+      )
     );
   }
 

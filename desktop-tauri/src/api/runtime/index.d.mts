@@ -282,6 +282,22 @@ export function isConnectivityFailure(
   error: unknown
 ): boolean;
 
+
+export class DesktopArduinoApi {
+  constructor(options: {
+    client: unknown;
+    runtime:
+      DesktopApiRuntime;
+  });
+  status(
+    options?: {
+      allowStaleOnError?: boolean;
+    }
+  ): Promise<unknown>;
+  monitor(): Promise<unknown>;
+  pollMonitor(): Promise<unknown>;
+}
+
 export class DesktopLedApi {
   constructor(options: {
     client: unknown;
@@ -296,6 +312,16 @@ export class DesktopLedApi {
     id: string | number,
     command: unknown
   ): Promise<unknown>;
+  updateMany(
+    commands:
+      Array<{
+        id:
+          string |
+          number;
+        command:
+          unknown;
+      }>
+  ): Promise<unknown[]>;
   allOn(
     command?: unknown
   ): Promise<unknown>;

@@ -6,6 +6,7 @@ import {
   ConnectivityStore,
   createCredentialVault,
   DesktopApiRuntime,
+  DesktopArduinoApi,
   DesktopAuthController,
   DesktopEventStream,
   DesktopFirmwareApi,
@@ -133,6 +134,11 @@ export function createDesktopApi(
     auth,
     eventStream,
     runtime,
+    arduino:
+      new DesktopArduinoApi({
+        client,
+        runtime
+      }),
     led:
       new DesktopLedApi({
         client,
