@@ -101,6 +101,15 @@ function createRuntimePaths(
           'users.json'
         )
       ),
+    apiTokenFile:
+      resolveFromRoot(
+        root,
+        environment.API_TOKEN_FILE,
+        path.join(
+          configDir,
+          'api-v2-tokens.json'
+        )
+      ),
     auditFile:
       resolveFromRoot(
         root,
@@ -143,6 +152,15 @@ function createRuntimePaths(
         environment.LOCAL_SCHEDULE_BACKUP_DIR,
         path.join(
           schedulesDir,
+          'backups'
+        )
+      ),
+    firmwareBackupDir:
+      resolveFromRoot(
+        root,
+        environment.FIRMWARE_BACKUP_DIR,
+        path.join(
+          firmwareDir,
           'backups'
         )
       ),

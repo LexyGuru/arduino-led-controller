@@ -31,6 +31,14 @@ class FirmwareServiceError extends Error {
     );
   }
 
+  static cancelled() {
+    return new FirmwareServiceError(
+      409,
+      'FIRMWARE_UPDATE_CANCELLED',
+      'A firmware-művelet meg lett szakítva.'
+    );
+  }
+
   static notConfigured(details) {
     return new FirmwareServiceError(
       503,

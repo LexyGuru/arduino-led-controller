@@ -79,3 +79,16 @@ Leállítási sorrend:
 | `server/legacy/legacy-schedule-file-routes.js` | Régi `/api/files` és upload kompatibilitás |
 | `server/legacy/legacy-cutover-service.js` | Cutover készenléti összesítés |
 | `server/web/static-web-installer.js` | `public/` statikus fájlok külön installerben |
+
+
+## Alpha.2 candidate modulok
+
+| Modul | Feladat |
+|---|---|
+| `server/security/api-token-repository.js` | Hash-elt, atomikus managed-token adattár |
+| `server/security/api-token-service.js` | Létrehozás, rotáció, tiltás és törlés |
+| `server/api/v2/token-routes.js` | Token-admin API v2 |
+| `server/firmware/firmware-backup-store.js` | Ellenőrzött bináris backup és last-known-good index |
+| `scripts/generate-openapi-typescript.js` | Determinisztikus TypeScript kliensgenerátor |
+| `deploy/test-alpha2-lxc.sh` | Valódi LXC release-gate és gépi jelentés |
+| `deploy/build-versioned-release.sh` | Git commitból verziózott tar.gz release bundle |

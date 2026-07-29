@@ -15,6 +15,8 @@ const PERMISSIONS = Object.freeze({
   SETTINGS_WRITE: 'settings:write',
   USER_READ: 'user:read',
   USER_ADMIN: 'user:admin',
+  TOKEN_READ: 'token:read',
+  TOKEN_ADMIN: 'token:admin',
   ARDUINO_READ: 'arduino:read',
   CONSOLE_READ: 'console:read',
   CONSOLE_WRITE: 'console:write',
@@ -29,7 +31,8 @@ const PERMISSIONS = Object.freeze({
   SCHEDULE_WRITE: 'schedule:write',
   SCHEDULE_ADMIN: 'schedule:admin',
   FIRMWARE_READ: 'firmware:read',
-  FIRMWARE_UPDATE: 'firmware:update'
+  FIRMWARE_UPDATE: 'firmware:update',
+  FIRMWARE_ADMIN: 'firmware:admin'
 });
 
 const ROLE_PERMISSIONS = Object.freeze({

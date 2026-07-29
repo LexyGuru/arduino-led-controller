@@ -84,6 +84,12 @@ const {
 );
 
 const {
+  installTokenRoutes
+} = require(
+  './token-routes'
+);
+
+const {
   installEventRoutes
 } = require(
   './event-routes'
@@ -248,6 +254,10 @@ function installApiV2Routes(
   );
 
   installUserRoutes(
+    app
+  );
+
+  installTokenRoutes(
     app
   );
 

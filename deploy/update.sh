@@ -220,6 +220,17 @@ check_node_files() {
   node --check "${root_dir}/scripts/test-cutover-service.js"
   node --check "${root_dir}/scripts/test-static-web-installer.js"
   node --check "${root_dir}/scripts/test-cutover-package-manifest.js"
+  node --check "${root_dir}/server/security/api-token-repository.js"
+  node --check "${root_dir}/server/security/api-token-service.js"
+  node --check "${root_dir}/server/api/v2/token-routes.js"
+  node --check "${root_dir}/server/firmware/firmware-backup-store.js"
+  node --check "${root_dir}/scripts/generate-openapi-typescript.js"
+  node --check "${root_dir}/scripts/test-api-token-administration.js"
+  node --check "${root_dir}/scripts/test-firmware-backup-rollback.js"
+  node --check "${root_dir}/scripts/test-ota-cancellation.js"
+  node --check "${root_dir}/scripts/test-openapi-typescript-generator.js"
+  node --check "${root_dir}/scripts/test-alpha2-candidate-tooling.js"
+  node --check "${root_dir}/scripts/test-alpha2-candidate-package-manifest.js"
 }
 
 repair_runtime() {

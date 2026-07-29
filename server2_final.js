@@ -68,6 +68,18 @@ const {
 );
 
 const {
+  ApiTokenRepository
+} = require(
+  './server/security/api-token-repository'
+);
+
+const {
+  ApiTokenService
+} = require(
+  './server/security/api-token-service'
+);
+
+const {
   UserRepository
 } = require(
   './server/security/user-repository'
@@ -173,6 +185,12 @@ const {
   OtaRunner
 } = require(
   './server/firmware/ota-runner'
+);
+
+const {
+  FirmwareBackupStore
+} = require(
+  './server/firmware/firmware-backup-store'
 );
 
 const {
@@ -333,6 +351,32 @@ const apiTokenStore =
   ApiTokenStore.fromConfig(
     config.apiV2
   );
+
+const apiTokenRepository =
+  new ApiTokenRepository({
+    filePath:
+      paths.apiTokenFile,
+    logger,
+    maximumRecords:
+      config.apiV2
+        .maximumManagedTokens
+  });
+
+const apiTokenService =
+  new ApiTokenService({
+    repository:
+      apiTokenRepository,
+    tokenStore:
+      apiTokenStore,
+    eventBus,
+    auditLog,
+    logger,
+    tokenBytes:
+      config.apiV2
+        .managedTokenBytes
+  });
+
+apiTokenService.initialize();
 
 const userRepository =
   new UserRepository({
@@ -496,12 +540,24 @@ const runtimeSettingsService =
     eventBus
   });
 
+const firmwareBackupStore =
+  new FirmwareBackupStore({
+    backupDir:
+      paths.firmwareBackupDir,
+    maximumBackups:
+      config.firmware
+        .maximumBackups,
+    logger
+  });
+
 const firmwareService =
   new FirmwareService({
     arduinoClient,
     releaseClient:
       firmwareReleaseClient,
     otaRunner,
+    backupStore:
+      firmwareBackupStore,
     firmwareDir:
       paths.firmwareDir,
     otaToolPath:
@@ -582,6 +638,8 @@ setRuntimeContext({
   eventBus,
   auditLog,
   apiTokenStore,
+  apiTokenRepository,
+  apiTokenService,
   userRepository,
   sessionService,
   arduinoClient,
@@ -596,6 +654,7 @@ setRuntimeContext({
   legacyCronGuard,
   legacyCutoverService,
   firmwareReleaseClient,
+  firmwareBackupStore,
   otaRunner,
   runtimeSettingsService,
   firmwareService,
@@ -649,6 +708,11 @@ shutdownCoordinator
     () =>
       legacyEventBridge
         .close()
+  )
+  .register(
+    'ota-runner',
+    () =>
+      otaRunner.cancel()
   )
   .register(
     'arduino-status-monitor',

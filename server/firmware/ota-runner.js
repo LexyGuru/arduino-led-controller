@@ -9,7 +9,8 @@ function runProgram(
   args,
   {
     timeoutMs = 180000,
-    spawnImplementation = spawn
+    spawnImplementation = spawn,
+    onChild = null
   } = {}
 ) {
   return new Promise((resolve, reject) => {
@@ -19,8 +20,11 @@ function runProgram(
       { shell: false }
     );
 
+    onChild?.(child);
+
     const chunks = [];
     let outputSize = 0;
+    let timedOut = false;
 
     const append = (chunk) => {
       if (outputSize >= 65536) {
@@ -39,10 +43,10 @@ function runProgram(
     child.stdout?.on('data', append);
     child.stderr?.on('data', append);
 
-    const timer = setTimeout(
-      () => child.kill('SIGTERM'),
-      timeoutMs
-    );
+    const timer = setTimeout(() => {
+      timedOut = true;
+      child.kill('SIGTERM');
+    }, timeoutMs);
 
     child.on('error', (error) => {
       clearTimeout(timer);
@@ -52,7 +56,8 @@ function runProgram(
     child.on('close', (code, signal) => {
       clearTimeout(timer);
 
-      const output = Buffer.concat(chunks).toString('utf8');
+      const output = Buffer.concat(chunks)
+        .toString('utf8');
 
       if (code === 0) {
         resolve({ code, output });
@@ -62,7 +67,17 @@ function runProgram(
       const detail = output.trim() ||
         `kilépési kód: ${code}${signal ? ` (${signal})` : ''}`;
 
-      reject(new Error(detail.slice(0, 2000)));
+      const error = new Error(
+        detail.slice(0, 2000)
+      );
+
+      error.code = timedOut
+        ? 'OTA_UPLOAD_TIMEOUT'
+        : signal === 'SIGTERM'
+          ? 'OTA_UPLOAD_CANCELLED'
+          : 'OTA_UPLOAD_FAILED';
+
+      reject(error);
     });
   });
 }
@@ -84,6 +99,8 @@ class OtaRunner {
     this.password = password;
     this.timeoutMs = Number(timeoutMs);
     this.programRunner = programRunner;
+    this.currentChild = null;
+    this.running = false;
   }
 
   setTarget(address) {
@@ -96,31 +113,67 @@ class OtaRunner {
       );
     }
 
-    this.address =
-      normalized;
+    this.address = normalized;
 
-    return {
-      address:
-        this.address
-    };
+    return { address: this.address };
   }
 
-  upload(binaryPath) {
-    return this.programRunner(
-      this.toolPath,
-      [
-        '-address', String(this.address),
-        '-port', String(this.port),
-        '-username', String(this.username),
-        '-password', String(this.password),
-        '-sketch', binaryPath,
-        '-upload', '/sketch',
-        '-b'
-      ],
-      {
-        timeoutMs: this.timeoutMs
-      }
-    );
+  isRunning() {
+    return this.running;
+  }
+
+  async upload(binaryPath) {
+    if (this.running) {
+      const error = new Error(
+        'Már folyamatban van OTA-feltöltés.'
+      );
+      error.code = 'OTA_UPLOAD_BUSY';
+      throw error;
+    }
+
+    this.running = true;
+
+    try {
+      return await this.programRunner(
+        this.toolPath,
+        [
+          '-address', String(this.address),
+          '-port', String(this.port),
+          '-username', String(this.username),
+          '-password', String(this.password),
+          '-sketch', binaryPath,
+          '-upload', '/sketch',
+          '-b'
+        ],
+        {
+          timeoutMs: this.timeoutMs,
+          onChild: (child) => {
+            this.currentChild = child;
+          }
+        }
+      );
+    } finally {
+      this.currentChild = null;
+      this.running = false;
+    }
+  }
+
+  cancel() {
+    if (!this.running) {
+      return {
+        cancelled: false,
+        reason: 'NOT_RUNNING'
+      };
+    }
+
+    const killed = this.currentChild
+      ? this.currentChild.kill('SIGTERM')
+      : false;
+
+    return {
+      cancelled: true,
+      processSignalled: killed
+    };
   }
 }
 

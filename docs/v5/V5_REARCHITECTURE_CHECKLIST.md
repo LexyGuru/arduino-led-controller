@@ -10,7 +10,7 @@ Munkacsomag: `feature/v5-server-modularization`
 - [x] Repository-validátor, titokellenőrzés és rollback
 - [x] Alpha.2 izolált worktree release-gate
 - [-] Alpha.2 gate valódi LXC-n
-- [ ] Verziózott release-csomag telepítése
+- [-] Verziózott release bundle készítés és ellenőrzés
 
 ## Hitelesítés, API és megfigyelhetőség
 
@@ -18,7 +18,7 @@ Munkacsomag: `feature/v5-server-modularization`
 - [x] Szerepkörök, permissions, CSRF és user admin
 - [x] OpenAPI 3.1, audit, metrics, Prometheus és diagnostics
 - [x] Tartós EventStore és Socket.IO gateway
-- [ ] Tokenrotációs admin API
+- [x] Tokenrotációs admin API és hash-elt token repository
 
 ## LED és Arduino
 
@@ -48,8 +48,8 @@ Munkacsomag: `feature/v5-server-modularization`
 
 - [x] Release, SHA-256, OTA és újraindulás-ellenőrzés
 - [x] Legacy firmware adapter
-- [ ] OTA megszakítás
-- [ ] Utolsó működő firmware backup és rollback
+- [x] OTA megszakítás
+- [x] Utolsó működő firmware backup és rollback
 
 ## Web és szerver modularizáció
 
@@ -63,7 +63,7 @@ Munkacsomag: `feature/v5-server-modularization`
 ## Desktop és mobil
 
 - [ ] Tauri átállítása API v2-re
-- [ ] OpenAPI-alapú TypeScript típusgenerálás
+- [x] OpenAPI-alapú TypeScript típus- és kliensgenerálás
 - [ ] Biztonságos token/session tárolás
 - [ ] Realtime Socket.IO kliens és offline mód
 
@@ -77,8 +77,8 @@ Munkacsomag: `feature/v5-server-modularization`
 
 ## Következő hatalmas munkacsomag
 
-1. Valódi LXC alpha.2 gate és hibajavítás.
-2. Verziószinkron `5.0.0-alpha.2`-re.
-3. OpenAPI TypeScript kliens/típusgenerátor.
-4. Inline legacy dashboard kiszervezése statikus fájlokba.
-5. OTA backup és rollback alapok.
+1. A valódi LXC alpha.2 gate futtatása és a gépi jelentés ellenőrzése.
+2. Teljes verziószinkron `5.0.0-alpha.2`-re, lockfile-okkal együtt.
+3. Staging telepítés a verziózott release bundle-ből.
+4. Inline legacy dashboard fizikai kiszervezése.
+5. Tauri képernyők fokozatos átállítása a generált API kliensre.

@@ -359,6 +359,20 @@ function loadRuntimeConfig(options = {}) {
         : 'admin',
       tokens: tokenConfiguration.tokens,
       tokensParseError: tokenConfiguration.parseError,
+      managedTokenBytes:
+        integerInRange(
+          environment.API_TOKEN_BYTES,
+          32,
+          24,
+          64
+        ),
+      maximumManagedTokens:
+        integerInRange(
+          environment.API_TOKEN_MAXIMUM_RECORDS,
+          100,
+          1,
+          500
+        ),
       allowedOrigins:
         allowedOriginsFromEnvironment(environment)
     },
@@ -415,6 +429,12 @@ function loadRuntimeConfig(options = {}) {
         90000,
         10000,
         300000
+      ),
+      maximumBackups: integerInRange(
+        environment.FIRMWARE_MAXIMUM_BACKUPS,
+        8,
+        2,
+        50
       )
     },
     security: {

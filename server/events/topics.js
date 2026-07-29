@@ -14,6 +14,10 @@ const EVENT_TOPICS = Object.freeze({
   USER_UPDATED: 'user.updated',
   USER_REMOVED: 'user.removed',
   USER_PASSWORD_CHANGED: 'user.password-changed',
+  API_TOKEN_CREATED: 'api-token.created',
+  API_TOKEN_UPDATED: 'api-token.updated',
+  API_TOKEN_ROTATED: 'api-token.rotated',
+  API_TOKEN_REMOVED: 'api-token.removed',
   SECURITY_AUDIT: 'security.audit',
   LED_UPDATED: 'led.updated',
   LED_ALL_CHANGED: 'led.all-changed',
@@ -31,6 +35,8 @@ const EVENT_TOPICS = Object.freeze({
   LOCAL_SCHEDULE_IMPORTED: 'local-schedule.imported',
   LOCAL_SCHEDULE_RUN: 'local-schedule.run',
   FIRMWARE_STATE: 'firmware.state',
+  FIRMWARE_BACKUP_CREATED: 'firmware.backup-created',
+  FIRMWARE_ROLLBACK: 'firmware.rollback',
   SOCKET_CONNECTED: 'socket.connected',
   SOCKET_DISCONNECTED: 'socket.disconnected'
 });

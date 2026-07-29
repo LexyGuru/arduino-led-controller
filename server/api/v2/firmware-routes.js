@@ -60,8 +60,17 @@ function invoke(method, options = {}) {
     const runtime = getRuntimeContext();
 
     try {
-      const result = await method(runtime.firmwareService, req);
-      return sendSuccess(req, res, result, options);
+      const result = await method(
+        runtime.firmwareService,
+        req
+      );
+
+      return sendSuccess(
+        req,
+        res,
+        result,
+        options
+      );
     } catch (error) {
       throw mapFirmwareError(error);
     }
@@ -77,11 +86,22 @@ function installFirmwareRoutes(app) {
     PERMISSIONS.FIRMWARE_UPDATE
   );
 
+  const admin = createPermissionMiddleware(
+    PERMISSIONS.FIRMWARE_ADMIN
+  );
+
   app.get(
     '/api/v2/firmware/status',
     requireApiV2Auth,
     read,
     invoke((service) => service.getStatus())
+  );
+
+  app.get(
+    '/api/v2/firmware/backups',
+    requireApiV2Auth,
+    read,
+    invoke((service) => service.listBackups())
   );
 
   app.post(
@@ -99,6 +119,34 @@ function installFirmwareRoutes(app) {
       (service) => service.startUpdate(),
       { statusCode: 202 }
     )
+  );
+
+  app.post(
+    '/api/v2/firmware/actions/rollback',
+    requireApiV2Auth,
+    admin,
+    invoke(
+      (service, req) => service.startRollback(
+        req.body?.backupId
+      ),
+      { statusCode: 202 }
+    )
+  );
+
+  app.post(
+    '/api/v2/firmware/actions/cancel',
+    requireApiV2Auth,
+    admin,
+    invoke((service) => service.cancel())
+  );
+
+  app.delete(
+    '/api/v2/firmware/backups/:id',
+    requireApiV2Auth,
+    admin,
+    invoke((service, req) => service.deleteBackup(
+      req.params.id
+    ))
   );
 }
 

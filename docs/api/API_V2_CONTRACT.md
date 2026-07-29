@@ -742,3 +742,26 @@ Az Arduino-feltöltés csak akkor fut, ha az
 
 A `public/` könyvtár kiszolgálása külön Express installerben történik. A nagy,
 inline legacy dashboard egyelőre kompatibilitási tartalékként megmarad.
+
+
+## Forgatható API-tokenek
+
+- `GET /api/v2/tokens`
+- `POST /api/v2/tokens`
+- `PATCH /api/v2/tokens/:id`
+- `POST /api/v2/tokens/:id/actions/rotate`
+- `DELETE /api/v2/tokens/:id`
+
+Az új token csak a létrehozási vagy rotációs válaszban jelenik meg. A
+repository kizárólag SHA-256 lenyomatot tárol. Az utolsó aktív admin token
+nem tiltható le és nem törölhető, kivéve, ha aktív konfigurációs admin token
+is rendelkezésre áll.
+
+## Firmware backup és rollback
+
+- `GET /api/v2/firmware/backups`
+- `POST /api/v2/firmware/actions/rollback`
+- `POST /api/v2/firmware/actions/cancel`
+- `DELETE /api/v2/firmware/backups/:id`
+
+A rollback kizárólag SHA-256 ellenőrzött, helyi backupból indulhat.
