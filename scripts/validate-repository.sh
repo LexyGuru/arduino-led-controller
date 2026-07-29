@@ -426,6 +426,12 @@ required_files=(
   "scripts/test-alpha2-lxc-predeployment-hardening-manifest.js"
   "docs/v5/ALPHA2_LXC_PREDEPLOYMENT_HARDENING.md"
   "docs/v5/PACKAGE_MANIFEST_ALPHA2_LXC_PREDEPLOYMENT_HARDENING.json"
+  ".gitignore"
+  "scripts/test-release-runtime-gitignore.js"
+  "scripts/test-release-runtime-completeness.js"
+  "scripts/test-release-runtime-recovery-manifest.js"
+  "docs/v5/RELEASE_RUNTIME_GITIGNORE_RECOVERY.md"
+  "docs/v5/PACKAGE_MANIFEST_RELEASE_RUNTIME_RECOVERY.json"
 )
 for file in "${required_files[@]}"; do
   [[ -f "${file}" ]] || {

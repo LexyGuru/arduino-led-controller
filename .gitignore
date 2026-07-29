@@ -1,12 +1,13 @@
 node_modules/
 .env
 secrets.h
-data/
-config/
-schedules/
+/data/
+/config/*
+!/config/release-secret-allowlist.json
+/schedules/
 *.log
-release/
-artifacts/
+/release/
+/artifacts/
 
 # Tauri / frontend
 desktop-tauri/dist/
