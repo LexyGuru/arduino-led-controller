@@ -13,14 +13,41 @@ import {
   type DesktopApi
 } from '../create-desktop-api';
 
+type ConnectivityState =
+  ReturnType<
+    DesktopApi[
+      'connectivity'
+    ][
+      'snapshot'
+    ]
+  >;
+
+type AuthState =
+  ReturnType<
+    DesktopApi[
+      'auth'
+    ][
+      'snapshot'
+    ]
+  >;
+
+type RealtimeState =
+  ReturnType<
+    DesktopApi[
+      'eventStream'
+    ][
+      'snapshot'
+    ]
+  >;
+
 type DesktopApiContextValue = {
   api: DesktopApi;
   connectivity:
-    Record<string, unknown>;
+    ConnectivityState;
   auth:
-    Record<string, unknown>;
+    AuthState;
   realtime:
-    Record<string, unknown>;
+    RealtimeState;
 };
 
 const DesktopApiContext =
@@ -51,7 +78,7 @@ export function DesktopApiProvider({
     setConnectivity
   ] =
     useState<
-      Record<string, unknown>
+      ConnectivityState
     >(
       api.connectivity
         .snapshot()
@@ -62,7 +89,7 @@ export function DesktopApiProvider({
     setAuth
   ] =
     useState<
-      Record<string, unknown>
+      AuthState
     >(
       api.auth.snapshot()
     );
@@ -72,7 +99,7 @@ export function DesktopApiProvider({
     setRealtime
   ] =
     useState<
-      Record<string, unknown>
+      RealtimeState
     >(
       api.eventStream
         .snapshot()
@@ -101,8 +128,13 @@ export function DesktopApiProvider({
           1000
         );
 
-      void api.runtime
-        .start()
+      void api
+        .initializeCredentials()
+        .catch(() => null)
+        .then(
+          () =>
+            api.runtime.start()
+        )
         .catch(() => {
           setConnectivity(
             api.connectivity
@@ -113,9 +145,11 @@ export function DesktopApiProvider({
       return () => {
         unsubscribeConnectivity();
         unsubscribeAuth();
+
         globalThis.clearInterval(
           realtimeTimer
         );
+
         void api.runtime.dispose();
       };
     },

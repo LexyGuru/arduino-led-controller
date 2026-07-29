@@ -1,40 +1,304 @@
-import { useEffect, useState } from 'react';
-import { getVersion } from '@tauri-apps/api/app';
-import { Sidebar } from './components/Sidebar';
-import { Topbar } from './components/Topbar';
-import { useController } from './hooks/useController';
-import { DashboardPage } from './pages/DashboardPage';
-import { FirmwarePage } from './pages/FirmwarePage';
-import { LedsPage } from './pages/LedsPage';
-import { LogsPage } from './pages/LogsPage';
-import { SchedulesPage } from './pages/SchedulesPage';
-import { SettingsPage } from './pages/SettingsPage';
-import type { PageId } from './types';
+import {
+  useEffect,
+  useState
+} from 'react';
+
+import {
+  getVersion
+} from '@tauri-apps/api/app';
+
+import {
+  Sidebar
+} from './components/Sidebar';
+
+import {
+  Topbar
+} from './components/Topbar';
+
+import {
+  useController
+} from './hooks/useController';
+
+import {
+  DashboardPage
+} from './pages/DashboardPage';
+
+import {
+  FirmwarePage
+} from './pages/FirmwarePage';
+
+import {
+  LedsPage
+} from './pages/LedsPage';
+
+import {
+  LogsPage
+} from './pages/LogsPage';
+
+import {
+  SchedulesPage
+} from './pages/SchedulesPage';
+
+import {
+  SettingsPage
+} from './pages/SettingsPage';
+
+import {
+  V5SystemPage
+} from './pages/V5SystemPage';
+
+import type {
+  PageId
+} from './types';
 
 export default function App() {
-  const [page, setPage] = useState<PageId>('dashboard');
-  const [appVersion, setAppVersion] = useState('…');
-  const c = useController(page);
+  const [
+    page,
+    setPage
+  ] =
+    useState<PageId>(
+      'dashboard'
+    );
 
-  useEffect(() => {
-    void getVersion().then(setAppVersion).catch(() => setAppVersion('ismeretlen'));
-  }, []);
+  const [
+    appVersion,
+    setAppVersion
+  ] =
+    useState('…');
 
-  useEffect(() => {
-    if (!c.capabilities.otaSupported && page === 'firmware') setPage('dashboard');
-  }, [c.capabilities.otaSupported, page]);
-  return <div className="app-shell">
-    <Sidebar page={page} onChange={setPage} appVersion={appVersion} firmwareVersion={c.status?.firmwareVersion} otaSupported={c.capabilities.otaSupported}/>
-    <div className="content-shell">
-      <Topbar online={Boolean(c.status?.connected)} message={c.message} busy={c.busy} onRefresh={() => void c.refresh()}/>
-      <main className="content">
-        {page === 'dashboard' && <DashboardPage status={c.status} schedules={c.schedules}/>} 
-        {page === 'leds' && <LedsPage strips={c.status?.strips ?? []} busy={c.busy} onUpdate={(s) => void c.updateStrip(s)} onTest={(preset) => void c.runLedTest(preset)} onStopTest={() => void c.stopLedTest()}/>} 
-        {page === 'schedules' && <SchedulesPage schedules={c.schedules} busy={c.busy} onSave={(x) => void c.saveSchedules(x)} onSync={() => void c.syncSchedulesFromArduino()}/>} 
-        {c.capabilities.otaSupported && page === 'firmware' && <FirmwarePage firmware={c.firmware} busy={c.busy} otaLogs={c.otaLogs} otaProgress={c.otaProgress} otaStage={c.otaStage} onRefresh={() => void c.refreshFirmware()} onUpdate={() => void c.updateFirmware()}/>} 
-        {page === 'logs' && <LogsPage arduino={c.logs} network={c.networkLogs} error={c.consoleError}/>} 
-        {page === 'settings' && <SettingsPage otaSupported={c.capabilities.otaSupported} config={c.config} busy={c.busy} onChange={c.setConfig} onSave={() => void c.saveConfig()} otaPassword={c.otaPassword} onOtaPasswordChange={c.setOtaPassword}/>} 
-      </main>
+  const controller =
+    useController(page);
+
+  useEffect(
+    () => {
+      void getVersion()
+        .then(
+          setAppVersion
+        )
+        .catch(
+          () =>
+            setAppVersion(
+              'ismeretlen'
+            )
+        );
+    },
+    []
+  );
+
+  useEffect(
+    () => {
+      if (
+        !controller.capabilities
+          .otaSupported &&
+        page ===
+          'firmware'
+      ) {
+        setPage(
+          'dashboard'
+        );
+      }
+    },
+    [
+      controller.capabilities
+        .otaSupported,
+      page
+    ]
+  );
+
+  return (
+    <div className="app-shell">
+      <Sidebar
+        page={page}
+        onChange={setPage}
+        appVersion={
+          appVersion
+        }
+        firmwareVersion={
+          controller.status
+            ?.firmwareVersion
+        }
+        otaSupported={
+          controller.capabilities
+            .otaSupported
+        }
+      />
+
+      <div className="content-shell">
+        <Topbar
+          online={
+            Boolean(
+              controller.status
+                ?.connected
+            )
+          }
+          message={
+            controller.message
+          }
+          busy={
+            controller.busy
+          }
+          onRefresh={
+            () =>
+              void controller
+                .refresh()
+          }
+        />
+
+        <main className="content">
+          {page ===
+            'dashboard' && (
+            <DashboardPage
+              status={
+                controller.status
+              }
+              schedules={
+                controller.schedules
+              }
+            />
+          )}
+
+          {page ===
+            'leds' && (
+            <LedsPage
+              strips={
+                controller.status
+                  ?.strips ??
+                []
+              }
+              busy={
+                controller.busy
+              }
+              onUpdate={
+                (strip) =>
+                  void controller
+                    .updateStrip(
+                      strip
+                    )
+              }
+              onTest={
+                (preset) =>
+                  void controller
+                    .runLedTest(
+                      preset
+                    )
+              }
+              onStopTest={
+                () =>
+                  void controller
+                    .stopLedTest()
+              }
+            />
+          )}
+
+          {page ===
+            'schedules' && (
+            <SchedulesPage
+              schedules={
+                controller.schedules
+              }
+              busy={
+                controller.busy
+              }
+              onSave={
+                (schedules) =>
+                  void controller
+                    .saveSchedules(
+                      schedules
+                    )
+              }
+              onSync={
+                () =>
+                  void controller
+                    .syncSchedulesFromArduino()
+              }
+            />
+          )}
+
+          {controller.capabilities
+            .otaSupported &&
+          page ===
+            'firmware' && (
+            <FirmwarePage
+              firmware={
+                controller.firmware
+              }
+              busy={
+                controller.busy
+              }
+              otaLogs={
+                controller.otaLogs
+              }
+              otaProgress={
+                controller.otaProgress
+              }
+              otaStage={
+                controller.otaStage
+              }
+              onRefresh={
+                () =>
+                  void controller
+                    .refreshFirmware()
+              }
+              onUpdate={
+                () =>
+                  void controller
+                    .updateFirmware()
+              }
+            />
+          )}
+
+          {page ===
+            'logs' && (
+            <LogsPage
+              arduino={
+                controller.logs
+              }
+              network={
+                controller.networkLogs
+              }
+              error={
+                controller.consoleError
+              }
+            />
+          )}
+
+          {page ===
+            'system' && (
+            <V5SystemPage />
+          )}
+
+          {page ===
+            'settings' && (
+            <SettingsPage
+              otaSupported={
+                controller.capabilities
+                  .otaSupported
+              }
+              config={
+                controller.config
+              }
+              busy={
+                controller.busy
+              }
+              onChange={
+                controller.setConfig
+              }
+              onSave={
+                () =>
+                  void controller
+                    .saveConfig()
+              }
+              otaPassword={
+                controller.otaPassword
+              }
+              onOtaPasswordChange={
+                controller
+                  .setOtaPassword
+              }
+            />
+          )}
+        </main>
+      </div>
     </div>
-  </div>;
+  );
 }

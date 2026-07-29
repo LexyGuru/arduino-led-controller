@@ -1,5 +1,22 @@
-import { createRoot } from 'react-dom/client';
-import App from './App';
-import './styles.css';
+import {
+  createRoot
+} from 'react-dom/client';
 
-createRoot(document.getElementById('root')!).render(<App/>);
+import App from './App';
+
+import {
+  DesktopApiProvider
+} from './api';
+
+import './styles.css';
+import './api-v2.css';
+
+createRoot(
+  document.getElementById(
+    'root'
+  )!
+).render(
+  <DesktopApiProvider>
+    <App />
+  </DesktopApiProvider>
+);

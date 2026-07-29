@@ -365,5 +365,19 @@ export class DesktopSystemApi {
   createSnapshot(
     label?: string
   ): Promise<unknown>;
+  verifySnapshot(
+    id: string
+  ): Promise<unknown>;
+  restoreSnapshot(
+    id: string,
+    confirm?: string
+  ): Promise<unknown>;
+  deleteSnapshot(
+    id: string
+  ): Promise<unknown>;
   migrations(): Promise<unknown>;
+  dryRunMigrations():
+    Promise<unknown>;
+  applyMigrations():
+    Promise<unknown>;
 }

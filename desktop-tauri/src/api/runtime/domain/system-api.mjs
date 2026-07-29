@@ -99,6 +99,53 @@ export class DesktopSystemApi {
     );
   }
 
+  verifySnapshot(id) {
+    return this.runtime.read(
+      `system:snapshots:${id}:verify`,
+      () =>
+        this.client
+          .verifySystemSnapshot({
+            path: {
+              id
+            }
+          }),
+      {
+        ttlMs: 0
+      }
+    );
+  }
+
+  restoreSnapshot(
+    id,
+    confirm =
+      'RESTORE_SYSTEM_SNAPSHOT'
+  ) {
+    return this.runtime.write(
+      () =>
+        this.client
+          .restoreSystemSnapshot({
+            path: {
+              id
+            },
+            body: {
+              confirm
+            }
+          })
+    );
+  }
+
+  deleteSnapshot(id) {
+    return this.runtime.write(
+      () =>
+        this.client
+          .deleteSystemSnapshot({
+            path: {
+              id
+            }
+          })
+    );
+  }
+
   migrations() {
     return this.runtime.read(
       'system:migrations',
@@ -108,6 +155,22 @@ export class DesktopSystemApi {
       {
         ttlMs: 10000
       }
+    );
+  }
+
+  dryRunMigrations() {
+    return this.runtime.write(
+      () =>
+        this.client
+          .dryRunSystemMigrations()
+    );
+  }
+
+  applyMigrations() {
+    return this.runtime.write(
+      () =>
+        this.client
+          .applySystemMigrations()
     );
   }
 }

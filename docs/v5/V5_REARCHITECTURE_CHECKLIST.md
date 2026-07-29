@@ -74,7 +74,15 @@ Munkacsomag: `feature/v5-server-modularization`
 - [x] LED, schedule, firmware és system domain adapterek
 - [x] React provider és állapothook
 - [ ] Rust credential parancsok platformonkénti implementálása
-- [ ] Meglévő Tauri képernyők domain adapterekre állítása
+- [-] Meglévő Tauri képernyők domain adapterekre állítása
+  - [x] V5 rendszer- és kiadási központ
+  - [x] Session/Bearer kapcsolatkezelő felület
+  - [x] Release és konfigurációs preflight
+  - [x] Maintenance, snapshot és migráció kezelése
+  - [ ] Dashboard API v2 státusz
+  - [ ] LED API v2 vezérlés
+  - [ ] Schedule API v2 szerkesztés
+  - [ ] Firmware API v2 képernyő
 
 ## Rendszerüzemeltetés
 
@@ -99,8 +107,8 @@ Munkacsomag: `feature/v5-server-modularization`
 
 ## Következő hatalmas munkacsomag
 
-1. Valódi LXC alpha.2 gate és staging-deploy futtatása.
-2. Sikeres gate után teljes `5.0.0-alpha.2` verziószinkron.
-3. Tauri Rust credential bridge és platformonkénti biztonságos tárolás.
-4. Első desktop képernyők átállítása a domain adapterekre.
-5. Inline legacy dashboard fizikai kiszervezése.
+1. Tauri Rust credential bridge biztonságos platformtárolással.
+2. Dashboard és LED képernyő teljes API v2 átállítása.
+3. Schedule és firmware képernyő API v2 átállítása.
+4. Valódi LXC alpha.2 gate és staging-deploy futtatása.
+5. Sikeres gate után teljes `5.0.0-alpha.2` verziószinkron.
