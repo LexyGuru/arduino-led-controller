@@ -132,8 +132,14 @@ export function DesktopApiProvider({
         .initializeCredentials()
         .catch(() => null)
         .then(
-          () =>
-            api.runtime.start()
+          () => {
+            setAuth(
+              api.auth.snapshot()
+            );
+
+            return api.runtime
+              .start();
+          }
         )
         .catch(() => {
           setConnectivity(

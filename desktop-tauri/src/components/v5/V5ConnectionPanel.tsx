@@ -4,7 +4,9 @@ import {
   LogOut,
   RefreshCw,
   Save,
-  Server
+  Server,
+  ShieldCheck,
+  ShieldOff
 } from 'lucide-react';
 
 import {
@@ -118,6 +120,47 @@ export function V5ConnectionPanel({
   const authenticated =
     auth.authenticated ===
       true;
+
+  const vault =
+    (
+      auth.vault &&
+      typeof auth.vault ===
+        'object'
+    )
+      ? auth.vault as {
+          persistent?: boolean;
+          available?:
+            boolean |
+            null;
+          fallbackActive?:
+            boolean;
+          platformBackend?:
+            string;
+          backend?:
+            string;
+          bearerTokenPresent?:
+            boolean |
+            null;
+          lastError?: {
+            code?: string;
+            message?: string;
+          } | null;
+        }
+      : null;
+
+  const nativeStoreActive =
+    vault?.persistent ===
+      true &&
+    vault?.fallbackActive !==
+      true;
+
+  const vaultLabel =
+    nativeStoreActive
+      ? (
+          vault?.platformBackend ||
+          'Natív kulcstár'
+        )
+      : 'Folyamatmemória';
 
   return (
     <section className="panel v5-panel">
@@ -343,6 +386,36 @@ export function V5ConnectionPanel({
             auth.mode ||
             draft.authMode
           )}
+        </span>
+
+        <span
+          className={
+            `v5-vault-state ${
+              nativeStoreActive
+                ? 'native'
+                : 'memory'
+            }`
+          }
+          title={
+            vault?.lastError
+              ?.message ||
+            ''
+          }
+        >
+          {nativeStoreActive
+            ? (
+                <ShieldCheck
+                  size={15}
+                />
+              )
+            : (
+                <ShieldOff
+                  size={15}
+                />
+              )}
+          Titoktár:
+          {' '}
+          {vaultLabel}
         </span>
 
         {authenticated && (

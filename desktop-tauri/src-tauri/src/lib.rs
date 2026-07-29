@@ -16,6 +16,8 @@ use std::{
 };
 use tauri::{AppHandle, Emitter, Manager, State};
 
+mod credential_bridge;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 struct Config {
@@ -2057,7 +2059,27 @@ pub fn run() {
             });
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![runtime_capabilities, load_config, save_config, save_ota_password, arduino_status, arduino_logs, network_logs, set_led, load_schedules, import_schedules_file, export_schedules_file, load_schedules_from_arduino, save_and_sync_schedules, firmware_status, firmware_update])
+        .invoke_handler(tauri::generate_handler![
+            runtime_capabilities,
+            load_config,
+            save_config,
+            save_ota_password,
+            arduino_status,
+            arduino_logs,
+            network_logs,
+            set_led,
+            load_schedules,
+            import_schedules_file,
+            export_schedules_file,
+            load_schedules_from_arduino,
+            save_and_sync_schedules,
+            firmware_status,
+            firmware_update,
+            credential_bridge::credential_status,
+            credential_bridge::credential_get,
+            credential_bridge::credential_set,
+            credential_bridge::credential_delete
+        ])
         .run(tauri::generate_context!())
         .expect("Tauri application error");
 }

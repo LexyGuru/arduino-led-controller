@@ -341,6 +341,18 @@ required_files=(
   "docs/v5/VERSIONED_STAGING_AND_ROLLBACK.md"
   "docs/v5/ALPHA2_RELEASE_NOTES_DRAFT.md"
   "docs/v5/PACKAGE_MANIFEST_ALPHA2_RELEASE_INFRASTRUCTURE.json"
+  "desktop-tauri/src-tauri/src/credential_bridge.rs"
+  "docs/v5/NATIVE_CREDENTIAL_BRIDGE_LIB_RS.patch"
+  "desktop-tauri/src/native-credential-bridge.css"
+  "docs/v5/NATIVE_CREDENTIAL_BRIDGE.md"
+  "scripts/test-native-credential-vault.js"
+  "scripts/test-native-credential-fallback.js"
+  "scripts/test-native-credential-bridge-contract.js"
+  "scripts/test-native-credential-cargo-lock.js"
+  "scripts/test-native-credential-lib-patch.js"
+  "scripts/test-native-credential-package-manifest.js"
+  "desktop-tauri/src-tauri/Cargo.lock"
+  "docs/v5/PACKAGE_MANIFEST_NATIVE_CREDENTIAL_BRIDGE.json"
 )
 for file in "${required_files[@]}"; do
   [[ -f "${file}" ]] || {

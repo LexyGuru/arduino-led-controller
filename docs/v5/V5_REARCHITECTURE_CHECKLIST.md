@@ -66,14 +66,14 @@ Munkacsomag: `feature/v5-server-modularization`
 - [x] OpenAPI-alapú TypeScript típus- és kliensgenerálás
 - [x] Session-cookie elsődleges hitelesítés
 - [x] Bearer token alapból csak folyamatmemóriában
-- [-] Natív Tauri credential bridge előkészítve
+- [x] Natív Tauri credential bridge és memóriás fallback
 - [x] Szerverprofil és URL-biztonsági validáció
 - [x] Online/offline/reconnecting állapotgép
 - [x] Offline olvasási cache és veszélyes írások tiltása
 - [x] Socket.IO factory és polling realtime fallback
 - [x] LED, schedule, firmware és system domain adapterek
 - [x] React provider és állapothook
-- [ ] Rust credential parancsok platformonkénti implementálása
+- [x] Rust credential parancsok macOS, Windows és Linux kulcstárhoz
 - [-] Meglévő Tauri képernyők domain adapterekre állítása
   - [x] V5 rendszer- és kiadási központ
   - [x] Session/Bearer kapcsolatkezelő felület
@@ -122,8 +122,8 @@ Munkacsomag: `feature/v5-server-modularization`
 
 ## Következő hatalmas munkacsomag
 
-1. A valódi izolált LXC alpha.2 gate lefuttatása.
+1. Valódi izolált LXC alpha.2 release-gate futtatása.
 2. Sikeres gate után teljes `5.0.0-alpha.2` verziószinkron.
-3. Natív Tauri credential bridge teljes Rust-fájlos integrációval.
-4. Legacy dashboard fizikai kiszervezése.
-5. `server2_legacy.js` további karcsúsítása.
+3. Staging telepítés és promóciós jóváhagyás.
+4. Inline legacy dashboard fizikai kiszervezése.
+5. `server2_legacy.js` további jelentős karcsúsítása.

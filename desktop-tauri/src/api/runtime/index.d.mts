@@ -28,6 +28,10 @@ export interface ConnectivitySnapshot {
 }
 
 export interface CredentialVault {
+  probe():
+    Promise<
+      Record<string, unknown>
+    >;
   getBearerToken():
     Promise<string | null>;
   setBearerToken(
@@ -49,6 +53,10 @@ export class DesktopApiRuntimeError
 
 export class VolatileCredentialVault
   implements CredentialVault {
+  probe():
+    Promise<
+      Record<string, unknown>
+    >;
   getBearerToken():
     Promise<string | null>;
   setBearerToken(
@@ -73,6 +81,10 @@ export class TauriCredentialVault
     service?: string;
     account?: string;
   });
+  probe():
+    Promise<
+      Record<string, unknown>
+    >;
   getBearerToken():
     Promise<string | null>;
   setBearerToken(

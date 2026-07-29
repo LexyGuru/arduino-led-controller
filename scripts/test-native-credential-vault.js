@@ -5,59 +5,54 @@ const assert =
 
 async function main() {
   const {
+    TauriCredentialVault,
     VolatileCredentialVault,
-    TauriCredentialVault
+    createCredentialVault
   } =
     await import(
       '../desktop-tauri/src/api/runtime/credential-vault.mjs'
     );
 
-  const volatile =
-    new VolatileCredentialVault();
-
-  await volatile.setBearerToken(
-    'x'.repeat(32)
-  );
-
-  assert.strictEqual(
-    await volatile.getBearerToken(),
-    'x'.repeat(32)
-  );
-
-  assert.strictEqual(
-    volatile.snapshot().persistent,
-    false
-  );
-
-  const calls = [];
   const values =
     new Map();
 
-  const persistent =
+  const calls = [];
+
+  const vault =
     new TauriCredentialVault({
       async invoke(
         command,
-        args
+        arguments_
       ) {
         calls.push({
           command,
-          args
+          arguments_
         });
+
+        assert.strictEqual(
+          arguments_.service,
+          'arduino-led-controller'
+        );
+
+        assert.strictEqual(
+          arguments_.account,
+          'api-v2-bearer'
+        );
 
         if (
           command ===
-          'credential_status'
+            'credential_status'
         ) {
           return {
             supported: true,
             available: true,
             backend:
-              'Teszt natív kulcstár',
+              'macOS Keychain',
             platform:
-              'test',
+              'macos',
             present:
               values.has(
-                args.account
+                arguments_.account
               ),
             errorCode:
               null
@@ -66,31 +61,31 @@ async function main() {
 
         if (
           command ===
-          'credential_set'
+            'credential_get'
+        ) {
+          return values.get(
+            arguments_.account
+          ) ??
+          null;
+        }
+
+        if (
+          command ===
+            'credential_set'
         ) {
           values.set(
-            args.account,
-            args.secret
+            arguments_.account,
+            arguments_.secret
           );
-
           return null;
         }
 
         if (
           command ===
-          'credential_get'
-        ) {
-          return values.get(
-            args.account
-          ) ?? null;
-        }
-
-        if (
-          command ===
-          'credential_delete'
+            'credential_delete'
         ) {
           return values.delete(
-            args.account
+            arguments_.account
           );
         }
 
@@ -100,32 +95,38 @@ async function main() {
       }
     });
 
-  const status =
-    await persistent.probe();
+  const initial =
+    await vault.probe();
 
   assert.strictEqual(
-    status.available,
+    initial.available,
     true
   );
 
   assert.strictEqual(
-    status.fallbackActive,
-    false
+    initial.platformBackend,
+    'macOS Keychain'
   );
 
-  await persistent.setBearerToken(
-    'y'.repeat(32)
+  await vault.setBearerToken(
+    'x'.repeat(32)
   );
 
   assert.strictEqual(
-    await persistent.getBearerToken(),
-    'y'.repeat(32)
+    await vault.getBearerToken(),
+    'x'.repeat(32)
   );
 
-  await persistent.clear();
+  assert.strictEqual(
+    vault.snapshot()
+      .bearerTokenPresent,
+    true
+  );
+
+  await vault.clear();
 
   assert.strictEqual(
-    await persistent.getBearerToken(),
+    await vault.getBearerToken(),
     null
   );
 
@@ -149,16 +150,29 @@ async function main() {
     );
   }
 
-  console.log(
-    'OK: Bearer token alapból csak memóriában'
+  const fallback =
+    createCredentialVault({
+      invoke: null,
+      allowPersistentBearer:
+        true
+    });
+
+  assert.strictEqual(
+    fallback instanceof
+      VolatileCredentialVault,
+    true
   );
 
   console.log(
-    'OK: opcionális Tauri credential bridge'
+    'OK: natív credential probe/get/set/delete'
   );
 
   console.log(
-    'OK: régi regressziós teszt kezeli a credential_status probe-ot'
+    'OK: fix service/account scope a frontendben'
+  );
+
+  console.log(
+    'OK: natív invoke hiányában memóriás fallback'
   );
 }
 

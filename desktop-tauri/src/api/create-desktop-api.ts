@@ -166,6 +166,9 @@ export function createDesktopApi(
         runtime
       }),
     async initializeCredentials() {
+      await credentialVault
+        .probe?.();
+
       await refreshBearerMirror();
 
       if (
@@ -181,14 +184,15 @@ export function createDesktopApi(
     async setBearerToken(
       token: string
     ) {
-      await credentialVault
-        .setBearerToken(token);
+      const state =
+        await auth
+          .useBearerToken(
+            token
+          );
 
       await refreshBearerMirror();
 
-      return auth.useBearerToken(
-        token
-      );
+      return state;
     },
     async clearBearerToken() {
       await credentialVault

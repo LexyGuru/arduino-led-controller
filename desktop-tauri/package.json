@@ -21,7 +21,8 @@
     "api:test-system-ui": "node ../scripts/test-desktop-api-payload.js && node ../scripts/test-desktop-v5-models.js && node ../scripts/test-desktop-system-domain.js && node ../scripts/test-desktop-v5-ui-contract.js",
     "api:test-dashboard-led": "node ../scripts/test-desktop-dashboard-led-models.js && node ../scripts/test-desktop-arduino-led-domains.js && node ../scripts/test-desktop-dashboard-led-ui-contract.js && node ../scripts/test-desktop-dashboard-led-generated-compat.js",
     "api:test-schedule-firmware-logs": "node ../scripts/test-desktop-schedule-firmware-log-models.js && node ../scripts/test-desktop-schedule-firmware-log-domains.js && node ../scripts/test-desktop-schedule-firmware-log-ui-contract.js && node ../scripts/test-desktop-schedule-firmware-log-generated-compat.js",
-    "api:test-release-gate": "node ../scripts/test-desktop-release-gate-models.js && node ../scripts/test-desktop-release-gate-domain.js && node ../scripts/test-desktop-release-gate-ui.js"
+    "api:test-release-gate": "node ../scripts/test-desktop-release-gate-models.js && node ../scripts/test-desktop-release-gate-domain.js && node ../scripts/test-desktop-release-gate-ui.js",
+    "credential:test": "node ../scripts/test-native-credential-vault.js && node ../scripts/test-native-credential-fallback.js && node ../scripts/test-native-credential-bridge-contract.js"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.0.0",

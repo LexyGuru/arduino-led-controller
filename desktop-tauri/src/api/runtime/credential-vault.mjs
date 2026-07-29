@@ -2,6 +2,12 @@ import {
   DesktopApiRuntimeError
 } from './runtime-error.mjs';
 
+const DEFAULT_SERVICE =
+  'arduino-led-controller';
+
+const DEFAULT_ACCOUNT =
+  'api-v2-bearer';
+
 function normalizeToken(value) {
   const token =
     String(value || '')
@@ -21,8 +27,28 @@ function normalizeToken(value) {
   return token;
 }
 
+function errorView(error) {
+  return {
+    code:
+      String(
+        error?.code ||
+        'CREDENTIAL_STORE_ERROR'
+      ),
+    message:
+      String(
+        error?.message ||
+        error ||
+        'A credential művelet sikertelen.'
+      )
+  };
+}
+
 export class VolatileCredentialVault {
   #token = null;
+
+  async probe() {
+    return this.snapshot();
+  }
 
   async getBearerToken() {
     return this.#token;
@@ -49,8 +75,20 @@ export class VolatileCredentialVault {
         Boolean(this.#token),
       persistent:
         false,
+      available:
+        true,
+      supported:
+        true,
+      fallbackActive:
+        false,
       backend:
-        'memory'
+        'memory',
+      platformBackend:
+        'Folyamatmemória',
+      platform:
+        'web',
+      lastError:
+        null
     };
   }
 }
@@ -59,9 +97,9 @@ export class TauriCredentialVault {
   constructor({
     invoke,
     service =
-      'arduino-led-controller',
+      DEFAULT_SERVICE,
     account =
-      'api-v2-bearer'
+      DEFAULT_ACCOUNT
   } = {}) {
     if (
       typeof invoke !==
@@ -78,23 +116,173 @@ export class TauriCredentialVault {
       String(service);
     this.account =
       String(account);
+
+    this.fallback =
+      new VolatileCredentialVault();
+
+    this.state = {
+      bearerTokenPresent:
+        null,
+      persistent:
+        true,
+      available:
+        null,
+      supported:
+        true,
+      fallbackActive:
+        false,
+      backend:
+        'native-keyring',
+      platformBackend:
+        'Natív operációs rendszer kulcstár',
+      platform:
+        'desktop',
+      lastError:
+        null
+    };
+  }
+
+  async probe() {
+    try {
+      const response =
+        await this.invoke(
+          'credential_status',
+          {
+            service:
+              this.service,
+            account:
+              this.account
+          }
+        );
+
+      this.state = {
+        ...this.state,
+        bearerTokenPresent:
+          typeof response
+            ?.present ===
+            'boolean'
+            ? response.present
+            : null,
+        persistent:
+          response
+            ?.available ===
+            true,
+        available:
+          response
+            ?.available ===
+            true,
+        supported:
+          response
+            ?.supported !==
+            false,
+        fallbackActive:
+          response
+            ?.available !==
+            true,
+        platformBackend:
+          String(
+            response?.backend ||
+            this.state
+              .platformBackend
+          ),
+        platform:
+          String(
+            response?.platform ||
+            this.state.platform
+          ),
+        lastError:
+          response?.errorCode
+            ? {
+                code:
+                  String(
+                    response
+                      .errorCode
+                  ),
+                message:
+                  'A natív kulcstár jelenleg nem érhető el.'
+              }
+            : null
+      };
+    } catch (error) {
+      this.state = {
+        ...this.state,
+        persistent:
+          false,
+        available:
+          false,
+        fallbackActive:
+          true,
+        lastError:
+          errorView(error)
+      };
+    }
+
+    return this.snapshot();
+  }
+
+  async ensureProbed() {
+    if (
+      this.state.available ===
+        null
+    ) {
+      await this.probe();
+    }
+
+    return this.state.available ===
+      true;
   }
 
   async getBearerToken() {
-    const value =
-      await this.invoke(
-        'credential_get',
-        {
-          service:
-            this.service,
-          account:
-            this.account
-        }
-      );
+    const nativeAvailable =
+      await this.ensureProbed();
 
-    return value
-      ? String(value)
-      : null;
+    if (!nativeAvailable) {
+      return this.fallback
+        .getBearerToken();
+    }
+
+    try {
+      const value =
+        await this.invoke(
+          'credential_get',
+          {
+            service:
+              this.service,
+            account:
+              this.account
+          }
+        );
+
+      const token =
+        value
+          ? String(value)
+          : null;
+
+      this.state = {
+        ...this.state,
+        bearerTokenPresent:
+          Boolean(token),
+        lastError:
+          null
+      };
+
+      return token;
+    } catch (error) {
+      this.state = {
+        ...this.state,
+        persistent:
+          false,
+        available:
+          false,
+        fallbackActive:
+          true,
+        lastError:
+          errorView(error)
+      };
+
+      return this.fallback
+        .getBearerToken();
+    }
   }
 
   async setBearerToken(value) {
@@ -106,31 +294,108 @@ export class TauriCredentialVault {
       return null;
     }
 
-    await this.invoke(
-      'credential_set',
-      {
-        service:
-          this.service,
-        account:
-          this.account,
-        secret:
-          token
-      }
-    );
+    const nativeAvailable =
+      await this.ensureProbed();
 
-    return token;
+    if (!nativeAvailable) {
+      await this.fallback
+        .setBearerToken(token);
+
+      this.state = {
+        ...this.state,
+        bearerTokenPresent:
+          true,
+        persistent:
+          false,
+        fallbackActive:
+          true
+      };
+
+      return token;
+    }
+
+    try {
+      await this.invoke(
+        'credential_set',
+        {
+          service:
+            this.service,
+          account:
+            this.account,
+          secret:
+            token
+        }
+      );
+
+      this.state = {
+        ...this.state,
+        bearerTokenPresent:
+          true,
+        persistent:
+          true,
+        fallbackActive:
+          false,
+        lastError:
+          null
+      };
+
+      return token;
+    } catch (error) {
+      await this.fallback
+        .setBearerToken(token);
+
+      this.state = {
+        ...this.state,
+        bearerTokenPresent:
+          true,
+        persistent:
+          false,
+        available:
+          false,
+        fallbackActive:
+          true,
+        lastError:
+          errorView(error)
+      };
+
+      return token;
+    }
   }
 
   async clearBearerToken() {
-    await this.invoke(
-      'credential_delete',
-      {
-        service:
-          this.service,
-        account:
-          this.account
+    await this.fallback
+      .clearBearerToken();
+
+    const nativeAvailable =
+      await this.ensureProbed();
+
+    if (nativeAvailable) {
+      try {
+        await this.invoke(
+          'credential_delete',
+          {
+            service:
+              this.service,
+            account:
+              this.account
+          }
+        );
+      } catch (error) {
+        this.state = {
+          ...this.state,
+          lastError:
+            errorView(error)
+        };
+
+        throw error;
       }
-    );
+    }
+
+    this.state = {
+      ...this.state,
+      bearerTokenPresent:
+        false
+    };
   }
 
   async clear() {
@@ -139,12 +404,14 @@ export class TauriCredentialVault {
 
   snapshot() {
     return {
-      bearerTokenPresent:
-        null,
-      persistent:
-        true,
-      backend:
-        'tauri-command'
+      ...this.state,
+      lastError:
+        this.state.lastError
+          ? {
+              ...this.state
+                .lastError
+            }
+          : null
     };
   }
 }
@@ -166,3 +433,9 @@ export function createCredentialVault({
 
   return new VolatileCredentialVault();
 }
+
+export {
+  DEFAULT_ACCOUNT,
+  DEFAULT_SERVICE,
+  normalizeToken
+};
