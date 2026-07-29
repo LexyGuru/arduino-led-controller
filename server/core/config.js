@@ -497,6 +497,43 @@ function loadRuntimeConfig(options = {}) {
         60000
       )
     },
+    maintenance: {
+      initialEnabled: booleanFromEnvironment(
+        environment.MAINTENANCE_MODE,
+        false
+      )
+    },
+    snapshots: {
+      maximumSnapshots: integerInRange(
+        environment.SYSTEM_MAXIMUM_SNAPSHOTS,
+        10,
+        2,
+        100
+      )
+    },
+    release: {
+      channel:
+        String(
+          environment.RELEASE_CHANNEL ||
+          'alpha'
+        ).trim() ||
+        'alpha',
+      candidate:
+        String(
+          environment.RELEASE_CANDIDATE ||
+          ''
+        ).trim(),
+      commit:
+        String(
+          environment.RELEASE_COMMIT ||
+          ''
+        ).trim(),
+      builtAt:
+        String(
+          environment.RELEASE_BUILT_AT ||
+          ''
+        ).trim()
+    },
     legacy: {
       apiAdaptersEnabled: booleanFromEnvironment(
         environment.LEGACY_API_ADAPTERS_ENABLED,

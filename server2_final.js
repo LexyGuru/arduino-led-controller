@@ -206,6 +206,36 @@ const {
 );
 
 const {
+  MaintenanceModeService
+} = require(
+  './server/system/maintenance-mode-service'
+);
+
+const {
+  ConfigPreflightService
+} = require(
+  './server/system/config-preflight-service'
+);
+
+const {
+  SystemSnapshotService
+} = require(
+  './server/system/snapshot-service'
+);
+
+const {
+  MigrationService
+} = require(
+  './server/system/migration-service'
+);
+
+const {
+  ReleaseInfoService
+} = require(
+  './server/system/release-info-service'
+);
+
+const {
   installExpressFactoryPatch,
   registerExpressInstaller
 } = require(
@@ -581,6 +611,69 @@ const openApiService =
       paths.openApiDocumentFile
   });
 
+const maintenanceService =
+  new MaintenanceModeService({
+    stateFile:
+      paths.maintenanceStateFile,
+    logger,
+    eventBus,
+    initialEnabled:
+      config.maintenance
+        .initialEnabled
+  });
+
+const configPreflightService =
+  new ConfigPreflightService({
+    config,
+    paths,
+    apiTokenStore,
+    logger
+  });
+
+const snapshotService =
+  new SystemSnapshotService({
+    snapshotsDir:
+      paths.snapshotsDir,
+    maximumSnapshots:
+      config.snapshots
+        .maximumSnapshots,
+    logger,
+    eventBus,
+    sources: [
+      {
+        name: 'config',
+        path:
+          paths.configDir
+      },
+      {
+        name: 'schedules',
+        path:
+          paths.schedulesDir
+      },
+      {
+        name: 'runtime-settings',
+        path:
+          paths.runtimeSettingsFile
+      }
+    ]
+  });
+
+const migrationService =
+  new MigrationService({
+    paths,
+    logger,
+    eventBus
+  });
+
+const releaseInfoService =
+  new ReleaseInfoService({
+    config,
+    paths,
+    lifecycle,
+    maintenanceService,
+    migrationService
+  });
+
 const socketGateway =
   new SocketGateway({
     eventBus,
@@ -659,6 +752,11 @@ setRuntimeContext({
   runtimeSettingsService,
   firmwareService,
   openApiService,
+  maintenanceService,
+  configPreflightService,
+  snapshotService,
+  migrationService,
+  releaseInfoService,
   socketGateway,
   legacyEventBridge,
   diagnosticsService,

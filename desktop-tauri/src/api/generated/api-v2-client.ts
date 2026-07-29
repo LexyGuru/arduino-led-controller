@@ -383,6 +383,71 @@ export class ApiV2Client {
     return this.request<T>("GET", "/api/v2/system/health", options);
   }
 
+  /** Karbantartási mód kikapcsolása */
+  disableMaintenanceMode<T = unknown>(options: ApiRequestOptions = {}): Promise<T> {
+    return this.request<T>("DELETE", "/api/v2/system/maintenance", options);
+  }
+
+  /** Karbantartási mód állapota */
+  getMaintenanceStatus<T = unknown>(options: ApiRequestOptions = {}): Promise<T> {
+    return this.request<T>("GET", "/api/v2/system/maintenance", options);
+  }
+
+  /** Karbantartási mód aktiválása */
+  enableMaintenanceMode<T = unknown>(options: ApiRequestOptions = {}): Promise<T> {
+    return this.request<T>("PUT", "/api/v2/system/maintenance", options);
+  }
+
+  /** Migrációs állapot */
+  getSystemMigrations<T = unknown>(options: ApiRequestOptions = {}): Promise<T> {
+    return this.request<T>("GET", "/api/v2/system/migrations", options);
+  }
+
+  /** Migrációk alkalmazása */
+  applySystemMigrations<T = unknown>(options: ApiRequestOptions = {}): Promise<T> {
+    return this.request<T>("POST", "/api/v2/system/migrations/actions/apply", options);
+  }
+
+  /** Migrációs dry-run */
+  dryRunSystemMigrations<T = unknown>(options: ApiRequestOptions = {}): Promise<T> {
+    return this.request<T>("POST", "/api/v2/system/migrations/actions/dry-run", options);
+  }
+
+  /** Konfigurációs preflight */
+  getSystemPreflight<T = unknown>(options: ApiRequestOptions = {}): Promise<T> {
+    return this.request<T>("GET", "/api/v2/system/preflight", options);
+  }
+
+  /** Release és runtime információ */
+  getSystemRelease<T = unknown>(options: ApiRequestOptions = {}): Promise<T> {
+    return this.request<T>("GET", "/api/v2/system/release", options);
+  }
+
+  /** Rendszer-snapshotok listája */
+  listSystemSnapshots<T = unknown>(options: ApiRequestOptions = {}): Promise<T> {
+    return this.request<T>("GET", "/api/v2/system/snapshots", options);
+  }
+
+  /** Rendszer-snapshot létrehozása */
+  createSystemSnapshot<T = unknown>(options: ApiRequestOptions = {}): Promise<T> {
+    return this.request<T>("POST", "/api/v2/system/snapshots", options);
+  }
+
+  /** Snapshot törlése */
+  deleteSystemSnapshot<T = unknown>(options: ApiRequestOptions = {}): Promise<T> {
+    return this.request<T>("DELETE", "/api/v2/system/snapshots/{id}", options);
+  }
+
+  /** Snapshot visszaállítása */
+  restoreSystemSnapshot<T = unknown>(options: ApiRequestOptions = {}): Promise<T> {
+    return this.request<T>("POST", "/api/v2/system/snapshots/{id}/actions/restore", options);
+  }
+
+  /** Snapshot integritás ellenőrzése */
+  verifySystemSnapshot<T = unknown>(options: ApiRequestOptions = {}): Promise<T> {
+    return this.request<T>("GET", "/api/v2/system/snapshots/{id}/verify", options);
+  }
+
   /** Rendszerállapot */
   getSystemStatus<T = unknown>(options: ApiRequestOptions = {}): Promise<T> {
     return this.request<T>("GET", "/api/v2/system/status", options);

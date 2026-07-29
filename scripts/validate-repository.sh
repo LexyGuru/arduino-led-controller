@@ -199,6 +199,22 @@ required_files=(
   "docs/v5/TYPESCRIPT_API_CLIENT.md"
   "docs/v5/FIRMWARE_BACKUP_ROLLBACK.md"
   "docs/v5/PACKAGE_MANIFEST_ALPHA2_CANDIDATE.json"
+  "server/system/system-error.js"
+  "server/system/maintenance-mode-service.js"
+  "server/system/config-preflight-service.js"
+  "server/system/snapshot-service.js"
+  "server/system/migration-service.js"
+  "server/system/release-info-service.js"
+  "server/api/v2/system-admin-routes.js"
+  "scripts/test-maintenance-mode.js"
+  "scripts/test-config-preflight.js"
+  "scripts/test-system-snapshot.js"
+  "scripts/test-migration-service.js"
+  "scripts/test-release-info-service.js"
+  "scripts/test-system-admin-routes.js"
+  "deploy/system-preflight.sh"
+  "deploy/staging-deploy.sh"
+  "docs/v5/SYSTEM_OPERATIONS.md"
 )
 for file in "${required_files[@]}"; do
   [[ -f "${file}" ]] || {

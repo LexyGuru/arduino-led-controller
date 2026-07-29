@@ -230,7 +230,19 @@ check_node_files() {
   node --check "${root_dir}/scripts/test-ota-cancellation.js"
   node --check "${root_dir}/scripts/test-openapi-typescript-generator.js"
   node --check "${root_dir}/scripts/test-alpha2-candidate-tooling.js"
-  node --check "${root_dir}/scripts/test-alpha2-candidate-package-manifest.js"
+  node --check "${root_dir}/scripts/test-alpha2-candidate-package-manifest.js"  node --check "${root_dir}/server/system/system-error.js"
+  node --check "${root_dir}/server/system/maintenance-mode-service.js"
+  node --check "${root_dir}/server/system/config-preflight-service.js"
+  node --check "${root_dir}/server/system/snapshot-service.js"
+  node --check "${root_dir}/server/system/migration-service.js"
+  node --check "${root_dir}/server/system/release-info-service.js"
+  node --check "${root_dir}/server/api/v2/system-admin-routes.js"
+  node --check "${root_dir}/scripts/test-maintenance-mode.js"
+  node --check "${root_dir}/scripts/test-config-preflight.js"
+  node --check "${root_dir}/scripts/test-system-snapshot.js"
+  node --check "${root_dir}/scripts/test-migration-service.js"
+  node --check "${root_dir}/scripts/test-release-info-service.js"
+  node --check "${root_dir}/scripts/test-system-admin-routes.js"
 }
 
 repair_runtime() {

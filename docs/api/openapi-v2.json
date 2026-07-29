@@ -2310,6 +2310,173 @@
           }
         }
       }
+    },
+    "/api/v2/system/release": {
+      "get": {
+        "operationId": "getSystemRelease",
+        "summary": "Release és runtime információ",
+        "responses": {
+          "200": {
+            "description": "Siker"
+          }
+        }
+      }
+    },
+    "/api/v2/system/preflight": {
+      "get": {
+        "operationId": "getSystemPreflight",
+        "summary": "Konfigurációs preflight",
+        "responses": {
+          "200": {
+            "description": "Siker"
+          }
+        }
+      }
+    },
+    "/api/v2/system/maintenance": {
+      "get": {
+        "operationId": "getMaintenanceStatus",
+        "summary": "Karbantartási mód állapota",
+        "responses": {
+          "200": {
+            "description": "Siker"
+          }
+        }
+      },
+      "put": {
+        "operationId": "enableMaintenanceMode",
+        "summary": "Karbantartási mód aktiválása",
+        "responses": {
+          "200": {
+            "description": "Aktiválva"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "disableMaintenanceMode",
+        "summary": "Karbantartási mód kikapcsolása",
+        "responses": {
+          "200": {
+            "description": "Kikapcsolva"
+          }
+        }
+      }
+    },
+    "/api/v2/system/snapshots": {
+      "get": {
+        "operationId": "listSystemSnapshots",
+        "summary": "Rendszer-snapshotok listája",
+        "responses": {
+          "200": {
+            "description": "Siker"
+          }
+        }
+      },
+      "post": {
+        "operationId": "createSystemSnapshot",
+        "summary": "Rendszer-snapshot létrehozása",
+        "responses": {
+          "201": {
+            "description": "Létrehozva"
+          }
+        }
+      }
+    },
+    "/api/v2/system/snapshots/{id}/verify": {
+      "get": {
+        "operationId": "verifySystemSnapshot",
+        "summary": "Snapshot integritás ellenőrzése",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Siker"
+          }
+        }
+      }
+    },
+    "/api/v2/system/snapshots/{id}/actions/restore": {
+      "post": {
+        "operationId": "restoreSystemSnapshot",
+        "summary": "Snapshot visszaállítása",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Visszaállítva"
+          }
+        }
+      }
+    },
+    "/api/v2/system/snapshots/{id}": {
+      "delete": {
+        "operationId": "deleteSystemSnapshot",
+        "summary": "Snapshot törlése",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Törölve"
+          }
+        }
+      }
+    },
+    "/api/v2/system/migrations": {
+      "get": {
+        "operationId": "getSystemMigrations",
+        "summary": "Migrációs állapot",
+        "responses": {
+          "200": {
+            "description": "Siker"
+          }
+        }
+      }
+    },
+    "/api/v2/system/migrations/actions/dry-run": {
+      "post": {
+        "operationId": "dryRunSystemMigrations",
+        "summary": "Migrációs dry-run",
+        "responses": {
+          "200": {
+            "description": "Siker"
+          }
+        }
+      }
+    },
+    "/api/v2/system/migrations/actions/apply": {
+      "post": {
+        "operationId": "applySystemMigrations",
+        "summary": "Migrációk alkalmazása",
+        "responses": {
+          "200": {
+            "description": "Siker"
+          }
+        }
+      }
     }
   }
 }

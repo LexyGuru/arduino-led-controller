@@ -161,6 +161,24 @@ const {
   './firmware-routes'
 );
 
+const {
+  installSystemAdminRoutes
+} = require(
+  './system-admin-routes'
+);
+
+const {
+  createMaintenanceMiddleware
+} = require(
+  '../../system/maintenance-mode-service'
+);
+
+const {
+  sendError
+} = require(
+  './http-response'
+);
+
 function installApiV2Routes(
   app
 ) {
@@ -219,6 +237,18 @@ function installApiV2Routes(
   app.options(
     '/api/v2/*',
     apiV2OptionsHandler
+  );
+
+  app.use(
+    '/api/v2',
+    createMaintenanceMiddleware({
+      serviceProvider:
+        () =>
+          getRuntimeContext()
+            .maintenanceService,
+      errorSender:
+        sendError
+    })
   );
 
   app.get(
@@ -306,6 +336,10 @@ function installApiV2Routes(
   );
 
   installFirmwareRoutes(
+    app
+  );
+
+  installSystemAdminRoutes(
     app
   );
 

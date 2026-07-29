@@ -552,6 +552,97 @@ export const API_V2_OPERATIONS = [
     ]
   },
   {
+    "id": "disableMaintenanceMode",
+    "method": "DELETE",
+    "path": "/api/v2/system/maintenance",
+    "summary": "Karbantartási mód kikapcsolása",
+    "tags": []
+  },
+  {
+    "id": "getMaintenanceStatus",
+    "method": "GET",
+    "path": "/api/v2/system/maintenance",
+    "summary": "Karbantartási mód állapota",
+    "tags": []
+  },
+  {
+    "id": "enableMaintenanceMode",
+    "method": "PUT",
+    "path": "/api/v2/system/maintenance",
+    "summary": "Karbantartási mód aktiválása",
+    "tags": []
+  },
+  {
+    "id": "getSystemMigrations",
+    "method": "GET",
+    "path": "/api/v2/system/migrations",
+    "summary": "Migrációs állapot",
+    "tags": []
+  },
+  {
+    "id": "applySystemMigrations",
+    "method": "POST",
+    "path": "/api/v2/system/migrations/actions/apply",
+    "summary": "Migrációk alkalmazása",
+    "tags": []
+  },
+  {
+    "id": "dryRunSystemMigrations",
+    "method": "POST",
+    "path": "/api/v2/system/migrations/actions/dry-run",
+    "summary": "Migrációs dry-run",
+    "tags": []
+  },
+  {
+    "id": "getSystemPreflight",
+    "method": "GET",
+    "path": "/api/v2/system/preflight",
+    "summary": "Konfigurációs preflight",
+    "tags": []
+  },
+  {
+    "id": "getSystemRelease",
+    "method": "GET",
+    "path": "/api/v2/system/release",
+    "summary": "Release és runtime információ",
+    "tags": []
+  },
+  {
+    "id": "listSystemSnapshots",
+    "method": "GET",
+    "path": "/api/v2/system/snapshots",
+    "summary": "Rendszer-snapshotok listája",
+    "tags": []
+  },
+  {
+    "id": "createSystemSnapshot",
+    "method": "POST",
+    "path": "/api/v2/system/snapshots",
+    "summary": "Rendszer-snapshot létrehozása",
+    "tags": []
+  },
+  {
+    "id": "deleteSystemSnapshot",
+    "method": "DELETE",
+    "path": "/api/v2/system/snapshots/{id}",
+    "summary": "Snapshot törlése",
+    "tags": []
+  },
+  {
+    "id": "restoreSystemSnapshot",
+    "method": "POST",
+    "path": "/api/v2/system/snapshots/{id}/actions/restore",
+    "summary": "Snapshot visszaállítása",
+    "tags": []
+  },
+  {
+    "id": "verifySystemSnapshot",
+    "method": "GET",
+    "path": "/api/v2/system/snapshots/{id}/verify",
+    "summary": "Snapshot integritás ellenőrzése",
+    "tags": []
+  },
+  {
     "id": "getSystemStatus",
     "method": "GET",
     "path": "/api/v2/system/status",

@@ -67,7 +67,20 @@ Munkacsomag: `feature/v5-server-modularization`
 - [ ] Biztonságos token/session tárolás
 - [ ] Realtime Socket.IO kliens és offline mód
 
+## Rendszerüzemeltetés
+
+- [x] Tartós karbantartási mód
+- [x] Módosító API-k maintenance blokkolása
+- [x] Konfigurációs és könyvtár-preflight
+- [x] Verziózott rendszer-snapshot
+- [x] Fájlonkénti snapshot SHA-256 ellenőrzés
+- [x] Maintenance-köteles snapshot restore
+- [x] Idempotens migrációs futtató és dry-run
+- [x] Release metadata és OpenAPI hash API
+- [x] Staging preflight/snapshot/health telepítő
+
 ## Kiadás
+
 
 - [ ] Teljes izolált LXC integrációs és rollback teszt
 - [ ] `5.0.0-alpha.2` verziólépés
@@ -77,8 +90,8 @@ Munkacsomag: `feature/v5-server-modularization`
 
 ## Következő hatalmas munkacsomag
 
-1. A valódi LXC alpha.2 gate futtatása és a gépi jelentés ellenőrzése.
-2. Teljes verziószinkron `5.0.0-alpha.2`-re, lockfile-okkal együtt.
-3. Staging telepítés a verziózott release bundle-ből.
-4. Inline legacy dashboard fizikai kiszervezése.
-5. Tauri képernyők fokozatos átállítása a generált API kliensre.
+1. A valódi LXC alpha.2 gate és staging-deploy futtatása.
+2. Sikeres jelentés után teljes `5.0.0-alpha.2` verziószinkron.
+3. Inline legacy dashboard fizikai kiszervezése.
+4. Tauri képernyők átállítása a generált API kliensre.
+5. `server2_legacy.js` további fizikai bontása.

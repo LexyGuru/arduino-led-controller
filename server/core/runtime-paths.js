@@ -198,6 +198,43 @@ function createRuntimePaths(
       path.join(
         configDir,
         'server-settings.json'
+      ),
+    snapshotsDir:
+      resolveFromRoot(
+        root,
+        environment.SYSTEM_SNAPSHOTS_DIR,
+        path.join(
+          dataDir,
+          'snapshots'
+        )
+      ),
+    migrationDir:
+      resolveFromRoot(
+        root,
+        environment.SYSTEM_MIGRATION_DIR,
+        path.join(
+          dataDir,
+          'migrations'
+        )
+      ),
+    migrationStateFile:
+      resolveFromRoot(
+        root,
+        environment.SYSTEM_MIGRATION_STATE_FILE,
+        path.join(
+          dataDir,
+          'migrations',
+          'state.json'
+        )
+      ),
+    maintenanceStateFile:
+      resolveFromRoot(
+        root,
+        environment.MAINTENANCE_STATE_FILE,
+        path.join(
+          dataDir,
+          'maintenance.json'
+        )
       )
   });
 }

@@ -765,3 +765,23 @@ is rendelkezésre áll.
 - `DELETE /api/v2/firmware/backups/:id`
 
 A rollback kizárólag SHA-256 ellenőrzött, helyi backupból indulhat.
+
+
+## Rendszerüzemeltetési végpontok
+
+- `GET /api/v2/system/release`
+- `GET /api/v2/system/preflight`
+- `GET /api/v2/system/maintenance`
+- `PUT /api/v2/system/maintenance`
+- `DELETE /api/v2/system/maintenance`
+- `GET /api/v2/system/snapshots`
+- `POST /api/v2/system/snapshots`
+- `GET /api/v2/system/snapshots/:id/verify`
+- `POST /api/v2/system/snapshots/:id/actions/restore`
+- `DELETE /api/v2/system/snapshots/:id`
+- `GET /api/v2/system/migrations`
+- `POST /api/v2/system/migrations/actions/dry-run`
+- `POST /api/v2/system/migrations/actions/apply`
+
+A snapshot restore csak aktív karbantartási módban és
+`RESTORE_SYSTEM_SNAPSHOT` megerősítéssel fut.
