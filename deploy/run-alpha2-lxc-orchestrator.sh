@@ -138,12 +138,6 @@ trap cleanup EXIT
 
 CANDIDATE_ROOT="${WORKTREE}"
 
-chmod +x \
-  "${CANDIDATE_ROOT}/deploy/"*.sh \
-  "${CANDIDATE_ROOT}/scripts/"*.js \
-  >/dev/null 2>&1 ||
-  true
-
 install -d \
   -m 0750 \
   "${REPORT_DIR}" \
@@ -276,7 +270,7 @@ bundle_for_phase() {
     -type f \
     -name '*.tar.gz' \
     -print0 |
-  xargs -0 ls -1t |
+  xargs -0 -r ls -1t |
   head -n 1
 }
 

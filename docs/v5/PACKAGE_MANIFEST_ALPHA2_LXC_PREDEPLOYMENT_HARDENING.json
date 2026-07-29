@@ -1,0 +1,68 @@
+{
+  "package": "v5-alpha2-lxc-predeployment-hardening-hotfix",
+  "baseVersion": "5.0.0-alpha.1",
+  "targetVersion": "5.0.0-alpha.2",
+  "manifestPolicy": "archive-schema-only-after-supersession",
+  "files": [
+    {
+      "path": "deploy/install-staging-service.sh",
+      "bytes": 2097,
+      "sha256": "84a23581ae2655d589a545a4fc55f282b9642f55d2f4b3b46d81ba4bd292fc4c"
+    },
+    {
+      "path": "deploy/install-versioned-release.sh",
+      "bytes": 5644,
+      "sha256": "2725cef320c000c3236318d95f80277a3bc7717bac34a833ec33bb18ed5a5e1a"
+    },
+    {
+      "path": "deploy/run-alpha2-lxc-orchestrator.sh",
+      "bytes": 19809,
+      "sha256": "f404cbac7a43378d74dbd630449e15e59f09c6e4797d245a51ddd2a0224883fb"
+    },
+    {
+      "path": "deploy/staging.env.example",
+      "bytes": 1637,
+      "sha256": "3cc2af9736e4a375fa4f4f8ed0cafd9e56e4def891efe94c911b3d72658b3c78"
+    },
+    {
+      "path": "deploy/systemd/arduino-led-controller-staging.service",
+      "bytes": 824,
+      "sha256": "75fa8fa93b1265dc3d4eb9367a90035d1f058f78102c4d7860198809d7e7db76"
+    },
+    {
+      "path": "deploy/test-alpha2-lxc.sh",
+      "bytes": 3116,
+      "sha256": "7c894ed6d598c058a12a83099757acda066d6ed3fba2987f25a2e2a0882b97e6"
+    },
+    {
+      "path": "deploy/verify-versioned-release.sh",
+      "bytes": 3091,
+      "sha256": "2366ff3e0a77155b7b00a47ca22f02eb15c248c412fed45d22fbcd5d71a51886"
+    },
+    {
+      "path": "docs/v5/ALPHA2_LXC_PREDEPLOYMENT_HARDENING.md",
+      "bytes": 1444,
+      "sha256": "b981da8844225e7613f4627cc04797f0c5460f707a361a0251293dfdaf05a5c2"
+    },
+    {
+      "path": "package.json",
+      "bytes": 29100,
+      "sha256": "c1f971988cdd7b9682df1e9f52ff4c304563a2c11ac7f37b1ab5e09d941a63b8"
+    },
+    {
+      "path": "scripts/test-alpha2-lxc-predeployment-hardening-manifest.js",
+      "bytes": 1275,
+      "sha256": "6a064066ab8ec1f6cca5d2ef7b5b126c621004ce2a50cba8cf48faf662f68d59"
+    },
+    {
+      "path": "scripts/test-alpha2-lxc-predeployment-hardening.js",
+      "bytes": 2987,
+      "sha256": "c0d01127ec45e4834c0aa80001f48f7637ccbc0fbd663f80f11a4947288c49e9"
+    },
+    {
+      "path": "scripts/validate-repository.sh",
+      "bytes": 18798,
+      "sha256": "bca566cbca9439893903ad62bbb358a98545e20095d97351269a0d0b32d0981f"
+    }
+  ]
+}

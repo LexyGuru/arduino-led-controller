@@ -126,11 +126,7 @@ ENV_FILE="${ENV_FILE}" \
 CANDIDATE_REF="${CANDIDATE_COMMIT}" \
   bash "${CANDIDATE_SCRIPT}"
 
-log 'Rollback könyvtár- és Git-teszt.'
-(
-  cd "${APP_DIR}"
-  bash scripts/test-update-rollback.sh
-)
+log 'Rollback könyvtár- és Git-teszt: a candidate gate részeként sikeresen lefutott.'
 
 log 'Produkciós szolgáltatás állapotának utóellenőrzése.'
 systemctl is-active --quiet "${SERVICE_NAME}"

@@ -422,6 +422,10 @@ required_files=(
   "scripts/test-desktop-lxc-orchestration-ui.js"
   "scripts/test-alpha2-orchestration-generated.js"
   "scripts/test-alpha2-orchestration-package-manifest.js"
+  "scripts/test-alpha2-lxc-predeployment-hardening.js"
+  "scripts/test-alpha2-lxc-predeployment-hardening-manifest.js"
+  "docs/v5/ALPHA2_LXC_PREDEPLOYMENT_HARDENING.md"
+  "docs/v5/PACKAGE_MANIFEST_ALPHA2_LXC_PREDEPLOYMENT_HARDENING.json"
 )
 for file in "${required_files[@]}"; do
   [[ -f "${file}" ]] || {

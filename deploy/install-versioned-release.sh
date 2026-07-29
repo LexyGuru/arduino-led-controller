@@ -177,8 +177,15 @@ NAME="${METADATA[0]}"
 VERSION="${METADATA[1]}"
 COMMIT="${METADATA[2]}"
 
-[[ "${NAME}" =~ ^arduino-led-controller-[A-Za-z0-9._+-]+-[a-f0-9]{12}$ ]] || {
+[[ "${NAME}" =~ ^arduino-led-controller-[A-Za-z0-9._+-]+-(staging|promotion)-[a-f0-9]{12}$ ]] || {
   log "HIBA: érvénytelen release név: ${NAME}"
+  exit 1
+}
+
+EXPECTED_SUFFIX="-${COMMIT:0:12}"
+
+[[ "${NAME}" == *"${EXPECTED_SUFFIX}" ]] || {
+  log "HIBA: a release név és commit rövid hash eltér: ${NAME}"
   exit 1
 }
 
