@@ -660,3 +660,53 @@ PUT /api/v2/local-schedules/:id
 A művelet megtartja az időzítés azonosítóját, újra validálja a teljes
 schedule objektumot, atomikusan ment, majd `local-schedule.updated`
 eseményt publikál.
+
+
+## Legacy szolgáltatásadapterek
+
+A V5 indító a régi webes kliens által használt `/api/...` útvonalak elé
+kompatibilitási adaptereket regisztrál. Az adapterek ugyanazt a régi,
+burkolat nélküli JSON-válaszformátumot adják vissza, de már a közös V5
+szolgáltatásokat használják.
+
+Alapértelmezésben átállított területek:
+
+- session status, login és logout;
+- Arduino status, config, memory és LED status;
+- LED vezérlés, all-on, all-off és reset;
+- Arduino schedule status, fájlok és műveletek;
+- Arduino célgép beállítása;
+- firmware status és OTA update.
+
+A helyi schedule adapter külön kapcsolható be:
+
+```text
+LEGACY_LOCAL_SCHEDULE_ADAPTERS_ENABLED=0
+```
+
+Az érték azért marad alapból `0`, mert a legacy szerver saját percenkénti cron
+folyamata még memóriában tartja a régi schedule-listát.
+
+## Prometheus metrikák
+
+### `GET /api/v2/metrics/prometheus`
+
+Prometheus text exposition 0.0.4 formátum. `metrics:read` jogosultság szükséges.
+
+## Futásidejű Arduino-beállítások
+
+### `GET /api/v2/settings/arduino`
+
+Az aktuális Arduino IP/host és port.
+
+### `PUT /api/v2/settings/arduino`
+
+```json
+{
+  "arduinoIP": "arduino.local",
+  "arduinoPort": 80
+}
+```
+
+A módosítás atomikusan mentődik a `server-settings.json` fájlba, majd az
+Arduino HTTP-kliens és az OTA célcím azonnal frissül.

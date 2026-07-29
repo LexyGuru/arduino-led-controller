@@ -121,6 +121,40 @@ class ArduinoClient {
     this.requestQueue = Promise.resolve();
   }
 
+  setTarget(ip, port = this.config.port) {
+    const normalizedIp =
+      String(ip || '').trim();
+    const normalizedPort =
+      Number(port);
+
+    if (
+      !normalizedIp ||
+      !Number.isInteger(normalizedPort) ||
+      normalizedPort < 1 ||
+      normalizedPort > 65535
+    ) {
+      throw ArduinoClientError.configuration({
+        target: {
+          ip,
+          port
+        }
+      });
+    }
+
+    this.config = Object.freeze({
+      ...this.config,
+      ip: normalizedIp,
+      port: normalizedPort
+    });
+
+    return {
+      ip:
+        this.config.ip,
+      port:
+        this.config.port
+    };
+  }
+
   configurationChecks() {
     return [
       {

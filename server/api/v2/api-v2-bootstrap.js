@@ -96,6 +96,18 @@ const {
 );
 
 const {
+  installPrometheusRoutes
+} = require(
+  './prometheus-routes'
+);
+
+const {
+  installSettingsRoutes
+} = require(
+  './settings-routes'
+);
+
+const {
   installLedRoutes
 } = require(
   './led-routes'
@@ -220,6 +232,14 @@ function installApiV2Routes(
   );
 
   installObservabilityRoutes(
+    app
+  );
+
+  installPrometheusRoutes(
+    app
+  );
+
+  installSettingsRoutes(
     app
   );
 

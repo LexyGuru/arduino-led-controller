@@ -198,11 +198,72 @@ class SocketGateway {
     };
   }
 
-  close() {
+  close({
+    timeoutMs = 5000
+  } = {}) {
     this.unsubscribe?.();
     this.unsubscribe = null;
-    this.io = null;
     this.clients.clear();
+
+    const io =
+      this.io;
+
+    this.io = null;
+
+    if (
+      !io ||
+      typeof io.close !==
+        'function'
+    ) {
+      return Promise.resolve({
+        closed: false,
+        reason:
+          'NOT_INSTALLED'
+      });
+    }
+
+    return new Promise((resolve) => {
+      let settled = false;
+
+      const finish = (result) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        resolve(result);
+      };
+
+      const timer =
+        setTimeout(
+          () =>
+            finish({
+              closed: false,
+              timedOut: true
+            }),
+          Math.max(
+            250,
+            Number(timeoutMs) ||
+            5000
+          )
+        );
+
+      timer.unref?.();
+
+      try {
+        io.close(() => {
+          finish({
+            closed: true,
+            timedOut: false
+          });
+        });
+      } catch (error) {
+        finish({
+          closed: false,
+          timedOut: false,
+          error:
+            error.message
+        });
+      }
+    });
   }
 }
 

@@ -3,6 +3,12 @@
 const EVENT_TOPICS = Object.freeze({
   SYSTEM_READY: 'system.ready',
   SYSTEM_DRAINING: 'system.draining',
+  ARDUINO_RESTARTING:
+    'arduino.restarting',
+  ARDUINO_CONSOLE_CLEARED:
+    'arduino.console-cleared',
+  SETTINGS_ARDUINO_UPDATED:
+    'settings.arduino-updated',
   AUTH_LOGIN: 'auth.login',
   AUTH_LOGOUT: 'auth.logout',
   USER_CREATED: 'user.created',
@@ -15,6 +21,7 @@ const EVENT_TOPICS = Object.freeze({
   LED_UPDATED: 'led.updated',
   LED_ALL_CHANGED: 'led.all-changed',
   LED_RESET: 'led.reset',
+  LED_DEBUG: 'led.debug',
   SCHEDULE_RELOADED: 'schedule.reloaded',
   SCHEDULE_GENERATED: 'schedule.generated',
   SCHEDULE_CLEARED: 'schedule.cleared',

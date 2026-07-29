@@ -4,63 +4,65 @@
 
 ```text
 server2_final.js
-  ├─ RuntimePaths + Config + Logger
   ├─ LifecycleManager + ShutdownCoordinator
-  ├─ MetricsRegistry + AuditLog + DiagnosticsService
-  ├─ EventStore + EventBus
-  ├─ ApiTokenStore + UserRepository + SessionService
-  ├─ ArduinoClient
-  ├─ LedService
-  ├─ ScheduleService + LocalScheduleRepository + LocalScheduleRunner
-  ├─ FirmwareReleaseClient + OtaRunner + FirmwareService
-  ├─ OpenApiService
-  ├─ ExpressBootstrapRegistry
-  ├─ SocketBootstrapRegistry + SocketGateway
-  └─ server2_legacy.js
+  ├─ HttpServerRegistry
+  ├─ core config / paths / runtime settings
+  ├─ EventBus / EventStore / AuditLog / Metrics
+  ├─ security / session / users
+  ├─ ArduinoClient / LedService / ScheduleService
+  ├─ LocalScheduleService
+  ├─ FirmwareService / OtaRunner
+  ├─ SocketGateway + LegacyEventBridge
+  ├─ Express installers
+  │    ├─ health
+  │    ├─ API v2
+  │    └─ legacy service adapters
+  ├─ Socket.IO installers
+  └─ guarded require(server2_legacy.js)
 ```
 
-## Core és életciklus
+## Új legacy kompatibilitási réteg
 
 | Modul | Feladat |
 |---|---|
-| `server/core/runtime-paths.js` | Minden futásidejű fájl és könyvtár |
-| `server/core/config.js` | Környezeti és mentett konfiguráció |
-| `server/core/runtime-context.js` | Közös szolgáltatások |
-| `server/core/lifecycle-manager.js` | Starting, ready, draining és stopped állapot |
-| `server/core/shutdown-coordinator.js` | Fordított sorrendű cleanup és jelkezelés |
+| `server/legacy/legacy-api-bootstrap.js` | Adapterek sorrendje, body parser és sessionvédelem |
+| `legacy-auth-routes.js` | Régi auth status/login/logout |
+| `legacy-auth-middleware.js` | Régi `/api` session-ellenőrzés |
+| `legacy-arduino-routes.js` | Régi Arduino, LED és Arduino schedule útvonalak |
+| `legacy-settings-routes.js` | Régi Arduino célgép-beállítás |
+| `legacy-firmware-routes.js` | Régi firmware status/update |
+| `legacy-local-schedule-routes.js` | Opcionális régi helyi schedule adapter |
+| `legacy-event-bridge.js` | V5 témákból régi Socket.IO eseménynevek |
+| `legacy-signal-guard.js` | A monolit saját SIGTERM/SIGINT kezelőinek elnyomása |
+
+## Leállítási infrastruktúra
+
+| Modul | Feladat |
+|---|---|
+| `server/http/http-server-registry.js` | HTTP/HTTPS szerverpéldányok követése és lezárása |
+| `server/socket/socket-gateway.js` | Socket.IO explicit, időkorlátos lezárása |
+| `server/core/shutdown-coordinator.js` | Fordított sorrendű cleanup |
+
+Leállítási sorrend:
+
+1. helyi schedule runner;
+2. legacy eseményhíd;
+3. Socket.IO gateway;
+4. HTTP/HTTPS szerverek;
+5. EventStore;
+6. auditnapló;
+7. logger.
 
 ## Megfigyelhetőség
 
 | Modul | Feladat |
 |---|---|
-| `server/events/event-store.js` | Rotálható tartós JSONL eseménytár |
-| `server/events/event-bus.js` | Memória + tartós eseményközvetítés |
-| `server/observability/metrics-registry.js` | HTTP, esemény és szolgáltatás metrikák |
-| `server/observability/audit-log.js` | Redaktált, rotálható auditnapló |
-| `server/observability/diagnostics-service.js` | Processz- és szolgáltatásdiagnosztika |
-| `server/api/v2/observability-routes.js` | Metrics, diagnostics és audit API |
+| `server/observability/prometheus-exporter.js` | MetricsRegistry snapshot → Prometheus text |
+| `server/api/v2/prometheus-routes.js` | Védett szöveges export |
 
-## Biztonság
+## Következő nagy területek
 
-| Modul | Feladat |
-|---|---|
-| `server/security/user-repository.js` | Atomikus felhasználó CRUD, scrypt és last-admin védelem |
-| `server/security/session-service.js` | Legacy session és stateless CSRF |
-| `server/api/v2/user-routes.js` | Felhasználó-adminisztráció |
-| `server/api/v2/auth.js` | Bearer/session auth és session CSRF kikényszerítés |
-
-## API dokumentáció
-
-| Modul | Feladat |
-|---|---|
-| `server/api/v2/openapi-service.js` | OpenAPI fájl betöltése és gyorsítótárazása |
-| `server/api/v2/openapi-routes.js` | JSON és HTML dokumentáció |
-| `docs/api/openapi-v2.json` | OpenAPI 3.1 gépi séma |
-
-## Hátralévő fő migrációk
-
-1. Legacy LED, schedule, auth és firmware route-ok átállítása.
-2. Legacy Socket.IO események teljes bekötése az EventBus rendszerbe.
-3. Statikus webes felület kiemelése.
-4. Izolált LXC és rollback release gate.
-5. `5.0.0-alpha.2` verziólépés.
+1. Legacy helyi schedule memória és cron teljes kikapcsolása.
+2. Legacy setup/user-admin route-ok teljes átállítása.
+3. Legacy monolit Arduino konzolcache és fájlkezelés kiemelése.
+4. Izolált LXC release gate és `5.0.0-alpha.2`.

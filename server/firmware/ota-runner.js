@@ -86,6 +86,25 @@ class OtaRunner {
     this.programRunner = programRunner;
   }
 
+  setTarget(address) {
+    const normalized =
+      String(address || '').trim();
+
+    if (!normalized) {
+      throw new TypeError(
+        'Az OTA célcíme nem lehet üres.'
+      );
+    }
+
+    this.address =
+      normalized;
+
+    return {
+      address:
+        this.address
+    };
+  }
+
   upload(binaryPath) {
     return this.programRunner(
       this.toolPath,

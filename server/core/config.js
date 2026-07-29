@@ -241,7 +241,13 @@ function loadRuntimeConfig(options = {}) {
         '0.0.0.0',
       allowedOrigin:
         String(environment.ALLOWED_ORIGIN || '*').trim() ||
-        '*'
+        '*',
+      shutdownTimeoutMs: numberInRange(
+        environment.HTTP_SHUTDOWN_TIMEOUT_MS,
+        8000,
+        250,
+        60000
+      )
     },
     arduino: {
       ip: arduinoIP,
@@ -409,6 +415,27 @@ function loadRuntimeConfig(options = {}) {
         1000,
         60000
       )
+    },
+    legacy: {
+      apiAdaptersEnabled: booleanFromEnvironment(
+        environment.LEGACY_API_ADAPTERS_ENABLED,
+        true
+      ),
+      localScheduleAdaptersEnabled:
+        booleanFromEnvironment(
+          environment.LEGACY_LOCAL_SCHEDULE_ADAPTERS_ENABLED,
+          false
+        ),
+      socketEventBridgeEnabled:
+        booleanFromEnvironment(
+          environment.LEGACY_SOCKET_EVENT_BRIDGE_ENABLED,
+          true
+        ),
+      suppressSignalHandlers:
+        booleanFromEnvironment(
+          environment.LEGACY_SUPPRESS_SIGNAL_HANDLERS,
+          true
+        )
     },
     logging: {
       level:

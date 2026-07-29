@@ -49,6 +49,19 @@ const {
 );
 
 const {
+  RuntimeSettingsService
+} = require(
+  './server/core/runtime-settings-service'
+);
+
+const {
+  HttpServerRegistry,
+  installHttpServerRegistryPatch
+} = require(
+  './server/http/http-server-registry'
+);
+
+const {
   ApiTokenStore
 } = require(
   './server/security/api-token-store'
@@ -188,6 +201,24 @@ const {
   './server/api/v2/api-v2-bootstrap'
 );
 
+const {
+  installLegacyApiAdapters
+} = require(
+  './server/legacy/legacy-api-bootstrap'
+);
+
+const {
+  LegacyEventBridge
+} = require(
+  './server/legacy/legacy-event-bridge'
+);
+
+const {
+  withSuppressedSignalHandlers
+} = require(
+  './server/legacy/legacy-signal-guard'
+);
+
 const paths =
   createRuntimePaths();
 
@@ -213,6 +244,14 @@ const logger =
 
 const lifecycle =
   new LifecycleManager();
+
+const httpServerRegistry =
+  new HttpServerRegistry({
+    closeTimeoutMs:
+      config.http
+        .shutdownTimeoutMs,
+    logger
+  });
 
 const metrics =
   new MetricsRegistry();
@@ -363,6 +402,16 @@ const otaRunner =
         .uploadTimeoutMs
   });
 
+const runtimeSettingsService =
+  new RuntimeSettingsService({
+    settingsFile:
+      paths.runtimeSettingsFile,
+    arduinoClient,
+    otaRunner,
+    logger,
+    eventBus
+  });
+
 const firmwareService =
   new FirmwareService({
     arduinoClient,
@@ -403,6 +452,12 @@ const socketGateway =
         .socketRecentLimit
   });
 
+const legacyEventBridge =
+  new LegacyEventBridge({
+    eventBus,
+    logger
+  });
+
 const diagnosticsService =
   new DiagnosticsService({
     runtimeProvider:
@@ -426,6 +481,7 @@ setRuntimeContext({
   paths,
   logger,
   lifecycle,
+  httpServerRegistry,
   metrics,
   eventStore,
   eventBus,
@@ -441,9 +497,11 @@ setRuntimeContext({
   localScheduleService,
   firmwareReleaseClient,
   otaRunner,
+  runtimeSettingsService,
   firmwareService,
   openApiService,
   socketGateway,
+  legacyEventBridge,
   diagnosticsService,
   shutdownCoordinator
 });
@@ -471,9 +529,25 @@ shutdownCoordinator
         .flush()
   )
   .register(
+    'http-servers',
+    () =>
+      httpServerRegistry
+        .closeAll()
+  )
+  .register(
     'socket-gateway',
     () =>
       socketGateway
+        .close({
+          timeoutMs:
+            config.http
+              .shutdownTimeoutMs
+        })
+  )
+  .register(
+    'legacy-event-bridge',
+    () =>
+      legacyEventBridge
         .close()
   )
   .register(
@@ -505,6 +579,11 @@ registerExpressInstaller(
   installApiV2Routes
 );
 
+registerExpressInstaller(
+  'legacy-service-adapters',
+  installLegacyApiAdapters
+);
+
 registerSocketInstaller(
   'v5-event-gateway',
   (io) =>
@@ -512,10 +591,42 @@ registerSocketInstaller(
       .install(io)
 );
 
+if (
+  config.legacy
+    .socketEventBridgeEnabled
+) {
+  registerSocketInstaller(
+    'legacy-event-bridge',
+    (io) =>
+      legacyEventBridge
+        .install(io)
+  );
+}
+
 installExpressFactoryPatch();
 installSocketFactoryPatch();
+installHttpServerRegistryPatch(
+  httpServerRegistry
+);
 
-require('./server2_legacy');
+if (
+  config.legacy
+    .suppressSignalHandlers
+) {
+  withSuppressedSignalHandlers(
+    () =>
+      require(
+        './server2_legacy'
+      ),
+    {
+      logger
+    }
+  );
+} else {
+  require(
+    './server2_legacy'
+  );
+}
 
 lifecycle.markReady();
 

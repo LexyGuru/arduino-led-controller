@@ -10,6 +10,9 @@ const PERMISSIONS = Object.freeze({
   SYSTEM_READ: 'system:read',
   DIAGNOSTICS_READ: 'diagnostics:read',
   AUDIT_READ: 'audit:read',
+  METRICS_READ: 'metrics:read',
+  SETTINGS_READ: 'settings:read',
+  SETTINGS_WRITE: 'settings:write',
   USER_READ: 'user:read',
   USER_ADMIN: 'user:admin',
   ARDUINO_READ: 'arduino:read',
@@ -32,6 +35,8 @@ const ROLE_PERMISSIONS = Object.freeze({
   [ROLES.OPERATOR]: Object.freeze([
     PERMISSIONS.SYSTEM_READ,
     PERMISSIONS.DIAGNOSTICS_READ,
+    PERMISSIONS.METRICS_READ,
+    PERMISSIONS.SETTINGS_READ,
     PERMISSIONS.ARDUINO_READ,
     PERMISSIONS.LED_READ,
     PERMISSIONS.LED_WRITE,

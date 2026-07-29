@@ -1,0 +1,211 @@
+{
+  "package": "v5-legacy-adapters-prometheus-shutdown-ready",
+  "baseBranch": "feature/v5-server-modularization",
+  "createdAt": "2026-07-29",
+  "currentVersion": "5.0.0-alpha.1",
+  "releaseTarget": "5.0.0-alpha.2",
+  "description": "Legacy service adapters, runtime Arduino settings, Prometheus text export, explicit HTTP and Socket.IO shutdown, legacy signal suppression and compatibility event bridging.",
+  "fileCountExcludingManifest": 40,
+  "files": [
+    {
+      "path": ".env.example",
+      "sha256": "92457472a4e2d5b34d04aec9d2aa5b7ff782f3f31774e102b764c94ad0d8e9f3",
+      "bytes": 2530
+    },
+    {
+      "path": "deploy/update.sh",
+      "sha256": "f74377e9fc9960c2b61b9b5b54c04cfce4ca78688eb022c844629b53897f8633",
+      "bytes": 17475
+    },
+    {
+      "path": "docs/api/API_V2_CONTRACT.md",
+      "sha256": "e692299913b1b2de9e2bcbce4ddc0afd445dda78503e7da21dcd55c0a4a38ade",
+      "bytes": 17846
+    },
+    {
+      "path": "docs/api/openapi-v2.json",
+      "sha256": "e8ce8ebc8619f6367295a9776ae850cabc02e6b5511c72cd0dd865ab6be9721c",
+      "bytes": 36822
+    },
+    {
+      "path": "docs/v5/LEGACY_ADAPTER_MIGRATION.md",
+      "sha256": "43813c16eb72ba35fae63cb8a0e19c2715f9763446734559739186b237fcc73c",
+      "bytes": 1185
+    },
+    {
+      "path": "docs/v5/SERVER_MODULE_MAP.md",
+      "sha256": "690b3e4b320d6555e07769235ac874f81988209261faa9dffd20b337f70aad27",
+      "bytes": 2387
+    },
+    {
+      "path": "docs/v5/V5_REARCHITECTURE_CHECKLIST.md",
+      "sha256": "c08bf0b4c770293cd5fdc02bb9b57fed08f93cef56f6ba63016e3e81e7a36dc1",
+      "bytes": 3354
+    },
+    {
+      "path": "package.json",
+      "sha256": "81bb7fda1e87bb5ce46c44d3e1f838a9aa6191b9c3e424f2e0e5850031922d38",
+      "bytes": 9897
+    },
+    {
+      "path": "scripts/test-http-server-registry.js",
+      "sha256": "a17e3ae119ec27cd6e214513fa29986bc130be2dce729cd4fec7fcd5a72cb4d3",
+      "bytes": 1248
+    },
+    {
+      "path": "scripts/test-legacy-adapters.js",
+      "sha256": "20b5e911428fd7bb090300917ff3bea35d62c0e9229915c8a470b85ad17e3407",
+      "bytes": 4076
+    },
+    {
+      "path": "scripts/test-legacy-auth-local.js",
+      "sha256": "4dfc750113318af9e76b5dd6f4e6f8450b2dc94951edcc5fe2d70e537f40ba44",
+      "bytes": 4315
+    },
+    {
+      "path": "scripts/test-legacy-event-bridge.js",
+      "sha256": "226fb89722d338de72dcd6e38625e987893f4407962c405e5e8cf652aed7faf5",
+      "bytes": 1214
+    },
+    {
+      "path": "scripts/test-legacy-package-manifest.js",
+      "sha256": "f5f170dcb7f012b8b7142410dd50f9c8e71fd4ecfaafd2730463e5d66317a0d1",
+      "bytes": 1561
+    },
+    {
+      "path": "scripts/test-legacy-signal-guard.js",
+      "sha256": "6563c8f13e44cb610f3269ae7f4548ac737725cbd3d8f71f6ecde7fe577217e6",
+      "bytes": 1308
+    },
+    {
+      "path": "scripts/test-prometheus-exporter.js",
+      "sha256": "127fcbacf944ee910825eae10e9b642a345993e78865abfbd34266018800f2e1",
+      "bytes": 1157
+    },
+    {
+      "path": "scripts/test-runtime-settings-service.js",
+      "sha256": "fb4e9ad42057bd323498f6377bbdd9e4acb4b4613763f0813f41088c7aefb3ac",
+      "bytes": 2855
+    },
+    {
+      "path": "scripts/validate-repository.sh",
+      "sha256": "9143f040ae53929490e495516d44a55923e65100d3a7b2ed9897b62ef70a6c57",
+      "bytes": 6027
+    },
+    {
+      "path": "server/api/v2/api-v2-bootstrap.js",
+      "sha256": "314fe803a7cf7db854ea6dcfe07ed874c1b724eb507630627086577993848cd8",
+      "bytes": 3423
+    },
+    {
+      "path": "server/api/v2/prometheus-routes.js",
+      "sha256": "2fbf2017a67b13460fb298b70dba3cc874014298a55f877341460aeb22cdb317",
+      "bytes": 1024
+    },
+    {
+      "path": "server/api/v2/settings-routes.js",
+      "sha256": "23f9a4a77a12a0b25a5ab2c5baf71f12fa770b4fb6f55c6b2f551bbe6e6add32",
+      "bytes": 2138
+    },
+    {
+      "path": "server/arduino/arduino-client.js",
+      "sha256": "5ffa5dcb762f7ae93e85d33bdf85e09ff276a8395f988dea5903815662af4335",
+      "bytes": 7939
+    },
+    {
+      "path": "server/core/config.js",
+      "sha256": "408eaa4f7c41e7cb70fa01fb87ad0af376808cc1e172b78ebb2dfcb760390047",
+      "bytes": 9837
+    },
+    {
+      "path": "server/core/runtime-settings-service.js",
+      "sha256": "75601bbd482a8e6c623321cd17dd3627e9d63a93fb22dddd30b51b6a309dc42e",
+      "bytes": 4892
+    },
+    {
+      "path": "server/events/topics.js",
+      "sha256": "e51ec5324471e6ef5bff265f4cbd796b7b3b7078370d336eb9195a6bdbc281bd",
+      "bytes": 1295
+    },
+    {
+      "path": "server/firmware/ota-runner.js",
+      "sha256": "3ba9eb2c5ecc8a9abb2f0d769f3de596c97645a19a71130a7ae47bcbe4ef466a",
+      "bytes": 2416
+    },
+    {
+      "path": "server/http/http-server-registry.js",
+      "sha256": "5d963924db03215595c656251ce6a92dc682e4ff962761b264b66692cf05835a",
+      "bytes": 4532
+    },
+    {
+      "path": "server/legacy/legacy-api-bootstrap.js",
+      "sha256": "a9ef8695d7066646253b222d434df78658d4ba0a89c75d9ff70bd8b19337cd01",
+      "bytes": 1785
+    },
+    {
+      "path": "server/legacy/legacy-arduino-routes.js",
+      "sha256": "a3e50556aa29accee14211dd0d74ca6ce6b560afc38f23339a9508d1dc7c834c",
+      "bytes": 8382
+    },
+    {
+      "path": "server/legacy/legacy-auth-middleware.js",
+      "sha256": "1e6ace8579a4b86daf5df0fb76b1d0401e582eff8528eafdfb4a31f44d3c63b0",
+      "bytes": 1911
+    },
+    {
+      "path": "server/legacy/legacy-auth-routes.js",
+      "sha256": "babfe3f72221dd6304894c06c5efffc32d94860316e414302abed7ec803f4187",
+      "bytes": 2954
+    },
+    {
+      "path": "server/legacy/legacy-event-bridge.js",
+      "sha256": "2e9530976bf11dfefed340ee626187dc7a0d3c26ca9469e8384d66f5204b134f",
+      "bytes": 2718
+    },
+    {
+      "path": "server/legacy/legacy-firmware-routes.js",
+      "sha256": "bbacf66f1f51053ade1dda2e24700aff160a7392ce6021b19ef4265c2dbb9230",
+      "bytes": 1750
+    },
+    {
+      "path": "server/legacy/legacy-local-schedule-routes.js",
+      "sha256": "d659089c01b14d612a814756375a176e845e429d242b088ceaa840a6242ad492",
+      "bytes": 3721
+    },
+    {
+      "path": "server/legacy/legacy-response.js",
+      "sha256": "d3527531e4707826def682d6811aa4f85c5eb5451dcacbf0ae78a3a9d4df448b",
+      "bytes": 1285
+    },
+    {
+      "path": "server/legacy/legacy-settings-routes.js",
+      "sha256": "ccca461a7447db9d56506cdb21be95159240a9001fa2dfb9590d32deeca46e8d",
+      "bytes": 1701
+    },
+    {
+      "path": "server/legacy/legacy-signal-guard.js",
+      "sha256": "2824c0f02d6697ae564b0a6dea709b35219d7c1125de7a3b64ec13f75c617908",
+      "bytes": 1681
+    },
+    {
+      "path": "server/observability/prometheus-exporter.js",
+      "sha256": "7d169360877946a7657a8ed71e37fec38c5b525d1507829433c966ebb51a10a0",
+      "bytes": 2410
+    },
+    {
+      "path": "server/security/roles.js",
+      "sha256": "11c079057142664354f5c2db7b4238f1e80f14d2d415c5a8de44228465187864",
+      "bytes": 2531
+    },
+    {
+      "path": "server/socket/socket-gateway.js",
+      "sha256": "dab7697cee57ad4b7f3475f23609c930bb1018211038f3715333fbb088692827",
+      "bytes": 5065
+    },
+    {
+      "path": "server2_final.js",
+      "sha256": "23c97dd87584eeafd8c12277b130d62bd1fc4806e96d46cea78945830249b2d0",
+      "bytes": 10381
+    }
+  ]
+}
