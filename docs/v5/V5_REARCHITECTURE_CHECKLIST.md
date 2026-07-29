@@ -123,7 +123,7 @@ Munkacsomag: `feature/v5-server-modularization`
 ## Következő hatalmas munkacsomag
 
 1. Valódi izolált LXC alpha.2 release-gate futtatása.
-2. Sikeres gate után teljes `5.0.0-alpha.2` verziószinkron.
-3. Staging telepítés és promóciós jóváhagyás.
-4. Inline legacy dashboard fizikai kiszervezése.
-5. `server2_legacy.js` további jelentős karcsúsítása.
+2. Staging evidence bundle telepítése és rollback-próba.
+3. Promóciós jóváhagyás és promotion evidence bundle.
+4. Sikeres bizonyítéklánc után teljes `5.0.0-alpha.2` verziószinkron.
+5. Inline legacy dashboard fizikai kiszervezése.

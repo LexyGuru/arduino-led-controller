@@ -11,17 +11,17 @@ ROOT_DIR="$(
 ARCHIVE="${1:-}"
 
 [[ -n "${ARCHIVE}" ]] || {
-  echo 'Használat: deploy/stage-alpha2-bundle.sh <release.tar.gz>' >&2
+  echo 'Használat: deploy/promote-alpha2-staging.sh <promotion-release.tar.gz>' >&2
   exit 2
 }
 
-PHASE=staging \
+PHASE=promotion \
   bash \
   "${ROOT_DIR}/deploy/verify-alpha2-release-bundle.sh" \
   "${ARCHIVE}"
 
 REQUIRE_RELEASE_EVIDENCE=1 \
-EVIDENCE_PHASE=staging \
+EVIDENCE_PHASE=promotion \
 INSTALL_ROOT="${INSTALL_ROOT:-/opt/arduino-led-controller-staging}" \
 RELEASES_DIR="${RELEASES_DIR:-/opt/arduino-led-controller-staging/releases}" \
 CURRENT_LINK="${CURRENT_LINK:-/opt/arduino-led-controller-staging/current}" \

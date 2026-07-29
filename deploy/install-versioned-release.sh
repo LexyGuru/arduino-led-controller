@@ -36,6 +36,9 @@ SCRIPT_ROOT="$(
   pwd
 )"
 VERIFY_SCRIPT="${VERIFY_SCRIPT:-${SCRIPT_ROOT}/deploy/verify-versioned-release.sh}"
+EVIDENCE_VERIFY_SCRIPT="${EVIDENCE_VERIFY_SCRIPT:-${SCRIPT_ROOT}/deploy/verify-alpha2-release-bundle.sh}"
+REQUIRE_RELEASE_EVIDENCE="${REQUIRE_RELEASE_EVIDENCE:-1}"
+EVIDENCE_PHASE="${EVIDENCE_PHASE:-}"
 
 log() {
   printf '[release-install] %s\n' "$*"
@@ -61,6 +64,13 @@ done
 CHECKSUM_FILE="${CHECKSUM_FILE}" \
   bash "${VERIFY_SCRIPT}" \
   "${ARCHIVE}"
+
+if [[ "${REQUIRE_RELEASE_EVIDENCE}" == '1' ]]; then
+  PHASE="${EVIDENCE_PHASE}" \
+    bash \
+    "${EVIDENCE_VERIFY_SCRIPT}" \
+    "${ARCHIVE}"
+fi
 
 TEMP_DIR="$(
   mktemp -d
