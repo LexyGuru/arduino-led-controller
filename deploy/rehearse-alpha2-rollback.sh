@@ -73,3 +73,18 @@ AFTER="$(
 }
 
 echo "OK: staging rollback-próba, current változatlan: ${AFTER}"
+
+
+RECEIPT_DIR="${RECEIPT_DIR:-/var/lib/arduino-led-controller/release-execution}"
+
+node \
+  "${ROOT_DIR}/scripts/write-alpha2-execution-receipt.js" \
+  --kind rollback-rehearsal \
+  --metadata "${CURRENT_LINK}/RELEASE-METADATA.json" \
+  --evidence "${CURRENT_LINK}/release-evidence/RELEASE-EVIDENCE.json" \
+  --previous "${RECEIPT_DIR}/staging-deployment.json" \
+  --output "${RECEIPT_DIR}/rollback-rehearsal.json" \
+  --service "${SERVICE_NAME}" \
+  --health-url "intentional-failure://rollback-rehearsal" \
+  --previous-release "${BEFORE}" \
+  --current-release "${AFTER}"

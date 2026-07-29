@@ -545,6 +545,13 @@ function loadRuntimeConfig(options = {}) {
           72,
           1,
           720
+        ),
+      executionReceiptMaxAgeHours:
+        numberInRange(
+          environment.RELEASE_EXECUTION_RECEIPT_MAX_AGE_HOURS,
+          168,
+          1,
+          2160
         )
     },
     legacy: {

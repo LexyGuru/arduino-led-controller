@@ -28,6 +28,10 @@ import {
 } from '../components/v5/V5ReleaseGatePanel';
 
 import {
+  V5ReleaseFinalizationPanel
+} from '../components/v5/V5ReleaseFinalizationPanel';
+
+import {
   V5SnapshotPanel
 } from '../components/v5/V5SnapshotPanel';
 
@@ -205,6 +209,30 @@ export function V5SystemPage() {
               () =>
                 void state.operations
                   .revokePromotionApproval()
+            }
+          />
+
+          <V5ReleaseFinalizationPanel
+            readiness={
+              state.finalizationReadiness
+            }
+            busyAction={
+              state.busyAction
+            }
+            onVerify={
+              () =>
+                void state.operations
+                  .verifyFinalization()
+            }
+            onApprove={
+              () =>
+                void state.operations
+                  .approveFinalization()
+            }
+            onRevoke={
+              () =>
+                void state.operations
+                  .revokeFinalizationApproval()
             }
           />
 

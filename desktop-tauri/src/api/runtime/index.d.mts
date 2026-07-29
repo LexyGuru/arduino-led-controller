@@ -445,6 +445,16 @@ export class DesktopSystemApi {
     Promise<unknown>;
   revokePromotionApproval():
     Promise<unknown>;
+  executionReceipts():
+    Promise<unknown>;
+  finalizationReadiness():
+    Promise<unknown>;
+  verifyFinalization():
+    Promise<unknown>;
+  approveFinalization():
+    Promise<unknown>;
+  revokeFinalizationApproval():
+    Promise<unknown>;
   diagnostics(): Promise<unknown>;
   preflight(): Promise<unknown>;
   maintenanceStatus():

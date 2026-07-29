@@ -130,6 +130,43 @@ function invoke(
   );
 }
 
+
+function invokeFinalization(
+  method,
+  {
+    statusCode = 200
+  } = {}
+) {
+  return asyncRoute(
+    async (
+      req,
+      res
+    ) => {
+      const runtime =
+        getRuntimeContext();
+
+      try {
+        return sendSuccess(
+          req,
+          res,
+          await method(
+            runtime
+              .releaseFinalizationService,
+            req
+          ),
+          {
+            statusCode
+          }
+        );
+      } catch (error) {
+        throw mapReleaseError(
+          error
+        );
+      }
+    }
+  );
+}
+
 function installReleaseRoutes(
   app
 ) {
@@ -144,6 +181,74 @@ function installReleaseRoutes(
       PERMISSIONS
         .RELEASE_ADMIN
     );
+
+
+app.get(
+  '/api/v2/release/execution-receipts',
+  requireApiV2Auth,
+  read,
+  invokeFinalization(
+    (service) =>
+      service.receipts()
+  )
+);
+
+app.get(
+  '/api/v2/release/finalization-readiness',
+  requireApiV2Auth,
+  read,
+  invokeFinalization(
+    (service) =>
+      service.readiness()
+  )
+);
+
+app.post(
+  '/api/v2/release/actions/verify-finalization',
+  requireApiV2Auth,
+  admin,
+  invokeFinalization(
+    (service) =>
+      service.verify()
+  )
+);
+
+app.post(
+  '/api/v2/release/actions/approve-finalization',
+  requireApiV2Auth,
+  admin,
+  invokeFinalization(
+    (
+      service,
+      req
+    ) =>
+      service.approve({
+        confirm:
+          req.body?.confirm,
+        principal:
+          req.apiPrincipal
+      }),
+    {
+      statusCode: 201
+    }
+  )
+);
+
+app.delete(
+  '/api/v2/release/finalization-approval',
+  requireApiV2Auth,
+  admin,
+  invokeFinalization(
+    (
+      service,
+      req
+    ) =>
+      service.revoke({
+        principal:
+          req.apiPrincipal
+      })
+  )
+);
 
   app.get(
     '/api/v2/release/status',

@@ -1,0 +1,78 @@
+.v5-execution-chain {
+  display: grid;
+  grid-template-columns:
+    minmax(0, 1fr)
+    auto
+    minmax(0, 1fr)
+    auto
+    minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+}
+
+.v5-execution-chain > svg {
+  color: #52617a;
+}
+
+.v5-execution-receipt {
+  display: grid;
+  grid-template-columns:
+    auto
+    minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  padding: 13px;
+  border: 1px solid #34415a;
+  border-radius: 11px;
+  background: #0b1220;
+}
+
+.v5-execution-receipt.ok {
+  border-color:
+    rgba(66, 229, 191, .32);
+  background:
+    rgba(66, 229, 191, .06);
+}
+
+.v5-execution-receipt.missing {
+  border-color:
+    rgba(255, 135, 152, .3);
+  background:
+    rgba(255, 135, 152, .05);
+}
+
+.v5-execution-receipt strong,
+.v5-execution-receipt small,
+.v5-execution-receipt code {
+  display: block;
+}
+
+.v5-execution-receipt small {
+  margin: 4px 0;
+  color: #8491a6;
+}
+
+.v5-execution-receipt code {
+  color: #6f7d93;
+  font-size: 10px;
+  overflow-wrap: anywhere;
+}
+
+.v5-inline-code {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+@media (max-width: 980px) {
+  .v5-execution-chain {
+    grid-template-columns: 1fr;
+  }
+
+  .v5-execution-chain > svg {
+    transform:
+      rotate(90deg);
+    justify-self:
+      center;
+  }
+}

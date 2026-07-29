@@ -417,6 +417,15 @@ export const API_V2_OPERATIONS = [
     ]
   },
   {
+    "id": "approveAlpha2Finalization",
+    "method": "POST",
+    "path": "/api/v2/release/actions/approve-finalization",
+    "summary": "Alpha.2 verziószinkron véglegesítésének jóváhagyása",
+    "tags": [
+      "Release"
+    ]
+  },
+  {
     "id": "approveAlpha2Promotion",
     "method": "POST",
     "path": "/api/v2/release/actions/approve-promotion",
@@ -424,11 +433,47 @@ export const API_V2_OPERATIONS = [
     "tags": []
   },
   {
+    "id": "verifyAlpha2Finalization",
+    "method": "POST",
+    "path": "/api/v2/release/actions/verify-finalization",
+    "summary": "Alpha.2 receipt-lánc ellenőrzése",
+    "tags": [
+      "Release"
+    ]
+  },
+  {
     "id": "verifyAlpha2ReleaseGate",
     "method": "POST",
     "path": "/api/v2/release/actions/verify-gate",
     "summary": "A release-gate szigorú ellenőrzése",
     "tags": []
+  },
+  {
+    "id": "getAlpha2ExecutionReceipts",
+    "method": "GET",
+    "path": "/api/v2/release/execution-receipts",
+    "summary": "Alpha.2 execution receiptek",
+    "tags": [
+      "Release"
+    ]
+  },
+  {
+    "id": "revokeAlpha2FinalizationApproval",
+    "method": "DELETE",
+    "path": "/api/v2/release/finalization-approval",
+    "summary": "Alpha.2 véglegesítési jóváhagyás visszavonása",
+    "tags": [
+      "Release"
+    ]
+  },
+  {
+    "id": "getAlpha2FinalizationReadiness",
+    "method": "GET",
+    "path": "/api/v2/release/finalization-readiness",
+    "summary": "Alpha.2 véglegesítési readiness",
+    "tags": [
+      "Release"
+    ]
   },
   {
     "id": "getInstalledReleaseMetadata",

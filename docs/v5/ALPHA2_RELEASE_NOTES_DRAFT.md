@@ -31,3 +31,14 @@
 
 A release notes csak a sikeres LXC gate és a közvetlen
 `5.0.0-alpha.2` verziószinkron után tekinthető véglegesnek.
+
+## Execution receipt és finalization
+
+- staging deployment receipt;
+- staging rollback rehearsal receipt;
+- promotion deployment receipt;
+- SHA-256 előzménylánc;
+- backend finalization readiness;
+- desktop execution receipt panel;
+- `FINALIZE_ALPHA2_VERSION_SYNC` jóváhagyás fájlmódosítás nélkül.
+

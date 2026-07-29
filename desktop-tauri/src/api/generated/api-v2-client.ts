@@ -308,14 +308,39 @@ export class ApiV2Client {
     return this.request<T>("GET", "/api/v2/openapi/status", options);
   }
 
+  /** Alpha.2 verziószinkron véglegesítésének jóváhagyása */
+  approveAlpha2Finalization<T = unknown>(options: ApiRequestOptions = {}): Promise<T> {
+    return this.request<T>("POST", "/api/v2/release/actions/approve-finalization", options);
+  }
+
   /** Alpha.2 promóció jóváhagyása */
   approveAlpha2Promotion<T = unknown>(options: ApiRequestOptions = {}): Promise<T> {
     return this.request<T>("POST", "/api/v2/release/actions/approve-promotion", options);
   }
 
+  /** Alpha.2 receipt-lánc ellenőrzése */
+  verifyAlpha2Finalization<T = unknown>(options: ApiRequestOptions = {}): Promise<T> {
+    return this.request<T>("POST", "/api/v2/release/actions/verify-finalization", options);
+  }
+
   /** A release-gate szigorú ellenőrzése */
   verifyAlpha2ReleaseGate<T = unknown>(options: ApiRequestOptions = {}): Promise<T> {
     return this.request<T>("POST", "/api/v2/release/actions/verify-gate", options);
+  }
+
+  /** Alpha.2 execution receiptek */
+  getAlpha2ExecutionReceipts<T = unknown>(options: ApiRequestOptions = {}): Promise<T> {
+    return this.request<T>("GET", "/api/v2/release/execution-receipts", options);
+  }
+
+  /** Alpha.2 véglegesítési jóváhagyás visszavonása */
+  revokeAlpha2FinalizationApproval<T = unknown>(options: ApiRequestOptions = {}): Promise<T> {
+    return this.request<T>("DELETE", "/api/v2/release/finalization-approval", options);
+  }
+
+  /** Alpha.2 véglegesítési readiness */
+  getAlpha2FinalizationReadiness<T = unknown>(options: ApiRequestOptions = {}): Promise<T> {
+    return this.request<T>("GET", "/api/v2/release/finalization-readiness", options);
   }
 
   /** Telepített verziózott release metadata */

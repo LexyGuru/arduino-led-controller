@@ -269,6 +269,25 @@ function createRuntimePaths(
           'dist',
           'releases'
         )
+      ),
+    releaseExecutionReceiptDir:
+      resolveFromRoot(
+        root,
+        environment.RELEASE_EXECUTION_RECEIPT_DIR,
+        path.join(
+          dataDir,
+          'release-execution'
+        )
+      ),
+    releaseFinalizationApprovalFile:
+      resolveFromRoot(
+        root,
+        environment.RELEASE_FINALIZATION_APPROVAL_FILE,
+        path.join(
+          dataDir,
+          'release-execution',
+          'alpha2-finalization-approval.json'
+        )
       )
   });
 }

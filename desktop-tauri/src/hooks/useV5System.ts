@@ -26,6 +26,10 @@ import {
   normalizePromotionReadiness
 } from '../services/v5ReleaseGateModels.mjs';
 
+import {
+  normalizeFinalizationReadiness
+} from '../services/v5ReleaseExecutionModels.mjs';
+
 export function useV5System() {
   const {
     api,
@@ -49,6 +53,16 @@ export function useV5System() {
   ] =
     useState(
       normalizePromotionReadiness(
+        null
+      )
+    );
+
+  const [
+    finalizationReadiness,
+    setFinalizationReadiness
+  ] =
+    useState(
+      normalizeFinalizationReadiness(
         null
       )
     );
@@ -131,6 +145,7 @@ export function useV5System() {
           const [
             releaseValue,
             promotionReadinessValue,
+            finalizationReadinessValue,
             preflightValue,
             maintenanceValue,
             snapshotsValue,
@@ -141,6 +156,8 @@ export function useV5System() {
                 .release(),
               api.system
                 .promotionReadiness(),
+              api.system
+                .finalizationReadiness(),
               api.system
                 .preflight(),
               api.system
@@ -160,6 +177,12 @@ export function useV5System() {
           setPromotionReadiness(
             normalizePromotionReadiness(
               promotionReadinessValue
+            )
+          );
+
+          setFinalizationReadiness(
+            normalizeFinalizationReadiness(
+              finalizationReadinessValue
             )
           );
 
@@ -384,6 +407,36 @@ export function useV5System() {
           );
         },
 
+        async verifyFinalization() {
+          return run(
+            'release-finalization-verify',
+            () =>
+              api.system
+                .verifyFinalization(),
+            'Az alpha.2 execution receipt-lánc érvényes.'
+          );
+        },
+
+        async approveFinalization() {
+          return run(
+            'release-finalization-approve',
+            () =>
+              api.system
+                .approveFinalization(),
+            'Az alpha.2 verziószinkron véglegesítése jóváhagyva.'
+          );
+        },
+
+        async revokeFinalizationApproval() {
+          return run(
+            'release-finalization-revoke',
+            () =>
+              api.system
+                .revokeFinalizationApproval(),
+            'Az alpha.2 véglegesítési jóváhagyás visszavonva.'
+          );
+        },
+
         async enableMaintenance(
           reason: string
         ) {
@@ -499,6 +552,7 @@ export function useV5System() {
     online,
     release,
     promotionReadiness,
+    finalizationReadiness,
     preflight,
     maintenance,
     snapshots,

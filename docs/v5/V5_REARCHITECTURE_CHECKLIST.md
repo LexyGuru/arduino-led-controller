@@ -122,8 +122,8 @@ Munkacsomag: `feature/v5-server-modularization`
 
 ## Következő hatalmas munkacsomag
 
-1. Valódi izolált LXC alpha.2 release-gate futtatása.
-2. Staging evidence bundle telepítése és rollback-próba.
-3. Promóciós jóváhagyás és promotion evidence bundle.
-4. Sikeres bizonyítéklánc után teljes `5.0.0-alpha.2` verziószinkron.
+1. Valódi LXC gate, staging és receipt-lánc létrehozása.
+2. Rollback rehearsal és promotion receipt ellenőrzése.
+3. `FINALIZE_ALPHA2_VERSION_SYNC` jóváhagyás.
+4. Teljes `5.0.0-alpha.2` verziószinkron és release notes.
 5. Inline legacy dashboard fizikai kiszervezése.

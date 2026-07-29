@@ -242,6 +242,12 @@ const {
 );
 
 const {
+  ReleaseFinalizationService
+} = require(
+  './server/release/release-finalization-service'
+);
+
+const {
   installExpressFactoryPatch,
   registerExpressInstaller
 } = require(
@@ -714,6 +720,26 @@ const releaseGateService =
     eventBus
   });
 
+const releaseFinalizationService =
+  new ReleaseFinalizationService({
+    receiptDirectory:
+      paths.releaseExecutionReceiptDir,
+    approvalFile:
+      paths.releaseFinalizationApprovalFile,
+    gateService:
+      releaseGateService,
+    version:
+      config.service.version,
+    targetVersion:
+      config.release
+        .targetVersion,
+    maxAgeHours:
+      config.release
+        .executionReceiptMaxAgeHours,
+    logger,
+    eventBus
+  });
+
 const socketGateway =
   new SocketGateway({
     eventBus,
@@ -798,6 +824,7 @@ setRuntimeContext({
   migrationService,
   releaseInfoService,
   releaseGateService,
+  releaseFinalizationService,
   socketGateway,
   legacyEventBridge,
   diagnosticsService,

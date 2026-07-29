@@ -62,7 +62,7 @@ function main() {
 
   assert.strictEqual(
     registered.length,
-    6
+    11
   );
 
   for (
@@ -73,7 +73,12 @@ function main() {
       '/api/v2/release/promotion-readiness',
       '/api/v2/release/actions/verify-gate',
       '/api/v2/release/actions/approve-promotion',
-      '/api/v2/release/promotion-approval'
+      '/api/v2/release/promotion-approval',
+      '/api/v2/release/execution-receipts',
+      '/api/v2/release/finalization-readiness',
+      '/api/v2/release/actions/verify-finalization',
+      '/api/v2/release/actions/approve-finalization',
+      '/api/v2/release/finalization-approval'
     ]
   ) {
     assert.strictEqual(
@@ -103,8 +108,9 @@ function main() {
   );
 
   console.log(
-    'OK: 6 release és promóciós API v2 route'
+    'OK: 11 release, promóciós és finalization API v2 route'
   );
+
   console.log(
     'OK: release service hibaleképezés'
   );
@@ -116,5 +122,6 @@ try {
   console.error(
     `HIBA: ${error.message}`
   );
+
   process.exitCode = 1;
 }

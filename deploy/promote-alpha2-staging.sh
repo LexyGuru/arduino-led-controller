@@ -30,3 +30,20 @@ HEALTH_URL="${HEALTH_URL:-http://127.0.0.1:3100/health/ready}" \
   bash \
   "${ROOT_DIR}/deploy/install-versioned-release.sh" \
   "${ARCHIVE}"
+
+
+RECEIPT_DIR="${RECEIPT_DIR:-/var/lib/arduino-led-controller/release-execution}"
+CURRENT_LINK="${CURRENT_LINK:-/opt/arduino-led-controller-staging/current}"
+
+node \
+  "${ROOT_DIR}/scripts/write-alpha2-execution-receipt.js" \
+  --kind promotion-deployment \
+  --metadata "${CURRENT_LINK}/RELEASE-METADATA.json" \
+  --evidence "${CURRENT_LINK}/release-evidence/RELEASE-EVIDENCE.json" \
+  --previous "${RECEIPT_DIR}/rollback-rehearsal.json" \
+  --output "${RECEIPT_DIR}/promotion-deployment.json" \
+  --service "${SERVICE_NAME:-arduino-led-controller-staging}" \
+  --health-url "${HEALTH_URL:-http://127.0.0.1:3100/health/ready}" \
+  --current-release "$(
+    readlink "${CURRENT_LINK}"
+  )"

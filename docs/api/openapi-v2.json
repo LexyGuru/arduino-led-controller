@@ -2571,6 +2571,176 @@
           }
         }
       }
+    },
+    "/api/v2/release/execution-receipts": {
+      "get": {
+        "tags": [
+          "Release"
+        ],
+        "summary": "Alpha.2 execution receiptek",
+        "operationId": "getAlpha2ExecutionReceipts",
+        "responses": {
+          "200": {
+            "description": "Execution receipt-lánc",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Nincs hitelesítés"
+          },
+          "403": {
+            "description": "Nincs jogosultság"
+          }
+        }
+      }
+    },
+    "/api/v2/release/finalization-readiness": {
+      "get": {
+        "tags": [
+          "Release"
+        ],
+        "summary": "Alpha.2 véglegesítési readiness",
+        "operationId": "getAlpha2FinalizationReadiness",
+        "responses": {
+          "200": {
+            "description": "Véglegesítési readiness",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Nincs hitelesítés"
+          },
+          "403": {
+            "description": "Nincs jogosultság"
+          }
+        }
+      }
+    },
+    "/api/v2/release/actions/verify-finalization": {
+      "post": {
+        "tags": [
+          "Release"
+        ],
+        "summary": "Alpha.2 receipt-lánc ellenőrzése",
+        "operationId": "verifyAlpha2Finalization",
+        "responses": {
+          "200": {
+            "description": "Receipt-lánc érvényes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Nincs hitelesítés"
+          },
+          "403": {
+            "description": "Nincs jogosultság"
+          }
+        }
+      }
+    },
+    "/api/v2/release/actions/approve-finalization": {
+      "post": {
+        "tags": [
+          "Release"
+        ],
+        "summary": "Alpha.2 verziószinkron véglegesítésének jóváhagyása",
+        "operationId": "approveAlpha2Finalization",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "confirm"
+                ],
+                "properties": {
+                  "confirm": {
+                    "type": "string",
+                    "const": "FINALIZE_ALPHA2_VERSION_SYNC"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Véglegesítés jóváhagyva",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Nincs hitelesítés"
+          },
+          "403": {
+            "description": "Nincs jogosultság"
+          },
+          "201": {
+            "description": "Véglegesítés jóváhagyva",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/release/finalization-approval": {
+      "delete": {
+        "tags": [
+          "Release"
+        ],
+        "summary": "Alpha.2 véglegesítési jóváhagyás visszavonása",
+        "operationId": "revokeAlpha2FinalizationApproval",
+        "responses": {
+          "200": {
+            "description": "Véglegesítési jóváhagyás visszavonva",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Nincs hitelesítés"
+          },
+          "403": {
+            "description": "Nincs jogosultság"
+          }
+        }
+      }
     }
   }
 }

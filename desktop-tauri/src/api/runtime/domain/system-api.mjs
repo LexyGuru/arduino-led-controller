@@ -84,6 +84,59 @@ export class DesktopSystemApi {
     );
   }
 
+  executionReceipts() {
+    return this.runtime.read(
+      'release:execution-receipts',
+      () =>
+        this.client
+          .getAlpha2ExecutionReceipts(),
+      {
+        ttlMs: 5000
+      }
+    );
+  }
+
+  finalizationReadiness() {
+    return this.runtime.read(
+      'release:finalization-readiness',
+      () =>
+        this.client
+          .getAlpha2FinalizationReadiness(),
+      {
+        ttlMs: 5000
+      }
+    );
+  }
+
+  verifyFinalization() {
+    return this.runtime.write(
+      () =>
+        this.client
+          .verifyAlpha2Finalization()
+    );
+  }
+
+  approveFinalization() {
+    return this.runtime.write(
+      () =>
+        this.client
+          .approveAlpha2Finalization({
+            body: {
+              confirm:
+                'FINALIZE_ALPHA2_VERSION_SYNC'
+            }
+          })
+    );
+  }
+
+  revokeFinalizationApproval() {
+    return this.runtime.write(
+      () =>
+        this.client
+          .revokeAlpha2FinalizationApproval()
+    );
+  }
+
   diagnostics() {
     return this.runtime.read(
       'system:diagnostics',

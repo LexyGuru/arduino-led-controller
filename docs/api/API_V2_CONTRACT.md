@@ -814,3 +814,25 @@ APPROVE_ALPHA2_PROMOTION
 A jóváhagyás nem emeli meg automatikusan a projektverziót és nem készít Git
 commitot. A közvetlen `5.0.0-alpha.2` verziószinkron külön, gate utáni
 release-csomagban történik.
+
+## Alpha.2 execution és finalization
+
+```text
+GET    /api/v2/release/execution-receipts
+GET    /api/v2/release/finalization-readiness
+POST   /api/v2/release/actions/verify-finalization
+POST   /api/v2/release/actions/approve-finalization
+DELETE /api/v2/release/finalization-approval
+```
+
+A véglegesítési jóváhagyás pontos megerősítése:
+
+```text
+FINALIZE_ALPHA2_VERSION_SYNC
+```
+
+A jóváhagyás nem módosít verziófájlt és nem készít Git commitot. A readiness
+csak akkor `ready`, ha a staging deployment, rollback rehearsal és promotion
+deployment receipt ugyanarra a candidate commitra mutat, az evidence fázisok
+helyesek, és a receipt SHA-256 előzménylánc folytonos.
+
