@@ -20,11 +20,13 @@ function readCookie(
 ) {
   const item =
     String(
-      req.headers?.cookie || ''
+      req.headers?.cookie ||
+      ''
     )
       .split(';')
       .map(
-        (part) => part.trim()
+        (part) =>
+          part.trim()
       )
       .find(
         (part) =>
@@ -93,10 +95,13 @@ class SessionService {
     this.cookieSecure =
       cookieSecure === true;
     this.sessionDurationMs =
-      Number(sessionDurationMs);
+      Number(
+        sessionDurationMs
+      );
     this.cookieName =
       String(cookieName);
-    this.eventBus = eventBus;
+    this.eventBus =
+      eventBus;
   }
 
   signSession(
@@ -110,8 +115,12 @@ class SessionService {
 
     const encoded =
       Buffer.from(
-        JSON.stringify(payload)
-      ).toString('base64url');
+        JSON.stringify(
+          payload
+        )
+      ).toString(
+        'base64url'
+      );
 
     const signature =
       crypto
@@ -120,12 +129,16 @@ class SessionService {
           sessionSecret
         )
         .update(encoded)
-        .digest('base64url');
+        .digest(
+          'base64url'
+        );
 
     return `${encoded}.${signature}`;
   }
 
-  async sessionUser(req) {
+  async sessionUser(
+    req
+  ) {
     try {
       const token =
         readCookie(
@@ -150,10 +163,13 @@ class SessionService {
       }
 
       const data =
-        await this.userRepository
+        await this
+          .userRepository
           .readData();
 
-      if (!data.sessionSecret) {
+      if (
+        !data.sessionSecret
+      ) {
         return null;
       }
 
@@ -161,10 +177,13 @@ class SessionService {
         crypto
           .createHmac(
             'sha256',
-            data.sessionSecret
+            data
+              .sessionSecret
           )
           .update(encoded)
-          .digest('base64url');
+          .digest(
+            'base64url'
+          );
 
       if (
         !safeTextEquals(
@@ -180,13 +199,16 @@ class SessionService {
           Buffer.from(
             encoded,
             'base64url'
-          ).toString('utf8')
+          ).toString(
+            'utf8'
+          )
         );
 
       if (
         !payload ||
-        Number(payload.exp) <
-          Date.now()
+        Number(
+          payload.exp
+        ) < Date.now()
       ) {
         return null;
       }
@@ -194,11 +216,17 @@ class SessionService {
       const user =
         data.users.find(
           (candidate) =>
-            candidate.username ===
-              payload.username &&
-            candidate.sessionVersion ===
-              payload.sessionVersion &&
-            candidate.enabled !== false
+            candidate
+              .username ===
+              payload
+                .username &&
+            candidate
+              .sessionVersion ===
+              payload
+                .sessionVersion &&
+            candidate
+              .enabled !==
+              false
         );
 
       if (!user) {
@@ -209,7 +237,8 @@ class SessionService {
         username:
           user.username,
         displayName:
-          user.displayName ||
+          user
+            .displayName ||
           user.username,
         role:
           normalizeRole(
@@ -222,9 +251,12 @@ class SessionService {
     }
   }
 
-  async principalForRequest(req) {
+  async principalForRequest(
+    req
+  ) {
     const user =
-      await this.sessionUser(req);
+      await this
+        .sessionUser(req);
 
     if (!user) {
       return null;
@@ -240,6 +272,70 @@ class SessionService {
     });
   }
 
+  async csrfTokenForRequest(
+    req
+  ) {
+    const cookie =
+      readCookie(
+        req,
+        this.cookieName
+      );
+
+    if (!cookie) {
+      return null;
+    }
+
+    const user =
+      await this
+        .sessionUser(req);
+
+    if (!user) {
+      return null;
+    }
+
+    const data =
+      await this
+        .userRepository
+        .readData();
+
+    if (
+      !data.sessionSecret
+    ) {
+      return null;
+    }
+
+    return crypto
+      .createHmac(
+        'sha256',
+        data.sessionSecret
+      )
+      .update(
+        `csrf:v1:${cookie}`
+      )
+      .digest(
+        'base64url'
+      );
+  }
+
+  async verifyCsrfToken(
+    req,
+    received
+  ) {
+    const expected =
+      await this
+        .csrfTokenForRequest(
+          req
+        );
+
+    return Boolean(
+      expected &&
+      safeTextEquals(
+        received,
+        expected
+      )
+    );
+  }
+
   async login(
     res,
     username,
@@ -248,13 +344,17 @@ class SessionService {
     const {
       data,
       user
-    } = await this.userRepository
-      .verifyCredentials(
-        username,
-        password
-      );
+    } =
+      await this
+        .userRepository
+        .verifyCredentials(
+          username,
+          password
+        );
 
-    if (!data.sessionSecret) {
+    if (
+      !data.sessionSecret
+    ) {
       throw SecurityServiceError
         .setupRequired();
     }
@@ -265,10 +365,12 @@ class SessionService {
           username:
             user.username,
           sessionVersion:
-            user.sessionVersion,
+            user
+              .sessionVersion,
           exp:
             Date.now() +
-            this.sessionDurationMs
+            this
+              .sessionDurationMs
         },
         data.sessionSecret
       );
@@ -277,35 +379,42 @@ class SessionService {
       this.cookieName,
       token,
       {
-        httpOnly: true,
-        sameSite: 'strict',
+        httpOnly:
+          true,
+        sameSite:
+          'strict',
         secure:
-          this.cookieSecure,
+          this
+            .cookieSecure,
         maxAge:
-          this.sessionDurationMs,
-        path: '/'
+          this
+            .sessionDurationMs,
+        path:
+          '/'
       }
     );
 
-    this.eventBus?.publish?.(
-      'auth.login',
-      {
-        username:
-          user.username,
-        role:
-          normalizeRole(
-            user.role,
-            'viewer'
-          )
-      }
-    );
+    this.eventBus
+      ?.publish?.(
+        'auth.login',
+        {
+          username:
+            user.username,
+          role:
+            normalizeRole(
+              user.role,
+              'viewer'
+            )
+        }
+      );
 
     return {
       user: {
         username:
           user.username,
         displayName:
-          user.displayName ||
+          user
+            .displayName ||
           user.username,
         role:
           normalizeRole(
@@ -325,40 +434,55 @@ class SessionService {
     };
   }
 
-  logout(res, user = null) {
+  logout(
+    res,
+    user = null
+  ) {
     res.clearCookie(
       this.cookieName,
       {
-        httpOnly: true,
-        sameSite: 'strict',
+        httpOnly:
+          true,
+        sameSite:
+          'strict',
         secure:
-          this.cookieSecure,
-        path: '/'
+          this
+            .cookieSecure,
+        path:
+          '/'
       }
     );
 
-    this.eventBus?.publish?.(
-      'auth.logout',
-      {
-        username:
-          user?.username || null
-      }
-    );
+    this.eventBus
+      ?.publish?.(
+        'auth.logout',
+        {
+          username:
+            user
+              ?.username ||
+            null
+        }
+      );
   }
 
   async status(req) {
     const user =
-      await this.sessionUser(req);
+      await this
+        .sessionUser(req);
 
     return {
       authenticated:
         Boolean(user),
       user,
       setupNeeded:
-        await this.userRepository
+        await this
+          .userRepository
           .setupNeeded(),
       cookieSecure:
-        this.cookieSecure
+        this
+          .cookieSecure,
+      csrfRequired:
+        Boolean(user)
     };
   }
 }

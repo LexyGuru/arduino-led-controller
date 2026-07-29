@@ -40,6 +40,10 @@ function healthBase(
       Math.floor(process.uptime()),
     startedAt:
       runtimeStartedAt(runtime),
+    lifecycle:
+      runtime.lifecycle
+        ?.snapshot?.() ||
+      null,
     timestamp:
       new Date().toISOString()
   };
@@ -102,7 +106,9 @@ function runtimeDirectories(runtime) {
     schedulesDir:
       runtime.paths.schedulesDir,
     firmwareDir:
-      runtime.paths.firmwareDir
+      runtime.paths.firmwareDir,
+    eventArchiveDir:
+      runtime.paths.eventArchiveDir
   };
 }
 
@@ -126,7 +132,23 @@ async function collectReadinessChecks(
       )
     );
 
+  const lifecycleCheck = {
+    name: 'lifecycle',
+    ok:
+      runtime.lifecycle
+        ?.isReady?.() !== false,
+    code:
+      'SERVICE_DRAINING'
+  };
+
   return [
+    lifecycleCheck.ok
+      ? {
+          name:
+            lifecycleCheck.name,
+          ok: true
+        }
+      : lifecycleCheck,
     ...arduinoChecks,
     ...directoryChecks
   ];

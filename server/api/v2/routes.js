@@ -119,7 +119,21 @@ function createApiV2Handlers({
             eventStatus:
               '/api/v2/events/status',
             recentEvents:
-              '/api/v2/events/recent'
+              '/api/v2/events/recent',
+            users:
+              '/api/v2/users',
+            csrf:
+              '/api/v2/auth/csrf',
+            metrics:
+              '/api/v2/metrics',
+            diagnostics:
+              '/api/v2/diagnostics',
+            audit:
+              '/api/v2/audit/recent',
+            openApi:
+              '/api/v2/openapi.json',
+            docs:
+              '/api/v2/docs'
           }
         }
       );
@@ -222,6 +236,10 @@ function createApiV2Handlers({
               runtime.firmwareService
                 .state.state
           },
+          lifecycle:
+            runtime.lifecycle
+              ?.snapshot?.() ||
+            null,
           realtime: {
             eventBus:
               runtime.eventBus
@@ -229,6 +247,20 @@ function createApiV2Handlers({
             socket:
               runtime.socketGateway
                 .getStatus()
+          },
+          observability: {
+            metrics:
+              runtime.metrics
+                ?.snapshot?.() ||
+              null,
+            persistentEvents:
+              Boolean(
+                runtime.eventStore
+              ),
+            audit:
+              Boolean(
+                runtime.auditLog
+              )
           },
           compatibility: {
             legacyApiEnabled:

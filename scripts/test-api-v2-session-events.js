@@ -403,6 +403,33 @@ async function main() {
       );
     }
 
+    const csrf =
+      await waitForJson(
+        `${baseUrl}/api/v2/auth/csrf`,
+        child,
+        {
+          headers: {
+            Cookie: cookie
+          }
+        }
+      );
+
+    const csrfToken =
+      csrf.body.data
+        ?.token;
+
+    if (
+      csrf.response.status !==
+        200 ||
+      typeof csrfToken !==
+        'string' ||
+      csrfToken.length < 20
+    ) {
+      throw new Error(
+        `CSRF token hiba: ${csrf.response.status} ${JSON.stringify(csrf.body)}`
+      );
+    }
+
     const events =
       await waitForJson(
         `${baseUrl}/api/v2/events/recent?topic=auth.login&limit=10`,
@@ -436,7 +463,9 @@ async function main() {
         {
           method: 'POST',
           headers: {
-            Cookie: cookie
+            Cookie: cookie,
+            'X-CSRF-Token':
+              csrfToken
           }
         }
       );
@@ -490,6 +519,9 @@ async function main() {
     );
     console.log(
       'OK: API v2 eseménytörténet végpont'
+    );
+    console.log(
+      'OK: API v2 session CSRF token'
     );
     console.log(
       'OK: API v2 session logout és hibás login'

@@ -35,7 +35,9 @@ function runtimeDirectories(runtime) {
     localScheduleBackupDir:
       runtime.paths.localScheduleBackupDir,
     firmwareDir:
-      runtime.paths.firmwareDir
+      runtime.paths.firmwareDir,
+    eventArchiveDir:
+      runtime.paths.eventArchiveDir
   };
 
   return Object.fromEntries(
@@ -111,7 +113,23 @@ async function collectApiV2ReadinessChecks(
       )
     );
 
+  const lifecycleCheck = {
+    name: 'lifecycle',
+    ok:
+      runtime.lifecycle
+        ?.isReady?.() !== false,
+    code:
+      'SERVICE_DRAINING'
+  };
+
   return [
+    lifecycleCheck.ok
+      ? {
+          name:
+            lifecycleCheck.name,
+          ok: true
+        }
+      : lifecycleCheck,
     ...apiConfigurationChecks(runtime),
     ...directoryChecks
   ];

@@ -374,6 +374,40 @@ function loadRuntimeConfig(options = {}) {
         25,
         1,
         100
+      ),
+      persistentMaximumBytes: numberInRange(
+        environment.EVENT_STORE_MAXIMUM_BYTES,
+        5 * 1024 * 1024,
+        64 * 1024,
+        100 * 1024 * 1024
+      ),
+      persistentMaximumArchives: integerInRange(
+        environment.EVENT_STORE_MAXIMUM_ARCHIVES,
+        5,
+        1,
+        50
+      )
+    },
+    audit: {
+      maximumBytes: numberInRange(
+        environment.AUDIT_MAXIMUM_BYTES,
+        5 * 1024 * 1024,
+        64 * 1024,
+        100 * 1024 * 1024
+      ),
+      maximumArchives: integerInRange(
+        environment.AUDIT_MAXIMUM_ARCHIVES,
+        5,
+        1,
+        50
+      )
+    },
+    lifecycle: {
+      shutdownGraceMs: numberInRange(
+        environment.SHUTDOWN_GRACE_MS,
+        10000,
+        1000,
+        60000
       )
     },
     logging: {

@@ -4,102 +4,189 @@
  * V5 kompatibilitási indítófájl.
  *
  * A legacy alkalmazás továbbra is a server2_legacy.js fájlban marad.
- * Az új réteg közös runtime-, biztonsági, esemény-, Socket.IO-, Arduino-,
- * LED-, schedule- és firmware-szolgáltatásokat biztosít.
+ * Az új réteg közös runtime-, biztonsági, esemény-, megfigyelhetőségi,
+ * Socket.IO-, Arduino-, LED-, schedule- és firmware-szolgáltatásokat biztosít.
  */
 
 require('dotenv').config();
 
 const {
   createRuntimePaths
-} = require('./server/core/runtime-paths');
+} = require(
+  './server/core/runtime-paths'
+);
 
 const {
   loadRuntimeConfig
-} = require('./server/core/config');
+} = require(
+  './server/core/config'
+);
 
 const {
+  closeLogger,
   createLogger
-} = require('./server/core/logger');
+} = require(
+  './server/core/logger'
+);
 
 const {
   getRuntimeContext,
   setRuntimeContext
-} = require('./server/core/runtime-context');
+} = require(
+  './server/core/runtime-context'
+);
+
+const {
+  LifecycleManager
+} = require(
+  './server/core/lifecycle-manager'
+);
+
+const {
+  ShutdownCoordinator
+} = require(
+  './server/core/shutdown-coordinator'
+);
 
 const {
   ApiTokenStore
-} = require('./server/security/api-token-store');
+} = require(
+  './server/security/api-token-store'
+);
 
 const {
   UserRepository
-} = require('./server/security/user-repository');
+} = require(
+  './server/security/user-repository'
+);
 
 const {
   SessionService
-} = require('./server/security/session-service');
+} = require(
+  './server/security/session-service'
+);
+
+const {
+  EventStore
+} = require(
+  './server/events/event-store'
+);
 
 const {
   EventBus
-} = require('./server/events/event-bus');
+} = require(
+  './server/events/event-bus'
+);
+
+const {
+  MetricsRegistry
+} = require(
+  './server/observability/metrics-registry'
+);
+
+const {
+  AuditLog
+} = require(
+  './server/observability/audit-log'
+);
+
+const {
+  DiagnosticsService
+} = require(
+  './server/observability/diagnostics-service'
+);
 
 const {
   ArduinoClient
-} = require('./server/arduino/arduino-client');
+} = require(
+  './server/arduino/arduino-client'
+);
 
 const {
   LedService
-} = require('./server/led/led-service');
+} = require(
+  './server/led/led-service'
+);
 
 const {
   ScheduleService
-} = require('./server/schedule/schedule-service');
+} = require(
+  './server/schedule/schedule-service'
+);
 
 const {
   LocalScheduleRepository
-} = require('./server/schedule/local-schedule-repository');
+} = require(
+  './server/schedule/local-schedule-repository'
+);
 
 const {
   LocalScheduleRunner
-} = require('./server/schedule/local-schedule-runner');
+} = require(
+  './server/schedule/local-schedule-runner'
+);
 
 const {
   LocalScheduleService
-} = require('./server/schedule/local-schedule-service');
+} = require(
+  './server/schedule/local-schedule-service'
+);
 
 const {
   FirmwareReleaseClient
-} = require('./server/firmware/firmware-release-client');
+} = require(
+  './server/firmware/firmware-release-client'
+);
 
 const {
   OtaRunner
-} = require('./server/firmware/ota-runner');
+} = require(
+  './server/firmware/ota-runner'
+);
 
 const {
   FirmwareService
-} = require('./server/firmware/firmware-service');
+} = require(
+  './server/firmware/firmware-service'
+);
+
+const {
+  OpenApiService
+} = require(
+  './server/api/v2/openapi-service'
+);
 
 const {
   installExpressFactoryPatch,
   registerExpressInstaller
-} = require('./server/express/express-bootstrap-registry');
+} = require(
+  './server/express/express-bootstrap-registry'
+);
 
 const {
   installSocketFactoryPatch,
   registerSocketInstaller
-} = require('./server/socket/socket-bootstrap-registry');
+} = require(
+  './server/socket/socket-bootstrap-registry'
+);
 
 const {
   SocketGateway
-} = require('./server/socket/socket-gateway');
+} = require(
+  './server/socket/socket-gateway'
+);
 
 const {
   installHealthRoutes
-} = require('./server/health-bootstrap');
+} = require(
+  './server/health-bootstrap'
+);
 
 const {
   installApiV2Routes
-} = require('./server/api/v2/api-v2-bootstrap');
+} = require(
+  './server/api/v2/api-v2-bootstrap'
+);
 
 const paths =
   createRuntimePaths();
@@ -124,11 +211,47 @@ const logger =
       'test'
   });
 
+const lifecycle =
+  new LifecycleManager();
+
+const metrics =
+  new MetricsRegistry();
+
+const eventStore =
+  new EventStore({
+    filePath:
+      paths.eventStoreFile,
+    archiveDir:
+      paths.eventArchiveDir,
+    maximumBytes:
+      config.events
+        .persistentMaximumBytes,
+    maximumArchives:
+      config.events
+        .persistentMaximumArchives,
+    logger
+  });
+
 const eventBus =
   new EventBus({
     historyLimit:
       config.events.historyLimit,
-    logger
+    logger,
+    store:
+      eventStore,
+    metrics
+  });
+
+const auditLog =
+  new AuditLog({
+    filePath:
+      paths.auditFile,
+    maximumBytes:
+      config.audit.maximumBytes,
+    maximumArchives:
+      config.audit.maximumArchives,
+    logger,
+    eventBus
   });
 
 const apiTokenStore =
@@ -140,7 +263,8 @@ const userRepository =
   new UserRepository({
     filePath:
       paths.authFile,
-    logger
+    logger,
+    eventBus
   });
 
 const sessionService =
@@ -262,6 +386,12 @@ const firmwareService =
         .restartTimeoutMs
   });
 
+const openApiService =
+  new OpenApiService({
+    documentPath:
+      paths.openApiDocumentFile
+  });
+
 const socketGateway =
   new SocketGateway({
     eventBus,
@@ -273,13 +403,33 @@ const socketGateway =
         .socketRecentLimit
   });
 
+const diagnosticsService =
+  new DiagnosticsService({
+    runtimeProvider:
+      getRuntimeContext
+  });
+
+const shutdownCoordinator =
+  new ShutdownCoordinator({
+    lifecycle,
+    logger,
+    eventBus,
+    graceMs:
+      config.lifecycle
+        .shutdownGraceMs
+  });
+
 setRuntimeContext({
   startedAt:
     new Date(),
   config,
   paths,
   logger,
+  lifecycle,
+  metrics,
+  eventStore,
   eventBus,
+  auditLog,
   apiTokenStore,
   userRepository,
   sessionService,
@@ -292,8 +442,46 @@ setRuntimeContext({
   firmwareReleaseClient,
   otaRunner,
   firmwareService,
-  socketGateway
+  openApiService,
+  socketGateway,
+  diagnosticsService,
+  shutdownCoordinator
 });
+
+// A cleanupok fordított sorrendben futnak, ezért a logger kerül
+// elsőként regisztrálásra és utolsóként záródik le.
+shutdownCoordinator
+  .register(
+    'logger',
+    () =>
+      closeLogger(
+        logger
+      )
+  )
+  .register(
+    'audit-log',
+    () =>
+      auditLog
+        .flush()
+  )
+  .register(
+    'event-store',
+    () =>
+      eventBus
+        .flush()
+  )
+  .register(
+    'socket-gateway',
+    () =>
+      socketGateway
+        .close()
+  )
+  .register(
+    'local-schedule-runner',
+    () =>
+      localScheduleRunner
+        .stop()
+  );
 
 if (
   config.schedule.runnerMode ===
@@ -303,7 +491,8 @@ if (
     'A V5 helyi schedule runner aktív. A legacy runner kikapcsolása nélkül ugyanaz az időzítés kétszer futhat le.'
   );
 
-  localScheduleRunner.start();
+  localScheduleRunner
+    .start();
 }
 
 registerExpressInstaller(
@@ -319,10 +508,26 @@ registerExpressInstaller(
 registerSocketInstaller(
   'v5-event-gateway',
   (io) =>
-    socketGateway.install(io)
+    socketGateway
+      .install(io)
 );
 
 installExpressFactoryPatch();
 installSocketFactoryPatch();
 
 require('./server2_legacy');
+
+lifecycle.markReady();
+
+eventBus.publish(
+  'system.ready',
+  {
+    version:
+      config.service.version,
+    environment:
+      config.service.environment
+  }
+);
+
+shutdownCoordinator
+  .installProcessHandlers();

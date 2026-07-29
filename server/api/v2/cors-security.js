@@ -79,7 +79,7 @@ function createApiV2CorsMiddleware({
       'Access-Control-Allow-Methods':
         'GET, POST, PUT, DELETE, OPTIONS',
       'Access-Control-Allow-Headers':
-        'Authorization, Content-Type, X-Request-ID',
+        'Authorization, Content-Type, X-Request-ID, X-CSRF-Token',
       'Access-Control-Expose-Headers':
         'X-Request-ID',
       'Access-Control-Max-Age':

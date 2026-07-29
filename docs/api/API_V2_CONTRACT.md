@@ -599,3 +599,64 @@ ellenőrzés esetén:
 
 A rollback nem futtat `git clean` parancsot, így nem törli a repositoryban
 található nem követett futásidejű adatokat.
+
+## 12. Felhasználó-adminisztráció
+
+A felhasználó-adminisztráció `user:admin` jogosultságot igényel.
+
+- `GET /api/v2/users`
+- `POST /api/v2/users`
+- `PATCH /api/v2/users/:username`
+- `PUT /api/v2/users/:username/password`
+- `DELETE /api/v2/users/:username`
+
+A válaszok soha nem tartalmaznak sót vagy jelszóhash-t. A szerepkör,
+engedélyezettség vagy jelszó módosítása növeli a `sessionVersion` értékét,
+így a korábbi munkamenetek érvénytelenné válnak. Az utolsó engedélyezett
+adminisztrátor nem tiltható le és nem törölhető.
+
+## 13. Session CSRF-védelem
+
+Bearer tokennél nincs külön CSRF-követelmény. `led_session` cookie-val
+végzett `POST`, `PUT`, `PATCH` és `DELETE` kéréshez a kliens előbb lekéri:
+
+```text
+GET /api/v2/auth/csrf
+```
+
+Majd a visszakapott tokent elküldi:
+
+```text
+X-CSRF-Token: <token>
+```
+
+## 14. OpenAPI és dokumentáció
+
+- `GET /api/v2/openapi.json`
+- `GET /api/v2/openapi/status`
+- `GET /api/v2/docs`
+
+A gépi dokumentum OpenAPI 3.1 formátumú, és a
+`docs/api/openapi-v2.json` fájlban is megtalálható.
+
+## 15. Megfigyelhetőség
+
+- `GET /api/v2/metrics`
+- `GET /api/v2/diagnostics`
+- `GET /api/v2/audit/status`
+- `GET /api/v2/audit/recent`
+- `GET /api/v2/events/recent?source=persistent`
+
+Az auditnapló rekurzívan kitakarja a jelszó-, token-, cookie-, API-kulcs-
+és OTA-titok mezőket. A tartós eseménytár és az auditnapló méretkorlát
+elérésekor rotálódik.
+
+## 16. Helyi schedule módosítása
+
+```text
+PUT /api/v2/local-schedules/:id
+```
+
+A művelet megtartja az időzítés azonosítóját, újra validálja a teljes
+schedule objektumot, atomikusan ment, majd `local-schedule.updated`
+eseményt publikál.

@@ -8,6 +8,10 @@ const ROLES = Object.freeze({
 
 const PERMISSIONS = Object.freeze({
   SYSTEM_READ: 'system:read',
+  DIAGNOSTICS_READ: 'diagnostics:read',
+  AUDIT_READ: 'audit:read',
+  USER_READ: 'user:read',
+  USER_ADMIN: 'user:admin',
   ARDUINO_READ: 'arduino:read',
   LED_READ: 'led:read',
   LED_WRITE: 'led:write',
@@ -21,10 +25,13 @@ const PERMISSIONS = Object.freeze({
 
 const ROLE_PERMISSIONS = Object.freeze({
   [ROLES.ADMIN]: Object.freeze([
-    ...Object.values(PERMISSIONS)
+    ...Object.values(
+      PERMISSIONS
+    )
   ]),
   [ROLES.OPERATOR]: Object.freeze([
     PERMISSIONS.SYSTEM_READ,
+    PERMISSIONS.DIAGNOSTICS_READ,
     PERMISSIONS.ARDUINO_READ,
     PERMISSIONS.LED_READ,
     PERMISSIONS.LED_WRITE,
@@ -43,53 +50,76 @@ const ROLE_PERMISSIONS = Object.freeze({
 
 function normalizeRole(
   value,
-  fallback = ROLES.ADMIN
+  fallback =
+    ROLES.ADMIN
 ) {
   const normalized =
     String(value || '')
       .trim()
       .toLowerCase();
 
-  return Object.values(ROLES)
-    .includes(normalized)
-      ? normalized
-      : fallback;
+  return Object.values(
+    ROLES
+  ).includes(normalized)
+    ? normalized
+    : fallback;
 }
 
-function permissionsForRole(role) {
+function permissionsForRole(
+  role
+) {
   const normalizedRole =
     normalizeRole(role);
 
-  return ROLE_PERMISSIONS[
-    normalizedRole
-  ] || ROLE_PERMISSIONS[ROLES.VIEWER];
+  return (
+    ROLE_PERMISSIONS[
+      normalizedRole
+    ] ||
+    ROLE_PERMISSIONS[
+      ROLES.VIEWER
+    ]
+  );
 }
 
 function hasPermission(
   role,
   permission
 ) {
-  return permissionsForRole(role)
-    .includes(permission);
+  return permissionsForRole(
+    role
+  ).includes(
+    permission
+  );
 }
 
 function createPrincipal({
-  subject = 'api-v2-token',
-  role = ROLES.ADMIN,
-  type = 'service-token'
+  subject =
+    'api-v2-token',
+  role =
+    ROLES.ADMIN,
+  type =
+    'service-token'
 } = {}) {
   const normalizedRole =
     normalizeRole(role);
 
   return Object.freeze({
     subject:
-      String(subject || 'api-v2-token'),
+      String(
+        subject ||
+        'api-v2-token'
+      ),
     type:
-      String(type || 'service-token'),
+      String(
+        type ||
+        'service-token'
+      ),
     role:
       normalizedRole,
     permissions:
-      permissionsForRole(normalizedRole)
+      permissionsForRole(
+        normalizedRole
+      )
   });
 }
 

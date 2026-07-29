@@ -1,0 +1,275 @@
+{
+  "package": "v5-admin-openapi-observability-lifecycle-ready",
+  "baseBranch": "feature/v5-server-modularization",
+  "createdAt": "2026-07-29",
+  "currentVersion": "5.0.0-alpha.1",
+  "releaseTarget": "5.0.0-alpha.2",
+  "description": "API v2 user administration, CSRF protection, persistent events, bounded audit logging, metrics, diagnostics, OpenAPI 3.1, lifecycle management and an isolated alpha.2 release gate.",
+  "fileCountExcludingManifest": 51,
+  "files": [
+    {
+      "path": ".env.example",
+      "sha256": "53656f66f3e50f2517a8571c1fecdd0217991aacbbbf24a771bd004455ec9113",
+      "bytes": 2244
+    },
+    {
+      "path": "deploy/test-alpha2-candidate.sh",
+      "sha256": "62a5541088edfef151402f18161c0f79b2af4d0f61893dfac06202f998094631",
+      "bytes": 5203
+    },
+    {
+      "path": "deploy/update.sh",
+      "sha256": "74a9ed66b509118a63ecf0e76f917c987ecbcf934437c4c4ba8bdeb65bd3ff90",
+      "bytes": 15942
+    },
+    {
+      "path": "docs/api/API_V2_CONTRACT.md",
+      "sha256": "bde62f8ee0bbca47ad60747eef265738a74b440205f29b8d2ec13a727ba4a8aa",
+      "bytes": 16489
+    },
+    {
+      "path": "docs/api/openapi-v2.json",
+      "sha256": "1ef7351896b46b26fa9ffe3e65c86909737916b5ed7fbd042d31e44f9508f50d",
+      "bytes": 33832
+    },
+    {
+      "path": "docs/v5/ALPHA2_RELEASE_GATE.md",
+      "sha256": "b1bd635b8b1a4c5aab7fdea567e42e488e7b9011e2292f216085d794b4b7da14",
+      "bytes": 1410
+    },
+    {
+      "path": "docs/v5/SERVER_MODULE_MAP.md",
+      "sha256": "10bd97a5ddcc8306327d3f42a01470068a5126a80a7941e161b8e9d56a71346b",
+      "bytes": 2566
+    },
+    {
+      "path": "docs/v5/V5_REARCHITECTURE_CHECKLIST.md",
+      "sha256": "2bb338c873a4818f6eab4701a281497e627b916ead8c01a081754f2d4aaab14d",
+      "bytes": 3356
+    },
+    {
+      "path": "package.json",
+      "sha256": "1e044d64497146353c5960f2d1920791c747db41dd61b7c8bc56e8df25fe8ef9",
+      "bytes": 7803
+    },
+    {
+      "path": "scripts/check-versions.py",
+      "sha256": "cff4899fa4042c63f6221c4e7b13bdb02c7d6ca89d84ec2557b505752844865e",
+      "bytes": 2913
+    },
+    {
+      "path": "scripts/test-alpha2-release-gate.js",
+      "sha256": "a63709445c566aae5ba72d5e4b4d521349b78086dda406449b77a86fbda0cd83",
+      "bytes": 2080
+    },
+    {
+      "path": "scripts/test-api-v2-session-events.js",
+      "sha256": "7d2a8e566398e21f6345b108e3841fb68e142dfed1a68d05ac39c56559c9881d",
+      "bytes": 9647
+    },
+    {
+      "path": "scripts/test-audit-log.js",
+      "sha256": "00478971e8029654a1a950bcb981033092abaad3001e9d8294c7a1f173382954",
+      "bytes": 2947
+    },
+    {
+      "path": "scripts/test-event-store.js",
+      "sha256": "4a89aaaca99fa28518b65f42fd8f3a76e8c907207c5ea68dad06253c7e9a5671",
+      "bytes": 2154
+    },
+    {
+      "path": "scripts/test-lifecycle-manager.js",
+      "sha256": "7d5781dfd902f68f6015ea28b85beb983de0cb562aae542b74443747ac91ea9f",
+      "bytes": 1797
+    },
+    {
+      "path": "scripts/test-local-schedule-update.js",
+      "sha256": "adaf2850479b9ba1af447ff7264735c14f02d424dcd4e78aab8c9e3e1e30d97d",
+      "bytes": 2245
+    },
+    {
+      "path": "scripts/test-metrics-registry.js",
+      "sha256": "e86bfa1ce9771758564b8e4fae1eda4e9ef5256dc509c6d388038ca39e4abfed",
+      "bytes": 1394
+    },
+    {
+      "path": "scripts/test-openapi-document.js",
+      "sha256": "df29da6b37c07f7c82e9fc70aabc6ad5d23c8ff3f7be17e5978567afe09ff216",
+      "bytes": 1272
+    },
+    {
+      "path": "scripts/test-session-csrf.js",
+      "sha256": "658ebaf34ffa5f56366ffe711178447dbf348f0685fe287b0e70c118c741500e",
+      "bytes": 3713
+    },
+    {
+      "path": "scripts/test-user-administration.js",
+      "sha256": "a8440539ed1a6bd150897dcb6f6e5638549604a7b19079c043a86b816e416a7c",
+      "bytes": 2695
+    },
+    {
+      "path": "scripts/validate-repository.sh",
+      "sha256": "3dd651ee6f69bf37b0c1ed068b8b5714b1200441cb51675f6e93b80649172197",
+      "bytes": 4959
+    },
+    {
+      "path": "server/api/v2/api-v2-bootstrap.js",
+      "sha256": "24a2e7837e8bebcbe9e19c1c82b57bd0a681b24181ac3abe7abae0e96bd36009",
+      "bytes": 3197
+    },
+    {
+      "path": "server/api/v2/auth.js",
+      "sha256": "82d279c7ffad9b5cd7ae9147d0c116006eac94b534606745a3f599a4b067333b",
+      "bytes": 4082
+    },
+    {
+      "path": "server/api/v2/cors-security.js",
+      "sha256": "aae233375fde94c186ac1be8edd801092aa0cc63236517485248711f27f31ea1",
+      "bytes": 1980
+    },
+    {
+      "path": "server/api/v2/event-routes.js",
+      "sha256": "acc03fd1df6293413e31d20231ec63e3a12d5638468d17a966ca6af26be499aa",
+      "bytes": 2552
+    },
+    {
+      "path": "server/api/v2/local-schedule-routes.js",
+      "sha256": "7f8f47f7639e829ba827caccdc7e8a37c3ffc3d91932b267cc282c75e4a97d43",
+      "bytes": 3838
+    },
+    {
+      "path": "server/api/v2/observability-routes.js",
+      "sha256": "fcf86c1a39df8ec540ffa39180bc62075749ef3b664926aaeb8081b1f6c1c36e",
+      "bytes": 2188
+    },
+    {
+      "path": "server/api/v2/openapi-routes.js",
+      "sha256": "c4ff01ad30c708b1f9334bd27d5d9f020295594587de7c7626cd565ed5011012",
+      "bytes": 1901
+    },
+    {
+      "path": "server/api/v2/openapi-service.js",
+      "sha256": "669639e6be6157aa07763a6bba51968459c199ee2d84831e2d31f46c920ce2a5",
+      "bytes": 2691
+    },
+    {
+      "path": "server/api/v2/readiness.js",
+      "sha256": "feebd3974483632c0f48848d6326d1ef42938db5bd2d09ec25e7173cb85bd920",
+      "bytes": 2514
+    },
+    {
+      "path": "server/api/v2/routes.js",
+      "sha256": "8456afdd528d168a835ad498f7263a3a2870e100c00326d267eef60795052777",
+      "bytes": 7127
+    },
+    {
+      "path": "server/api/v2/session-routes.js",
+      "sha256": "59a2e5ccfc20501d5f556299c287b9b718cd66f7832b0a10a2c6f0d83eb977fe",
+      "bytes": 5157
+    },
+    {
+      "path": "server/api/v2/user-routes.js",
+      "sha256": "49e0afc67605dd6740c8731c62c1564a5e99a2a90861553c488fb0a4302ae8a3",
+      "bytes": 6060
+    },
+    {
+      "path": "server/core/config.js",
+      "sha256": "761ce76a6d833c9e979cc71b64a46b8ff4115716ecfa581b872174180bb3ca93",
+      "bytes": 9112
+    },
+    {
+      "path": "server/core/lifecycle-manager.js",
+      "sha256": "c861169d22ce60e5553e796da5694c1b963de0ce0c5490b06fbfbfff99ceb734",
+      "bytes": 1824
+    },
+    {
+      "path": "server/core/runtime-paths.js",
+      "sha256": "2175af76c4a43f59c506848f942712a59c950761e0ffdd6656c922c30e9d561f",
+      "bytes": 3245
+    },
+    {
+      "path": "server/core/shutdown-coordinator.js",
+      "sha256": "cedba7b1cbcbec7b6707a7b24ae5efa4534b212d2c9b51efdffb7ca248a8652e",
+      "bytes": 3366
+    },
+    {
+      "path": "server/events/event-bus.js",
+      "sha256": "c0334ed8553a0faa46fa2f4c065ede0540eaac40250251756875ac5ffbcc9204",
+      "bytes": 5015
+    },
+    {
+      "path": "server/events/event-store.js",
+      "sha256": "9acb46d43cb1880f774676fab3f3811edafe655ac85a5657556163dfa895174a",
+      "bytes": 6067
+    },
+    {
+      "path": "server/events/topics.js",
+      "sha256": "9575c99b092bf8024be7e038a37863692c0972bb635f87b7ee9040e7cbd0e53d",
+      "bytes": 1103
+    },
+    {
+      "path": "server/health-bootstrap.js",
+      "sha256": "4202298044db51b08f34ab2bfc29b17ed5e16da6b09dbbae0ab8fa76fde27790",
+      "bytes": 5033
+    },
+    {
+      "path": "server/observability/audit-log.js",
+      "sha256": "d81dd2a7922e2804064d78701d41a29c7096f1c82bb3fc6ea675b070dabaf917",
+      "bytes": 7669
+    },
+    {
+      "path": "server/observability/diagnostics-service.js",
+      "sha256": "9bbbc6dd5ad2c2db9caa7bbd95f1a9daff6a73dafec4054e171c6dec4970eaf2",
+      "bytes": 1946
+    },
+    {
+      "path": "server/observability/metrics-registry.js",
+      "sha256": "e2c9377d704a92bf05c0130c6fa8ee42a6a96e7adb67676004823c9be6d879e8",
+      "bytes": 4487
+    },
+    {
+      "path": "server/schedule/local-schedule-repository.js",
+      "sha256": "ecb9c0c654629082c36c353cfc3aee3bdab1ef59a840148fde78861d057a8456",
+      "bytes": 10355
+    },
+    {
+      "path": "server/schedule/local-schedule-service.js",
+      "sha256": "42000b7fb65e0b75a5f04dce5677d85792908d78ee45214f8d5536220bd3ae31",
+      "bytes": 1261
+    },
+    {
+      "path": "server/security/roles.js",
+      "sha256": "591470ed6a5cc88188fd14e156966a97a08c75febd76ef77f2282903768f1fa1",
+      "bytes": 2368
+    },
+    {
+      "path": "server/security/security-error.js",
+      "sha256": "fbc14fc932bb78e47ed4490680938b50b7ac403e8d90d691e088a54137c834c4",
+      "bytes": 2560
+    },
+    {
+      "path": "server/security/session-service.js",
+      "sha256": "6221a7db2c4dd00c8102ae60bd9a010d3461a99cd91b18bbe5e44ea23381a988",
+      "bytes": 7769
+    },
+    {
+      "path": "server/security/user-repository.js",
+      "sha256": "7e355625d196746fa93e81df4aed425a48d7f4c0df56ea6088ea335660d168a9",
+      "bytes": 15264
+    },
+    {
+      "path": "server2_final.js",
+      "sha256": "8502e00a53a46a906f0e945220fd752747acb3ae06f9e7c8cd64dca556f601dc",
+      "bytes": 8636
+    }
+  ],
+  "tests": {
+    "javascriptSyntax": true,
+    "bashSyntax": true,
+    "pythonSyntax": true,
+    "modularTestsExecuted": 25,
+    "rollbackTestExecuted": true,
+    "fullRepositoryValidation": "Run bash scripts/validate-repository.sh in the real repository.",
+    "isolatedLxcGate": "deploy/test-alpha2-candidate.sh"
+  }
+}

@@ -10,17 +10,25 @@ class SecurityServiceError extends Error {
   ) {
     super(message);
 
-    this.name = 'SecurityServiceError';
+    this.name =
+      'SecurityServiceError';
     this.statusCode =
-      Number.isInteger(statusCode)
+      Number.isInteger(
+        statusCode
+      )
         ? statusCode
         : 500;
     this.code =
-      String(code || 'SECURITY_SERVICE_ERROR');
-    this.details = details;
+      String(
+        code ||
+        'SECURITY_SERVICE_ERROR'
+      );
+    this.details =
+      details;
 
     if (options.cause) {
-      this.cause = options.cause;
+      this.cause =
+        options.cause;
     }
 
     Error.captureStackTrace?.(
@@ -50,6 +58,71 @@ class SecurityServiceError extends Error {
       403,
       'USER_DISABLED',
       'A felhasználói fiók le van tiltva.'
+    );
+  }
+
+  static invalidUsername(details = null) {
+    return new SecurityServiceError(
+      400,
+      'INVALID_USERNAME',
+      'A felhasználónév 3–32 karakteres, kisbetűs betűkből, számokból és . _ - jelekből álljon.',
+      details
+    );
+  }
+
+  static invalidPassword(details = null) {
+    return new SecurityServiceError(
+      400,
+      'INVALID_PASSWORD',
+      'A jelszó legalább 12 karakter legyen.',
+      details
+    );
+  }
+
+  static invalidRole(details = null) {
+    return new SecurityServiceError(
+      400,
+      'INVALID_ROLE',
+      'A szerepkör admin, operator vagy viewer lehet.',
+      details
+    );
+  }
+
+  static userExists(username) {
+    return new SecurityServiceError(
+      409,
+      'USER_ALREADY_EXISTS',
+      'Ez a felhasználónév már létezik.',
+      {
+        username
+      }
+    );
+  }
+
+  static userNotFound(username) {
+    return new SecurityServiceError(
+      404,
+      'USER_NOT_FOUND',
+      'A felhasználó nem található.',
+      {
+        username
+      }
+    );
+  }
+
+  static lastAdmin() {
+    return new SecurityServiceError(
+      409,
+      'LAST_ADMIN_PROTECTED',
+      'Az utolsó engedélyezett adminisztrátor nem tiltható le és nem törölhető.'
+    );
+  }
+
+  static csrfInvalid() {
+    return new SecurityServiceError(
+      403,
+      'CSRF_TOKEN_INVALID',
+      'A munkamenet CSRF-tokenje hiányzik vagy érvénytelen.'
     );
   }
 }

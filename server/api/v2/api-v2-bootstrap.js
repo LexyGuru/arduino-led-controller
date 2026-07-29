@@ -1,74 +1,138 @@
 'use strict';
 
-const express = require('express');
+const express =
+  require('express');
+
+const {
+  getRuntimeContext
+} = require(
+  '../../core/runtime-context'
+);
+
+const {
+  createRequestMetricsMiddleware
+} = require(
+  '../../observability/metrics-registry'
+);
 
 const {
   apiV2RequestContext
-} = require('./http-response');
+} = require(
+  './http-response'
+);
 
 const {
   requireApiV2Auth
-} = require('./auth');
+} = require(
+  './auth'
+);
 
 const {
   createPermissionMiddleware
-} = require('./authorize');
+} = require(
+  './authorize'
+);
 
 const {
   PERMISSIONS
-} = require('../../security/roles');
+} = require(
+  '../../security/roles'
+);
 
 const {
   apiV2CorsAndSecurity,
   apiV2OptionsHandler
-} = require('./cors-security');
+} = require(
+  './cors-security'
+);
 
 const {
   collectApiV2ReadinessChecks
-} = require('./readiness');
+} = require(
+  './readiness'
+);
 
 const {
   apiV2ErrorHandler,
   apiV2NotFoundHandler
-} = require('./error-handler');
+} = require(
+  './error-handler'
+);
 
 const {
   createApiV2Handlers
-} = require('./routes');
+} = require(
+  './routes'
+);
+
+const {
+  installOpenApiRoutes
+} = require(
+  './openapi-routes'
+);
 
 const {
   installSessionRoutes
-} = require('./session-routes');
+} = require(
+  './session-routes'
+);
+
+const {
+  installUserRoutes
+} = require(
+  './user-routes'
+);
 
 const {
   installEventRoutes
-} = require('./event-routes');
+} = require(
+  './event-routes'
+);
+
+const {
+  installObservabilityRoutes
+} = require(
+  './observability-routes'
+);
 
 const {
   installLedRoutes
-} = require('./led-routes');
+} = require(
+  './led-routes'
+);
 
 const {
   installScheduleRoutes
-} = require('./schedule-routes');
+} = require(
+  './schedule-routes'
+);
 
 const {
   installLocalScheduleRoutes
-} = require('./local-schedule-routes');
+} = require(
+  './local-schedule-routes'
+);
 
 const {
   installFirmwareRoutes
-} = require('./firmware-routes');
+} = require(
+  './firmware-routes'
+);
 
-function installApiV2Routes(app) {
+function installApiV2Routes(
+  app
+) {
   app.use(
     '/api/v2',
     express.json({
-      limit: '2mb'
+      limit:
+        '2mb'
     }),
     express.urlencoded({
-      extended: false,
-      limit: '2mb'
+      extended:
+        false,
+      limit:
+        '2mb'
     })
   );
 
@@ -78,20 +142,31 @@ function installApiV2Routes(app) {
         collectApiV2ReadinessChecks
     });
 
+  const requestMetrics =
+    createRequestMetricsMiddleware({
+      metricsProvider:
+        () =>
+          getRuntimeContext()
+            .metrics
+    });
+
   const systemRead =
     createPermissionMiddleware(
-      PERMISSIONS.SYSTEM_READ
+      PERMISSIONS
+        .SYSTEM_READ
     );
 
   const arduinoRead =
     createPermissionMiddleware(
-      PERMISSIONS.ARDUINO_READ
+      PERMISSIONS
+        .ARDUINO_READ
     );
 
   app.use(
     '/api/v2',
     apiV2RequestContext,
-    apiV2CorsAndSecurity
+    apiV2CorsAndSecurity,
+    requestMetrics
   );
 
   app.options(
@@ -109,12 +184,18 @@ function installApiV2Routes(app) {
     handlers.discovery
   );
 
+  installOpenApiRoutes(
+    app
+  );
+
   app.get(
     '/api/v2/system/health',
     handlers.systemHealth
   );
 
-  installSessionRoutes(app);
+  installSessionRoutes(
+    app
+  );
 
   app.get(
     '/api/v2/system/status',
@@ -130,11 +211,33 @@ function installApiV2Routes(app) {
     handlers.arduinoStatus
   );
 
-  installEventRoutes(app);
-  installLedRoutes(app);
-  installScheduleRoutes(app);
-  installLocalScheduleRoutes(app);
-  installFirmwareRoutes(app);
+  installUserRoutes(
+    app
+  );
+
+  installEventRoutes(
+    app
+  );
+
+  installObservabilityRoutes(
+    app
+  );
+
+  installLedRoutes(
+    app
+  );
+
+  installScheduleRoutes(
+    app
+  );
+
+  installLocalScheduleRoutes(
+    app
+  );
+
+  installFirmwareRoutes(
+    app
+  );
 
   app.use(
     '/api/v2',

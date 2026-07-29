@@ -6,6 +6,10 @@ const {
 } = require('../../security/api-token-store');
 
 const {
+  SecurityServiceError
+} = require('../../security/security-error');
+
+const {
   getRuntimeContext
 } = require('../../core/runtime-context');
 
@@ -17,11 +21,21 @@ const {
   sendError
 } = require('./http-response');
 
+const SAFE_METHODS =
+  Object.freeze([
+    'GET',
+    'HEAD',
+    'OPTIONS'
+  ]);
+
 function parseBearerToken(req) {
   const authorization =
     String(
-      req.get?.('Authorization') ||
-      req.headers?.authorization ||
+      req.get?.(
+        'Authorization'
+      ) ||
+      req.headers
+        ?.authorization ||
       ''
     ).trim();
 
@@ -35,9 +49,12 @@ function parseBearerToken(req) {
     : '';
 }
 
-function resolveApiTokenStore(runtime) {
+function resolveApiTokenStore(
+  runtime
+) {
   if (
-    runtime?.apiTokenStore &&
+    runtime
+      ?.apiTokenStore &&
     typeof runtime
       .apiTokenStore
       .authenticate ===
@@ -49,8 +66,10 @@ function resolveApiTokenStore(runtime) {
 
   return ApiTokenStore
     .fromConfig(
-      runtime?.config
-        ?.apiV2 || {}
+      runtime
+        ?.config
+        ?.apiV2 ||
+      {}
     );
 }
 
@@ -68,12 +87,14 @@ async function resolvePrincipal(
 
   if (
     bearer &&
-    tokenStore.isConfigured()
+    tokenStore
+      .isConfigured()
   ) {
     const principal =
-      tokenStore.authenticate(
-        bearer
-      );
+      tokenStore
+        .authenticate(
+          bearer
+        );
 
     if (principal) {
       return principal;
@@ -81,7 +102,8 @@ async function resolvePrincipal(
   }
 
   if (
-    runtime?.sessionService &&
+    runtime
+      ?.sessionService &&
     typeof runtime
       .sessionService
       .principalForRequest ===
@@ -89,10 +111,30 @@ async function resolvePrincipal(
   ) {
     return runtime
       .sessionService
-      .principalForRequest(req);
+      .principalForRequest(
+        req
+      );
   }
 
   return null;
+}
+
+function requiresCsrf(
+  req,
+  principal
+) {
+  return (
+    principal
+      ?.type ===
+      'user-session' &&
+    !SAFE_METHODS
+      .includes(
+        String(
+          req.method ||
+          'GET'
+        ).toUpperCase()
+      )
+  );
 }
 
 function createApiV2AuthMiddleware({
@@ -116,11 +158,13 @@ function createApiV2AuthMiddleware({
 
     const sessionAvailable =
       Boolean(
-        runtime?.sessionService
+        runtime
+          ?.sessionService
       );
 
     if (
-      !tokenStore.isConfigured() &&
+      !tokenStore
+        .isConfigured() &&
       !sessionAvailable
     ) {
       return errorSender(
@@ -149,8 +193,51 @@ function createApiV2AuthMiddleware({
       return errorSender(
         req,
         res,
-        HttpError.unauthorized()
+        HttpError
+          .unauthorized()
       );
+    }
+
+    if (
+      requiresCsrf(
+        req,
+        principal
+      )
+    ) {
+      const received =
+        String(
+          req.get?.(
+            'X-CSRF-Token'
+          ) ||
+          req.headers
+            ?.['x-csrf-token'] ||
+          ''
+        ).trim();
+
+      const valid =
+        await runtime
+          .sessionService
+          .verifyCsrfToken(
+            req,
+            received
+          );
+
+      if (!valid) {
+        const error =
+          SecurityServiceError
+            .csrfInvalid();
+
+        return errorSender(
+          req,
+          res,
+          new HttpError(
+            error.statusCode,
+            error.code,
+            error.message,
+            error.details
+          )
+        );
+      }
     }
 
     req.apiPrincipal =
@@ -164,9 +251,11 @@ const requireApiV2Auth =
   createApiV2AuthMiddleware();
 
 module.exports = {
+  SAFE_METHODS,
   createApiV2AuthMiddleware,
   parseBearerToken,
   requireApiV2Auth,
+  requiresCsrf,
   resolveApiTokenStore,
   resolvePrincipal,
   safeTokenEquals

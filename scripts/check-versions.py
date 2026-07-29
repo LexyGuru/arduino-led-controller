@@ -32,12 +32,26 @@ def read_json_version(relative_path: str) -> str:
     return value
 
 
+def read_openapi_version(relative_path: str) -> str:
+    path = ROOT / relative_path
+    data = json.loads(path.read_text(encoding="utf-8"))
+
+    info = data.get("info")
+    value = info.get("version") if isinstance(info, dict) else None
+
+    if not isinstance(value, str) or not value:
+        raise RuntimeError(
+            f"Hiányzó vagy hibás info.version mező: {relative_path}"
+        )
+
+    return value
+
+
 def read_cargo_version(relative_path: str) -> str:
     path = ROOT / relative_path
     text = path.read_text(encoding="utf-8")
-
     match = re.search(
-        r"(?ms)^\[package\]\s*.*?^version\s*=\s*\"([^\"]+)\"",
+        r'(?ms)^\[package\]\s*.*?^version\s*=\s*"([^"]+)"',
         text,
     )
     if not match:
@@ -48,7 +62,6 @@ def read_cargo_version(relative_path: str) -> str:
 
 def main() -> int:
     expected = read_version_file()
-
     versions = {
         "VERSION": expected,
         "package.json": read_json_version("package.json"),
@@ -61,8 +74,10 @@ def main() -> int:
         "desktop-tauri/src-tauri/tauri.conf.json": read_json_version(
             "desktop-tauri/src-tauri/tauri.conf.json"
         ),
+        "docs/api/openapi-v2.json": read_openapi_version(
+            "docs/api/openapi-v2.json"
+        ),
     }
-
     mismatches = {
         path: value
         for path, value in versions.items()

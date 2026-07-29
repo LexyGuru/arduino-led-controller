@@ -1,6 +1,8 @@
 'use strict';
 
-const crypto = require('crypto');
+const crypto =
+  require('crypto');
+
 const {
   EventEmitter
 } = require('events');
@@ -10,7 +12,9 @@ const EVENT_BUS_ALL =
     'arduino-led-controller.event-bus-all'
   );
 
-function normalizeTopic(value) {
+function normalizeTopic(
+  value
+) {
   const topic =
     String(value || '')
       .trim()
@@ -37,7 +41,9 @@ function positiveInteger(
     Number(value);
 
   if (
-    !Number.isInteger(parsed) ||
+    !Number.isInteger(
+      parsed
+    ) ||
     parsed < 1
   ) {
     return fallback;
@@ -52,14 +58,17 @@ function positiveInteger(
 class EventBus {
   constructor({
     historyLimit = 200,
-    logger = null
+    logger = null,
+    store = null,
+    metrics = null
   } = {}) {
     this.emitter =
       new EventEmitter();
 
-    this.emitter.setMaxListeners(
-      100
-    );
+    this.emitter
+      .setMaxListeners(
+        100
+      );
 
     this.historyLimit =
       positiveInteger(
@@ -68,9 +77,15 @@ class EventBus {
         2000
       );
 
-    this.logger = logger;
+    this.logger =
+      logger;
+    this.store =
+      store;
+    this.metrics =
+      metrics;
     this.history = [];
     this.publishedCount = 0;
+    this.persistenceErrors = 0;
   }
 
   publish(
@@ -79,12 +94,15 @@ class EventBus {
     meta = {}
   ) {
     const normalizedTopic =
-      normalizeTopic(topic);
+      normalizeTopic(
+        topic
+      );
 
     const event =
       Object.freeze({
         id:
-          crypto.randomUUID(),
+          crypto
+            .randomUUID(),
         topic:
           normalizedTopic,
         timestamp:
@@ -107,7 +125,9 @@ class EventBus {
             : {}
       });
 
-    this.history.push(event);
+    this.history.push(
+      event
+    );
 
     if (
       this.history.length >
@@ -121,6 +141,47 @@ class EventBus {
     }
 
     this.publishedCount += 1;
+
+    this.metrics
+      ?.increment?.(
+        'events.published'
+      );
+
+    this.metrics
+      ?.increment?.(
+        `events.topic.${normalizedTopic}`
+      );
+
+    if (
+      this.store &&
+      typeof this.store
+        .append ===
+        'function'
+    ) {
+      this.store
+        .append(event)
+        .catch(
+          (error) => {
+            this.persistenceErrors += 1;
+
+            this.metrics
+              ?.increment?.(
+                'events.persistence_errors'
+              );
+
+            this.logger
+              ?.error?.(
+                'Esemény tartós mentése sikertelen.',
+                {
+                  topic:
+                    normalizedTopic,
+                  message:
+                    error.message
+                }
+              );
+          }
+        );
+    }
 
     this.emitter.emit(
       normalizedTopic,
@@ -140,7 +201,9 @@ class EventBus {
     listener
   ) {
     const normalizedTopic =
-      normalizeTopic(topic);
+      normalizeTopic(
+        topic
+      );
 
     this.emitter.on(
       normalizedTopic,
@@ -155,7 +218,9 @@ class EventBus {
     };
   }
 
-  subscribeAll(listener) {
+  subscribeAll(
+    listener
+  ) {
     this.emitter.on(
       EVENT_BUS_ALL,
       listener
@@ -182,7 +247,9 @@ class EventBus {
 
     const normalizedTopic =
       topic
-        ? normalizeTopic(topic)
+        ? normalizeTopic(
+            topic
+          )
         : null;
 
     const source =
@@ -199,6 +266,27 @@ class EventBus {
     );
   }
 
+  async persistentRecent(
+    options = {}
+  ) {
+    if (
+      !this.store ||
+      typeof this.store
+        .recent !==
+        'function'
+    ) {
+      return [];
+    }
+
+    return this.store
+      .recent(options);
+  }
+
+  async flush() {
+    await this.store
+      ?.flush?.();
+  }
+
   stats() {
     return {
       publishedCount:
@@ -207,6 +295,12 @@ class EventBus {
         this.history.length,
       historyLimit:
         this.historyLimit,
+      persistentStore:
+        Boolean(
+          this.store
+        ),
+      persistenceErrors:
+        this.persistenceErrors,
       topics:
         [
           ...new Set(
