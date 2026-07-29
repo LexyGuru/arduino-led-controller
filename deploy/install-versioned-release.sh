@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -Eeuo pipefail
 
 ARCHIVE="${1:-}"
 
@@ -16,7 +16,6 @@ ARCHIVE="$(
 )/$(
   basename "${ARCHIVE}"
 )"
-
 CHECKSUM_FILE="${CHECKSUM_FILE:-${ARCHIVE}.sha256}"
 INSTALL_ROOT="${INSTALL_ROOT:-/opt/arduino-led-controller-staging}"
 RELEASES_DIR="${RELEASES_DIR:-${INSTALL_ROOT}/releases}"
@@ -75,20 +74,39 @@ fi
 TEMP_DIR="$(
   mktemp -d
 )"
+HEALTH_RESPONSE_FILE="$(
+  mktemp
+)"
 
 PREVIOUS_TARGET=""
 NEW_TARGET=""
 ACTIVATED=0
 NEW_TARGET_CREATED=0
+ROLLBACK_COMPLETED=0
 
 cleanup() {
-  rm -rf "${TEMP_DIR}"
+  rm -rf \
+    "${TEMP_DIR}"
+  rm -f \
+    "${HEALTH_RESPONSE_FILE}"
+}
+
+cleanup_failed_target() {
+  if [[ "${NEW_TARGET_CREATED}" -eq 1 ]] && \
+    [[ -n "${NEW_TARGET}" ]]; then
+    rm -rf \
+      "${NEW_TARGET}"
+    NEW_TARGET_CREATED=0
+  fi
 }
 
 rollback() {
-  if [[ "${ACTIVATED}" -ne 1 ]]; then
+  if [[ "${ACTIVATED}" -ne 1 ]] || \
+    [[ "${ROLLBACK_COMPLETED}" -eq 1 ]]; then
     return
   fi
+
+  ROLLBACK_COMPLETED=1
 
   if [[ -n "${PREVIOUS_TARGET}" ]]; then
     log "Rollback az előző release-re: ${PREVIOUS_TARGET}"
@@ -97,23 +115,66 @@ rollback() {
       "${CURRENT_LINK}"
   else
     log 'Rollback: az új current symlink eltávolítása.'
-    rm -f "${CURRENT_LINK}"
+    rm -f \
+      "${CURRENT_LINK}"
   fi
 
   if [[ -n "${SERVICE_NAME}" ]]; then
-    "${SYSTEMCTL_COMMAND}" \
-      restart \
-      "${SERVICE_NAME}" ||
-      true
+    if [[ -n "${PREVIOUS_TARGET}" ]]; then
+      "${SYSTEMCTL_COMMAND}" \
+        restart \
+        "${SERVICE_NAME}" ||
+        true
+    else
+      # Első staging telepítésnél nincs mire visszaállni. A hibás candidate
+      # szolgáltatását leállítjuk, hogy ne maradjon aktív, nem-ready folyamat.
+      "${SYSTEMCTL_COMMAND}" \
+        stop \
+        "${SERVICE_NAME}" ||
+        true
+    fi
   fi
 
-  if [[ "${NEW_TARGET_CREATED}" -eq 1 ]]; then
-    rm -rf "${NEW_TARGET}"
+  cleanup_failed_target
+
+  ACTIVATED=0
+}
+
+handle_error() {
+  if [[ "${ACTIVATED}" -eq 1 ]]; then
+    rollback
+  else
+    # A függőségtelepítés vagy más aktiválás előtti lépés hibája se hagyjon
+    # félkész candidate könyvtárat a staging releases könyvtárban.
+    cleanup_failed_target
   fi
 }
 
-trap 'rollback; cleanup' ERR
-trap cleanup EXIT
+fail_after_activation() {
+  local message="$1"
+
+  log "HIBA: ${message}"
+  rollback
+  exit 1
+}
+
+on_exit() {
+  local status="$?"
+
+  # Az EXIT trap minden Bash-verzión lefut, akkor is, ha egy subshellben
+  # (például npm ci közben) történik a hiba. Így a pre-activation candidate
+  # takarítása nem függ az ERR trap öröklődési szabályaitól.
+  trap - EXIT
+
+  if [[ "${status}" -ne 0 ]]; then
+    handle_error || true
+  fi
+
+  cleanup || true
+  exit "${status}"
+}
+
+trap on_exit EXIT
 
 tar -xzf \
   "${ARCHIVE}" \
@@ -139,7 +200,10 @@ METADATA_FILE="${TOP_LEVEL}/RELEASE-METADATA.json"
   exit 1
 }
 
-readarray -t METADATA < <(
+METADATA=()
+while IFS= read -r metadata_value; do
+  METADATA+=("${metadata_value}")
+done < <(
   node - \
     "${METADATA_FILE}" \
     <<'NODE'
@@ -173,9 +237,14 @@ for (
 NODE
 )
 
-NAME="${METADATA[0]}"
-VERSION="${METADATA[1]}"
-COMMIT="${METADATA[2]}"
+if [[ "${#METADATA[@]}" -ne 3 ]]; then
+  log 'HIBA: a RELEASE-METADATA.json hiányos vagy érvénytelen.'
+  exit 1
+fi
+
+NAME="${METADATA[0]:-}"
+VERSION="${METADATA[1]:-}"
+COMMIT="${METADATA[2]:-}"
 
 [[ "${NAME}" =~ ^arduino-led-controller-[A-Za-z0-9._+-]+-(staging|promotion)-[a-f0-9]{12}$ ]] || {
   log "HIBA: érvénytelen release név: ${NAME}"
@@ -241,29 +310,52 @@ fi
 log "Health ellenőrzés: ${HEALTH_URL}"
 
 READY=0
+LAST_HTTP_CODE="000"
 
 for ((
   attempt = 1;
   attempt <= HEALTH_RETRIES;
   attempt += 1
 )); do
-  if "${CURL_COMMAND}" \
-    -fsS \
-    --max-time 3 \
-    "${HEALTH_URL}" \
-    >/dev/null; then
+  : >"${HEALTH_RESPONSE_FILE}"
+
+  LAST_HTTP_CODE="$(
+    "${CURL_COMMAND}" \
+      --silent \
+      --show-error \
+      --max-time 3 \
+      --output "${HEALTH_RESPONSE_FILE}" \
+      --write-out '%{http_code}' \
+      "${HEALTH_URL}" ||
+      true
+  )"
+
+  if [[ "${LAST_HTTP_CODE}" =~ ^2[0-9][0-9]$ ]]; then
     READY=1
     break
   fi
 
-  sleep \
-    "${HEALTH_DELAY_SECONDS}"
+  log "Health próba ${attempt}/${HEALTH_RETRIES}: HTTP ${LAST_HTTP_CODE}"
+
+  if [[ "${attempt}" -lt "${HEALTH_RETRIES}" ]]; then
+    sleep \
+      "${HEALTH_DELAY_SECONDS}"
+  fi
 done
 
-[[ "${READY}" -eq 1 ]] || {
-  log 'HIBA: a staging release nem lett ready állapotú.'
-  exit 1
-}
+if [[ "${READY}" -ne 1 ]]; then
+  log "Utolsó health válasz: HTTP ${LAST_HTTP_CODE}"
+
+  if [[ -s "${HEALTH_RESPONSE_FILE}" ]]; then
+    # A readiness JSON nem tartalmaz nyers titkokat; a konkrét hibakódok
+    # nélkül a staging gate diagnosztikája használhatatlan lenne.
+    sed 's/^/[release-install] health-body: /' \
+      "${HEALTH_RESPONSE_FILE}"
+  fi
+
+  fail_after_activation \
+    'a staging release nem lett ready állapotú.'
+fi
 
 install -d \
   -m 0755 \

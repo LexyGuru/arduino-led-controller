@@ -12,15 +12,24 @@ UNIT_SOURCE="${UNIT_SOURCE:-${ROOT_DIR}/deploy/systemd/arduino-led-controller-st
 UNIT_TARGET="${UNIT_TARGET:-/etc/systemd/system/arduino-led-controller-staging.service}"
 ENV_SOURCE="${ENV_SOURCE:-${ROOT_DIR}/deploy/staging.env.example}"
 ENV_TARGET="${ENV_TARGET:-/etc/arduino-led-controller-staging.env}"
-
 INSTALL_ROOT="${INSTALL_ROOT:-/opt/arduino-led-controller-staging}"
 RELEASES_DIR="${RELEASES_DIR:-${INSTALL_ROOT}/releases}"
+CURRENT_LINK="${CURRENT_LINK:-${INSTALL_ROOT}/current}"
 DATA_DIR="${DATA_DIR:-/var/lib/arduino-led-controller-staging}"
 CONFIG_DIR="${CONFIG_DIR:-/etc/arduino-led-controller-staging}"
 SCHEDULES_DIR="${SCHEDULES_DIR:-${DATA_DIR}/schedules}"
+FIRMWARE_DIR="${FIRMWARE_DIR:-${DATA_DIR}/firmware}"
+EVENT_ARCHIVE_DIR="${EVENT_ARCHIVE_DIR:-${DATA_DIR}/event-archive}"
 RELEASE_GATE_DIR="${RELEASE_GATE_DIR:-/var/lib/arduino-led-controller/release-gates}"
 RELEASE_EXECUTION_DIR="${RELEASE_EXECUTION_DIR:-/var/lib/arduino-led-controller/release-execution}"
 RELEASE_ARTIFACT_DIR="${RELEASE_ARTIFACT_DIR:-${RELEASE_EXECUTION_DIR}/artifacts}"
+STAGING_PORT="${STAGING_PORT:-3100}"
+STAGING_BIND_HOST="${STAGING_BIND_HOST:-127.0.0.1}"
+STAGING_ARDUINO_IP="${STAGING_ARDUINO_IP:-127.0.0.1}"
+STAGING_ARDUINO_PORT="${STAGING_ARDUINO_PORT:-65535}"
+STAGING_ARDUINO_API_PATH="${STAGING_ARDUINO_API_PATH:-/__alpha2_staging_disabled__}"
+STAGING_ARDUINO_API_KEY="${STAGING_ARDUINO_API_KEY:-<STAGING_DISABLED_API_KEY>}"
+SYSTEMCTL_COMMAND="${SYSTEMCTL_COMMAND:-systemctl}"
 
 [[ "$(id -u)" -eq 0 ]] || {
   echo 'HIBA: root jogosultság szükséges.' >&2
@@ -51,6 +60,72 @@ else
     "${ENV_TARGET}"
 fi
 
+upsert_env() {
+  local key="$1"
+  local value="$2"
+  local temporary
+
+  temporary="$(
+    mktemp "${ENV_TARGET}.tmp.XXXXXX"
+  )"
+
+  awk \
+    -v key="${key}" \
+    'index($0, key "=") != 1 { print }' \
+    "${ENV_TARGET}" \
+    >"${temporary}"
+  printf '%s=%s\n' \
+    "${key}" \
+    "${value}" \
+    >>"${temporary}"
+  chmod 0640 \
+    "${temporary}"
+  mv -f \
+    "${temporary}" \
+    "${ENV_TARGET}"
+}
+
+# A staging saját runtime- és release-útvonalait minden telepítéskor
+# összehangoljuk. Produkciós env-fájlból semmilyen titok vagy Arduino-cél
+# nem kerül átvételre.
+upsert_env NODE_ENV production
+upsert_env PORT "${STAGING_PORT}"
+upsert_env BIND_HOST "${STAGING_BIND_HOST}"
+upsert_env APP_DIR "${CURRENT_LINK}"
+upsert_env DATA_DIR "${DATA_DIR}"
+upsert_env CONFIG_DIR "${CONFIG_DIR}"
+upsert_env SCHEDULES_DIR "${SCHEDULES_DIR}"
+upsert_env FIRMWARE_DIR "${FIRMWARE_DIR}"
+upsert_env ARDUINO_IP "${STAGING_ARDUINO_IP}"
+upsert_env ARDUINO_PORT "${STAGING_ARDUINO_PORT}"
+upsert_env ARDUINO_API_PATH "${STAGING_ARDUINO_API_PATH}"
+upsert_env ARDUINO_API_KEY "${STAGING_ARDUINO_API_KEY}"
+upsert_env ARDUINO_TIMEOUT_MS 500
+upsert_env ARDUINO_HEALTH_TIMEOUT_MS 500
+upsert_env ARDUINO_STATUS_MONITOR_ENABLED 0
+upsert_env API_V2_ENABLED 1
+upsert_env API_V2_ALLOWED_ORIGIN "http://127.0.0.1:${STAGING_PORT}"
+upsert_env COOKIE_SECURE 0
+upsert_env LOCAL_SCHEDULE_RUNNER_MODE manual
+upsert_env LEGACY_LOCAL_SCHEDULE_ADAPTERS_ENABLED 1
+upsert_env LEGACY_SUPPRESS_LOCAL_SCHEDULE_CRON 1
+upsert_env LEGACY_SUPPRESS_STATUS_CRON 1
+upsert_env RELEASE_CHANNEL alpha
+upsert_env RELEASE_CANDIDATE alpha.2-gate
+upsert_env RELEASE_TARGET_VERSION 5.0.0-alpha.2
+upsert_env RELEASE_GATE_REPORT_DIR "${RELEASE_GATE_DIR}"
+upsert_env RELEASE_PROMOTION_APPROVAL_FILE "${RELEASE_GATE_DIR}/alpha2-promotion-approval.json"
+upsert_env RELEASE_GATE_MAX_AGE_HOURS 72
+upsert_env RELEASE_EXECUTION_RECEIPT_DIR "${RELEASE_EXECUTION_DIR}"
+upsert_env RELEASE_FINALIZATION_APPROVAL_FILE "${RELEASE_EXECUTION_DIR}/alpha2-finalization-approval.json"
+upsert_env RELEASE_EXECUTION_RECEIPT_MAX_AGE_HOURS 168
+upsert_env RELEASE_ORCHESTRATION_STATE_FILE "${RELEASE_EXECUTION_DIR}/alpha2-orchestration-state.json"
+upsert_env RELEASE_ORCHESTRATION_ARTIFACT_DIR "${RELEASE_ARTIFACT_DIR}"
+upsert_env RELEASE_ORCHESTRATION_ARTIFACT_INDEX_FILE "${RELEASE_ARTIFACT_DIR}/index.json"
+upsert_env RELEASE_PRODUCTION_GUARD_FILE "${RELEASE_EXECUTION_DIR}/production-guard.json"
+upsert_env RELEASE_PRODUCTION_GUARD_VERIFICATION_FILE "${RELEASE_EXECUTION_DIR}/production-guard-verification.json"
+upsert_env RELEASE_ORCHESTRATION_MAX_AGE_HOURS 168
+
 install -d \
   -m 0755 \
   "${INSTALL_ROOT}" \
@@ -58,18 +133,58 @@ install -d \
   "${DATA_DIR}" \
   "${CONFIG_DIR}" \
   "${SCHEDULES_DIR}" \
+  "${FIRMWARE_DIR}" \
+  "${EVENT_ARCHIVE_DIR}" \
   "${RELEASE_GATE_DIR}" \
   "${RELEASE_EXECUTION_DIR}" \
   "${RELEASE_ARTIFACT_DIR}"
 
-systemctl daemon-reload
+# Egy korábbi staging futásból megmaradt server-settings.json felülírhatná
+# az izolált loopback Arduino-célt. Csak a staging konfigurációban, és csak
+# tényleges eltérés esetén készítünk róla biztonsági másolatot.
+RUNTIME_SETTINGS_FILE="${CONFIG_DIR}/server-settings.json"
+if [[ -f "${RUNTIME_SETTINGS_FILE}" ]] && \
+  command -v node >/dev/null 2>&1 && \
+  node - "${RUNTIME_SETTINGS_FILE}" <<'NODE'
+const fs = require('fs');
+const file = process.argv[2];
+try {
+  const data = JSON.parse(fs.readFileSync(file, 'utf8'));
+  const ip = typeof data.arduinoIP === 'string'
+    ? data.arduinoIP.trim()
+    : '';
+  const port = Number(data.arduinoPort);
+  process.exit(
+    (ip && ip !== '127.0.0.1') ||
+    (Number.isFinite(port) && port !== 65535)
+      ? 0
+      : 1
+  );
+} catch {
+  // Hibás staging-only runtime settings ne írja felül és ne akadályozza az
+  // izolált env-konfigurációt: ugyanúgy karanténba kerül, mint a LAN-cél.
+  process.exit(0);
+}
+NODE
+then
+  RUNTIME_SETTINGS_BACKUP="${CONFIG_DIR}/server-settings.pre-alpha2-isolation.$(date -u +%Y%m%dT%H%M%SZ).json"
+  mv \
+    "${RUNTIME_SETTINGS_FILE}" \
+    "${RUNTIME_SETTINGS_BACKUP}"
+  chmod 0600 \
+    "${RUNTIME_SETTINGS_BACKUP}"
+  echo "Staging runtime settings elkülönítve: ${RUNTIME_SETTINGS_BACKUP}"
+fi
 
-systemctl enable \
+"${SYSTEMCTL_COMMAND}" daemon-reload
+"${SYSTEMCTL_COMMAND}" enable \
   arduino-led-controller-staging.service
 
-echo 'A staging systemd szolgáltatás telepítve.'
+echo 'A staging systemd szolgáltatás telepítve és összehangolva.'
 echo "Környezeti fájl: ${ENV_TARGET}"
 echo "Staging release könyvtár: ${RELEASES_DIR}"
 echo "Staging adatkönyvtár: ${DATA_DIR}"
+echo "Staging firmware könyvtár: ${FIRMWARE_DIR}"
+echo "Staging Arduino-cél: ${STAGING_ARDUINO_IP}:${STAGING_ARDUINO_PORT} (izolált)"
 echo "Release-gate könyvtár: ${RELEASE_GATE_DIR}"
 echo "Execution receipt könyvtár: ${RELEASE_EXECUTION_DIR}"
