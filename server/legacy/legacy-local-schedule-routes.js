@@ -118,6 +118,41 @@ function installLegacyLocalScheduleRoutes(
     }
   );
 
+  if (typeof app.put === 'function') {
+    app.put(
+      '/api/local-schedules/:id',
+      async (req, res) => {
+        try {
+          const schedule =
+            await getRuntimeContext()
+              .localScheduleService
+              .update(
+                req.params.id,
+                req.body
+              );
+
+          return res.json({
+            success: true,
+            schedule
+          });
+        } catch (error) {
+          return sendLegacyError(
+            res,
+            error,
+            {
+              fallbackMessage:
+                'Az időzítés módosítása nem sikerült.',
+              fallbackCode:
+                'LOCAL_SCHEDULE_UPDATE_ERROR',
+              fallbackStatus:
+                error.statusCode || 400
+            }
+          );
+        }
+      }
+    );
+  }
+
   app.delete(
     '/api/local-schedules/:id',
     async (req, res) => {

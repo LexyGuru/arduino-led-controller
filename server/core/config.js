@@ -212,12 +212,12 @@ function loadRuntimeConfig(options = {}) {
   const runnerMode = ['manual', 'active'].includes(
     String(
       environment.LOCAL_SCHEDULE_RUNNER_MODE ||
-      'manual'
+      'active'
     ).trim().toLowerCase()
   )
     ? String(
         environment.LOCAL_SCHEDULE_RUNNER_MODE ||
-        'manual'
+        'active'
       ).trim().toLowerCase()
     : 'manual';
 
@@ -275,6 +275,67 @@ function loadRuntimeConfig(options = {}) {
         2500,
         500,
         10000
+      )
+    },
+    console: {
+      cacheLimit: integerInRange(
+        environment.ARDUINO_CONSOLE_CACHE_LIMIT,
+        200,
+        10,
+        2000
+      ),
+      maximumPages: integerInRange(
+        environment.ARDUINO_CONSOLE_MAX_PAGES,
+        24,
+        1,
+        100
+      ),
+      cacheTtlMs: numberInRange(
+        environment.ARDUINO_CONSOLE_CACHE_TTL_MS,
+        2500,
+        250,
+        60000
+      )
+    },
+    monitor: {
+      enabled: booleanFromEnvironment(
+        environment.ARDUINO_STATUS_MONITOR_ENABLED,
+        true
+      ),
+      intervalMs: numberInRange(
+        environment.ARDUINO_STATUS_MONITOR_INTERVAL_MS,
+        30000,
+        5000,
+        300000
+      ),
+      timeoutMs: numberInRange(
+        environment.ARDUINO_STATUS_MONITOR_TIMEOUT_MS,
+        5000,
+        500,
+        30000
+      )
+    },
+    files: {
+      maximumScheduleBytes: numberInRange(
+        environment.SCHEDULE_FILE_MAXIMUM_BYTES,
+        1024 * 1024,
+        1024,
+        10 * 1024 * 1024
+      ),
+      arduinoScheduleUploadEndpoint: String(
+        environment.ARDUINO_SCHEDULE_UPLOAD_ENDPOINT || ''
+      ).trim().replace(/^\/+/, '')
+    },
+    web: {
+      staticAssetsEnabled: booleanFromEnvironment(
+        environment.STATIC_WEB_ASSETS_ENABLED,
+        true
+      ),
+      staticCacheSeconds: integerInRange(
+        environment.STATIC_WEB_CACHE_SECONDS,
+        300,
+        0,
+        86400
       )
     },
     apiV2: {
@@ -421,21 +482,26 @@ function loadRuntimeConfig(options = {}) {
         environment.LEGACY_API_ADAPTERS_ENABLED,
         true
       ),
-      localScheduleAdaptersEnabled:
-        booleanFromEnvironment(
-          environment.LEGACY_LOCAL_SCHEDULE_ADAPTERS_ENABLED,
-          false
-        ),
-      socketEventBridgeEnabled:
-        booleanFromEnvironment(
-          environment.LEGACY_SOCKET_EVENT_BRIDGE_ENABLED,
-          true
-        ),
-      suppressSignalHandlers:
-        booleanFromEnvironment(
-          environment.LEGACY_SUPPRESS_SIGNAL_HANDLERS,
-          true
-        )
+      localScheduleAdaptersEnabled: booleanFromEnvironment(
+        environment.LEGACY_LOCAL_SCHEDULE_ADAPTERS_ENABLED,
+        true
+      ),
+      socketEventBridgeEnabled: booleanFromEnvironment(
+        environment.LEGACY_SOCKET_EVENT_BRIDGE_ENABLED,
+        true
+      ),
+      suppressSignalHandlers: booleanFromEnvironment(
+        environment.LEGACY_SUPPRESS_SIGNAL_HANDLERS,
+        true
+      ),
+      suppressLocalScheduleCron: booleanFromEnvironment(
+        environment.LEGACY_SUPPRESS_LOCAL_SCHEDULE_CRON,
+        true
+      ),
+      suppressStatusCron: booleanFromEnvironment(
+        environment.LEGACY_SUPPRESS_STATUS_CRON,
+        true
+      )
     },
     logging: {
       level:

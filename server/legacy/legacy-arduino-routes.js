@@ -101,9 +101,80 @@ function installLegacyArduinoRoutes(
     );
   };
 
-  read(
+  app.get(
     '/api/arduino/status',
-    'api/status'
+    async (req, res) => {
+      const runtime =
+        getRuntimeContext();
+
+      const monitor =
+        runtime
+          .arduinoStatusMonitor;
+
+      const monitored =
+        monitor &&
+        typeof monitor.getStatus ===
+          'function'
+          ? monitor.getStatus()
+          : null;
+
+      if (
+        monitored?.connected &&
+        monitored.status
+      ) {
+        return res.json(
+          monitored.status
+        );
+      }
+
+      try {
+        if (
+          monitor &&
+          typeof monitor.poll ===
+            'function'
+        ) {
+          const refreshed =
+            await monitor.poll();
+
+          if (
+            refreshed?.connected &&
+            refreshed.status
+          ) {
+            return res.json(
+              refreshed.status
+            );
+          }
+        }
+
+        const direct =
+          await runtime
+            .arduinoClient
+            .get(
+              'api/status',
+              {
+                source:
+                  'legacy-api-adapter'
+              }
+            );
+
+        return res.json(
+          direct.data
+        );
+      } catch (error) {
+        return sendLegacyError(
+          res,
+          error,
+          {
+            fallbackCode:
+              'ARDUINO_TIMEOUT',
+            fallbackStatus:
+              502,
+            timestamp:
+              true
+          }
+        );
+      }
+    }
   );
   read(
     '/api/arduino/config',
@@ -113,12 +184,125 @@ function installLegacyArduinoRoutes(
     '/api/arduino/memory',
     'api/memory'
   );
-  read(
+  app.get(
+    '/api/arduino/console/logs',
+    async (req, res) => {
+      const runtime =
+        getRuntimeContext();
+
+      try {
+        if (
+          runtime
+            .arduinoConsoleService &&
+          typeof runtime
+            .arduinoConsoleService
+            .refresh === 'function'
+        ) {
+          return res.json(
+            await runtime
+              .arduinoConsoleService
+              .refresh({
+                force:
+                  req.query?.refresh === '1' ||
+                  req.query?.force === '1'
+              })
+          );
+        }
+
+        const result =
+          await runtime
+            .arduinoClient
+            .get(
+              'api/console/logs',
+              {
+                query: {
+                  after:
+                    req.query?.after ||
+                    0
+                },
+                source:
+                  'legacy-api-console-logs'
+              }
+            );
+
+        return res.json(
+          result.data
+        );
+      } catch (error) {
+        return sendLegacyError(
+          res,
+          error,
+          {
+            fallbackCode:
+              'ARDUINO_CONSOLE_ERROR',
+            fallbackStatus:
+              502,
+            timestamp:
+              true
+          }
+        );
+      }
+    }
+  );
+
+  app.get(
     '/api/arduino/console/stats',
-    'api/console/stats',
-    {
-      code:
-        'ARDUINO_CONSOLE_ERROR'
+    async (req, res) => {
+      const runtime =
+        getRuntimeContext();
+
+      try {
+        if (
+          runtime
+            .arduinoConsoleService &&
+          typeof runtime
+            .arduinoConsoleService
+            .getStats === 'function'
+        ) {
+          const result =
+            await runtime
+              .arduinoConsoleService
+              .getStats();
+
+          return res.json({
+            ...(
+              result.arduino &&
+              typeof result.arduino ===
+                'object'
+                ? result.arduino
+                : {}
+            ),
+            cache:
+              result.cache
+          });
+        }
+
+        const direct =
+          await runtime
+            .arduinoClient
+            .get(
+              'api/console/stats',
+              {
+                source:
+                  'legacy-api-console-stats'
+              }
+            );
+
+        return res.json(
+          direct.data
+        );
+      } catch (error) {
+        return sendLegacyError(
+          res,
+          error,
+          {
+            fallbackCode:
+              'ARDUINO_CONSOLE_ERROR',
+            fallbackStatus:
+              502
+          }
+        );
+      }
     }
   );
   read(
@@ -294,7 +478,22 @@ function installLegacyArduinoRoutes(
   command(
     '/api/arduino/console/clear',
     async (runtime) => {
-      const result =
+      if (
+        runtime
+          .arduinoConsoleService &&
+        typeof runtime
+          .arduinoConsoleService
+          .clear === 'function'
+      ) {
+        const result =
+          await runtime
+            .arduinoConsoleService
+            .clear();
+
+        return result.arduino;
+      }
+
+      const direct =
         await runtime
           .arduinoClient
           .get(
@@ -305,16 +504,7 @@ function installLegacyArduinoRoutes(
             }
           );
 
-      runtime.eventBus
-        ?.publish?.(
-          'arduino.console-cleared',
-          {
-            latencyMs:
-              result.latencyMs
-          }
-        );
-
-      return result.data;
+      return direct.data;
     },
     {
       errorCode:

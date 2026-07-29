@@ -116,6 +116,18 @@ const {
 );
 
 const {
+  ArduinoStatusMonitor
+} = require(
+  './server/arduino/arduino-status-monitor'
+);
+
+const {
+  ArduinoConsoleService
+} = require(
+  './server/arduino/arduino-console-service'
+);
+
+const {
   LedService
 } = require(
   './server/led/led-service'
@@ -143,6 +155,12 @@ const {
   LocalScheduleService
 } = require(
   './server/schedule/local-schedule-service'
+);
+
+const {
+  ScheduleFileService
+} = require(
+  './server/files/schedule-file-service'
 );
 
 const {
@@ -205,6 +223,24 @@ const {
   installLegacyApiAdapters
 } = require(
   './server/legacy/legacy-api-bootstrap'
+);
+
+const {
+  installLegacyCronGuard
+} = require(
+  './server/legacy/legacy-cron-guard'
+);
+
+const {
+  LegacyCutoverService
+} = require(
+  './server/legacy/legacy-cutover-service'
+);
+
+const {
+  installStaticWebAssets
+} = require(
+  './server/web/static-web-installer'
 );
 
 const {
@@ -325,6 +361,32 @@ const arduinoClient =
     logger
   });
 
+const arduinoStatusMonitor =
+  new ArduinoStatusMonitor({
+    arduinoClient,
+    eventBus,
+    metrics,
+    logger,
+    intervalMs:
+      config.monitor.intervalMs,
+    timeoutMs:
+      config.monitor.timeoutMs
+  });
+
+const arduinoConsoleService =
+  new ArduinoConsoleService({
+    arduinoClient,
+    eventBus,
+    metrics,
+    logger,
+    cacheLimit:
+      config.console.cacheLimit,
+    maximumPages:
+      config.console.maximumPages,
+    cacheTtlMs:
+      config.console.cacheTtlMs
+  });
+
 const ledService =
   new LedService({
     arduinoClient,
@@ -371,6 +433,28 @@ const localScheduleService =
       localScheduleRunner,
     arduinoScheduleService:
       scheduleService
+  });
+
+const scheduleFileService =
+  new ScheduleFileService({
+    schedulesDir:
+      paths.schedulesDir,
+    arduinoClient,
+    uploadEndpoint:
+      config.files.arduinoScheduleUploadEndpoint,
+    maximumBytes:
+      config.files.maximumScheduleBytes,
+    eventBus,
+    logger
+  });
+
+const legacyCronGuard =
+  installLegacyCronGuard({
+    suppressLocalScheduleCron:
+      config.legacy.suppressLocalScheduleCron,
+    suppressStatusCron:
+      config.legacy.suppressStatusCron,
+    logger
   });
 
 const firmwareReleaseClient =
@@ -458,6 +542,17 @@ const legacyEventBridge =
     logger
   });
 
+const legacyCutoverService =
+  new LegacyCutoverService({
+    config,
+    cronGuard:
+      legacyCronGuard,
+    localScheduleRunner,
+    arduinoStatusMonitor,
+    arduinoConsoleService,
+    scheduleFileService
+  });
+
 const diagnosticsService =
   new DiagnosticsService({
     runtimeProvider:
@@ -490,11 +585,16 @@ setRuntimeContext({
   userRepository,
   sessionService,
   arduinoClient,
+  arduinoStatusMonitor,
+  arduinoConsoleService,
   ledService,
   scheduleService,
   localScheduleRepository,
   localScheduleRunner,
   localScheduleService,
+  scheduleFileService,
+  legacyCronGuard,
+  legacyCutoverService,
   firmwareReleaseClient,
   otaRunner,
   runtimeSettingsService,
@@ -551,6 +651,11 @@ shutdownCoordinator
         .close()
   )
   .register(
+    'arduino-status-monitor',
+    () =>
+      arduinoStatusMonitor.stop()
+  )
+  .register(
     'local-schedule-runner',
     () =>
       localScheduleRunner
@@ -561,13 +666,20 @@ if (
   config.schedule.runnerMode ===
   'active'
 ) {
-  logger.warn(
-    'A V5 helyi schedule runner aktív. A legacy runner kikapcsolása nélkül ugyanaz az időzítés kétszer futhat le.'
+  localScheduleRunner.start();
+  logger.info(
+    'A V5 helyi schedule runner aktív; a legacy percenkénti cron letiltva.'
   );
-
-  localScheduleRunner
-    .start();
 }
+
+if (config.monitor.enabled) {
+  arduinoStatusMonitor.start({ immediate: true });
+}
+
+registerExpressInstaller(
+  'static-web-assets',
+  installStaticWebAssets
+);
 
 registerExpressInstaller(
   'health',

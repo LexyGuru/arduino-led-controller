@@ -1,0 +1,217 @@
+{
+  "package": "v5-schedule-console-cutover-release-gate-ready",
+  "baseVersion": "5.0.0-alpha.1",
+  "createdAt": "2026-07-29T06:15:09.187798+00:00",
+  "files": [
+    {
+      "path": ".env.example",
+      "bytes": 3277,
+      "sha256": "a7b9b5a3e74a3030fbb6b1ead13d7b50e5283bf237dfea55aaa5099c2325de13"
+    },
+    {
+      "path": "deploy/test-alpha2-candidate.sh",
+      "bytes": 6631,
+      "sha256": "9b1a568fafcf4bff5c7682b20c73be04236afd1d1663db6fc10fbc42e89ab08a"
+    },
+    {
+      "path": "deploy/update.sh",
+      "bytes": 18736,
+      "sha256": "0b24cb4b2b03861122461c3d80983d8e819e71d603502e1d9a1ac9d76e7b94d5"
+    },
+    {
+      "path": "docs/api/API_V2_CONTRACT.md",
+      "bytes": 19017,
+      "sha256": "d56a0e06df4a06127c98b5c45b391343d5e1b140c3df6a80953c15e8c1448ed7"
+    },
+    {
+      "path": "docs/api/openapi-v2.json",
+      "bytes": 42006,
+      "sha256": "7bd85177891ddc0278ffcd831ece8f0244144014383817425eef46818420d71f"
+    },
+    {
+      "path": "docs/v5/ALPHA2_CUTOVER_RUNBOOK.md",
+      "bytes": 1291,
+      "sha256": "98c594a36589f46b90005911c8d17cff88aa313f5e17ed1dd110d7643c75235e"
+    },
+    {
+      "path": "docs/v5/PACKAGE_MANIFEST_ADMIN_OPENAPI_OBSERVABILITY.json",
+      "bytes": 9198,
+      "sha256": "c367f0d945788913e8c0d74d49cf5eda2dc17a919063bbc73b84c3b4d3a5b666"
+    },
+    {
+      "path": "docs/v5/SERVER_MODULE_MAP.md",
+      "bytes": 3109,
+      "sha256": "9225a9fd71462de0d954402659089cee43de3a4135ea013c24ee8963fac25a83"
+    },
+    {
+      "path": "docs/v5/V5_REARCHITECTURE_CHECKLIST.md",
+      "bytes": 2863,
+      "sha256": "dec126a17f7b181f3fa069eba369c3d7973e2929061250dddb3feda94f71c5ca"
+    },
+    {
+      "path": "package.json",
+      "bytes": 11656,
+      "sha256": "e56fa41fdb4cbeccbee044f653003979e8c1ca569993883988abebe6b558cbe8"
+    },
+    {
+      "path": "scripts/test-alpha2-release-gate.js",
+      "bytes": 2549,
+      "sha256": "6f0ff7062e093e25308dd08db4b9c321bba22a658947e70ade56be226a70ab63"
+    },
+    {
+      "path": "scripts/test-arduino-console-service.js",
+      "bytes": 2312,
+      "sha256": "6ab7a90dc22eea4347528313d2739885c6867a9cf66765d99542cd7e2cd2400a"
+    },
+    {
+      "path": "scripts/test-arduino-status-monitor.js",
+      "bytes": 1489,
+      "sha256": "84a613a9c1b7c133aed55e90e97a4f37eb196bffe4220c4dc264d2d98a04c234"
+    },
+    {
+      "path": "scripts/test-cutover-package-manifest.js",
+      "bytes": 955,
+      "sha256": "cf7833d12865093d5503d9373a5587e774efb86e6bda23145e74a8bf070450f1"
+    },
+    {
+      "path": "scripts/test-cutover-service.js",
+      "bytes": 1188,
+      "sha256": "cfbf76c09912d95f1e1a3b8a7f93033a050489c06e05afac1278709c831e718f"
+    },
+    {
+      "path": "scripts/test-legacy-cron-guard.js",
+      "bytes": 1609,
+      "sha256": "93c7b59ae0ed2fd25e9ebf1f7c1af202bda4e406f252d309b72968d5d77c6650"
+    },
+    {
+      "path": "scripts/test-schedule-file-service.js",
+      "bytes": 1881,
+      "sha256": "7b1f10223ac357e7f56773efcd11cb8e15fda469acac5efa8a36888bc9c5e44e"
+    },
+    {
+      "path": "scripts/test-static-web-installer.js",
+      "bytes": 750,
+      "sha256": "db0b41fed19be80f4e73030c47fe426080158cb84e9a9d44dd541544f1c60fe7"
+    },
+    {
+      "path": "scripts/validate-repository.sh",
+      "bytes": 6910,
+      "sha256": "6f614d8e7feecf56d3a91e744465eac848eed8587d24d6824a056ae27b2896a1"
+    },
+    {
+      "path": "server/api/v2/api-v2-bootstrap.js",
+      "bytes": 3877,
+      "sha256": "ecc01509963be4328c6a690abc66f9fbec86bd4461a33f2a4c4ef6300249e6c8"
+    },
+    {
+      "path": "server/api/v2/arduino-console-routes.js",
+      "bytes": 1443,
+      "sha256": "7041c3ee3a44a9bed3abad306df6c5fea18156833e65c25e7d2465a8e6646d4a"
+    },
+    {
+      "path": "server/api/v2/cutover-routes.js",
+      "bytes": 1242,
+      "sha256": "6194b8784aeef6e66ad22d4f1fc7421d20c548389ac991e4ff27c531d9feeac8"
+    },
+    {
+      "path": "server/api/v2/routes.js",
+      "bytes": 7458,
+      "sha256": "a89c8fe345ebf3aa798eac15a846616960fcd02a0a116f643c3bee047e38b412"
+    },
+    {
+      "path": "server/api/v2/schedule-file-routes.js",
+      "bytes": 2675,
+      "sha256": "9320d81facebdb46ce2ae83b62740ae3ac2e723a073c3d7adcb504fff57f7259"
+    },
+    {
+      "path": "server/api/v2/web-routes.js",
+      "bytes": 682,
+      "sha256": "f6912deb60f5d2a3841206502c2980c999516814300788d3d792a964e79b412c"
+    },
+    {
+      "path": "server/arduino/arduino-console-service.js",
+      "bytes": 6608,
+      "sha256": "a2255f99509b5d882f304de88116f0cff1d39cd4c159fe42c962973881b14f96"
+    },
+    {
+      "path": "server/arduino/arduino-status-monitor.js",
+      "bytes": 4006,
+      "sha256": "039bcd831af1bad0516e29e6161786aa7c4f1be2962a778debc16448a80c927a"
+    },
+    {
+      "path": "server/core/config.js",
+      "bytes": 11467,
+      "sha256": "d14e1e0c5a53cf18421102b17d985442a2fe794463c9b905ca97ae54afbc53e8"
+    },
+    {
+      "path": "server/events/topics.js",
+      "bytes": 1377,
+      "sha256": "fef83ff10a422c33751d034b82209cbf2c6e351a44e181c6b0f47b477dd03ba8"
+    },
+    {
+      "path": "server/files/file-service-error.js",
+      "bytes": 490,
+      "sha256": "5a693c6d30f15afd8e9820997880f7aec93ac0ce7a1556210dba2700b80065c8"
+    },
+    {
+      "path": "server/files/schedule-file-service.js",
+      "bytes": 5444,
+      "sha256": "6fe540ced020e84dff64aad5ff49235e2bcbe8225f67c9a79a9bdb50ee8780c3"
+    },
+    {
+      "path": "server/legacy/legacy-api-bootstrap.js",
+      "bytes": 1632,
+      "sha256": "ca1466f5625bc6dfa417e6b982c33be40ac1105406285334ec2372e5f2d56bca"
+    },
+    {
+      "path": "server/legacy/legacy-arduino-routes.js",
+      "bytes": 12346,
+      "sha256": "7992ce159575b214ec17177eb91afdc9f0644fa9aa1be8ef6f99aadb116e1e78"
+    },
+    {
+      "path": "server/legacy/legacy-cron-guard.js",
+      "bytes": 3200,
+      "sha256": "0a378aad65fae819c2981b5c215ce9c8406e75e64e2c4c4e634e9f07a26c4ff9"
+    },
+    {
+      "path": "server/legacy/legacy-cutover-service.js",
+      "bytes": 1696,
+      "sha256": "10128ab49c350370d4f286bd8951ead49fddf139ec191f45b1f9e62c77ef817e"
+    },
+    {
+      "path": "server/legacy/legacy-event-bridge.js",
+      "bytes": 2864,
+      "sha256": "7e55a494576ef41d2beebc9c21d1e2aa0deb46a792952e2c529a1f2d4eb47c00"
+    },
+    {
+      "path": "server/legacy/legacy-local-schedule-routes.js",
+      "bytes": 4543,
+      "sha256": "46f93e532be5a40925587447d4975510194095d2ec8faa4e2f2af6c996c59378"
+    },
+    {
+      "path": "server/legacy/legacy-schedule-file-routes.js",
+      "bytes": 1782,
+      "sha256": "107009046b13ca0ddff64ac16a178b92607ba9f9fcb29c28d30320831e73817e"
+    },
+    {
+      "path": "server/observability/diagnostics-service.js",
+      "bytes": 2258,
+      "sha256": "e536710c396481b6a633590e9952ffd0b6d1d2c0ed3b428cbfbd8db0ca776017"
+    },
+    {
+      "path": "server/security/roles.js",
+      "bytes": 2992,
+      "sha256": "ddc752f646ac11d03406d7dafb59263acc10f76b0437b861b938ea7be4b3add2"
+    },
+    {
+      "path": "server/web/static-web-installer.js",
+      "bytes": 963,
+      "sha256": "cf4e61453926b01a667111b9a4ad693e56b77bc75e6881a160fc7739367f08bb"
+    },
+    {
+      "path": "server2_final.js",
+      "bytes": 12440,
+      "sha256": "0447a0afa2228874ba7acfef4e8313b10e663162ef549bcf0ba90633de942c29"
+    }
+  ]
+}

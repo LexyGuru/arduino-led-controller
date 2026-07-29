@@ -108,6 +108,30 @@ const {
 );
 
 const {
+  installArduinoConsoleRoutes
+} = require(
+  './arduino-console-routes'
+);
+
+const {
+  installScheduleFileRoutes
+} = require(
+  './schedule-file-routes'
+);
+
+const {
+  installCutoverRoutes
+} = require(
+  './cutover-routes'
+);
+
+const {
+  installWebRoutes
+} = require(
+  './web-routes'
+);
+
+const {
   installLedRoutes
 } = require(
   './led-routes'
@@ -240,6 +264,22 @@ function installApiV2Routes(
   );
 
   installSettingsRoutes(
+    app
+  );
+
+  installArduinoConsoleRoutes(
+    app
+  );
+
+  installScheduleFileRoutes(
+    app
+  );
+
+  installCutoverRoutes(
+    app
+  );
+
+  installWebRoutes(
     app
   );
 

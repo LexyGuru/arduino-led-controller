@@ -710,3 +710,35 @@ Az aktuális Arduino IP/host és port.
 
 A módosítás atomikusan mentődik a `server-settings.json` fájlba, majd az
 Arduino HTTP-kliens és az OTA célcím azonnal frissül.
+
+
+## Legacy cron cutover, Arduino monitor és konzol
+
+- `GET /api/v2/system/cutover`
+- `GET /api/v2/arduino/monitor`
+- `POST /api/v2/arduino/monitor/actions/poll`
+- `GET /api/v2/arduino/console/logs`
+- `GET /api/v2/arduino/console/stats`
+- `POST /api/v2/arduino/console/actions/clear`
+
+A V5 indító célzottan letiltja a legacy percenkénti helyi schedule cront és a
+30 másodperces Arduino status cront. A helyettesítő szolgáltatások állapota a
+`/api/v2/system/cutover` végponton ellenőrizhető.
+
+## Schedule fájlkezelés
+
+- `GET /api/v2/files/schedules`
+- `GET /api/v2/files/schedules/:filename`
+- `POST /api/v2/files/schedules` (`multipart/form-data`, `file` mező)
+
+Csak `S0L1.JS`–`S6L3.JS` formátumú, érvényes JSON-fájl menthető. A szerver
+atomikus fájlcserét használ, és nem ad vissza abszolút helyi fájlútvonalat.
+Az Arduino-feltöltés csak akkor fut, ha az
+`ARDUINO_SCHEDULE_UPLOAD_ENDPOINT` explicit be van állítva.
+
+## Statikus webes réteg
+
+- `GET /api/v2/web/status`
+
+A `public/` könyvtár kiszolgálása külön Express installerben történik. A nagy,
+inline legacy dashboard egyelőre kompatibilitási tartalékként megmarad.

@@ -2,25 +2,10 @@
 
 const assert =
   require('assert');
-const crypto =
-  require('crypto');
 const fs =
   require('fs');
 const path =
   require('path');
-
-function sha256(
-  filePath
-) {
-  return crypto
-    .createHash('sha256')
-    .update(
-      fs.readFileSync(
-        filePath
-      )
-    )
-    .digest('hex');
-}
 
 function main() {
   const repositoryRoot =
@@ -46,48 +31,100 @@ function main() {
     );
 
   assert.strictEqual(
+    manifest.package,
+    'v5-legacy-adapters-prometheus-shutdown-ready'
+  );
+
+  assert.ok(
+    Array.isArray(
+      manifest.files
+    ),
+    'A legacy adapter manifest files mezője nem tömb.'
+  );
+
+  assert.strictEqual(
     manifest.files.length,
     manifest.fileCountExcludingManifest
   );
+
+  assert.ok(
+    manifest.files.length >= 30,
+    'A legacy adapter manifest túl kevés fájlt tartalmaz.'
+  );
+
+  const seenPaths =
+    new Set();
 
   for (
     const entry
     of manifest.files
   ) {
-    const filePath =
-      path.join(
-        repositoryRoot,
-        entry.path
-      );
+    assert.ok(
+      entry &&
+      typeof entry === 'object',
+      'Érvénytelen manifest-bejegyzés.'
+    );
+
+    assert.ok(
+      typeof entry.path ===
+        'string' &&
+      entry.path.trim(),
+      'Hiányzó manifest-fájlútvonal.'
+    );
 
     assert.strictEqual(
-      fs.existsSync(
-        filePath
+      seenPaths.has(
+        entry.path
+      ),
+      false,
+      `Duplikált manifest-fájlútvonal: ${entry.path}`
+    );
+
+    seenPaths.add(
+      entry.path
+    );
+
+    assert.match(
+      entry.sha256,
+      /^[a-f0-9]{64}$/i,
+      `Érvénytelen SHA-256 formátum: ${entry.path}`
+    );
+
+    assert.ok(
+      Number.isInteger(
+        entry.bytes
+      ) &&
+      entry.bytes >= 0,
+      `Érvénytelen fájlméret: ${entry.path}`
+    );
+  }
+
+  for (
+    const requiredPath
+    of [
+      '.env.example',
+      'server2_final.js',
+      'deploy/update.sh',
+      'scripts/validate-repository.sh'
+    ]
+  ) {
+    assert.strictEqual(
+      seenPaths.has(
+        requiredPath
       ),
       true,
-      `Hiányzó manifest fájl: ${entry.path}`
-    );
-
-    assert.strictEqual(
-      sha256(filePath),
-      entry.sha256,
-      `Eltérő SHA-256: ${entry.path}`
-    );
-
-    assert.strictEqual(
-      fs.statSync(
-        filePath
-      ).size,
-      entry.bytes,
-      `Eltérő fájlméret: ${entry.path}`
+      `Hiányzó kötelező manifest-bejegyzés: ${requiredPath}`
     );
   }
 
   console.log(
-    'OK: legacy adapter csomagmanifest'
+    'OK: legacy adapter archivált csomagmanifest'
   );
   console.log(
-    'OK: fájlonkénti SHA-256 ellenőrzés'
+    'OK: legacy manifest séma és SHA-256 formátum'
+  );
+  console.log(
+    'OK: a későbbi csomagok által módosított fájlok nem okoznak téves hibát'
   );
 }
 

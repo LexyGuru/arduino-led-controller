@@ -114,6 +114,16 @@ function createApiV2Handlers({
               '/api/v2/local-schedules',
             firmwareStatus:
               '/api/v2/firmware/status',
+            arduinoConsole:
+              '/api/v2/arduino/console/logs',
+            arduinoMonitor:
+              '/api/v2/arduino/monitor',
+            scheduleFiles:
+              '/api/v2/files/schedules',
+            cutover:
+              '/api/v2/system/cutover',
+            webStatus:
+              '/api/v2/web/status',
             authStatus:
               '/api/v2/auth/status',
             eventStatus:

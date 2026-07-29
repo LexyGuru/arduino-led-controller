@@ -159,7 +159,11 @@ log "Izolált szerver indítása a ${TEST_PORT} porton."
   SCHEDULES_DIR="${SCHEDULES_DIR}" \
   FIRMWARE_DIR="${FIRMWARE_DIR}" \
   AUTH_FILE="${AUTH_FILE}" \
-  LOCAL_SCHEDULE_RUNNER_MODE=manual \
+  LOCAL_SCHEDULE_RUNNER_MODE=active \
+  LEGACY_LOCAL_SCHEDULE_ADAPTERS_ENABLED=1 \
+  LEGACY_SUPPRESS_LOCAL_SCHEDULE_CRON=1 \
+  LEGACY_SUPPRESS_STATUS_CRON=1 \
+  ARDUINO_STATUS_MONITOR_ENABLED=1 \
   node server2_final.js
 ) >"${TEST_ROOT}/.alpha2-test/server.log" 2>&1 &
 
@@ -236,6 +240,55 @@ curl \
         if (body.data?.lifecycle?.state !== "ready") process.exit(1);
       });
     '
+
+
+cutover_json="$(
+  curl \
+    --fail \
+    --silent \
+    --max-time 5 \
+    -H "Authorization: Bearer ${TEST_TOKEN}" \
+    "${BASE_URL}/api/v2/system/cutover"
+)"
+
+printf '%s' "${cutover_json}" | node -e '
+  let input = "";
+  process.stdin.on("data", (chunk) => input += chunk);
+  process.stdin.on("end", () => {
+    const body = JSON.parse(input);
+    const data = body.data || {};
+    if (body.success !== true) process.exit(1);
+    if (data.legacyAdapters?.localSchedules !== true) process.exit(1);
+    if (data.legacyCronSuppression?.localSchedule !== true) process.exit(1);
+    if (data.legacyCronSuppression?.arduinoStatus !== true) process.exit(1);
+    if (data.replacements?.localScheduleRunner?.active !== true) process.exit(1);
+    if (data.replacements?.arduinoStatusMonitor?.active !== true) process.exit(1);
+  });
+'
+
+curl \
+  --fail \
+  --silent \
+  --max-time 5 \
+  -H "Authorization: Bearer ${TEST_TOKEN}" \
+  "${BASE_URL}/api/v2/arduino/monitor" \
+  >/dev/null
+
+curl \
+  --fail \
+  --silent \
+  --max-time 5 \
+  -H "Authorization: Bearer ${TEST_TOKEN}" \
+  "${BASE_URL}/api/v2/files/schedules" \
+  >/dev/null
+
+curl \
+  --fail \
+  --silent \
+  --max-time 5 \
+  -H "Authorization: Bearer ${TEST_TOKEN}" \
+  "${BASE_URL}/api/v2/web/status" \
+  >/dev/null
 
 log "Rollback könyvtárteszt."
 

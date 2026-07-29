@@ -63,53 +63,57 @@ function main() {
 
   assert.match(
     packageData.version,
-    /^5\.0\.0-alpha\.[1-9]\d*$/
+    /^5\.0\.0-alpha\.[1-9]\d*$/,
+    'A projektverzió nem érvényes alpha verzió.'
   );
 
   assert.strictEqual(
     openApi.info.version,
-    packageData.version
+    packageData.version,
+    'Az OpenAPI és a package.json verziója eltér.'
   );
 
   assert.strictEqual(
     openApi.openapi,
-    '3.1.0'
+    '3.1.0',
+    'Az OpenAPI dokumentum verziója nem 3.1.0.'
   );
 
-  assert.strictEqual(
+  assert.ok(
     Object.keys(
       openApi.paths
     ).length >= 40,
-    true
+    'Az OpenAPI dokumentumban kevesebb mint 40 útvonal van.'
   );
 
-  assert.strictEqual(
-    checklist.includes(
-      'Teljes izolált LXC integrációs teszt'
-    ),
-    true
+  assert.match(
+    checklist,
+    /Teljes izolált LXC integrációs(?: és rollback)? teszt/i,
+    'A checklistből hiányzik a teljes izolált LXC integrációs teszt.'
   );
 
-  assert.strictEqual(
+  assert.ok(
     releaseGate.includes(
       'deploy/test-alpha2-candidate.sh'
     ),
-    true
+    'A release-gate dokumentum nem hivatkozik a candidate tesztre.'
   );
 
   assert.strictEqual(
     manifest.package,
-    'v5-admin-openapi-observability-lifecycle-ready'
+    'v5-admin-openapi-observability-lifecycle-ready',
+    'A korábbi admin/OpenAPI csomagmanifest neve eltér.'
   );
 
   assert.strictEqual(
     manifest.currentVersion,
-    packageData.version
+    packageData.version,
+    'A csomagmanifest és a projektverzió eltér.'
   );
 
-  assert.strictEqual(
+  assert.ok(
     manifest.fileCountExcludingManifest >= 50,
-    true
+    'A csomagmanifestben kevesebb mint 50 fájl szerepel.'
   );
 
   console.log(

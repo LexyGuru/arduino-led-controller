@@ -32,10 +32,16 @@ const LEGACY_EVENT_MAP =
       'scheduledLedUpdate',
     'firmware.state':
       'firmwareUpdate',
+    'arduino.status':
+      'arduinoStatus',
+    'arduino.offline':
+      'arduinoOffline',
     'arduino.restarting':
       'arduinoRestarting',
     'arduino.console-cleared':
       'consoleCleared',
+    'schedule-file.stored':
+      'scheduleUploaded',
     'settings.arduino-updated':
       'arduinoSettingsUpdated'
   });

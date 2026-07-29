@@ -41,6 +41,18 @@
     },
     {
       "name": "Observability"
+    },
+    {
+      "name": "Console"
+    },
+    {
+      "name": "Files"
+    },
+    {
+      "name": "Cutover"
+    },
+    {
+      "name": "Web"
     }
   ],
   "components": {
@@ -1723,6 +1735,247 @@
             "$ref": "#/components/responses/Error"
           }
         }
+      }
+    },
+    "/api/v2/system/cutover": {
+      "get": {
+        "summary": "Legacy cutover állapot",
+        "tags": [
+          "Cutover"
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": []
+          }
+        ]
+      }
+    },
+    "/api/v2/arduino/monitor": {
+      "get": {
+        "summary": "Arduino státuszmonitor állapot",
+        "tags": [
+          "Arduino"
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": []
+          }
+        ]
+      }
+    },
+    "/api/v2/arduino/monitor/actions/poll": {
+      "post": {
+        "summary": "Azonnali Arduino státuszlekérdezés",
+        "tags": [
+          "Arduino"
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": []
+          }
+        ]
+      }
+    },
+    "/api/v2/arduino/console/logs": {
+      "get": {
+        "summary": "Arduino konzolcache",
+        "tags": [
+          "Console"
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": []
+          }
+        ]
+      }
+    },
+    "/api/v2/arduino/console/stats": {
+      "get": {
+        "summary": "Arduino konzolstatisztika",
+        "tags": [
+          "Console"
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": []
+          }
+        ]
+      }
+    },
+    "/api/v2/arduino/console/actions/clear": {
+      "post": {
+        "summary": "Arduino konzol törlése",
+        "tags": [
+          "Console"
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": []
+          }
+        ]
+      }
+    },
+    "/api/v2/files/schedules": {
+      "get": {
+        "summary": "Schedule fájllista",
+        "tags": [
+          "Files"
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": []
+          }
+        ]
+      },
+      "post": {
+        "summary": "Schedule fájl feltöltése",
+        "tags": [
+          "Files"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "file"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  },
+                  "uploadArduino": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "$ref": "#/components/responses/Success"
+          }
+        }
+      }
+    },
+    "/api/v2/files/schedules/{filename}": {
+      "get": {
+        "summary": "Schedule fájl olvasása",
+        "tags": [
+          "Files"
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "filename",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^S[0-6]L[1-3]\\.JS$"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v2/web/status": {
+      "get": {
+        "summary": "Statikus webes réteg állapota",
+        "tags": [
+          "Web"
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": []
+          }
+        ]
       }
     }
   }

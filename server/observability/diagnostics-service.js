@@ -74,9 +74,15 @@ class DiagnosticsService {
           ?.getStatus?.() ||
         null,
       localScheduleRunner:
-        runtime.localScheduleRunner
-          ?.getStatus?.() ||
-        null,
+        runtime.localScheduleRunner?.getStatus?.() || null,
+      arduinoStatusMonitor:
+        runtime.arduinoStatusMonitor?.getStatus?.() || null,
+      arduinoConsole:
+        runtime.arduinoConsoleService?.snapshot?.() || null,
+      legacyCutover:
+        runtime.legacyCutoverService?.snapshot?.() || null,
+      scheduleFiles:
+        runtime.scheduleFileService?.status?.() || null,
       firmware: {
         state:
           runtime.firmwareService

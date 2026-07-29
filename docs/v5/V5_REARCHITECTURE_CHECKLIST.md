@@ -4,101 +4,81 @@ Utolsó frissítés: 2026-07-29
 Integrációs ág: `next/v5-rearchitecture`
 Munkacsomag: `feature/v5-server-modularization`
 
-## Jelmagyarázat
-
-- `[x]` elkészült és tesztelt
-- `[-]` folyamatban
-- `[ ]` még nem kezdődött el
-
 ## Repository és LXC
 
-- [x] Stabil `main` és külön `next` ág
-- [x] V5 verziószinkron, baseline és repository-validátor
-- [x] Worktree alapú frissítés előtti teszt
-- [x] Last-known-good commit és automatikus rollback
-- [x] Rollback utáni dependency és health ellenőrzés
-- [x] Alpha.2 izolált release-gate script
+- [x] Stabil `main`, külön `next` és feature ág
+- [x] Repository-validátor, titokellenőrzés és rollback
+- [x] Alpha.2 izolált worktree release-gate
+- [-] Alpha.2 gate valódi LXC-n
 - [ ] Verziózott release-csomag telepítése
 
-## Hitelesítés és legacy kompatibilitás
+## Hitelesítés, API és megfigyelhetőség
 
-- [x] Bearer és session auth az API v2-n
-- [x] Session CSRF és felhasználó-adminisztráció
-- [x] Legacy auth status/login/logout adapter
-- [x] Legacy `/api` session middleware a közös SessionService alapján
-- [-] Legacy setup és user-admin route-ok teljes átállítása
+- [x] Bearer és session hitelesítés
+- [x] Szerepkörök, permissions, CSRF és user admin
+- [x] OpenAPI 3.1, audit, metrics, Prometheus és diagnostics
+- [x] Tartós EventStore és Socket.IO gateway
 - [ ] Tokenrotációs admin API
 
-## Realtime és életciklus
+## LED és Arduino
 
-- [x] EventBus, EventStore és Socket.IO V5 gateway
-- [x] Legacy Socket.IO eseménynév-híd
-- [x] SIGTERM/SIGINT cleanup coordinator
-- [x] Legacy saját signal handlerek elnyomása
-- [x] HTTP/HTTPS szerverpéldány-regiszter
-- [x] Explicit HTTP szerver close
-- [x] Explicit Socket.IO close
-- [ ] Legacy 30 másodperces státusz-cron kiváltása
-
-## Megfigyelhetőség
-
-- [x] HTTP és eseménymetrikák
-- [x] Metrics és diagnostics API
-- [x] Prometheus 0.0.4 szöveges export
-- [x] Tartós eseménytár és rotálható auditnapló
-
-## Arduino, LED és beállítások
-
-- [x] Közös ArduinoClient request queue
-- [x] Futás közben módosítható Arduino target
-- [x] Atomikus `server-settings.json` mentés
-- [x] OTA célcím együtt frissül
-- [x] API v2 settings route
-- [x] Legacy settings adapter
-- [x] Legacy Arduino read route-ok átállítása
-- [x] Legacy LED update/all-on/all-off/reset átállítása
-- [ ] Legacy Arduino konzolcache külön modulba emelése
-- [ ] Legacy schedule fájlfeltöltés külön modulba emelése
+- [x] Közös sorba állított Arduino kliens
+- [x] Közös LED szolgáltatás és legacy adapterek
+- [x] Közös Arduino státuszmonitor
+- [x] Legacy 30 másodperces státuszcron letiltása
+- [x] Lapozott, TTL-alapú Arduino konzolcache
+- [x] API v2 és legacy konzolvégpontok
+- [ ] Arduino query API-kulcs lecserélése fejlécre
 
 ## Schedule
 
 - [x] Arduino schedule service és EEPROM sync
-- [x] Helyi schedule repository és V5 runner
-- [x] Legacy Arduino schedule route-ok átállítása
-- [x] Legacy helyi schedule adapter elkészült
-- [-] Legacy helyi schedule adapter aktiválása
-- [ ] Legacy `localSchedules` memória kiváltása
-- [ ] Legacy percenkénti cron kikapcsolása
+- [x] Atomikus helyi schedule repository
+- [x] Helyi schedule create/update/delete/import/export
+- [x] Legacy helyi schedule adapter aktiválva
+- [x] V5 schedule runner alapból aktív
+- [x] Legacy percenkénti cron célzott letiltása
+- [x] Percenkénti duplikációvédelem
+- [x] Validált, atomikus schedule fájlkezelés
+- [x] Legacy fájlfeltöltési hiba kiváltása közös szolgáltatással
+- [ ] Arduino schedule upload endpoint hardveres igazolása
+- [ ] `server2_legacy.js` helyi schedule kódjának fizikai törlése
 
-## Firmware
+## Firmware és OTA
 
-- [x] GitHub release és SHA-256 ellenőrzés
-- [x] Biztonságos OTA folyamat és API v2 route-ok
-- [x] Legacy firmware status/update adapter
+- [x] Release, SHA-256, OTA és újraindulás-ellenőrzés
+- [x] Legacy firmware adapter
 - [ ] OTA megszakítás
-- [ ] Utolsó működő firmware backup
-- [ ] Firmware rollback
+- [ ] Utolsó működő firmware backup és rollback
 
-## API dokumentáció
+## Web és szerver modularizáció
 
-- [x] OpenAPI 3.1 dokumentum
-- [x] Prometheus végpont dokumentálása
-- [x] Runtime Arduino settings dokumentálása
-- [ ] Automatikus TypeScript kliensgenerálás
+- [x] `public/` statikus fájlok külön Express installerben
+- [x] Explicit HTTP és Socket.IO shutdown
+- [x] Legacy signal handlerek elnyomása
+- [x] Cron-cutover állapot API
+- [-] Inline legacy dashboard kiváltása külön fájlokkal
+- [ ] `server2_legacy.js` megszüntetése
+
+## Desktop és mobil
+
+- [ ] Tauri átállítása API v2-re
+- [ ] OpenAPI-alapú TypeScript típusgenerálás
+- [ ] Biztonságos token/session tárolás
+- [ ] Realtime Socket.IO kliens és offline mód
 
 ## Kiadás
 
-- [-] Teljes izolált LXC integrációs teszt
-- [-] Staging telepítés és rollback-próba
-- [ ] `5.0.0-alpha.2`
-- [ ] Migrációs és rollback dokumentáció
-- [ ] Release notes
-- [ ] Beolvasztás `main` ágba
-- [ ] V5 produkciós kiadás
+- [ ] Teljes izolált LXC integrációs és rollback teszt
+- [ ] `5.0.0-alpha.2` verziólépés
+- [ ] Staging telepítés
+- [ ] Release notes és migrációs dokumentáció
+- [ ] Beolvasztás `next`, majd `main` ágba
 
 ## Következő hatalmas munkacsomag
 
-1. Legacy helyi schedule memória és cron kiváltása.
-2. Arduino konzolcache és fájlkezelés modularizálása.
-3. Izolált LXC release gate és rollback-próba.
-4. `5.0.0-alpha.2` verziólépés.
+1. Valódi LXC alpha.2 gate és hibajavítás.
+2. Verziószinkron `5.0.0-alpha.2`-re.
+3. OpenAPI TypeScript kliens/típusgenerátor.
+4. Inline legacy dashboard kiszervezése statikus fájlokba.
+5. OTA backup és rollback alapok.

@@ -66,3 +66,16 @@ Leállítási sorrend:
 2. Legacy setup/user-admin route-ok teljes átállítása.
 3. Legacy monolit Arduino konzolcache és fájlkezelés kiemelése.
 4. Izolált LXC release gate és `5.0.0-alpha.2`.
+
+
+## Cron cutover, konzol és fájlréteg
+
+| Modul | Feladat |
+|---|---|
+| `server/legacy/legacy-cron-guard.js` | A két kiváltott legacy cron célzott letiltása |
+| `server/arduino/arduino-status-monitor.js` | Közös 30 másodperces Arduino státuszfigyelés |
+| `server/arduino/arduino-console-service.js` | Lapozott, újraindulásbiztos konzolcache |
+| `server/files/schedule-file-service.js` | Validált és atomikus schedule fájlkezelés |
+| `server/legacy/legacy-schedule-file-routes.js` | Régi `/api/files` és upload kompatibilitás |
+| `server/legacy/legacy-cutover-service.js` | Cutover készenléti összesítés |
+| `server/web/static-web-installer.js` | `public/` statikus fájlok külön installerben |
