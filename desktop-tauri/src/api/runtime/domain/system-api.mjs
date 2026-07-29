@@ -1,0 +1,113 @@
+export class DesktopSystemApi {
+  constructor({
+    client,
+    runtime
+  } = {}) {
+    this.client = client;
+    this.runtime = runtime;
+  }
+
+  release() {
+    return this.runtime.read(
+      'system:release',
+      () =>
+        this.client
+          .getSystemRelease(),
+      {
+        ttlMs: 30000
+      }
+    );
+  }
+
+  diagnostics() {
+    return this.runtime.read(
+      'system:diagnostics',
+      () =>
+        this.client
+          .getDiagnostics(),
+      {
+        ttlMs: 10000
+      }
+    );
+  }
+
+  preflight() {
+    return this.runtime.read(
+      'system:preflight',
+      () =>
+        this.client
+          .getSystemPreflight(),
+      {
+        ttlMs: 10000
+      }
+    );
+  }
+
+  maintenanceStatus() {
+    return this.runtime.read(
+      'system:maintenance',
+      () =>
+        this.client
+          .getMaintenanceStatus(),
+      {
+        ttlMs: 5000
+      }
+    );
+  }
+
+  enableMaintenance(reason) {
+    return this.runtime.write(
+      () =>
+        this.client
+          .enableMaintenanceMode({
+            body: {
+              reason
+            }
+          })
+    );
+  }
+
+  disableMaintenance() {
+    return this.runtime.write(
+      () =>
+        this.client
+          .disableMaintenanceMode()
+    );
+  }
+
+  snapshots() {
+    return this.runtime.read(
+      'system:snapshots',
+      () =>
+        this.client
+          .listSystemSnapshots(),
+      {
+        ttlMs: 10000
+      }
+    );
+  }
+
+  createSnapshot(label = '') {
+    return this.runtime.write(
+      () =>
+        this.client
+          .createSystemSnapshot({
+            body: {
+              label
+            }
+          })
+    );
+  }
+
+  migrations() {
+    return this.runtime.read(
+      'system:migrations',
+      () =>
+        this.client
+          .getSystemMigrations(),
+      {
+        ttlMs: 10000
+      }
+    );
+  }
+}

@@ -62,10 +62,19 @@ Munkacsomag: `feature/v5-server-modularization`
 
 ## Desktop és mobil
 
-- [ ] Tauri átállítása API v2-re
+- [-] Tauri képernyők fokozatos átállítása API v2-re
 - [x] OpenAPI-alapú TypeScript típus- és kliensgenerálás
-- [ ] Biztonságos token/session tárolás
-- [ ] Realtime Socket.IO kliens és offline mód
+- [x] Session-cookie elsődleges hitelesítés
+- [x] Bearer token alapból csak folyamatmemóriában
+- [-] Natív Tauri credential bridge előkészítve
+- [x] Szerverprofil és URL-biztonsági validáció
+- [x] Online/offline/reconnecting állapotgép
+- [x] Offline olvasási cache és veszélyes írások tiltása
+- [x] Socket.IO factory és polling realtime fallback
+- [x] LED, schedule, firmware és system domain adapterek
+- [x] React provider és állapothook
+- [ ] Rust credential parancsok platformonkénti implementálása
+- [ ] Meglévő Tauri képernyők domain adapterekre állítása
 
 ## Rendszerüzemeltetés
 
@@ -90,8 +99,8 @@ Munkacsomag: `feature/v5-server-modularization`
 
 ## Következő hatalmas munkacsomag
 
-1. A valódi LXC alpha.2 gate és staging-deploy futtatása.
-2. Sikeres jelentés után teljes `5.0.0-alpha.2` verziószinkron.
-3. Inline legacy dashboard fizikai kiszervezése.
-4. Tauri képernyők átállítása a generált API kliensre.
-5. `server2_legacy.js` további fizikai bontása.
+1. Valódi LXC alpha.2 gate és staging-deploy futtatása.
+2. Sikeres gate után teljes `5.0.0-alpha.2` verziószinkron.
+3. Tauri Rust credential bridge és platformonkénti biztonságos tárolás.
+4. Első desktop képernyők átállítása a domain adapterekre.
+5. Inline legacy dashboard fizikai kiszervezése.
