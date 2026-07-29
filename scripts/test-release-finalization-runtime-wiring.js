@@ -119,7 +119,7 @@ async function main() {
 
     assert.match(
       serverEntry,
-      /releaseFinalizationService,\s*socketGateway,/
+      /releaseFinalizationService,\s*alpha2OrchestrationService,\s*socketGateway,/
     );
 
     console.log(

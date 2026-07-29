@@ -18,6 +18,7 @@ import './dashboard-led-api-v2.css';
 import './schedule-firmware-logs-api-v2.css';
 import './native-credential-bridge.css';
 import './release-finalization.css';
+import './lxc-orchestration.css';
 
 const tauriAvailable =
   typeof globalThis !==

@@ -288,6 +288,57 @@ function createRuntimePaths(
           'release-execution',
           'alpha2-finalization-approval.json'
         )
+      ),
+    releaseOrchestrationStateFile:
+      resolveFromRoot(
+        root,
+        environment.RELEASE_ORCHESTRATION_STATE_FILE,
+        path.join(
+          dataDir,
+          'release-execution',
+          'alpha2-orchestration-state.json'
+        )
+      ),
+    releaseOrchestrationArtifactDir:
+      resolveFromRoot(
+        root,
+        environment.RELEASE_ORCHESTRATION_ARTIFACT_DIR,
+        path.join(
+          dataDir,
+          'release-execution',
+          'artifacts'
+        )
+      ),
+    releaseOrchestrationArtifactIndexFile:
+      resolveFromRoot(
+        root,
+        environment.RELEASE_ORCHESTRATION_ARTIFACT_INDEX_FILE,
+        path.join(
+          dataDir,
+          'release-execution',
+          'artifacts',
+          'index.json'
+        )
+      ),
+    releaseProductionGuardFile:
+      resolveFromRoot(
+        root,
+        environment.RELEASE_PRODUCTION_GUARD_FILE,
+        path.join(
+          dataDir,
+          'release-execution',
+          'production-guard.json'
+        )
+      ),
+    releaseProductionGuardVerificationFile:
+      resolveFromRoot(
+        root,
+        environment.RELEASE_PRODUCTION_GUARD_VERIFICATION_FILE,
+        path.join(
+          dataDir,
+          'release-execution',
+          'production-guard-verification.json'
+        )
       )
   });
 }

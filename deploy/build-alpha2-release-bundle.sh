@@ -82,7 +82,7 @@ VERSION="$(
     "require('${ROOT_DIR}/package.json').version"
 )"
 
-NAME="arduino-led-controller-${VERSION}-${SHORT_COMMIT}"
+NAME="arduino-led-controller-${VERSION}-${PHASE}-${SHORT_COMMIT}"
 
 TEMP_DIR="$(
   mktemp -d

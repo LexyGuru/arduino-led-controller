@@ -17,7 +17,7 @@ log() {
   exit 1
 }
 
-[[ -d "${APP_DIR}/.git" ]] || {
+[[ -e "${APP_DIR}/.git" ]] || {
   log "HIBA: nem Git repository: ${APP_DIR}"
   exit 1
 }
@@ -73,6 +73,7 @@ APP_DIR="${APP_DIR}" \
 ENV_FILE="${ENV_FILE}" \
 SERVICE_NAME="${SERVICE_NAME}" \
 CANDIDATE_REF="${CANDIDATE_COMMIT}" \
+CANDIDATE_SCRIPT="${WORKTREE}/deploy/test-alpha2-candidate.sh" \
 REPORT_DIR="${REPORT_DIR}" \
   bash \
   "${WORKTREE}/deploy/test-alpha2-lxc.sh"

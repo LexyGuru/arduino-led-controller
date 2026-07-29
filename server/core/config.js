@@ -552,6 +552,13 @@ function loadRuntimeConfig(options = {}) {
           168,
           1,
           2160
+        ),
+      orchestrationMaxAgeHours:
+        numberInRange(
+          environment.RELEASE_ORCHESTRATION_MAX_AGE_HOURS,
+          168,
+          1,
+          2160
         )
     },
     legacy: {

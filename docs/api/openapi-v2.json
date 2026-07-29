@@ -2741,6 +2741,90 @@
           }
         }
       }
+    },
+    "/api/v2/release/lxc-orchestration": {
+      "get": {
+        "tags": [
+          "Release"
+        ],
+        "summary": "Alpha.2 LXC orchestration állapot",
+        "operationId": "getAlpha2LxcOrchestration",
+        "responses": {
+          "200": {
+            "description": "LXC orchestration állapot",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Nincs hitelesítés"
+          },
+          "403": {
+            "description": "Nincs jogosultság"
+          }
+        }
+      }
+    },
+    "/api/v2/release/lxc-artifacts": {
+      "get": {
+        "tags": [
+          "Release"
+        ],
+        "summary": "Alpha.2 LXC artifact index",
+        "operationId": "getAlpha2LxcArtifacts",
+        "responses": {
+          "200": {
+            "description": "LXC artifact index",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Nincs hitelesítés"
+          },
+          "403": {
+            "description": "Nincs jogosultság"
+          }
+        }
+      }
+    },
+    "/api/v2/release/actions/verify-lxc-orchestration": {
+      "post": {
+        "tags": [
+          "Release"
+        ],
+        "summary": "Alpha.2 LXC orchestration ellenőrzése",
+        "operationId": "verifyAlpha2LxcOrchestration",
+        "responses": {
+          "200": {
+            "description": "LXC orchestration érvényes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Nincs hitelesítés"
+          },
+          "403": {
+            "description": "Nincs jogosultság"
+          }
+        }
+      }
     }
   }
 }

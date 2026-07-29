@@ -445,6 +445,12 @@ export class DesktopSystemApi {
     Promise<unknown>;
   revokePromotionApproval():
     Promise<unknown>;
+  lxcOrchestration():
+    Promise<unknown>;
+  lxcArtifacts():
+    Promise<unknown>;
+  verifyLxcOrchestration():
+    Promise<unknown>;
   executionReceipts():
     Promise<unknown>;
   finalizationReadiness():

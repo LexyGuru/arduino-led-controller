@@ -32,6 +32,10 @@ import {
 } from '../components/v5/V5ReleaseFinalizationPanel';
 
 import {
+  V5LxcOrchestrationPanel
+} from '../components/v5/V5LxcOrchestrationPanel';
+
+import {
   V5SnapshotPanel
 } from '../components/v5/V5SnapshotPanel';
 
@@ -209,6 +213,24 @@ export function V5SystemPage() {
               () =>
                 void state.operations
                   .revokePromotionApproval()
+            }
+          />
+
+          <V5LxcOrchestrationPanel
+            orchestration={
+              state.lxcOrchestration
+            }
+            busyAction={
+              state.busyAction
+            }
+            onRefresh={
+              () =>
+                void state.refresh()
+            }
+            onVerify={
+              () =>
+                void state.operations
+                  .verifyLxcOrchestration()
             }
           />
 

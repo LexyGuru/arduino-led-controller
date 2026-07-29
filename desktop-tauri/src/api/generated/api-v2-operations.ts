@@ -449,6 +449,15 @@ export const API_V2_OPERATIONS = [
     "tags": []
   },
   {
+    "id": "verifyAlpha2LxcOrchestration",
+    "method": "POST",
+    "path": "/api/v2/release/actions/verify-lxc-orchestration",
+    "summary": "Alpha.2 LXC orchestration ellenőrzése",
+    "tags": [
+      "Release"
+    ]
+  },
+  {
     "id": "getAlpha2ExecutionReceipts",
     "method": "GET",
     "path": "/api/v2/release/execution-receipts",
@@ -471,6 +480,24 @@ export const API_V2_OPERATIONS = [
     "method": "GET",
     "path": "/api/v2/release/finalization-readiness",
     "summary": "Alpha.2 véglegesítési readiness",
+    "tags": [
+      "Release"
+    ]
+  },
+  {
+    "id": "getAlpha2LxcArtifacts",
+    "method": "GET",
+    "path": "/api/v2/release/lxc-artifacts",
+    "summary": "Alpha.2 LXC artifact index",
+    "tags": [
+      "Release"
+    ]
+  },
+  {
+    "id": "getAlpha2LxcOrchestration",
+    "method": "GET",
+    "path": "/api/v2/release/lxc-orchestration",
+    "summary": "Alpha.2 LXC orchestration állapot",
     "tags": [
       "Release"
     ]

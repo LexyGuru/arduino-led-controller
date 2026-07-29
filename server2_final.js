@@ -248,6 +248,12 @@ const {
 );
 
 const {
+  Alpha2OrchestrationService
+} = require(
+  './server/release/alpha2-orchestration-service'
+);
+
+const {
   installExpressFactoryPatch,
   registerExpressInstaller
 } = require(
@@ -740,6 +746,24 @@ const releaseFinalizationService =
     eventBus
   });
 
+const alpha2OrchestrationService =
+  new Alpha2OrchestrationService({
+    stateFile:
+      paths.releaseOrchestrationStateFile,
+    artifactIndexFile:
+      paths.releaseOrchestrationArtifactIndexFile,
+    productionGuardFile:
+      paths.releaseProductionGuardFile,
+    productionGuardVerificationFile:
+      paths.releaseProductionGuardVerificationFile,
+    receiptDirectory:
+      paths.releaseExecutionReceiptDir,
+    maxAgeHours:
+      config.release
+        .orchestrationMaxAgeHours,
+    logger
+  });
+
 const socketGateway =
   new SocketGateway({
     eventBus,
@@ -825,6 +849,7 @@ setRuntimeContext({
   releaseInfoService,
   releaseGateService,
   releaseFinalizationService,
+  alpha2OrchestrationService,
   socketGateway,
   legacyEventBridge,
   diagnosticsService,

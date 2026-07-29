@@ -84,6 +84,38 @@ export class DesktopSystemApi {
     );
   }
 
+  lxcOrchestration() {
+    return this.runtime.read(
+      'release:lxc-orchestration',
+      () =>
+        this.client
+          .getAlpha2LxcOrchestration(),
+      {
+        ttlMs: 5000
+      }
+    );
+  }
+
+  lxcArtifacts() {
+    return this.runtime.read(
+      'release:lxc-artifacts',
+      () =>
+        this.client
+          .getAlpha2LxcArtifacts(),
+      {
+        ttlMs: 5000
+      }
+    );
+  }
+
+  verifyLxcOrchestration() {
+    return this.runtime.write(
+      () =>
+        this.client
+          .verifyAlpha2LxcOrchestration()
+    );
+  }
+
   executionReceipts() {
     return this.runtime.read(
       'release:execution-receipts',

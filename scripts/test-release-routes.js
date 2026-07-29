@@ -62,7 +62,7 @@ function main() {
 
   assert.strictEqual(
     registered.length,
-    11
+    14
   );
 
   for (
@@ -78,7 +78,10 @@ function main() {
       '/api/v2/release/finalization-readiness',
       '/api/v2/release/actions/verify-finalization',
       '/api/v2/release/actions/approve-finalization',
-      '/api/v2/release/finalization-approval'
+      '/api/v2/release/finalization-approval',
+      '/api/v2/release/lxc-orchestration',
+      '/api/v2/release/lxc-artifacts',
+      '/api/v2/release/actions/verify-lxc-orchestration'
     ]
   ) {
     assert.strictEqual(
@@ -108,7 +111,7 @@ function main() {
   );
 
   console.log(
-    'OK: 11 release, promóciós és finalization API v2 route'
+    'OK: 14 release, promóciós, finalization és LXC orchestration API v2 route'
   );
 
   console.log(

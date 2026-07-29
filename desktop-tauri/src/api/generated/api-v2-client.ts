@@ -328,6 +328,11 @@ export class ApiV2Client {
     return this.request<T>("POST", "/api/v2/release/actions/verify-gate", options);
   }
 
+  /** Alpha.2 LXC orchestration ellenőrzése */
+  verifyAlpha2LxcOrchestration<T = unknown>(options: ApiRequestOptions = {}): Promise<T> {
+    return this.request<T>("POST", "/api/v2/release/actions/verify-lxc-orchestration", options);
+  }
+
   /** Alpha.2 execution receiptek */
   getAlpha2ExecutionReceipts<T = unknown>(options: ApiRequestOptions = {}): Promise<T> {
     return this.request<T>("GET", "/api/v2/release/execution-receipts", options);
@@ -341,6 +346,16 @@ export class ApiV2Client {
   /** Alpha.2 véglegesítési readiness */
   getAlpha2FinalizationReadiness<T = unknown>(options: ApiRequestOptions = {}): Promise<T> {
     return this.request<T>("GET", "/api/v2/release/finalization-readiness", options);
+  }
+
+  /** Alpha.2 LXC artifact index */
+  getAlpha2LxcArtifacts<T = unknown>(options: ApiRequestOptions = {}): Promise<T> {
+    return this.request<T>("GET", "/api/v2/release/lxc-artifacts", options);
+  }
+
+  /** Alpha.2 LXC orchestration állapot */
+  getAlpha2LxcOrchestration<T = unknown>(options: ApiRequestOptions = {}): Promise<T> {
+    return this.request<T>("GET", "/api/v2/release/lxc-orchestration", options);
   }
 
   /** Telepített verziózott release metadata */

@@ -30,6 +30,10 @@ import {
   normalizeFinalizationReadiness
 } from '../services/v5ReleaseExecutionModels.mjs';
 
+import {
+  normalizeLxcOrchestration
+} from '../services/v5LxcOrchestrationModels.mjs';
+
 export function useV5System() {
   const {
     api,
@@ -53,6 +57,16 @@ export function useV5System() {
   ] =
     useState(
       normalizePromotionReadiness(
+        null
+      )
+    );
+
+  const [
+    lxcOrchestration,
+    setLxcOrchestration
+  ] =
+    useState(
+      normalizeLxcOrchestration(
         null
       )
     );
@@ -146,6 +160,7 @@ export function useV5System() {
             releaseValue,
             promotionReadinessValue,
             finalizationReadinessValue,
+            lxcOrchestrationValue,
             preflightValue,
             maintenanceValue,
             snapshotsValue,
@@ -158,6 +173,8 @@ export function useV5System() {
                 .promotionReadiness(),
               api.system
                 .finalizationReadiness(),
+              api.system
+                .lxcOrchestration(),
               api.system
                 .preflight(),
               api.system
@@ -183,6 +200,12 @@ export function useV5System() {
           setFinalizationReadiness(
             normalizeFinalizationReadiness(
               finalizationReadinessValue
+            )
+          );
+
+          setLxcOrchestration(
+            normalizeLxcOrchestration(
+              lxcOrchestrationValue
             )
           );
 
@@ -407,6 +430,16 @@ export function useV5System() {
           );
         },
 
+        async verifyLxcOrchestration() {
+          return run(
+            'release-lxc-orchestration-verify',
+            () =>
+              api.system
+                .verifyLxcOrchestration(),
+            'Az alpha.2 LXC orchestration lánc érvényes.'
+          );
+        },
+
         async verifyFinalization() {
           return run(
             'release-finalization-verify',
@@ -553,6 +586,7 @@ export function useV5System() {
     release,
     promotionReadiness,
     finalizationReadiness,
+    lxcOrchestration,
     preflight,
     maintenance,
     snapshots,

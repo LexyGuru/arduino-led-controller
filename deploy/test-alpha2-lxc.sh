@@ -8,6 +8,7 @@ CANDIDATE_REF="${CANDIDATE_REF:-HEAD}"
 STATE_DIR="${STATE_DIR:-/var/lib/arduino-led-controller}"
 REPORT_DIR="${REPORT_DIR:-${STATE_DIR}/release-gates}"
 REPORT_FILE="${REPORT_FILE:-${REPORT_DIR}/alpha2-$(date -u +%Y%m%dT%H%M%SZ).json}"
+CANDIDATE_SCRIPT="${CANDIDATE_SCRIPT:-}"
 STARTED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 BASELINE_COMMIT=""
 CANDIDATE_COMMIT=""
@@ -80,7 +81,7 @@ trap write_report EXIT
   exit 1
 }
 
-[[ -d "${APP_DIR}/.git" ]] || {
+[[ -e "${APP_DIR}/.git" ]] || {
   log "HIBA: nem Git repository: ${APP_DIR}"
   exit 1
 }
@@ -110,11 +111,20 @@ SCRIPT_ROOT="$(
   pwd
 )"
 
+if [[ -z "${CANDIDATE_SCRIPT}" ]]; then
+  CANDIDATE_SCRIPT="${SCRIPT_ROOT}/deploy/test-alpha2-candidate.sh"
+fi
+
+[[ -f "${CANDIDATE_SCRIPT}" ]] || {
+  log "HIBA: hiányzó candidate tesztszkript: ${CANDIDATE_SCRIPT}"
+  exit 1
+}
+
 log 'Izolált worktree + endpoint gate.'
 APP_DIR="${APP_DIR}" \
 ENV_FILE="${ENV_FILE}" \
 CANDIDATE_REF="${CANDIDATE_COMMIT}" \
-  bash "${SCRIPT_ROOT}/deploy/test-alpha2-candidate.sh"
+  bash "${CANDIDATE_SCRIPT}"
 
 log 'Rollback könyvtár- és Git-teszt.'
 (

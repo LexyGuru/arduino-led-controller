@@ -167,6 +167,37 @@ function invokeFinalization(
   );
 }
 
+
+function invokeOrchestration(
+  method
+) {
+  return asyncRoute(
+    async (
+      req,
+      res
+    ) => {
+      const runtime =
+        getRuntimeContext();
+
+      try {
+        return sendSuccess(
+          req,
+          res,
+          await method(
+            runtime
+              .alpha2OrchestrationService,
+            req
+          )
+        );
+      } catch (error) {
+        throw mapReleaseError(
+          error
+        );
+      }
+    }
+  );
+}
+
 function installReleaseRoutes(
   app
 ) {
@@ -182,6 +213,37 @@ function installReleaseRoutes(
         .RELEASE_ADMIN
     );
 
+
+
+  app.get(
+    '/api/v2/release/lxc-orchestration',
+    requireApiV2Auth,
+    read,
+    invokeOrchestration(
+      (service) =>
+        service.status()
+    )
+  );
+
+  app.get(
+    '/api/v2/release/lxc-artifacts',
+    requireApiV2Auth,
+    read,
+    invokeOrchestration(
+      (service) =>
+        service.artifacts()
+    )
+  );
+
+  app.post(
+    '/api/v2/release/actions/verify-lxc-orchestration',
+    requireApiV2Auth,
+    admin,
+    invokeOrchestration(
+      (service) =>
+        service.verify()
+    )
+  );
 
 app.get(
   '/api/v2/release/execution-receipts',
