@@ -432,6 +432,11 @@ required_files=(
   "scripts/test-release-runtime-recovery-manifest.js"
   "docs/v5/RELEASE_RUNTIME_GITIGNORE_RECOVERY.md"
   "docs/v5/PACKAGE_MANIFEST_RELEASE_RUNTIME_RECOVERY.json"
+  "scripts/test-release-env-example-scan.js"
+  "scripts/test-release-secret-diagnostics.js"
+  "scripts/test-release-secret-env-hotfix-manifest.js"
+  "docs/v5/RELEASE_SECRET_SCANNER_ENV_PLACEHOLDER_HOTFIX.md"
+  "docs/v5/PACKAGE_MANIFEST_RELEASE_SECRET_ENV_HOTFIX.json"
 )
 for file in "${required_files[@]}"; do
   [[ -f "${file}" ]] || {

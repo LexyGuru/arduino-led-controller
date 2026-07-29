@@ -219,6 +219,18 @@ function main() {
   );
 
   if (!secretScan.passed) {
+    console.error(
+      'Titokszivárgás-gyanús találatok:'
+    );
+
+    console.error(
+      JSON.stringify(
+        secretScan.findings,
+        null,
+        2
+      )
+    );
+
     throw new Error(
       `Titokszivárgás-gyanú: ${secretScan.findings.length} találat.`
     );

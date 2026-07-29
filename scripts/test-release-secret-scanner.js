@@ -13,6 +13,8 @@ const path =
   require('path');
 
 const {
+  isPlaceholderSecret,
+  normalizedSecretValue,
   scanReleaseTree,
   valueHash
 } =
@@ -93,6 +95,130 @@ function main() {
       true
     );
 
+    fs.rmSync(
+      path.join(
+        root,
+        'unsafe.txt'
+      )
+    );
+
+    fs.writeFileSync(
+      path.join(
+        root,
+        '.env.example'
+      ),
+      [
+        'API_V2_TOKEN=CHANGE_THIS_TO_A_LONG_RANDOM_BEARER_TOKEN',
+        'OTA_PASSWORD=',
+        'OTA_PORT=65280',
+        'SESSION_SECRET=<GENERATE_A_RANDOM_SECRET>',
+        'ADMIN_PASSWORD=placeholder',
+        ''
+      ].join('\n')
+    );
+
+    const placeholders =
+      scanReleaseTree({
+        root
+      });
+
+    assert.strictEqual(
+      placeholders.passed,
+      true
+    );
+
+    fs.writeFileSync(
+      path.join(
+        root,
+        '.env.example'
+      ),
+      [
+        'OTA_PASSWORD=',
+        'OTA_PORT=65280',
+        `API_V2_TOKEN=${'x'.repeat(64)}`,
+        ''
+      ].join('\n')
+    );
+
+    const realAssignment =
+      scanReleaseTree({
+        root
+      });
+
+    assert.strictEqual(
+      realAssignment.passed,
+      false
+    );
+
+    assert.strictEqual(
+      realAssignment
+        .findings.length,
+      1
+    );
+
+    assert.strictEqual(
+      realAssignment
+        .findings[0]
+        .code,
+      'ENV_SECRET_ASSIGNMENT'
+    );
+
+    assert.strictEqual(
+      realAssignment
+        .findings[0]
+        .line,
+      3
+    );
+
+    assert.strictEqual(
+      realAssignment
+        .findings[0]
+        .valueLength,
+      64
+    );
+
+    assert.strictEqual(
+      JSON.stringify(
+        realAssignment
+      ).includes(
+        'x'.repeat(64)
+      ),
+      false
+    );
+
+    assert.strictEqual(
+      isPlaceholderSecret(''),
+      true
+    );
+
+    assert.strictEqual(
+      isPlaceholderSecret(
+        'CHANGE_THIS_TO_A_SECRET'
+      ),
+      true
+    );
+
+    assert.strictEqual(
+      isPlaceholderSecret(
+        '"<GENERATE_ME>"'
+      ),
+      true
+    );
+
+    assert.strictEqual(
+      isPlaceholderSecret(
+        'real-secret-value'
+      ),
+      false
+    );
+
+    assert.strictEqual(
+      normalizedSecretValue(
+        '"secret-value" # comment'
+      ),
+      'secret-value'
+    );
+
     console.log(
       'OK: release titokszivárgás felismerése'
     );
@@ -103,6 +229,18 @@ function main() {
 
     console.log(
       'OK: SHA-256 alapú célzott allowlist'
+    );
+
+    console.log(
+      'OK: üres és dokumentációs env helyőrzők engedélyezve'
+    );
+
+    console.log(
+      'OK: az env scanner nem lép át a következő sorra'
+    );
+
+    console.log(
+      'OK: valódi env titok továbbra is blokkolva'
     );
   } finally {
     fs.rmSync(

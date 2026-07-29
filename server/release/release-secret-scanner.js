@@ -82,8 +82,18 @@ const DEFAULT_PATTERNS = [
     code:
       'ENV_SECRET_ASSIGNMENT',
     expression:
-      /^(?:API_V2_TOKEN|OTA_PASSWORD|SESSION_SECRET|ADMIN_PASSWORD)\s*=\s*(?!$|change-me|example|placeholder|<[^>]+>)([^\s#][^\r\n]*)$/gmi
+      /^(?:API_V2_TOKEN|OTA_PASSWORD|SESSION_SECRET|ADMIN_PASSWORD)[ \t]*=[ \t]*([^\r\n]*)$/gmi
   }
+];
+
+const PLACEHOLDER_SECRET_PATTERNS = [
+  /^change[-_ ]?me$/i,
+  /^example$/i,
+  /^placeholder$/i,
+  /^<[^>\r\n]+>$/,
+  /^change_this_[a-z0-9_]+$/i,
+  /^your_[a-z0-9_]+$/i,
+  /^replace_[a-z0-9_]+$/i
 ];
 
 function readAllowlist(
@@ -187,6 +197,99 @@ function valueHash(
     .digest('hex');
 }
 
+function stripMatchingQuotes(
+  value
+) {
+  const trimmed =
+    String(value)
+      .trim();
+
+  if (
+    trimmed.length >= 2 &&
+    (
+      (
+        trimmed.startsWith(
+          '"'
+        ) &&
+        trimmed.endsWith(
+          '"'
+        )
+      ) ||
+      (
+        trimmed.startsWith(
+          "'"
+        ) &&
+        trimmed.endsWith(
+          "'"
+        )
+      )
+    )
+  ) {
+    return trimmed
+      .slice(
+        1,
+        -1
+      )
+      .trim();
+  }
+
+  return trimmed;
+}
+
+function withoutInlineComment(
+  value
+) {
+  return String(value)
+    .replace(
+      /[ \t]+#.*$/,
+      ''
+    )
+    .trim();
+}
+
+function normalizedSecretValue(
+  value
+) {
+  return stripMatchingQuotes(
+    withoutInlineComment(
+      value
+    )
+  );
+}
+
+function isPlaceholderSecret(
+  value
+) {
+  const normalized =
+    normalizedSecretValue(
+      value
+    );
+
+  if (!normalized) {
+    return true;
+  }
+
+  return PLACEHOLDER_SECRET_PATTERNS
+    .some(
+      (pattern) =>
+        pattern.test(
+          normalized
+        )
+    );
+}
+
+function secretFromMatch(
+  match
+) {
+  if (
+    match.length > 1
+  ) {
+    return match[1];
+  }
+
+  return match[0];
+}
+
 function walkTextFiles(
   root,
   {
@@ -285,13 +388,16 @@ function scanReleaseTree({
       allowlistFile
     );
 
+  const files =
+    walkTextFiles(
+      absoluteRoot
+    );
+
   const findings = [];
 
   for (
     const filePath
-    of walkTextFiles(
-      absoluteRoot
-    )
+    of files
   ) {
     const relative =
       normalizedPath(
@@ -347,9 +453,30 @@ function scanReleaseTree({
               .exec(text)
         )
       ) {
+        const rawSecret =
+          secretFromMatch(
+            match
+          );
+
+        if (
+          pattern.code ===
+            'ENV_SECRET_ASSIGNMENT' &&
+          isPlaceholderSecret(
+            rawSecret
+          )
+        ) {
+          continue;
+        }
+
         const secret =
-          match[1] ||
-          match[0];
+          pattern.code ===
+            'ENV_SECRET_ASSIGNMENT'
+            ? normalizedSecretValue(
+                rawSecret
+              )
+            : String(
+                rawSecret
+              );
 
         const digest =
           valueHash(secret);
@@ -380,8 +507,7 @@ function scanReleaseTree({
           valueSha256:
             digest,
           valueLength:
-            String(secret)
-              .length
+            secret.length
         });
 
         if (
@@ -403,9 +529,7 @@ function scanReleaseTree({
         absoluteRoot
       ),
     scannedFiles:
-      walkTextFiles(
-        absoluteRoot
-      ).length,
+      files.length,
     passed:
       findings.length === 0,
     findings
@@ -414,9 +538,13 @@ function scanReleaseTree({
 
 module.exports = {
   DEFAULT_PATTERNS,
+  PLACEHOLDER_SECRET_PATTERNS,
+  isPlaceholderSecret,
+  normalizedSecretValue,
   pathMatches,
   readAllowlist,
   scanReleaseTree,
+  secretFromMatch,
   valueHash,
   walkTextFiles
 };
