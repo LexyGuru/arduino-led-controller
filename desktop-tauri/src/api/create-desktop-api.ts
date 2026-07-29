@@ -11,6 +11,7 @@ import {
   DesktopEventStream,
   DesktopFirmwareApi,
   DesktopLedApi,
+  DesktopLogApi,
   DesktopScheduleApi,
   DesktopSystemApi,
   OfflineReadCache,
@@ -146,6 +147,11 @@ export function createDesktopApi(
       }),
     schedules:
       new DesktopScheduleApi({
+        client,
+        runtime
+      }),
+    logs:
+      new DesktopLogApi({
         client,
         runtime
       }),

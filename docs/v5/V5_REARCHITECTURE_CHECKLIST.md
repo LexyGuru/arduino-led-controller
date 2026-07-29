@@ -81,8 +81,8 @@ Munkacsomag: `feature/v5-server-modularization`
   - [x] Maintenance, snapshot és migráció kezelése
   - [x] Dashboard API v2 státusz, cache és közvetlen fallback
   - [x] LED API v2 vezérlés, realtime és biztonságos fallback
-  - [ ] Schedule API v2 szerkesztés
-  - [ ] Firmware API v2 képernyő
+  - [x] Schedule API v2 szerkesztés, konfliktuskezelés és Arduino-szinkron
+  - [x] Firmware API v2 update, cancel, backup és rollback képernyő
 
 ## Rendszerüzemeltetés
 
@@ -107,8 +107,8 @@ Munkacsomag: `feature/v5-server-modularization`
 
 ## Következő hatalmas munkacsomag
 
-1. Schedule képernyő teljes API v2 átállítása és konfliktuskezelés.
-2. Firmware/OTA képernyő API v2 backup, rollback és cancel kezelése.
-3. Naplóoldal közös konzol-, audit- és esemény API-ra állítása.
-4. Tauri Rust credential bridge natív platformtárolással.
-5. Valódi LXC alpha.2 gate és verziószinkron.
+1. Tauri Rust credential bridge natív platformtárolással.
+2. Valódi LXC alpha.2 release-gate és staging-deploy.
+3. Sikeres gate után teljes `5.0.0-alpha.2` verziószinkron.
+4. Inline legacy dashboard fizikai kiszervezése.
+5. `server2_legacy.js` további fizikai bontása.

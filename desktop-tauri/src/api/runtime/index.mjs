@@ -58,3 +58,8 @@ export {
 export {
   DesktopArduinoApi
 } from './domain/arduino-api.mjs';
+
+
+export {
+  DesktopLogApi
+} from './domain/log-api.mjs';

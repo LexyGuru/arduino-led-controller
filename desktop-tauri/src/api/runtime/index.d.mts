@@ -332,10 +332,17 @@ export class DesktopLedApi {
 export class DesktopScheduleApi {
   constructor(options: {
     client: unknown;
-    runtime:
-      DesktopApiRuntime;
+    runtime: DesktopApiRuntime;
   });
-  listLocal(): Promise<unknown>;
+  listLocal(
+    options?: {
+      allowStaleOnError?: boolean;
+    }
+  ): Promise<unknown>;
+  exportLocal(): Promise<unknown>;
+  replaceAll(
+    schedules: unknown[]
+  ): Promise<unknown>;
   createLocal(
     schedule: unknown
   ): Promise<unknown>;
@@ -346,20 +353,26 @@ export class DesktopScheduleApi {
   deleteLocal(
     id: string
   ): Promise<unknown>;
-  listFiles(): Promise<unknown>;
-  uploadFile(
-    payload: unknown
-  ): Promise<unknown>;
+  syncArduino(): Promise<unknown>;
+  runnerStatus(): Promise<unknown>;
   forceTick(): Promise<unknown>;
+  arduinoOverview(): Promise<unknown>;
+  arduinoStatus(): Promise<unknown>;
+  reloadArduino(): Promise<unknown>;
+  generateArduino(): Promise<unknown>;
+  clearArduino(): Promise<unknown>;
 }
 
 export class DesktopFirmwareApi {
   constructor(options: {
     client: unknown;
-    runtime:
-      DesktopApiRuntime;
+    runtime: DesktopApiRuntime;
   });
-  status(): Promise<unknown>;
+  status(
+    options?: {
+      allowStaleOnError?: boolean;
+    }
+  ): Promise<unknown>;
   check(): Promise<unknown>;
   update(
     payload?: unknown
@@ -369,6 +382,36 @@ export class DesktopFirmwareApi {
   rollback(
     backupId: string
   ): Promise<unknown>;
+  deleteBackup(
+    id: string
+  ): Promise<unknown>;
+}
+
+export class DesktopLogApi {
+  constructor(options: {
+    client: unknown;
+    runtime: DesktopApiRuntime;
+  });
+  consoleLogs(
+    options?: {
+      force?: boolean;
+      allowStaleOnError?: boolean;
+    }
+  ): Promise<unknown>;
+  consoleStats(): Promise<unknown>;
+  clearConsole(): Promise<unknown>;
+  auditRecent(
+    limit?: number
+  ): Promise<unknown>;
+  auditStatus(): Promise<unknown>;
+  eventsRecent(
+    options?: {
+      limit?: number;
+      source?: string;
+      topic?: string;
+    }
+  ): Promise<unknown>;
+  eventsStatus(): Promise<unknown>;
 }
 
 export class DesktopSystemApi {
