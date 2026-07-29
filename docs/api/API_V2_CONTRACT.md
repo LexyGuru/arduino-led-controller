@@ -785,3 +785,32 @@ A rollback kizárólag SHA-256 ellenőrzött, helyi backupból indulhat.
 
 A snapshot restore csak aktív karbantartási módban és
 `RESTORE_SYSTEM_SNAPSHOT` megerősítéssel fut.
+
+
+## Alpha.2 release-gate és promóció
+
+- `GET /api/v2/release/status`
+- `GET /api/v2/release/metadata`
+- `GET /api/v2/release/promotion-readiness`
+- `POST /api/v2/release/actions/verify-gate`
+- `POST /api/v2/release/actions/approve-promotion`
+- `DELETE /api/v2/release/promotion-approval`
+
+A jóváhagyás csak akkor hozható létre, ha:
+
+1. a gate jelentés `passed`;
+2. a jelentés a jelenlegi Git commitra készült;
+3. a jelentés nem régebbi a konfigurált időkorlátnál;
+4. a konfigurációs preflight kész;
+5. nincs függő migráció;
+6. nincs aktív karbantartási mód.
+
+A jóváhagyási kérés kötelező értéke:
+
+```text
+APPROVE_ALPHA2_PROMOTION
+```
+
+A jóváhagyás nem emeli meg automatikusan a projektverziót és nem készít Git
+commitot. A közvetlen `5.0.0-alpha.2` verziószinkron külön, gate utáni
+release-csomagban történik.

@@ -532,7 +532,20 @@ function loadRuntimeConfig(options = {}) {
         String(
           environment.RELEASE_BUILT_AT ||
           ''
-        ).trim()
+        ).trim(),
+      targetVersion:
+        String(
+          environment.RELEASE_TARGET_VERSION ||
+          '5.0.0-alpha.2'
+        ).trim() ||
+        '5.0.0-alpha.2',
+      gateMaxAgeHours:
+        numberInRange(
+          environment.RELEASE_GATE_MAX_AGE_HOURS,
+          72,
+          1,
+          720
+        )
     },
     legacy: {
       apiAdaptersEnabled: booleanFromEnvironment(

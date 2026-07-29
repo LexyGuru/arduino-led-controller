@@ -421,6 +421,18 @@ export class DesktopSystemApi {
       DesktopApiRuntime;
   });
   release(): Promise<unknown>;
+  releaseGateStatus():
+    Promise<unknown>;
+  releaseMetadata():
+    Promise<unknown>;
+  promotionReadiness():
+    Promise<unknown>;
+  verifyReleaseGate():
+    Promise<unknown>;
+  approvePromotion():
+    Promise<unknown>;
+  revokePromotionApproval():
+    Promise<unknown>;
   diagnostics(): Promise<unknown>;
   preflight(): Promise<unknown>;
   maintenanceStatus():

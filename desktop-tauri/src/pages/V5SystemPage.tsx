@@ -24,6 +24,10 @@ import {
 } from '../components/v5/V5ReleasePanel';
 
 import {
+  V5ReleaseGatePanel
+} from '../components/v5/V5ReleaseGatePanel';
+
+import {
   V5SnapshotPanel
 } from '../components/v5/V5SnapshotPanel';
 
@@ -179,6 +183,30 @@ export function V5SystemPage() {
               }
             />
           </div>
+
+          <V5ReleaseGatePanel
+            readiness={
+              state.promotionReadiness
+            }
+            busyAction={
+              state.busyAction
+            }
+            onVerify={
+              () =>
+                void state.operations
+                  .verifyReleaseGate()
+            }
+            onApprove={
+              () =>
+                void state.operations
+                  .approvePromotion()
+            }
+            onRevoke={
+              () =>
+                void state.operations
+                  .revokePromotionApproval()
+            }
+          />
 
           <V5PreflightPanel
             preflight={

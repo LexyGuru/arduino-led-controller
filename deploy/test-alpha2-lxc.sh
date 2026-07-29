@@ -58,7 +58,13 @@ fs.writeFileSync(
     serviceName,
     candidateRef,
     hostname: require('os').hostname(),
-    nodeVersion: process.version
+    nodeVersion: process.version,
+    checks: [
+      'candidate-endpoints',
+      'repository-validation',
+      'rollback-test',
+      'production-service-postcheck'
+    ]
   }, null, 2)}\n`,
   { mode: 0o640 }
 );
@@ -97,11 +103,18 @@ systemctl is-active --quiet "${SERVICE_NAME}" || {
   exit 1
 }
 
+SCRIPT_ROOT="$(
+  cd "$(
+    dirname "${BASH_SOURCE[0]}"
+  )/.." &&
+  pwd
+)"
+
 log 'Izolált worktree + endpoint gate.'
 APP_DIR="${APP_DIR}" \
 ENV_FILE="${ENV_FILE}" \
 CANDIDATE_REF="${CANDIDATE_COMMIT}" \
-  bash "${APP_DIR}/deploy/test-alpha2-candidate.sh"
+  bash "${SCRIPT_ROOT}/deploy/test-alpha2-candidate.sh"
 
 log 'Rollback könyvtár- és Git-teszt.'
 (

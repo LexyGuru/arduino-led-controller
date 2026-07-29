@@ -2477,6 +2477,100 @@
           }
         }
       }
+    },
+    "/api/v2/release/status": {
+      "get": {
+        "operationId": "getReleaseGateStatus",
+        "summary": "A legfrissebb alpha.2 release-gate állapota",
+        "responses": {
+          "200": {
+            "description": "Release-gate státusz"
+          }
+        }
+      }
+    },
+    "/api/v2/release/metadata": {
+      "get": {
+        "operationId": "getInstalledReleaseMetadata",
+        "summary": "Telepített verziózott release metadata",
+        "responses": {
+          "200": {
+            "description": "Telepített release metadata"
+          }
+        }
+      }
+    },
+    "/api/v2/release/promotion-readiness": {
+      "get": {
+        "operationId": "getAlpha2PromotionReadiness",
+        "summary": "Alpha.2 promóciós előfeltételek",
+        "responses": {
+          "200": {
+            "description": "Promóciós readiness"
+          }
+        }
+      }
+    },
+    "/api/v2/release/actions/verify-gate": {
+      "post": {
+        "operationId": "verifyAlpha2ReleaseGate",
+        "summary": "A release-gate szigorú ellenőrzése",
+        "responses": {
+          "200": {
+            "description": "Gate elfogadva"
+          },
+          "409": {
+            "description": "Gate elutasítva"
+          }
+        }
+      }
+    },
+    "/api/v2/release/actions/approve-promotion": {
+      "post": {
+        "operationId": "approveAlpha2Promotion",
+        "summary": "Alpha.2 promóció jóváhagyása",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "confirm"
+                ],
+                "properties": {
+                  "confirm": {
+                    "type": "string",
+                    "const": "APPROVE_ALPHA2_PROMOTION"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Jóváhagyás létrehozva"
+          },
+          "409": {
+            "description": "Előfeltétel hiányzik"
+          }
+        }
+      }
+    },
+    "/api/v2/release/promotion-approval": {
+      "delete": {
+        "operationId": "revokeAlpha2PromotionApproval",
+        "summary": "Alpha.2 promóciós jóváhagyás visszavonása",
+        "responses": {
+          "200": {
+            "description": "Jóváhagyás visszavonva"
+          },
+          "404": {
+            "description": "Nincs jóváhagyás"
+          }
+        }
+      }
     }
   }
 }

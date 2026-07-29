@@ -430,3 +430,59 @@
       repeat(7, minmax(62px, 1fr));
   }
 }
+
+
+.v5-release-gate-commit {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 11px 13px;
+  border: 1px solid #28354c;
+  border-radius: 10px;
+  background: #0b1220;
+  color: #8793a7;
+}
+
+.v5-release-gate-commit code {
+  color: #c8d2e2;
+  overflow-wrap: anywhere;
+}
+
+.v5-release-reasons {
+  display: grid;
+  gap: 8px;
+}
+
+.v5-release-reasons > div {
+  display: grid;
+  grid-template-columns:
+    auto minmax(0, 1fr);
+  gap: 10px;
+  padding: 11px 12px;
+  border: 1px solid
+    rgba(255, 135, 152, .28);
+  border-radius: 10px;
+  background:
+    rgba(255, 135, 152, .06);
+  color: #ff8798;
+}
+
+.v5-release-reasons strong,
+.v5-release-reasons span {
+  display: block;
+}
+
+.v5-release-reasons span {
+  margin-top: 3px;
+  color: #c89aa2;
+  font-size: 12px;
+}
+
+.v5-release-gate-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  color: #8793a7;
+  font-size: 12px;
+  line-height: 1.5;
+}

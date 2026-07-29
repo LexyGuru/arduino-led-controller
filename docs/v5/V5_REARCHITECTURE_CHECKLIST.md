@@ -105,10 +105,25 @@ Munkacsomag: `feature/v5-server-modularization`
 - [ ] Release notes és migrációs dokumentáció
 - [ ] Beolvasztás `next`, majd `main` ágba
 
+## Alpha.2 release-gate és staging
+
+- [x] Candidate commitot ellenőrző gépi gate jelentés
+- [x] Gate kor- és commitvalidáció
+- [x] Preflight, migration és maintenance promóciós readiness
+- [x] Atomikus promóciós jóváhagyás és visszavonás
+- [x] V5 desktop release-gate panel
+- [x] Izolált candidate worktree runner
+- [x] Verziózott staging telepítő
+- [x] Health-alapú automatikus rollback
+- [x] Külön kézi rollback eszköz
+- [x] Hardened staging systemd unit
+- [ ] Valódi LXC gate futtatása
+- [ ] Közvetlen `5.0.0-alpha.2` verziószinkron
+
 ## Következő hatalmas munkacsomag
 
-1. Tauri Rust credential bridge natív platformtárolással.
-2. Valódi LXC alpha.2 release-gate és staging-deploy.
-3. Sikeres gate után teljes `5.0.0-alpha.2` verziószinkron.
-4. Inline legacy dashboard fizikai kiszervezése.
-5. `server2_legacy.js` további fizikai bontása.
+1. A valódi izolált LXC alpha.2 gate lefuttatása.
+2. Sikeres gate után teljes `5.0.0-alpha.2` verziószinkron.
+3. Natív Tauri credential bridge teljes Rust-fájlos integrációval.
+4. Legacy dashboard fizikai kiszervezése.
+5. `server2_legacy.js` további karcsúsítása.

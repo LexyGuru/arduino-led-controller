@@ -168,6 +168,12 @@ const {
 );
 
 const {
+  installReleaseRoutes
+} = require(
+  './release-routes'
+);
+
+const {
   createMaintenanceMiddleware
 } = require(
   '../../system/maintenance-mode-service'
@@ -340,6 +346,10 @@ function installApiV2Routes(
   );
 
   installSystemAdminRoutes(
+    app
+  );
+
+  installReleaseRoutes(
     app
   );
 

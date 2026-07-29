@@ -308,6 +308,36 @@ export class ApiV2Client {
     return this.request<T>("GET", "/api/v2/openapi/status", options);
   }
 
+  /** Alpha.2 promóció jóváhagyása */
+  approveAlpha2Promotion<T = unknown>(options: ApiRequestOptions = {}): Promise<T> {
+    return this.request<T>("POST", "/api/v2/release/actions/approve-promotion", options);
+  }
+
+  /** A release-gate szigorú ellenőrzése */
+  verifyAlpha2ReleaseGate<T = unknown>(options: ApiRequestOptions = {}): Promise<T> {
+    return this.request<T>("POST", "/api/v2/release/actions/verify-gate", options);
+  }
+
+  /** Telepített verziózott release metadata */
+  getInstalledReleaseMetadata<T = unknown>(options: ApiRequestOptions = {}): Promise<T> {
+    return this.request<T>("GET", "/api/v2/release/metadata", options);
+  }
+
+  /** Alpha.2 promóciós jóváhagyás visszavonása */
+  revokeAlpha2PromotionApproval<T = unknown>(options: ApiRequestOptions = {}): Promise<T> {
+    return this.request<T>("DELETE", "/api/v2/release/promotion-approval", options);
+  }
+
+  /** Alpha.2 promóciós előfeltételek */
+  getAlpha2PromotionReadiness<T = unknown>(options: ApiRequestOptions = {}): Promise<T> {
+    return this.request<T>("GET", "/api/v2/release/promotion-readiness", options);
+  }
+
+  /** A legfrissebb alpha.2 release-gate állapota */
+  getReleaseGateStatus<T = unknown>(options: ApiRequestOptions = {}): Promise<T> {
+    return this.request<T>("GET", "/api/v2/release/status", options);
+  }
+
   /** Arduino schedule törlése */
   deleteSchedules<T = unknown>(options: ApiRequestOptions = {}): Promise<T> {
     return this.request<T>("DELETE", "/api/v2/schedules", options);

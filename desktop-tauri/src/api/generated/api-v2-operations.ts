@@ -417,6 +417,48 @@ export const API_V2_OPERATIONS = [
     ]
   },
   {
+    "id": "approveAlpha2Promotion",
+    "method": "POST",
+    "path": "/api/v2/release/actions/approve-promotion",
+    "summary": "Alpha.2 promóció jóváhagyása",
+    "tags": []
+  },
+  {
+    "id": "verifyAlpha2ReleaseGate",
+    "method": "POST",
+    "path": "/api/v2/release/actions/verify-gate",
+    "summary": "A release-gate szigorú ellenőrzése",
+    "tags": []
+  },
+  {
+    "id": "getInstalledReleaseMetadata",
+    "method": "GET",
+    "path": "/api/v2/release/metadata",
+    "summary": "Telepített verziózott release metadata",
+    "tags": []
+  },
+  {
+    "id": "revokeAlpha2PromotionApproval",
+    "method": "DELETE",
+    "path": "/api/v2/release/promotion-approval",
+    "summary": "Alpha.2 promóciós jóváhagyás visszavonása",
+    "tags": []
+  },
+  {
+    "id": "getAlpha2PromotionReadiness",
+    "method": "GET",
+    "path": "/api/v2/release/promotion-readiness",
+    "summary": "Alpha.2 promóciós előfeltételek",
+    "tags": []
+  },
+  {
+    "id": "getReleaseGateStatus",
+    "method": "GET",
+    "path": "/api/v2/release/status",
+    "summary": "A legfrissebb alpha.2 release-gate állapota",
+    "tags": []
+  },
+  {
     "id": "deleteSchedules",
     "method": "DELETE",
     "path": "/api/v2/schedules",

@@ -39,7 +39,8 @@ const PERMISSIONS = Object.freeze({
   SNAPSHOT_READ: 'snapshot:read',
   SNAPSHOT_ADMIN: 'snapshot:admin',
   MIGRATION_READ: 'migration:read',
-  MIGRATION_ADMIN: 'migration:admin'
+  MIGRATION_ADMIN: 'migration:admin',
+  RELEASE_ADMIN: 'release:admin'
 });
 
 const ROLE_PERMISSIONS = Object.freeze({

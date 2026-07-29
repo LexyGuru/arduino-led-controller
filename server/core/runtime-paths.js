@@ -235,6 +235,40 @@ function createRuntimePaths(
           dataDir,
           'maintenance.json'
         )
+      ),
+    releaseGateReportDir:
+      resolveFromRoot(
+        root,
+        environment.RELEASE_GATE_REPORT_DIR,
+        path.join(
+          dataDir,
+          'release-gates'
+        )
+      ),
+    releasePromotionApprovalFile:
+      resolveFromRoot(
+        root,
+        environment.RELEASE_PROMOTION_APPROVAL_FILE,
+        path.join(
+          dataDir,
+          'release-gates',
+          'alpha2-promotion-approval.json'
+        )
+      ),
+    releaseMetadataFile:
+      resolveFromRoot(
+        root,
+        environment.RELEASE_METADATA_FILE,
+        'RELEASE-METADATA.json'
+      ),
+    releaseBundleDir:
+      resolveFromRoot(
+        root,
+        environment.RELEASE_BUNDLE_DIR,
+        path.join(
+          'dist',
+          'releases'
+        )
       )
   });
 }

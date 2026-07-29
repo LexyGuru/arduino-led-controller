@@ -236,6 +236,12 @@ const {
 );
 
 const {
+  ReleaseGateService
+} = require(
+  './server/release/release-gate-service'
+);
+
+const {
   installExpressFactoryPatch,
   registerExpressInstaller
 } = require(
@@ -674,6 +680,40 @@ const releaseInfoService =
     migrationService
   });
 
+const releaseGateService =
+  new ReleaseGateService({
+    reportDirectory:
+      paths.releaseGateReportDir,
+    approvalFile:
+      paths.releasePromotionApprovalFile,
+    projectRoot:
+      paths.projectRoot,
+    metadataFile:
+      paths.releaseMetadataFile,
+    version:
+      config.service.version,
+    targetVersion:
+      config.release
+        .targetVersion,
+    maxAgeHours:
+      config.release
+        .gateMaxAgeHours,
+    preflightProvider:
+      () =>
+        configPreflightService
+          .run(),
+    maintenanceProvider:
+      () =>
+        maintenanceService
+          .getStatus(),
+    migrationProvider:
+      () =>
+        migrationService
+          .status(),
+    logger,
+    eventBus
+  });
+
 const socketGateway =
   new SocketGateway({
     eventBus,
@@ -757,6 +797,7 @@ setRuntimeContext({
   snapshotService,
   migrationService,
   releaseInfoService,
+  releaseGateService,
   socketGateway,
   legacyEventBridge,
   diagnosticsService,

@@ -19,6 +19,71 @@ export class DesktopSystemApi {
     );
   }
 
+  releaseGateStatus() {
+    return this.runtime.read(
+      'release:gate-status',
+      () =>
+        this.client
+          .getReleaseGateStatus(),
+      {
+        ttlMs: 5000
+      }
+    );
+  }
+
+  releaseMetadata() {
+    return this.runtime.read(
+      'release:installed-metadata',
+      () =>
+        this.client
+          .getInstalledReleaseMetadata(),
+      {
+        ttlMs: 15000
+      }
+    );
+  }
+
+  promotionReadiness() {
+    return this.runtime.read(
+      'release:promotion-readiness',
+      () =>
+        this.client
+          .getAlpha2PromotionReadiness(),
+      {
+        ttlMs: 5000
+      }
+    );
+  }
+
+  verifyReleaseGate() {
+    return this.runtime.write(
+      () =>
+        this.client
+          .verifyAlpha2ReleaseGate()
+    );
+  }
+
+  approvePromotion() {
+    return this.runtime.write(
+      () =>
+        this.client
+          .approveAlpha2Promotion({
+            body: {
+              confirm:
+                'APPROVE_ALPHA2_PROMOTION'
+            }
+          })
+    );
+  }
+
+  revokePromotionApproval() {
+    return this.runtime.write(
+      () =>
+        this.client
+          .revokeAlpha2PromotionApproval()
+    );
+  }
+
   diagnostics() {
     return this.runtime.read(
       'system:diagnostics',

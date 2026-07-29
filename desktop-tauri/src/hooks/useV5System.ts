@@ -22,6 +22,10 @@ import {
   normalizeSnapshots
 } from '../services/v5SystemModels.mjs';
 
+import {
+  normalizePromotionReadiness
+} from '../services/v5ReleaseGateModels.mjs';
+
 export function useV5System() {
   const {
     api,
@@ -37,6 +41,16 @@ export function useV5System() {
   ] =
     useState(
       normalizeRelease(null)
+    );
+
+  const [
+    promotionReadiness,
+    setPromotionReadiness
+  ] =
+    useState(
+      normalizePromotionReadiness(
+        null
+      )
     );
 
   const [
@@ -116,6 +130,7 @@ export function useV5System() {
         try {
           const [
             releaseValue,
+            promotionReadinessValue,
             preflightValue,
             maintenanceValue,
             snapshotsValue,
@@ -124,6 +139,8 @@ export function useV5System() {
             await Promise.all([
               api.system
                 .release(),
+              api.system
+                .promotionReadiness(),
               api.system
                 .preflight(),
               api.system
@@ -137,6 +154,12 @@ export function useV5System() {
           setRelease(
             normalizeRelease(
               releaseValue
+            )
+          );
+
+          setPromotionReadiness(
+            normalizePromotionReadiness(
+              promotionReadinessValue
             )
           );
 
@@ -331,6 +354,36 @@ export function useV5System() {
           );
         },
 
+        async verifyReleaseGate() {
+          return run(
+            'release-gate-verify',
+            () =>
+              api.system
+                .verifyReleaseGate(),
+            'Az alpha.2 release-gate jelentés elfogadva.'
+          );
+        },
+
+        async approvePromotion() {
+          return run(
+            'release-promotion-approve',
+            () =>
+              api.system
+                .approvePromotion(),
+            'Az alpha.2 promóció jóváhagyása létrejött.'
+          );
+        },
+
+        async revokePromotionApproval() {
+          return run(
+            'release-promotion-revoke',
+            () =>
+              api.system
+                .revokePromotionApproval(),
+            'Az alpha.2 promóciós jóváhagyás visszavonva.'
+          );
+        },
+
         async enableMaintenance(
           reason: string
         ) {
@@ -445,6 +498,7 @@ export function useV5System() {
     authenticated,
     online,
     release,
+    promotionReadiness,
     preflight,
     maintenance,
     snapshots,
