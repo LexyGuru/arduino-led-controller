@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "package": "v5-beta1-distribution-v13.4",
+  "package": "v5-beta1-distribution-v13.5",
   "baseCommit": "aca96f9d01d0d926f2643f4e48fd2bce5945b33a",
   "targetBranch": "next/v5-rearchitecture",
   "applicationVersionBefore": "5.0.0-alpha.3",
@@ -108,8 +108,8 @@
   "files": [
     {
       "path": ".github/workflows/beta-release.yml",
-      "bytes": 23602,
-      "sha256": "935a464a1256471f9929dd71079d6d85cef6b52d63aee029ccebd816357eac48"
+      "bytes": 23851,
+      "sha256": "3f8695cf41b94402b965997841d475cbdc51290153234edd670e69dfde12447e"
     },
     {
       "path": "VERSION",
@@ -199,12 +199,12 @@
     {
       "path": "scripts/test-beta-release-manifest.js",
       "bytes": 6343,
-      "sha256": "5cc8743bc459fc7a84b149bd43c69adbc5d4c8c7838abb09bf89fd7b78368bca"
+      "sha256": "adbbdec06f4f41b19920bb0390b32e40907a0acb9346eb29906695452f7f126b"
     },
     {
       "path": "scripts/test-beta-release-workflow.js",
-      "bytes": 4458,
-      "sha256": "af19142752b79cb2470dad46389639e7aed6d31f7b5df61c5720da5dd76742d7"
+      "bytes": 5510,
+      "sha256": "af81c8288006fbde2f8160b8283ac02fdb2c4423c3b052ae208a17dd0ce4cd4f"
     },
     {
       "path": "scripts/test-v5-documentation-status.js",

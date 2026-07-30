@@ -32,6 +32,35 @@ contains(/EXPECTED_FIRMWARE_VERSION: 4\.1\.21/, 'Hibás firmware-verzió.');
 contains(/contents: read/, 'Hiányzik az alapértelmezett read-only jogosultság.');
 contains(/name: Publish GitHub prerelease[\s\S]*?permissions:\n      contents: write/, 'A write jogosultság nem csak a release jobhoz tartozik.');
 
+const validateJobMatch = source.match(
+  /^  validate:\n([\s\S]*?)(?=^  build-desktop:)/m
+);
+assert.ok(validateJobMatch, 'Nem található a Beta release gate validate job.');
+const validateJob = validateJobMatch[0];
+const linuxDependencyStep = validateJob.indexOf(
+  '- name: Install Linux system dependencies'
+);
+const rustCheckStep = validateJob.indexOf('- name: Check Rust backend');
+assert.ok(
+  linuxDependencyStep >= 0,
+  'A Beta release gate nem telepíti a Linux Tauri rendszerfüggőségeket.'
+);
+assert.ok(
+  rustCheckStep >= 0 && linuxDependencyStep < rustCheckStep,
+  'A Linux Tauri rendszerfüggőségeknek a Rust backend ellenőrzése előtt kell települniük.'
+);
+for (const dependency of [
+  'libwebkit2gtk-4.1-dev',
+  'libappindicator3-dev',
+  'librsvg2-dev',
+  'patchelf'
+]) {
+  assert.ok(
+    validateJob.includes(dependency),
+    `Hiányzó Linux Tauri rendszerfüggőség a Beta release gate-ben: ${dependency}`
+  );
+}
+
 for (const expected of [
   'Linux x86_64',
   'Windows x86_64',
@@ -44,7 +73,6 @@ for (const expected of [
 ]) {
   assert.ok(source.includes(expected), `Hiányzó buildcél: ${expected}`);
 }
-
 for (const assetPattern of [
   /\.AppImage/,
   /Linux_x86_64\.deb/,
@@ -59,7 +87,6 @@ for (const assetPattern of [
 ]) {
   contains(assetPattern, `Hiányzó release asset szerződés: ${assetPattern}`);
 }
-
 contains(/if: \$\{\{ github\.event_name == 'push' \|\| inputs\.publish \}\}/, 'A publish job nem támogatja a szűk kezdeti push gate-et.');
 contains(/prerelease: true/, 'A GitHub kiadásnak prerelease-nek kell lennie.');
 contains(/make_latest: false/, 'A Beta release nem lehet Latest.');
@@ -78,12 +105,11 @@ contains(/test-beta-installation-assets\.js/, 'Hiányzik a telepítési asset ga
 contains(/test-beta-release-workflow\.js/, 'Hiányzik a workflow saját szerződéses tesztje.');
 contains(/assetCount:\(\.assets\|length\)/, 'Hiányzik a feltöltött assetek ellenőrzése.');
 contains(/-ge 20/, 'A minimum release asset szám túl alacsony.');
-
 excludes(/firmware-latest/, 'A Beta release nem frissítheti a firmware-latest kiadást.');
 excludes(/10\.0\.0\.123/, 'A release workflow nem tartalmazhat produkciós Arduino-célt.');
 excludes(/target_commitish:\s*main/, 'A release nem célozhatja közvetlenül a main ágat.');
 excludes(/make_latest:\s*true/, 'A Beta release nem lehet Latest.');
-
 console.log('OK: szűk next-push gate és későbbi workflow_dispatch Beta publikálás');
+console.log('OK: a Beta release gate Rust ellenőrzése előtt települnek a Linux Tauri rendszerfüggőségek');
 console.log('OK: Windows, két macOS architektúra, Linux, Android, iOS, LXC és firmware buildcél');
 console.log('OK: SHA-256, manifest, SBOM, provenance és titokvizsgálati release evidence');

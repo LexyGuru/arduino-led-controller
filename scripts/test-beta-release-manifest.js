@@ -14,7 +14,7 @@ const manifestPath = path.join(
 const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
 
 assert.strictEqual(manifest.schemaVersion, 1);
-assert.strictEqual(manifest.package, 'v5-beta1-distribution-v13.4');
+assert.strictEqual(manifest.package, 'v5-beta1-distribution-v13.5');
 assert.strictEqual(
   manifest.baseCommit,
   'aca96f9d01d0d926f2643f4e48fd2bce5945b33a'
@@ -155,7 +155,7 @@ if (process.env.BETA_MANIFEST_ONLY !== '1') {
   );
 }
 
-console.log('OK: V13.4 Beta.1 distribution package manifest és SHA-256');
+console.log('OK: V13.5 Beta.1 distribution package manifest és SHA-256');
 console.log('OK: történeti Alpha.2/Alpha.3 tesztek Beta.1-kompatibilisek');
 console.log('OK: minden telepítési platform és supply-chain evidence deklarálva');
 console.log('OK: nincs main merge, produkciós deploy vagy firmware-latest frissítés');
