@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "package": "v5-alpha3-device-key-header-migration-complete-v3",
+  "package": "v5-alpha3-device-key-wifi-telemetry-cache-hotfix-v8",
   "createdAt": "2026-07-30",
   "baseBranch": "next/v5-rearchitecture",
   "baseCommit": "bd5cb67d3a40d1fa5d8e39f53615a7f50e5c1d3b",
@@ -24,7 +24,7 @@
     "legacyCurlHeaderFromStdin": true,
     "queryFallbackMeasured": true
   },
-  "description": "Alpha.3 firmware-first Arduino device-key migration, post-merge Alpha.2 readiness-test alignment, and desktop TypeScript build-gate repair. Node, legacy macOS curl and Tauri clients move the Arduino API key from URL query parameters to X-Device-Key. Firmware 4.1.21 accepts the header first and retains a measurable, compile-time query fallback until hardware and rollout gates pass. The desktop preflight panel, Vite environment typing and Tauri invoke adapter compile under the strict TypeScript build.",
+  "description": "Alpha.3 hardware-discovered WiFiS3 telemetry-cache performance hotfix on top of commit 885718d and the V7 chunked-response candidate. The V7 hardware tests proved correct 401 and 200 responses without bridge lockup, but measured 2.75 s for a short auth failure, 6.86 s for a 266-byte console stats response, and 9.63 s for the 1457-byte status response. V8 retains maximum 512-byte response writes while removing synchronous remoteIP lookups from polling/auth-failure paths, caching WiFi connection/IP/RSSI telemetry, processing HTTP before periodic NTP and telemetry modem commands, and rate-limiting unsynchronised NTP retries. Header-first authentication, measured query fallback, production isolation, and application version 5.0.0-alpha.2 remain unchanged.",
   "fileCountExcludingManifest": 31,
   "files": [
     {
@@ -74,13 +74,13 @@
     },
     {
       "path": "docs/v5/ALPHA3_HARDWARE_TEST_RUNBOOK.md",
-      "sha256": "641ef3004e6461fd6281d13242eab990302276b631389f239a9331a03ec1e68d",
-      "bytes": 4164
+      "sha256": "b6fd2beba453e416c5acc7ed2481792206933292fd1b15029cc81fff6bba35b2",
+      "bytes": 7303
     },
     {
       "path": "docs/v5/ALPHA3_RELEASE_NOTES_DRAFT.md",
-      "sha256": "16bd10f11e26853f91d44997ad03733cd75c7f08280855c08059a2b3a1f4f4d6",
-      "bytes": 2386
+      "sha256": "dc001351bf59106c91b563a0527c0b79a644b0f998def99ec6d3291955732d8f",
+      "bytes": 4326
     },
     {
       "path": "docs/v5/NEXT_V5_INTEGRATION_RUNBOOK.md",
@@ -109,13 +109,13 @@
     },
     {
       "path": "firmware/ArduinoLedController/ArduinoLedController.ino",
-      "sha256": "7e18e55418b972a22d3629351f5c372c4be09f708f7d9ff69b6c53442603dd80",
-      "bytes": 63491
+      "sha256": "2caabccaa2d163ad3d2cb1a8cc6f2375fb0d1242b71f501f2fb80df7d7e31fca",
+      "bytes": 67140
     },
     {
       "path": "firmware/ArduinoLedController/secrets.example.h",
-      "sha256": "44f7a1bcc405cf987de58ac0bb62d578f2fdc423adceadc70abd8228f6b6b8fd",
-      "bytes": 546
+      "sha256": "5a42ab7cfede91ab760d63294b83ea588b529c4977e7ae6b8a4ebe62e295d5e6",
+      "bytes": 615
     },
     {
       "path": "firmware/README.md",
@@ -144,13 +144,13 @@
     },
     {
       "path": "scripts/test-alpha3-device-key-header.js",
-      "sha256": "7b5331bfd8cb221dc9395f0868bc8c97b2daa96c4ec27d6d5f7278925479680a",
-      "bytes": 6088
+      "sha256": "737b42af82d4184e63c26f09a93dc70c5512ee5e5812e05b30758ebb33eb19e1",
+      "bytes": 8191
     },
     {
       "path": "scripts/test-alpha3-device-key-manifest.js",
-      "sha256": "097c9f5bc39f4818f963d80c683bcdd2b429c9bc674d9ced096dead69c2a5403",
-      "bytes": 5813
+      "sha256": "4497b4fd4864f5fa8ca5bc06101331242146f1a98797a67b3c204e0ae621dd80",
+      "bytes": 6777
     },
     {
       "path": "scripts/test-arduino-client.js",
@@ -185,5 +185,33 @@
   ],
   "firmwareLatestReleaseProtected": true,
   "alpha2ReadinessRegressionAligned": true,
-  "desktopTypescriptBuildFixed": true
+  "desktopTypescriptBuildFixed": true,
+  "featureCommitBefore": "885718db43fca5e7ae25d0e965211520a5656f92",
+  "authFailureHttpResponsesFixed": true,
+  "apiPrivatePathLimitDocumented": true,
+  "authResponseFlushAdded": false,
+  "authResponseSingleWriteAdded": false,
+  "authResponseSettleDelayMs": 150,
+  "authResponseChunkedWriteAdded": true,
+  "authResponseChunkSizeBytes": 512,
+  "rejectedHardwareCandidates": [
+    "v5-flush",
+    "v6-single-write",
+    "v7-chunked-uncached-telemetry"
+  ],
+  "wifiTelemetryCacheAdded": true,
+  "wifiLinkProbeIntervalMs": 15000,
+  "wifiRssiRefreshIntervalMs": 30000,
+  "pollingRemoteIpLookupRemoved": true,
+  "httpBeforeBackgroundModemQueries": true,
+  "ntpUnsyncedRetryIntervalMs": 5000,
+  "v7HardwareMeasurements": {
+    "missingKeySeconds": 2.751245,
+    "consoleStatsBytes": 266,
+    "consoleStatsSeconds": 6.855572,
+    "statusBytes": 1457,
+    "statusSeconds": 9.626099,
+    "responsesCorrect": true,
+    "performanceAccepted": false
+  }
 }

@@ -25,7 +25,7 @@ function main() {
   assert.strictEqual(manifest.schemaVersion, 1);
   assert.strictEqual(
     manifest.package,
-    'v5-alpha3-device-key-header-migration-complete-v3'
+    'v5-alpha3-device-key-wifi-telemetry-cache-hotfix-v8'
   );
   assert.strictEqual(
     manifest.baseCommit,
@@ -48,6 +48,23 @@ function main() {
   assert.strictEqual(manifest.firmwareLatestReleaseProtected, true);
   assert.strictEqual(manifest.alpha2ReadinessRegressionAligned, true);
   assert.strictEqual(manifest.desktopTypescriptBuildFixed, true);
+  assert.strictEqual(manifest.authFailureHttpResponsesFixed, true);
+  assert.strictEqual(manifest.authResponseFlushAdded, false);
+  assert.strictEqual(manifest.authResponseSingleWriteAdded, false);
+  assert.strictEqual(manifest.authResponseChunkedWriteAdded, true);
+  assert.strictEqual(manifest.authResponseChunkSizeBytes, 512);
+  assert.strictEqual(manifest.authResponseSettleDelayMs, 150);
+  assert.strictEqual(manifest.wifiTelemetryCacheAdded, true);
+  assert.strictEqual(manifest.wifiLinkProbeIntervalMs, 15000);
+  assert.strictEqual(manifest.wifiRssiRefreshIntervalMs, 30000);
+  assert.strictEqual(manifest.pollingRemoteIpLookupRemoved, true);
+  assert.strictEqual(manifest.httpBeforeBackgroundModemQueries, true);
+  assert.strictEqual(manifest.ntpUnsyncedRetryIntervalMs, 5000);
+  assert.strictEqual(manifest.apiPrivatePathLimitDocumented, true);
+  assert.strictEqual(
+    manifest.featureCommitBefore,
+    '885718db43fca5e7ae25d0e965211520a5656f92'
+  );
   assert.ok(Array.isArray(manifest.files));
   assert.strictEqual(manifest.fileCountExcludingManifest, manifest.files.length);
   assert.ok(manifest.files.length >= 31);

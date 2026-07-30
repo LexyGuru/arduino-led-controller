@@ -98,6 +98,45 @@ function testFirmwareContract() {
   assert.match(firmware, /deviceKeyHeaderAccepted/);
   assert.match(firmware, /queryKeyFallbackEnabled/);
   assert.match(firmware, /if \(!item\.startsWith\("k="\)\)/);
+  assert.match(firmware, /code == 401 \? "401 Unauthorized"/);
+  assert.match(firmware, /code == 408 \? "408 Request Timeout"/);
+  assert.match(firmware, /Ervenytelen vagy hianyzo eszkozazonosito kulcs/);
+  assert.match(firmware, /Ervenytelen vagy tobbszoros X-Device-Key fejlec/);
+  assert.match(firmware, /HTTP fejlec olvasasi idotullepes/);
+  assert.match(firmware, /HTTP_WRITE_CHUNK_SIZE = 512/);
+  assert.match(firmware, /HTTP_RESPONSE_SETTLE_DELAY_MS = 150/);
+  assert.match(firmware, /WIFI_LINK_PROBE_INTERVAL_MS = 15000/);
+  assert.match(firmware, /WIFI_RSSI_REFRESH_INTERVAL_MS = 30000/);
+  assert.match(firmware, /NTP_UNSYNCED_RETRY_INTERVAL_MS = 5000/);
+  assert.match(firmware, /void refreshWifiTelemetry\(bool force = false\)/);
+  assert.match(firmware, /cachedWifiConnected/);
+  assert.match(firmware, /cachedWifiIp/);
+  assert.match(firmware, /cachedWifiRssi/);
+  assert.match(firmware, /uint8_t firstChunk\[HTTP_WRITE_CHUNK_SIZE\]/);
+  assert.match(
+    firmware,
+    /memcpy\(firstChunk, header, headerBytes\);[\s\S]*firstBodyBytes[\s\S]*writeClientChunk\(client, firstChunk, headerBytes \+ firstBodyBytes\)[\s\S]*while \(offset < bodyLength\)[\s\S]*chunkLength[\s\S]*delay\(HTTP_RESPONSE_SETTLE_DELAY_MS\);[\s\S]*return true;/
+  );
+  assert.doesNotMatch(firmware, /HTTP_RESPONSE_BUFFER_SIZE/);
+  assert.doesNotMatch(firmware, /httpResponseBuffer/);
+  assert.doesNotMatch(firmware, /client\.flush\(\)/);
+  assert.match(firmware, /if \(!pollingRequest && !timedOut\)/);
+  assert.match(firmware, /const IPAddress remote = c\.remoteIP\(\)/);
+  assert.match(firmware, /const IPAddress currentIp = cachedWifiIp/);
+  assert.match(firmware, /cachedWifiConnected \? cachedWifiRssi : 0/);
+  assert.match(firmware, /if \(!otaTransferActive\) handleHttp\(\);[\s\S]*refreshWifiTelemetry\(false\);/);
+  assert.match(
+    firmware,
+    /sendJsonLiteral\(c, .*eszkozazonosito kulcs.*401\)/
+  );
+  assert.match(
+    firmware,
+    /sendJsonLiteral\(c, .*X-Device-Key fejlec.*400\)/
+  );
+  assert.match(
+    firmware,
+    /sendJsonLiteral\(c, .*idotullepes.*408\)/
+  );
   assert.doesNotMatch(
     firmware,
     /constantTimeEquals\(supplied, apiSettings\.sharedSecret\).*return false;\s*apiPath/s
@@ -170,7 +209,7 @@ async function main() {
   console.log('OK: moduláris Node kliens X-Device-Key fejlécet küld');
   console.log('OK: legacy Node és macOS curl transport fejlécet küld');
   console.log('OK: Tauri közvetlen Arduino kliens fejlécet küld');
-  console.log('OK: firmware header-first auth és mérhető query fallback');
+  console.log('OK: firmware header-first auth, 512 bájtos válaszok és gyorsítótárazott WiFi-telemetria');
   console.log('OK: feature ág firmware buildje nem írja felül a public firmware-latest release-t');
   console.log('OK: kliensoldali URL-ek nem tartalmaznak Arduino API-kulcsot');
 }

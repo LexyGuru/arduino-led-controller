@@ -26,6 +26,12 @@ export ARDUINO_API_KEY
 
 A kulcsot ne írd be közvetlenül parancssori argumentumba.
 
+## Előfeltétel: teszt API-útvonal mérete
+
+A firmware EEPROM-mezője a lezáró null karakterrel együtt 49 bájtos, ezért az
+`API_PRIVATE_PATH` teljes hossza a kezdő `/` jellel együtt **18-48 karakter**.
+A hosszabb fordítási értéket a firmware érvénytelennek tekinti.
+
 ## 1. Firmware-verzió és helyes fejléc
 
 ```bash
@@ -55,7 +61,7 @@ curl \
   "http://${ARDUINO_IP}${ARDUINO_API_PATH}/api/status" || true
 ```
 
-Elvárt: nincs sikeres API-válasz.
+Elvárt: HTTP `401 Unauthorized`, rövid JSON hibatörzs és azonnal lezárt kapcsolat.
 
 ## 3. Hibás fejléc
 
@@ -69,7 +75,7 @@ curl \
   "http://${ARDUINO_IP}${ARDUINO_API_PATH}/api/status" || true
 ```
 
-Elvárt: nincs sikeres API-válasz, a LED-állapot nem változik.
+Elvárt: HTTP `401 Unauthorized`, rövid JSON hibatörzs, azonnal lezárt kapcsolat, a LED-állapot nem változik.
 
 ## 4. Duplikált fejléc
 
@@ -86,7 +92,7 @@ curl \
   "http://${ARDUINO_IP}${ARDUINO_API_PATH}/api/status" || true
 ```
 
-Elvárt: nincs sikeres API-válasz.
+Elvárt: HTTP `400 Bad Request`, rövid JSON hibatörzs és azonnal lezárt kapcsolat.
 
 ## 5. Hibás fejléc nem kerülhető meg fallbackkel
 
@@ -143,6 +149,17 @@ Ez a build csak minden kliens migrációja után jelölhető release candidate-n
 - ellenőrizd, hogy az új és a régi kliens is újra eléri az eszközt;
 - rögzítsd a teszt idejét, firmware hashét és eredményét.
 
+## Hardveres megállapítás – 2026-07-30
+
+A tartalék UNO R4 WiFi-n a helyes `X-Device-Key` kérés HTTP 200 választ adott,
+de a hiányzó kulcsos kérésnél a korábbi firmware csak lezárta a TCP-kapcsolatot
+HTTP-válasz nélkül. A hotfix kötelező szerződése:
+
+- hiányzó vagy hibás kulcs: `401 Unauthorized`;
+- hibás vagy duplikált `X-Device-Key`: `400 Bad Request`;
+- befejezetlen fejléc olvasási időtúllépése: `408 Request Timeout`;
+- minden hibaválasz `Content-Length` és `Connection: close` fejléccel záródik.
+
 ## Tesztjegyzőkönyv
 
 | Ellenőrzés | Eredmény | Bizonyíték |
@@ -159,3 +176,46 @@ Ez a build csak minden kliens migrációja után jelölhető release candidate-n
 | naplók titokmentesek |  |  |
 | fallback-off próba |  |  |
 | rollback próba |  |  |
+## Auth-response WiFiS3 darabolt V7 mérés és V8 telemetria-cache javítás
+
+A hardverteszt két elutasított jelöltet azonosított:
+
+- V5: a `WiFiClient::flush()` ugyan továbbította a rövid `401` választ, de
+  minden kéréshez körülbelül 4,4-4,7 másodperces késleltetést adott;
+- V6: a teljes, körülbelül 1,6 KB-os státuszválasz egyetlen `CLIENTSEND`
+  műveletben a Wi-Fi bridge beragadását okozta, ezért teljes áramtalanítás és
+  V5 rollback kellett.
+
+A V7 hardvermérés eredménye:
+
+- hiányzó kulcs: HTTP 401, helyes JSON, 2,75 másodperc;
+- helyes kulcsos `/api/status`: HTTP 200, 1457 bájt, 9,63 másodperc;
+- helyes kulcsos `/api/console/stats`: HTTP 200, 266 bájt, 6,86 másodperc;
+- a bridge a kérések után elérhető maradt, de a válaszidő nem elfogadható.
+
+A 266 bájtos törzs a HTTP-fejléccel együtt egyetlen 512 bájtos írásba fér,
+ezért a V7 lassulását nem a válasz darabszáma magyarázza. A forrásellenőrzés
+szerint a polling hot path minden kérésnél több szinkron WiFiS3 modemparancsot
+indított: `remoteIP()`, `status()`, `localIP()` és `RSSI()` lekérdezéseket.
+
+A V8 jelölt szabályai:
+
+- megtartja a legfeljebb 512 bájtos válaszdarabolást;
+- nincs `client.flush()` és nincs túlméretes egyírásos válasz;
+- a Wi-Fi kapcsolat, IP-cím és RSSI gyorsítótárból kerül a JSON-válaszokba;
+- linkállapot legfeljebb 15 másodpercenként, RSSI legfeljebb 30 másodpercenként frissül;
+- polling és auth-hiba útvonalon nincs szinkron `remoteIP()` lekérdezés;
+- a HTTP feldolgozás megelőzi a periodikus NTP- és telemetria-parancsokat;
+- sikertelen NTP-szinkron esetén nincs minden ciklusban új modemlekérdezés.
+
+Kötelező újrateszt:
+
+- helyes fejléc: HTTP 200;
+- hiányzó kulcs: HTTP 401, timeout nélkül;
+- hibás kulcs: HTTP 401;
+- helyes query fallback: HTTP 200;
+- hibás fejléc és helyes query: HTTP 401;
+- duplikált fejléc: HTTP 400;
+- `/api/console/stats` és `/api/status` válaszidő összehasonlítása a V7 méréssel;
+- legalább 20 egymást követő helyes és negatív kérés után az Arduino és a
+  Wi-Fi bridge továbbra is elérhető marad.
