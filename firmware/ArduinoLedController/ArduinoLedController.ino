@@ -16,8 +16,8 @@
 #include <stdarg.h>
 #include "secrets.h"
 
-#define FIRMWARE_VERSION "4.1.20"
-#define FIRMWARE_FEATURE "ota-validation-4.1.20"
+#define FIRMWARE_VERSION "4.1.21"
+#define FIRMWARE_FEATURE "device-key-header-4.1.21"
 #define DEVICE_NAME "arduino-led-controller"
 #ifndef API_SHARED_SECRET
 #define API_SHARED_SECRET "CHANGE_THIS_TO_A_LONG_RANDOM_API_SECRET"
@@ -25,6 +25,10 @@
 #ifndef API_PRIVATE_PATH
 #define API_PRIVATE_PATH "/CHANGE_THIS_TO_A_LONG_RANDOM_API_PATH"
 #endif
+#ifndef API_ALLOW_QUERY_KEY_FALLBACK
+#define API_ALLOW_QUERY_KEY_FALLBACK 1
+#endif
+#define API_DEVICE_KEY_HEADER "X-Device-Key"
 #ifndef ENABLE_PIR_SENSORS
 #define ENABLE_PIR_SENSORS 0
 #endif
@@ -65,6 +69,11 @@ constexpr unsigned long OTA_PREPARE_WINDOW = 30000;
 constexpr unsigned long OTA_ERROR_INDICATOR_TIME = 5000;
 constexpr uint32_t SCHEDULE_MAGIC = 0x53434831UL; // "SCH1"
 enum Effect : uint8_t { STATIC = 0, BLINK, BREATHE, RAINBOW, CHASE };
+enum HttpHeaderReadResult : uint8_t {
+  HTTP_HEADERS_OK = 0,
+  HTTP_HEADERS_TIMEOUT,
+  HTTP_HEADERS_INVALID
+};
 
 struct Led { bool enabled; uint8_t brightness, effect, speed, red, green, blue; };
 struct Log { uint32_t id; unsigned long timestamp; const char* type; char message[128]; };
@@ -139,6 +148,7 @@ uint8_t logStart = 0, logSize = 0;
 uint32_t nextLogId = 1;
 unsigned long httpRequests = 0, httpTimeouts = 0;
 unsigned long httpRejected = 0, httpWriteFailures = 0;
+unsigned long httpHeaderAuthAccepted = 0, httpQueryFallbackAccepted = 0;
 unsigned long otaRestartCount = 0, lastOtaRestartAt = 0;
 bool otaTransferActive = false;
 unsigned long otaPrepareUntil = 0, otaErrorIndicatorUntil = 0;
@@ -845,13 +855,17 @@ bool buildStatusJson(size_t& bodyLength) {
     "\"pirSensorsEnabled\":%s,\"physicalButtonsEnabled\":%s,"
     "\"uptime\":%lu,\"rssi\":%ld,"
     "\"http\":{\"requests\":%lu,\"timeouts\":%lu,\"rejected\":%lu,"
-    "\"writeFailures\":%lu,\"maxBatch\":%u,\"lastClientIp\":\"",
+    "\"writeFailures\":%lu,\"maxBatch\":%u,"
+    "\"deviceKeyHeaderAccepted\":%lu,\"queryKeyFallbackAccepted\":%lu,"
+    "\"queryKeyFallbackEnabled\":%s,\"lastClientIp\":\"",
     apiSettingsStored ? "true" : "false",
     ENABLE_PIR_SENSORS ? "true" : "false",
     ENABLE_PHYSICAL_BUTTONS ? "true" : "false",
     millis() / 1000UL,
     static_cast<long>(wifiHasAddress() ? WiFi.RSSI() : 0),
-    httpRequests, httpTimeouts, httpRejected, httpWriteFailures, httpMaxBatch);
+    httpRequests, httpTimeouts, httpRejected, httpWriteFailures, httpMaxBatch,
+    httpHeaderAuthAccepted, httpQueryFallbackAccepted,
+    API_ALLOW_QUERY_KEY_FALLBACK ? "true" : "false");
 
   appendJsonEscaped(buffer, lastHttpClientIp);
   appendRaw(buffer, "\",\"lastPath\":\"");
@@ -926,10 +940,14 @@ void sendConsoleStatsJson(WiFiClient& client) {
   appendFormat(buffer,
     "{\"logCount\":%u,\"uptime\":%lu,\"wifiSignal\":%ld,"
     "\"http\":{\"requests\":%lu,\"timeouts\":%lu,\"rejected\":%lu,"
-    "\"writeFailures\":%lu,\"maxBatch\":%u},"
+    "\"writeFailures\":%lu,\"maxBatch\":%u,"
+    "\"deviceKeyHeaderAccepted\":%lu,\"queryKeyFallbackAccepted\":%lu,"
+    "\"queryKeyFallbackEnabled\":%s},"
     "\"system\":{\"wifiConnected\":%s,\"consoleActive\":true}}",
     logSize, millis() / 1000, static_cast<long>(wifiHasAddress() ? WiFi.RSSI() : 0),
     httpRequests, httpTimeouts, httpRejected, httpWriteFailures, httpMaxBatch,
+    httpHeaderAuthAccepted, httpQueryFallbackAccepted,
+    API_ALLOW_QUERY_KEY_FALLBACK ? "true" : "false",
     wifiHasAddress() ? "true" : "false");
   if (!buffer.valid) {
     sendJsonLiteral(client, "{\"error\":\"Konzol statisztika memoriahiba\"}", 503);
@@ -1082,18 +1100,20 @@ bool extractQueryValue(const String& query, const char* name, String& value) {
   }
   return false;
 }
-bool unwrapProtectedPath(const String& requestPath, String& apiPath) {
+bool unwrapProtectedPath(const String& requestPath, String& apiPath, String& queryDeviceKey, bool& queryDeviceKeyPresent) {
   if (!apiSettingsStored) return false;
   const int queryAt = requestPath.indexOf('?');
   const String base = queryAt < 0 ? requestPath : requestPath.substring(0, queryAt);
   const String prefix = String(apiSettings.privatePath) + "/api/";
   if (!base.startsWith(prefix)) return false;
-  String supplied;
-  const String query = queryAt < 0 ? "" : requestPath.substring(queryAt + 1);
-  if (!extractQueryValue(query, "k", supplied) || !constantTimeEquals(supplied, apiSettings.sharedSecret)) return false;
+
   apiPath = base.substring(strlen(apiSettings.privatePath));
-  // A hitelesítő paramétert nem adjuk tovább az alkalmazáslogikának. Így a
-  // nagyobb ütemezési payload végét sem szennyezi meg az API-kulcs.
+  const String query = queryAt < 0 ? "" : requestPath.substring(queryAt + 1);
+  queryDeviceKeyPresent = extractQueryValue(query, "k", queryDeviceKey);
+
+  // A régi query-kulcsot soha nem adjuk tovább az alkalmazáslogikának és
+  // nem tesszük bele a naplózott útvonalba. Az Alpha.3 kliens már kizárólag
+  // X-Device-Key fejlécet használ; ez csak átmeneti firmware fallback.
   String cleanQuery; int start = 0;
   while (start < query.length()) {
     int end = query.indexOf('&', start); if (end < 0) end = query.length();
@@ -1104,6 +1124,70 @@ bool unwrapProtectedPath(const String& requestPath, String& apiPath) {
   if (cleanQuery.length()) apiPath += "?" + cleanQuery;
   return true;
 }
+HttpHeaderReadResult readHttpHeaders(WiFiClient& client, String& deviceKey, bool& deviceKeyPresent) {
+  char line[192];
+  size_t length = 0;
+  const unsigned long started = millis();
+  deviceKey = "";
+  deviceKeyPresent = false;
+
+  while (millis() - started < HTTP_READ_TIMEOUT) {
+    if (!client.available()) { delay(1); continue; }
+    const char value = static_cast<char>(client.read());
+    if (value == '\r') continue;
+    if (value == '\n') {
+      if (length == 0) return HTTP_HEADERS_OK;
+      line[length] = 0;
+      String headerLine(line);
+      const int separator = headerLine.indexOf(':');
+      if (separator > 0) {
+        String name = headerLine.substring(0, separator);
+        name.trim();
+        if (name.equalsIgnoreCase(API_DEVICE_KEY_HEADER)) {
+          // Többszörös fejlécet és túl hosszú értéket nem fogadunk el.
+          if (deviceKeyPresent) return HTTP_HEADERS_INVALID;
+          String supplied = headerLine.substring(separator + 1);
+          supplied.trim();
+          if (!supplied.length() || supplied.length() >= sizeof(apiSettings.sharedSecret)) return HTTP_HEADERS_INVALID;
+          deviceKey = supplied;
+          deviceKeyPresent = true;
+        }
+      }
+      length = 0;
+      continue;
+    }
+    if (length + 1 >= sizeof(line)) return HTTP_HEADERS_INVALID;
+    line[length++] = value;
+  }
+  return HTTP_HEADERS_TIMEOUT;
+}
+bool authenticateDeviceRequest(
+  const String& headerDeviceKey,
+  bool headerDeviceKeyPresent,
+  const String& queryDeviceKey,
+  bool queryDeviceKeyPresent,
+  bool& usedQueryFallback
+) {
+  usedQueryFallback = false;
+
+  // Ha a kliens küldött X-Device-Key fejlécet, annak kell helyesnek lennie.
+  // Hibás fejléc mellett nem engedünk visszaesést query-paraméterre.
+  if (headerDeviceKeyPresent) {
+    return constantTimeEquals(headerDeviceKey, apiSettings.sharedSecret);
+  }
+
+#if API_ALLOW_QUERY_KEY_FALLBACK
+  if (queryDeviceKeyPresent && constantTimeEquals(queryDeviceKey, apiSettings.sharedSecret)) {
+    usedQueryFallback = true;
+    return true;
+  }
+#else
+  (void)queryDeviceKey;
+  (void)queryDeviceKeyPresent;
+#endif
+
+  return false;
+}
 bool readRequestLine(WiFiClient& c, char* output, size_t outputSize) {
   size_t length = 0; const unsigned long started = millis();
   while (millis() - started < HTTP_READ_TIMEOUT) {
@@ -1113,21 +1197,6 @@ bool readRequestLine(WiFiClient& c, char* output, size_t outputSize) {
     if (item == '\r') continue;
     if (length + 1 >= outputSize) return false;
     output[length++] = item;
-  }
-  return false;
-}
-bool drainHttpHeaders(WiFiClient& client) {
-  bool lineHasData = false;
-  const unsigned long started = millis();
-  while (millis() - started < HTTP_READ_TIMEOUT) {
-    if (!client.available()) { delay(1); continue; }
-    const char value = static_cast<char>(client.read());
-    if (value == '\n') {
-      if (!lineHasData) return true;
-      lineHasData = false;
-    } else if (value != '\r') {
-      lineHasData = true;
-    }
   }
   return false;
 }
@@ -1147,11 +1216,39 @@ void handleHttp() {
     int a = line.indexOf(' '), b = line.indexOf(' ', a + 1);
     if (a >= 0 && b >= 0) {
       String method = line.substring(0, a), requestedPath = line.substring(a + 1, b), path;
-      // A rossz útvonalú vagy kulcs nélküli kérésnél szándékosan nem olvassuk
-      // el a fejléceket és nem küldünk választ. Ez védi a kevés RAM-ot.
-      if ((method != "GET" && method != "POST") || !unwrapProtectedPath(requestedPath, path)) { httpRejected++; c.stop(); continue; }
+      String queryDeviceKey, headerDeviceKey;
+      bool queryDeviceKeyPresent = false, headerDeviceKeyPresent = false, usedQueryFallback = false;
+
+      // A hibás módszert vagy privát útvonalat még a fejlécek olvasása előtt
+      // elutasítjuk. A megfelelő útvonalon az eszközkulcs már fejlécből jön.
+      if ((method != "GET" && method != "POST") ||
+          !unwrapProtectedPath(requestedPath, path, queryDeviceKey, queryDeviceKeyPresent)) {
+        httpRejected++; c.stop(); continue;
+      }
+
       c.setTimeout(HTTP_READ_TIMEOUT);
-      if (!drainHttpHeaders(c)) { httpTimeouts++; rememberHttpClient(c, method.c_str(), path, true); c.stop(); continue; }
+      const HttpHeaderReadResult headerReadResult =
+        readHttpHeaders(c, headerDeviceKey, headerDeviceKeyPresent);
+      if (headerReadResult != HTTP_HEADERS_OK) {
+        if (headerReadResult == HTTP_HEADERS_TIMEOUT) {
+          httpTimeouts++;
+          rememberHttpClient(c, method.c_str(), path, true);
+        } else {
+          httpRejected++;
+        }
+        c.stop();
+        continue;
+      }
+
+      if (!authenticateDeviceRequest(
+            headerDeviceKey, headerDeviceKeyPresent,
+            queryDeviceKey, queryDeviceKeyPresent,
+            usedQueryFallback)) {
+        httpRejected++; c.stop(); continue;
+      }
+
+      if (usedQueryFallback) httpQueryFallbackAccepted++;
+      else httpHeaderAuthAccepted++;
       rememberHttpClient(c, method.c_str(), path);
       route(c, path);
     } else { httpRejected++; }

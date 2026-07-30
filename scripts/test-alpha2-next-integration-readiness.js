@@ -25,7 +25,7 @@ function main() {
   assert.ok(result.checks.every((check) => check.ok));
 
   console.log('OK: Alpha.2 verzió- és dokumentációs readiness');
-  console.log('OK: PR #1 dokumentált, next és main merge kapuk nyitva maradnak');
+  console.log('OK: PR #1 a next ágon, a main merge kapu továbbra is nyitott');
   console.log('OK: minősített runtime candidate változatlan');
 }
 

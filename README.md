@@ -281,7 +281,7 @@ macOS-en az alkalmazás használhatja a Terminalban futó `arduinoOTA` feltölt�
 
 ## Védett Arduino API
 
-A firmware nem fogadja el közvetlenül a nyilvános `/api/...` útvonalakat. A kliensnek a privát előtagot és az API-kulcsot is használnia kell.
+A firmware nem fogadja el közvetlenül a nyilvános `/api/...` útvonalakat. A kliensnek a privát előtagot és az `X-Device-Key` fejlécben küldött API-kulcsot is használnia kell.
 
 Főbb végpontok:
 
@@ -301,7 +301,16 @@ Főbb végpontok:
 /api/ota/prepare
 ```
 
-Minden végpont a beállított privát útvonal mögött érhető el, és a kéréshez szükséges az API-kulcs.
+Minden végpont a beállított privát útvonal mögött érhető el. Az Alpha.3
+kliensek a kulcsot nem URL-paraméterben, hanem fejlécben küldik:
+
+```http
+X-Device-Key: <ARDUINO_API_KEY>
+```
+
+A firmware `4.1.21` átmenetileg képes fogadni a régi `?k=` formátumot is,
+de az új Node- és Tauri-kliensek már kizárólag fejlécet használnak. A fallback
+később a `API_ALLOW_QUERY_KEY_FALLBACK=0` firmware-beállítással tiltható.
 
 ## Opcionális Proxmox LXC webszerver
 

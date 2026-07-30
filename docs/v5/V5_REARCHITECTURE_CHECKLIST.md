@@ -2,8 +2,9 @@
 
 Utolsó frissítés: 2026-07-30
 Integrációs ág: `next/v5-rearchitecture`
-Munkacsomag: `feature/v5-server-modularization`
+Munkacsomag: `feature/v5-alpha3-device-key-header`
 Minősített Alpha.2 candidate: `1236becc37e9b4d8ed2334f3cd60b455c248e82d`
+Alpha.2 `next` merge commit: `bd5cb67d3a40d1fa5d8e39f53615a7f50e5c1d3b`
 
 ## Repository és LXC
 
@@ -31,7 +32,12 @@ Minősített Alpha.2 candidate: `1236becc37e9b4d8ed2334f3cd60b455c248e82d`
 - [x] Legacy 30 másodperces státuszcron letiltása
 - [x] Lapozott, TTL-alapú Arduino konzolcache
 - [x] API v2 és legacy konzolvégpontok
-- [ ] Arduino query API-kulcs lecserélése fejlécre
+- [-] Arduino query API-kulcs lecserélése `X-Device-Key` fejlécre
+  - [x] moduláris Node kliens
+  - [x] legacy Node és macOS curl transport
+  - [x] Tauri közvetlen Arduino kliens
+  - [x] firmware header-first auth és kikapcsolható query fallback
+  - [ ] valódi UNO R4 WiFi hardverteszt és fallback-off bizonyítás
 
 ## Schedule
 
@@ -53,6 +59,8 @@ Minősített Alpha.2 candidate: `1236becc37e9b4d8ed2334f3cd60b455c248e82d`
 - [x] Legacy firmware adapter
 - [x] OTA megszakítás
 - [x] Utolsó működő firmware backup és rollback
+- [-] Firmware `4.1.21` `X-Device-Key` migráció automatizált tesztekkel
+- [ ] Firmware `4.1.21` valódi hardverteszt és rollback-próba
 
 ## Web és szerver modularizáció
 
@@ -107,8 +115,8 @@ Minősített Alpha.2 candidate: `1236becc37e9b4d8ed2334f3cd60b455c248e82d`
 - [x] `FINALIZE_ALPHA2_VERSION_SYNC` jóváhagyás
 - [x] `5.0.0-alpha.2` verziólépés
 - [x] Release notes és migrációs dokumentáció
-- [ ] Beolvasztás `next/v5-rearchitecture` ágba
-- [ ] Új integrációs ellenőrzés a `next` ágon
+- [x] Beolvasztás `next/v5-rearchitecture` ágba (`PR #1`, `bd5cb67`)
+- [x] Új integrációs ellenőrzés a `next` ágon
 - [ ] Beolvasztás `main` ágba
 - [ ] Produkciós telepítés külön jóváhagyással
 
@@ -141,16 +149,35 @@ Minősített Alpha.2 candidate: `1236becc37e9b4d8ed2334f3cd60b455c248e82d`
 - [x] Dokumentációs és package-manifest tesztek
 - [x] A finalizáló/integrációs csomag commitja és push-a
 - [x] Pull Request a `next/v5-rearchitecture` ágba (`#1`)
-- [ ] PR #1 whitespace- és státuszgate lezárása
-- [ ] Teljes integrációs teszt a `next` ágon
+- [x] PR #1 whitespace- és státuszgate lezárása
+- [x] Teljes integrációs teszt a `next` ágon
+
+## Alpha.3 eszközkulcs-fejléc munkacsomag
+
+- [x] `X-Device-Key` szerződés a moduláris Node kliensben
+- [x] case-insensitive kliensoldali fejléc-felülírás elleni védelem
+- [x] legacy Node és macOS curl fejlécmigráció
+- [x] macOS curl secret átadása stdinről, process-argumentum nélkül
+- [x] Tauri közvetlen Arduino kliens fejlécmigráció
+- [x] firmware `4.1.21` header-first auth
+- [x] duplikált és hibás fejléc tiltási logika
+- [x] mérhető, compile-time kikapcsolható query fallback
+- [x] Alpha.3 automatizált szerződés- és manifestteszt
+- [x] rollout-, rollback- és hardverteszt-dokumentáció
+- [ ] Arduino CLI firmware build GitHub Actionsben
+- [ ] valódi UNO R4 WiFi fejléc- és negatív teszt
+- [ ] staging gateway és Tauri hardverteszt
+- [ ] fallback-off firmware-próba
+- [ ] új Alpha.3 gate–staging–rollback evidence
+- [ ] `5.0.0-alpha.3` finalization
 
 ## Következő munkacsomag
 
-1. A PR #1 whitespace- és generált kliens EOF-gate javítása.
-2. A 432 fájlos PR teljes GitHub API-, helyi Git- és secret-scan ellenőrzése.
-3. Merge kizárólag a `next/v5-rearchitecture` ágba.
-4. Teljes repository-, desktop- és LXC staging teszt a friss `next` ágon.
-5. Alpha.3 runtime munkacsomag: Arduino API-kulcs átállítása `X-Device-Key`
-   fejlécre, firmware-kompatibilitási átmenettel.
-6. Külön hardveres schedule- és firmware-teszt.
-7. A `main` ág csak későbbi release branchből, külön jóváhagyással módosítható.
+1. Az Alpha.3 feature ág létrehozása a `bd5cb67` `next` commitból.
+2. A teljes Alpha.3 csomag tesztelése és push-a.
+3. GitHub Actions firmware `4.1.21` fordítás ellenőrzése.
+4. Firmware-first hardverteszt `API_ALLOW_QUERY_KEY_FALLBACK=1` állapotban.
+5. Staging Node/Tauri fejléc-hitelesítés és napló-redakció igazolása.
+6. Külön fallback-off firmware build és rollback-próba.
+7. Új gate–staging–rollback evidence, majd csak később Alpha.3 finalization.
+8. A `main` ág változatlan marad külön release-jóváhagyásig.

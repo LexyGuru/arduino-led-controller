@@ -88,7 +88,14 @@ function main() {
     /- \[x\] `FINALIZE_ALPHA2_VERSION_SYNC` jóváhagyás/
   );
   assert.match(checklist, /- \[x\] `5\.0\.0-alpha\.2` verziólépés/);
-  assert.match(checklist, /- \[ ] Beolvasztás `next\/v5-rearchitecture` ágba/);
+  assert.match(
+    checklist,
+    /- \[x\] Beolvasztás `next\/v5-rearchitecture` ágba \(`PR #1`, `bd5cb67`\)/
+  );
+  assert.match(
+    checklist,
+    /- \[x\] Új integrációs ellenőrzés a `next` ágon/
+  );
   assert.match(checklist, /- \[ ] Beolvasztás `main` ágba/);
 
   for (const document of [
@@ -121,6 +128,7 @@ function main() {
   console.log('OK: npm, Tauri, Cargo, lockfile és OpenAPI verziók');
   console.log('OK: generált TypeScript API-kliens verziószinkron');
   console.log('OK: Alpha.2 release notes, migráció és checklist');
+  console.log('OK: PR #1 és a next integráció bizonyítottan lezárva');
   console.log('OK: master roadmap, implementációs státusz és next runbook');
   console.log('OK: main merge és produkciós telepítés továbbra is külön kapu');
 }

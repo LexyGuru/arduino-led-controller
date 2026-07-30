@@ -85,50 +85,58 @@ export function V5PreflightPanel({
           (
             item,
             index
-          ) => (
-            <div
-              key={
-                String(
-                  item.name ||
-                  index
-                )
-              }
-              className={
-                item.ok === true
-                  ? 'ok'
-                  : (
-                      item.severity ===
-                        'warning'
-                        ? 'warning'
-                        : 'error'
-                    )
-              }
-            >
-              <span>
-                {item.ok ===
-                  true
-                  ? '✓'
-                  : '!'}
-              </span>
+          ) => {
+            const code =
+              item.code === null ||
+              item.code === undefined
+                ? null
+                : String(
+                    item.code
+                  );
 
-              <div>
-                <strong>
-                  {String(
+            return (
+              <div
+                key={
+                  String(
                     item.name ||
-                    'ellenőrzés'
-                  )}
-                </strong>
+                    index
+                  )
+                }
+                className={
+                  item.ok === true
+                    ? 'ok'
+                    : (
+                        item.severity ===
+                          'warning'
+                          ? 'warning'
+                          : 'error'
+                      )
+                }
+              >
+                <span>
+                  {item.ok ===
+                    true
+                    ? '✓'
+                    : '!'}
+                </span>
 
-                {item.code && (
-                  <small>
+                <div>
+                  <strong>
                     {String(
-                      item.code
+                      item.name ||
+                      'ellenőrzés'
                     )}
-                  </small>
-                )}
+                  </strong>
+
+                  {code !== null && (
+                    <small>
+                      {code}
+                    </small>
+                  )}
+                </div>
               </div>
-            </div>
-          )
+            );
+          }
         )}
       </div>
     </section>

@@ -76,8 +76,15 @@ async function main() {
   );
 
   assert.strictEqual(
-    builtUrl.searchParams.get('k'),
-    'arduino-client-test-secret-123456'
+    builtUrl.searchParams.has('k'),
+    false
+  );
+
+  assert.strictEqual(
+    builtUrl.toString().includes(
+      'arduino-client-test-secret-123456'
+    ),
+    false
   );
 
   assert.strictEqual(
@@ -110,6 +117,48 @@ async function main() {
       'X-Request-Source'
     ],
     'unit-test'
+  );
+
+  assert.strictEqual(
+    requests[0].headers[
+      'X-Device-Key'
+    ],
+    'arduino-client-test-secret-123456'
+  );
+
+  assert.strictEqual(
+    requests[0].url.includes(
+      'arduino-client-test-secret-123456'
+    ),
+    false
+  );
+
+  await client.get(
+    'api/status',
+    {
+      headers: {
+        'X-Device-Key':
+          'caller-must-not-override-secret',
+        'x-device-key':
+          'lowercase-caller-must-not-survive'
+      }
+    }
+  );
+
+  assert.strictEqual(
+    requests[1].headers[
+      'X-Device-Key'
+    ],
+    'arduino-client-test-secret-123456'
+  );
+
+  assert.strictEqual(
+    Object.keys(requests[1].headers)
+      .filter((name) => (
+        name.toLowerCase() ===
+          'x-device-key'
+      )).length,
+    1
   );
 
   const invalidClient =
@@ -214,7 +263,7 @@ async function main() {
     'OK: megosztott Arduino HTTP-kliens'
   );
   console.log(
-    'OK: Arduino URL és kompatibilitási kulcs'
+    'OK: Arduino URL titokmentes és X-Device-Key fejlécet használ'
   );
   console.log(
     'OK: Arduino hibák egységes leképezése'

@@ -10,10 +10,12 @@
 ## 0. Aktuális megvalósítási állapot
 
 **Státusz frissítve:** 2026-07-30<br>
-**Aktuális mérföldkő:** az Alpha.2 integrációs Pull Request #1 ellenőrzése és
-a `next/v5-rearchitecture` merge biztonságos előkészítése
+**Aktuális mérföldkő:** Alpha.3 `X-Device-Key` runtime munkacsomag automatizált
+implementációja és firmware-first hardverteszt-előkészítése
 **Minősített runtime candidate:**
 `1236becc37e9b4d8ed2334f3cd60b455c248e82d`<br>
+**Alpha.2 `next` merge commit:**
+`bd5cb67d3a40d1fa5d8e39f53615a7f50e5c1d3b`<br>
 **Minősítéskori produkciós baseline:**
 `58e01b40e4568f5cd2648d370614077ef08aa1ba`
 
@@ -34,8 +36,8 @@ a `next/v5-rearchitecture` merge biztonságos előkészítése
 | Desktop/Tauri API v2 átállás | Nagyrészt kész | A fő rendszer-, dashboard-, LED-, schedule-, firmware- és naplóképernyők domain adaptereket használnak; teljes platformteszt még szükséges. |
 | Firmware újratervezés | Részleges | A jelenlegi firmware működő kompatibilitási alap; az EEPROM A/B, teljes időzóna/DST, watchdog és hardveres terhelési teszt még nyitott. |
 | Mobil Android/iOS | Nyitott | A párosítás, mobil életciklus, jogosultságok, build és valódi eszközteszt külön munkacsomag. |
-| Biztonsági hardening | Részleges | A gateway oldali auth, CSRF, szerepkörök, audit, secret scanner és release-integritás elkészült; az Arduino-kulcs fejlécbe költöztetése a következő runtime mérföldkő. |
-| `next` integráció | PR #1 megnyitva | Az integrációs ág és a 432 fájlos PR elkészült; a whitespace/generátor gate javítása és az utóvalidáció után merge-elhető a `next/v5-rearchitecture` ágba. |
+| Biztonsági hardening | Részleges – Alpha.3 implementálva | A gateway auth, CSRF, szerepkörök, audit és release-integritás mellett elkészült az `X-Device-Key` kód; a hardver-, staging- és fallback-off bizonyítás még nyitott. |
+| `next` integráció | Kész | A PR #1 beolvadt; a `next` HEAD `bd5cb67`, a teljes repository-validáció sikeres, a `main` változatlan. |
 | `main` merge és produkciós V5 telepítés | Tilos / korai | Csak teljes integrációs, hardveres, desktop-, mobil-, migrációs és security elfogadás után. |
 
 ### Bizonyított Alpha.2 eredmények
@@ -55,13 +57,13 @@ a `next/v5-rearchitecture` merge biztonságos előkészítése
 
 ### Következő mérföldkövek
 
-1. a PR #1 whitespace- és generált kliens EOF-gate javítása az integrációs ágon;
-2. teljes repository-, secret-, OpenAPI- és PR-diff ellenőrzés;
-3. a PR #1 merge-je kizárólag a `next/v5-rearchitecture` ágba;
-4. teljes utóvalidáció a friss `next` ágon, produkciós telepítés nélkül;
-5. új Alpha.3 runtime munkacsomag az Arduino `X-Device-Key` fejlécmigrációhoz;
-6. külön firmware-, hardver-, desktop- és mobiltesztek;
-7. csak később `release/v5.0.0`, majd jóváhagyott PR a `main` ágba.
+1. új `feature/v5-alpha3-device-key-header` ág a `bd5cb67` `next` commitból;
+2. az Alpha.3 nagy csomag teljes repository-validációja és push-a;
+3. firmware `4.1.21` GitHub Actions fordítás;
+4. firmware-first UNO R4 WiFi fejléc-, negatív és fallback-teszt;
+5. staging Node/Tauri fejlécmigráció és napló-redakció igazolása;
+6. fallback-off build, rollback-próba és új Alpha.3 evidence-lánc;
+7. csak új finalization után `5.0.0-alpha.3`, a `main` továbbra is tiltott.
 
 ---
 

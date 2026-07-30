@@ -102,7 +102,7 @@ melyekhez kell még hardveres, platform- vagy produkciós elfogadás.
 |---|---|---|
 | Jelenlegi firmware kompatibilitás | Részleges | LED, schedule, OTA és védett API működő alap. |
 | Arduino schedule upload hardverteszt | Nyitott | Valódi UNO R4 WiFi + EEPROM teszt szükséges. |
-| API-kulcs URL-ből fejlécbe | Nyitott | Külön Alpha.3 munkacsomag `X-Device-Key` fejléccel és átmeneti firmware fallbackkel. |
+| API-kulcs URL-ből fejlécbe | Részleges – automatizált | Node, legacy, macOS curl, Tauri és firmware kód elkészült; valódi UNO R4 WiFi, staging és fallback-off teszt még szükséges. |
 | EEPROM A/B bankok | Nyitott | A master roadmap célja, még nincs teljes bizonyíték. |
 | DST/időzóna/NTP kiesés | Nyitott | Valódi időváltási és hibatesztek szükségesek. |
 | Watchdog/reset ok/boot számláló | Nyitott | Firmware-hardening munkacsomag. |
@@ -131,15 +131,31 @@ A mobil rész jelenleg nem tekinthető késznek. Nyitott többek között:
 - `ALPHA2_MIGRATION.md`: staging és későbbi migrációs szabályok;
 - `ALPHA2_VERSION_FINALIZATION.md`: a minősített candidate utáni megengedett változások.
 
+## Alpha.2 integráció lezárása
+
+- Pull Request: `#1`;
+- célág: `next/v5-rearchitecture`;
+- merge commit: `bd5cb67d3a40d1fa5d8e39f53615a7f50e5c1d3b`;
+- repository-validáció: sikeres;
+- working tree: tiszta;
+- produkciós `main`: változatlan `58e01b40e4568f5cd2648d370614077ef08aa1ba`.
+
+## Alpha.3 aktuális állapot
+
+Az `X-Device-Key` runtime implementáció elkészült a forrásfán, de még nem
+tekinthető hardveresen minősített release candidate-nek. Az alkalmazásverzió
+szándékosan `5.0.0-alpha.2` marad az új gate és finalization befejezéséig.
+A firmware célverzió `4.1.21`, a query fallback kezdetben engedélyezett.
+
 ## Következő biztonságos sorrend
 
-1. a PR #1 whitespace- és generátor-EOF javítása az integrációs ágon;
-2. teljes repository-, OpenAPI-, secret- és PR-diff ellenőrzés;
-3. merge kizárólag a `next/v5-rearchitecture` ágba;
-4. teljes teszt a friss `next` ágon;
-5. Alpha.3 `X-Device-Key` runtime munkacsomag új gate-tel;
-6. firmware és schedule hardverteszt;
-7. csak később release branch és `main` Pull Request.
+1. `feature/v5-alpha3-device-key-header` ág létrehozása a `bd5cb67` `next` commitból;
+2. az Alpha.3 csomag teljes repository-validációja, commitja és push-a;
+3. GitHub Actions firmware `4.1.21` fordítás és artifact SHA-256 ellenőrzés;
+4. firmware-first UNO R4 WiFi fejléc-, negatív és query-fallback hardverteszt;
+5. staging gateway és Tauri fejléc-hitelesítés, valamint napló-redakció igazolása;
+6. külön fallback-off firmware build, rollback-próba és új evidence-lánc;
+7. csak sikeres gate és finalization után `5.0.0-alpha.3`; a `main` továbbra is külön release-kapu.
 
 ## Kifejezetten tiltott következő lépések
 

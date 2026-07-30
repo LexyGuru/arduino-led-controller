@@ -9,7 +9,8 @@ import {
 import App from './App';
 
 import {
-  DesktopApiProvider
+  DesktopApiProvider,
+  type CreateDesktopApiOptions
 } from './api';
 
 import './styles.css';
@@ -34,6 +35,24 @@ const persistentBearerEnabled =
     '1'
   ) !== '0';
 
+const desktopInvoke:
+  CreateDesktopApiOptions[
+    'invoke'
+  ] =
+    tauriAvailable
+      ? (
+          command,
+          arguments_
+        ) =>
+          invoke<unknown>(
+            command,
+            arguments_ as
+              Parameters<
+                typeof invoke
+              >[1]
+          )
+      : undefined;
+
 createRoot(
   document.getElementById(
     'root'
@@ -42,9 +61,7 @@ createRoot(
   <DesktopApiProvider
     options={{
       invoke:
-        tauriAvailable
-          ? invoke
-          : undefined,
+        desktopInvoke,
       allowPersistentBearer:
         persistentBearerEnabled
     }}

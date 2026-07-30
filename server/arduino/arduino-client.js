@@ -37,6 +37,16 @@ function formatHttpHost(host) {
   return normalized;
 }
 
+function withoutDeviceKeyHeader(headers = {}) {
+  return Object.fromEntries(
+    Object.entries(headers || {})
+      .filter(([name]) => (
+        String(name).toLowerCase() !==
+          'x-device-key'
+      ))
+  );
+}
+
 function configuredSecret(
   value,
   minimumLength
@@ -243,13 +253,6 @@ class ArduinoClient {
       .join('/')
       .replace(/\/{2,}/g, '/');
 
-    // Átmeneti firmware-kompatibilitás:
-    // az LXC -> Arduino kapcsolat még query kulcsot igényel.
-    url.searchParams.set(
-      'k',
-      this.config.apiKey
-    );
-
     for (
       const [key, value]
       of Object.entries(query || {})
@@ -330,7 +333,14 @@ class ArduinoClient {
           headers: {
             Accept: 'application/json',
             'X-Request-Source': source,
-            ...headers
+            ...withoutDeviceKeyHeader(
+              headers
+            ),
+            // A titok nem kerülhet URL-be, proxy- vagy access logba.
+            // A hívó által megadott kis- vagy nagybetűs változatot is
+            // eltávolítjuk, majd a konfigurált kulcsot tesszük a kérésbe.
+            'X-Device-Key':
+              this.config.apiKey
           }
         });
 
@@ -441,5 +451,6 @@ module.exports = {
   formatHttpHost,
   mapArduinoClientError,
   normalizeApiPath,
-  normalizeEndpoint
+  normalizeEndpoint,
+  withoutDeviceKeyHeader
 };

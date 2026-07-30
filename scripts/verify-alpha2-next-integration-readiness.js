@@ -142,11 +142,12 @@ function evaluate({ checkGit = true, requireGit = false } = {}) {
     `runtimeCodeChanged=${manifest.runtimeCodeChanged}`
   );
   check(
-    'checklist-pr-open-next-pending',
+    'checklist-next-merged-main-pending',
     checklist.includes('- [x] Pull Request a `next/v5-rearchitecture` ágba (`#1`)') &&
-      checklist.includes('- [ ] Beolvasztás `next/v5-rearchitecture` ágba') &&
+      checklist.includes('- [x] Beolvasztás `next/v5-rearchitecture` ágba') &&
+      checklist.includes('- [x] Új integrációs ellenőrzés a `next` ágon') &&
       checklist.includes('- [ ] Beolvasztás `main` ágba'),
-    'A PR legyen dokumentált, a next és main merge kapu maradjon nyitva.'
+    'Az Alpha.2 legyen a next ágon, a main kapu maradjon nyitva.'
   );
   check(
     'roadmap-current-status',
@@ -195,7 +196,8 @@ function evaluate({ checkGit = true, requireGit = false } = {}) {
     const allowedBranches = new Set([
       'feature/v5-server-modularization',
       'integration/v5-alpha2-server-modularization',
-      'next/v5-rearchitecture'
+      'next/v5-rearchitecture',
+      'feature/v5-alpha3-device-key-header'
     ]);
     check(
       'allowed-branch',

@@ -1,0 +1,189 @@
+{
+  "schemaVersion": 1,
+  "package": "v5-alpha3-device-key-header-migration-complete-v3",
+  "createdAt": "2026-07-30",
+  "baseBranch": "next/v5-rearchitecture",
+  "baseCommit": "bd5cb67d3a40d1fa5d8e39f53615a7f50e5c1d3b",
+  "targetBranch": "feature/v5-alpha3-device-key-header",
+  "qualifiedProductionBaseline": "58e01b40e4568f5cd2648d370614077ef08aa1ba",
+  "applicationVersionBefore": "5.0.0-alpha.2",
+  "applicationVersionAfter": "5.0.0-alpha.2",
+  "firmwareVersionBefore": "4.1.20",
+  "firmwareVersionAfter": "4.1.21",
+  "runtimeCodeChanged": true,
+  "productionDeploymentIncluded": false,
+  "mainMergeIncluded": false,
+  "queryFallbackEnabled": true,
+  "hardwareValidationRequired": true,
+  "alpha3FinalizationIncluded": false,
+  "securityContract": {
+    "primaryHeader": "X-Device-Key",
+    "clientQuerySecretsRemoved": true,
+    "duplicateHeaderRejected": true,
+    "invalidHeaderCannotUseQueryFallback": true,
+    "legacyCurlHeaderFromStdin": true,
+    "queryFallbackMeasured": true
+  },
+  "description": "Alpha.3 firmware-first Arduino device-key migration, post-merge Alpha.2 readiness-test alignment, and desktop TypeScript build-gate repair. Node, legacy macOS curl and Tauri clients move the Arduino API key from URL query parameters to X-Device-Key. Firmware 4.1.21 accepts the header first and retains a measurable, compile-time query fallback until hardware and rollout gates pass. The desktop preflight panel, Vite environment typing and Tauri invoke adapter compile under the strict TypeScript build.",
+  "fileCountExcludingManifest": 31,
+  "files": [
+    {
+      "path": ".env.example",
+      "sha256": "61f551c931246f25b99bb129f436c2031e0713e05ccfcecd65fb10768fdfd0ca",
+      "bytes": 4936
+    },
+    {
+      "path": ".github/workflows/firmware-build.yml",
+      "sha256": "b2ff86119e75ed18da3711039de605d3e01331b6695cd41a96cbfd2bf84957d2",
+      "bytes": 3675
+    },
+    {
+      "path": "README.md",
+      "sha256": "15ec9913899097783ac72d6ff5694c491e31ca22f12a8bfa2669abbbda5671fe",
+      "bytes": 14369
+    },
+    {
+      "path": "desktop-tauri/src-tauri/src/lib.rs",
+      "sha256": "bb13c3b706c1ca479b07c93e5f01f5d20d2553fa03522aadc5fa7b288a15d500",
+      "bytes": 81159
+    },
+    {
+      "path": "desktop-tauri/src/main.tsx",
+      "sha256": "1b08bce5b454f0785a348f4e111e861b2cb1a11027798a425bcf652f452b1672",
+      "bytes": 1280
+    },
+    {
+      "path": "desktop-tauri/src/vite-env.d.ts",
+      "sha256": "67afc4df8c8a356921ebfe2ab0a5770d689d8ea865de8e579bdc902f32d02622",
+      "bytes": 182
+    },
+    {
+      "path": "desktop-tauri/src/components/v5/V5PreflightPanel.tsx",
+      "sha256": "d42dd7ffa7d4c81f5bf98015c886b38cc038bd06c4809982d45ef1162f7f47ba",
+      "bytes": 3025
+    },
+    {
+      "path": "docs/api/API_V2_CONTRACT.md",
+      "sha256": "1be3adf8df5ee1c33d3c35c949f5a78795c9310d33f56f2f56bdb105e39f76ab",
+      "bytes": 22265
+    },
+    {
+      "path": "docs/v5/ALPHA3_DEVICE_KEY_MIGRATION.md",
+      "sha256": "e0b992648784b3a9a0f9c8b592602731b32931e933170683286ffb1b4a52f6d1",
+      "bytes": 5094
+    },
+    {
+      "path": "docs/v5/ALPHA3_HARDWARE_TEST_RUNBOOK.md",
+      "sha256": "641ef3004e6461fd6281d13242eab990302276b631389f239a9331a03ec1e68d",
+      "bytes": 4164
+    },
+    {
+      "path": "docs/v5/ALPHA3_RELEASE_NOTES_DRAFT.md",
+      "sha256": "16bd10f11e26853f91d44997ad03733cd75c7f08280855c08059a2b3a1f4f4d6",
+      "bytes": 2386
+    },
+    {
+      "path": "docs/v5/NEXT_V5_INTEGRATION_RUNBOOK.md",
+      "sha256": "bd9cd5bae9a38c39ba9b332337ce2850803c71733649699cb731a43e4a77c68c",
+      "bytes": 5374
+    },
+    {
+      "path": "docs/v5/PACKAGE_MANIFEST_ALPHA2_VERSION_FINALIZATION.json",
+      "sha256": "e2b6daeffe13abbb3f2a86afcf844682506523e18fb05c7c662173d9143571fb",
+      "bytes": 7853
+    },
+    {
+      "path": "docs/v5/V5_IMPLEMENTATION_STATUS.md",
+      "sha256": "cf4065d64856d486d6b7fd89a7bff7311fac71383c7df086b92bcb22b2c506d4",
+      "bytes": 9750
+    },
+    {
+      "path": "docs/v5/V5_REARCHITECTURE_CHECKLIST.md",
+      "sha256": "1238d157f1fe9dcf2f9293b569ebe1500b734eaf09b57a77cf7ed2947fa8f6bd",
+      "bytes": 7864
+    },
+    {
+      "path": "fejlesztes_readme.md",
+      "sha256": "5f8458b6d5ff9f8ae140ab5121709ce82b8d779aa50a6de2090feda566476347",
+      "bytes": 27938
+    },
+    {
+      "path": "firmware/ArduinoLedController/ArduinoLedController.ino",
+      "sha256": "7e18e55418b972a22d3629351f5c372c4be09f708f7d9ff69b6c53442603dd80",
+      "bytes": 63491
+    },
+    {
+      "path": "firmware/ArduinoLedController/secrets.example.h",
+      "sha256": "44f7a1bcc405cf987de58ac0bb62d578f2fdc423adceadc70abd8228f6b6b8fd",
+      "bytes": 546
+    },
+    {
+      "path": "firmware/README.md",
+      "sha256": "60804d761ec714416eaba35c1463e779f6a3f743d6ba368d1f05b767396545e6",
+      "bytes": 3097
+    },
+    {
+      "path": "package.json",
+      "sha256": "f8b6599a80b77bdaecbe14f6018296bb22785fd564435ce92fb25e80bca7b90d",
+      "bytes": 31898
+    },
+    {
+      "path": "scripts/test-alpha2-next-integration-readiness.js",
+      "sha256": "180ff155f2fce3fb373ebaed48376c2ca5fc71a9c7d6374132f886970e82752b",
+      "bytes": 1054
+    },
+    {
+      "path": "scripts/test-alpha2-version-finalization.js",
+      "sha256": "d8c3fda27bec32fa655e4998989502ff89f91664c7313d641d13537d963fc5ed",
+      "bytes": 5225
+    },
+    {
+      "path": "scripts/test-alpha3-desktop-typescript-contract.js",
+      "sha256": "e184b6bceac5629122440e112d1bc40aaff36ac7f7648d8b3b5910239e745dba",
+      "bytes": 1815
+    },
+    {
+      "path": "scripts/test-alpha3-device-key-header.js",
+      "sha256": "7b5331bfd8cb221dc9395f0868bc8c97b2daa96c4ec27d6d5f7278925479680a",
+      "bytes": 6088
+    },
+    {
+      "path": "scripts/test-alpha3-device-key-manifest.js",
+      "sha256": "097c9f5bc39f4818f963d80c683bcdd2b429c9bc674d9ced096dead69c2a5403",
+      "bytes": 5813
+    },
+    {
+      "path": "scripts/test-arduino-client.js",
+      "sha256": "7d264690d62bd756ff51cd6458e176558a67f09e279c66eb56b645c3b00858c9",
+      "bytes": 4883
+    },
+    {
+      "path": "scripts/test-v5-documentation-status.js",
+      "sha256": "77691704747bd5d27c6e5de84a3755aa34ab25b035669b208c56f75e7d02148b",
+      "bytes": 4109
+    },
+    {
+      "path": "scripts/validate-repository.sh",
+      "sha256": "d4f26c5aeb063e1e9f4b2fb3f1e3590c00ea69273aba9068c152c5e74c3d7d8c",
+      "bytes": 20447
+    },
+    {
+      "path": "scripts/verify-alpha2-next-integration-readiness.js",
+      "sha256": "f4994d6a3b347f24f992f6ec1043f0ad086d5d9c7e75f013913ed486ac5b7c42",
+      "bytes": 8781
+    },
+    {
+      "path": "server/arduino/arduino-client.js",
+      "sha256": "6b0dbf6d46f46873346a448d0499d6b9b95481807baffc5f5282a596c99c15e3",
+      "bytes": 8350
+    },
+    {
+      "path": "server2_legacy.js",
+      "sha256": "27104184d108a5af204d14ce4d853b7dba22c8ce54aefec4b1f1e50d318a7b89",
+      "bytes": 141895
+    }
+  ],
+  "firmwareLatestReleaseProtected": true,
+  "alpha2ReadinessRegressionAligned": true,
+  "desktopTypescriptBuildFixed": true
+}

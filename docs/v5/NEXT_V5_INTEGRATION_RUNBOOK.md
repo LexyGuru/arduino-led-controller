@@ -15,12 +15,12 @@ beolvasztása a közös `next/v5-rearchitecture` integrációs ágba úgy, hogy:
 ## Aktuális végrehajtási állapot – 2026-07-30
 
 - integrációs ág létrejött és felkerült az originre;
-- Pull Request `#1` nyitva van a `next/v5-rearchitecture` célággal;
-- a PR 432 fájlt tartalmaz;
-- a GitHub lapozott API-lista és a helyi Git diff fájllistája egyezik;
-- a teljes repository-validáció sikeres;
-- a merge előtt a `git diff --check` által jelzett EOF-üres sorokat és a
-  generátor regresszióját javítani kell;
+- Pull Request `#1` sikeresen beolvadt a `next/v5-rearchitecture` célágba;
+- merge commit: `bd5cb67d3a40d1fa5d8e39f53615a7f50e5c1d3b`;
+- a PR 432 fájlt tartalmazott;
+- a GitHub lapozott API-lista és a helyi Git diff fájllistája egyezett;
+- a whitespace- és generátor-EOF gate javítása elkészült;
+- a teljes repository-validáció a friss `next` ágon sikeres;
 - a `main` ág és a produkciós rendszer továbbra is változatlan.
 
 Nagy PR esetén a `gh pr diff --name-only` 300 fájl felett HTTP 406 hibát adhat.
@@ -160,7 +160,7 @@ produkciós `/opt/arduino-led-controller` repository nem válthat át `next` ág
 A következő kódmódosítás külön Alpha.3 feature branch legyen, például:
 
 ```text
-feature/v5-arduino-device-key-header
+feature/v5-alpha3-device-key-header
 ```
 
 Feladata:
