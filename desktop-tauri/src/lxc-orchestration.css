@@ -1,0 +1,59 @@
+.v5-orchestration-timeline {
+  display: grid;
+  gap: 8px;
+}
+
+.v5-orchestration-phase {
+  display: grid;
+  grid-template-columns:
+    auto
+    minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  padding: 11px 13px;
+  border: 1px solid #313e56;
+  border-radius: 10px;
+  background: #0b1220;
+  color: #738097;
+}
+
+.v5-orchestration-phase strong,
+.v5-orchestration-phase small,
+.v5-orchestration-phase span {
+  display: block;
+}
+
+.v5-orchestration-phase small {
+  margin-top: 3px;
+  color: #8c98aa;
+}
+
+.v5-orchestration-phase span {
+  margin-top: 4px;
+  color: #5d6a80;
+  font-size: 11px;
+}
+
+.v5-orchestration-phase.passed {
+  border-color:
+    rgba(66, 229, 191, .28);
+  color: #42e5bf;
+  background:
+    rgba(66, 229, 191, .05);
+}
+
+.v5-orchestration-phase.running {
+  border-color:
+    rgba(91, 200, 239, .32);
+  color: #5bc8ef;
+  background:
+    rgba(91, 200, 239, .06);
+}
+
+.v5-orchestration-phase.failed {
+  border-color:
+    rgba(255, 135, 152, .34);
+  color: #ff8798;
+  background:
+    rgba(255, 135, 152, .06);
+}

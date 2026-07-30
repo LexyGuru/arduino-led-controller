@@ -1,0 +1,147 @@
+{
+  "package": "v5-desktop-dashboard-led-api-v2-ready",
+  "baseVersion": "5.0.0-alpha.1",
+  "manifestPolicy": "archive-schema-only-after-supersession",
+  "files": [
+    {
+      "path": "desktop-tauri/package.json",
+      "bytes": 1945,
+      "sha256": "f656199ded8dbef50ac901eeadf2e24554d82bea61662e8b854dc80cbc7cfe13"
+    },
+    {
+      "path": "desktop-tauri/src/api/create-desktop-api.ts",
+      "bytes": 3636,
+      "sha256": "ff9ac721aa3d8fe361d44c681b38d33123c0f9861c1e1ae801dd7cfb63f2e572"
+    },
+    {
+      "path": "desktop-tauri/src/api/runtime/domain/arduino-api.mjs",
+      "bytes": 907,
+      "sha256": "2589850eeee30e62708244f78b35bf2c053837fdcf20b7817bba90800fb30ef4"
+    },
+    {
+      "path": "desktop-tauri/src/api/runtime/domain/led-api.mjs",
+      "bytes": 1775,
+      "sha256": "560a6394b5223ca093bd7b296760ddb39072a19c933f9b97c43fa4d1f7ee9b5e"
+    },
+    {
+      "path": "desktop-tauri/src/api/runtime/index.d.mts",
+      "bytes": 7517,
+      "sha256": "8a4d694e20bea00678cd76a2ded63f96e1f9bdf70079806627b0be34fdc4a7ab"
+    },
+    {
+      "path": "desktop-tauri/src/api/runtime/index.mjs",
+      "bytes": 1010,
+      "sha256": "e4cbfe4814932ec798d7229cd364af1e73cc7562086e9a1134d94d61a4ab17cb"
+    },
+    {
+      "path": "desktop-tauri/src/components/v5/V5ConnectionWarning.tsx",
+      "bytes": 835,
+      "sha256": "9ef107da8af62d859f5cadf2eabd5c851efb4c6475e0f4ac13f688d15e2a7cc4"
+    },
+    {
+      "path": "desktop-tauri/src/components/v5/V5DataSourceBadge.tsx",
+      "bytes": 877,
+      "sha256": "3fb37249d8b8a5b454b9792d3b7d08d5362cd3cd8ef7f218aff2fe9cac2dab14"
+    },
+    {
+      "path": "desktop-tauri/src/components/v5/V5LedBulkActions.tsx",
+      "bytes": 1046,
+      "sha256": "5c98496b66a42c9863477da13b08f48365a5c10841dbd1e6588f8222c4a9376b"
+    },
+    {
+      "path": "desktop-tauri/src/dashboard-led-api-v2.css",
+      "bytes": 1887,
+      "sha256": "b8e38e0185119586825c2943ebbd659a6443d07a78bb77088dc66139d4edc97d"
+    },
+    {
+      "path": "desktop-tauri/src/hooks/useV5Dashboard.ts",
+      "bytes": 3792,
+      "sha256": "6befe556174858c0b28fec60e671f1cdb2c6286fd770b1c4201dda205b1b8244"
+    },
+    {
+      "path": "desktop-tauri/src/hooks/useV5Leds.ts",
+      "bytes": 7716,
+      "sha256": "20e886ae5e508f2ad2489017d6c2411b77be8d068c2898b5521b5982e155b125"
+    },
+    {
+      "path": "desktop-tauri/src/main.tsx",
+      "bytes": 334,
+      "sha256": "393a46bf0d9ffb50dd4f84b21ef35a60e3cae2cf563e3389138c12c5e300828d"
+    },
+    {
+      "path": "desktop-tauri/src/pages/DashboardPage.tsx",
+      "bytes": 9789,
+      "sha256": "40cfafceaa7cf3739c198ab38a8e7fd24fc47d609ab3b62e88320f2555a97192"
+    },
+    {
+      "path": "desktop-tauri/src/pages/LedsPage.tsx",
+      "bytes": 13694,
+      "sha256": "b0a19410fa255679abcfd7d69dfc99de9207853dea9d5e473be44948456f58c6"
+    },
+    {
+      "path": "desktop-tauri/src/services/v5ArduinoModels.d.mts",
+      "bytes": 519,
+      "sha256": "eb538926a783f0798e166274b0c1b989318a63d25a4b52f0c76736479b14833a"
+    },
+    {
+      "path": "desktop-tauri/src/services/v5ArduinoModels.mjs",
+      "bytes": 2859,
+      "sha256": "9a5e2e3df63a168b5a4200f46c4e0bbf04bc4803c439e911fbb78f9f0b69fc47"
+    },
+    {
+      "path": "desktop-tauri/src/services/v5LedModels.d.mts",
+      "bytes": 694,
+      "sha256": "66e3fe954a1df2a856b89ee11a9aff76e566dc87e6ba9a212ebc0a95712e3c0d"
+    },
+    {
+      "path": "desktop-tauri/src/services/v5LedModels.mjs",
+      "bytes": 5371,
+      "sha256": "06c4ab9d88f9095c4199b2f7c766700b2435134201804534569283471e2d303a"
+    },
+    {
+      "path": "docs/v5/DESKTOP_DASHBOARD_LED_API_V2.md",
+      "bytes": 1439,
+      "sha256": "980abada651a010da51fe7a1d588c01f4dc4fbd4979f2097b2525bd1761153a3"
+    },
+    {
+      "path": "docs/v5/V5_REARCHITECTURE_CHECKLIST.md",
+      "bytes": 4377,
+      "sha256": "9f0016daa435c249a1bd710a540b8d8a572144cdafd029a0a679117a918bfac2"
+    },
+    {
+      "path": "package.json",
+      "bytes": 17671,
+      "sha256": "c717682a24ab1c1504cb9cf4f8dd5263a74cb544330ee8c7abbce4bc1ba7d6e5"
+    },
+    {
+      "path": "scripts/test-desktop-arduino-led-domains.js",
+      "bytes": 2585,
+      "sha256": "0319730c7e67010ccda64c7cad726723ff450907c814141cfc12ce3acdbdc707"
+    },
+    {
+      "path": "scripts/test-desktop-dashboard-led-api-v2-manifest.js",
+      "bytes": 1487,
+      "sha256": "2aa9d1b2b145f39ed0906fcfaa0d8c972f7c145f1b588cd2bed70df250c684a5"
+    },
+    {
+      "path": "scripts/test-desktop-dashboard-led-generated-compat.js",
+      "bytes": 787,
+      "sha256": "a982294140aaf10e0f1ee4e028a090bd53be32b5c6f32558cfdb607599931407"
+    },
+    {
+      "path": "scripts/test-desktop-dashboard-led-models.js",
+      "bytes": 2410,
+      "sha256": "2b7639a57dfca37e0ad30a18114e5450c58ac94cd88ba885b88f1dc9ea5b5fe6"
+    },
+    {
+      "path": "scripts/test-desktop-dashboard-led-ui-contract.js",
+      "bytes": 1709,
+      "sha256": "627492c85706b93ddd3b51265b178c9ceb5f4bc0f6c036ad5ca082e6034245cb"
+    },
+    {
+      "path": "scripts/validate-repository.sh",
+      "bytes": 11971,
+      "sha256": "1bdf8d05814a36352ad6b66909706e6af13bb200b7811c47c7cc2c4c903819a2"
+    }
+  ]
+}

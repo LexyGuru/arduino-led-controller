@@ -1,0 +1,29 @@
+[Unit]
+Description=Arduino LED Controller Alpha.2 Staging
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+EnvironmentFile=/etc/arduino-led-controller-staging.env
+WorkingDirectory=/opt/arduino-led-controller-staging/current
+ExecStart=/usr/bin/node /opt/arduino-led-controller-staging/current/server2_final.js
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+KillSignal=SIGTERM
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+ReadWritePaths=/var/lib/arduino-led-controller-staging
+ReadWritePaths=/etc/arduino-led-controller-staging
+ReadWritePaths=/opt/arduino-led-controller-staging
+ReadWritePaths=/var/lib/arduino-led-controller/release-gates
+ReadWritePaths=/var/lib/arduino-led-controller/release-execution
+
+[Install]
+WantedBy=multi-user.target

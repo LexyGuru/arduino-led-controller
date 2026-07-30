@@ -1,0 +1,350 @@
+'use strict';
+
+const path = require('path');
+
+const DEFAULT_PROJECT_ROOT =
+  path.resolve(
+    __dirname,
+    '../..'
+  );
+
+function resolveFromRoot(
+  projectRoot,
+  value,
+  fallback
+) {
+  const selected =
+    String(
+      value ||
+      fallback ||
+      ''
+    ).trim();
+
+  if (!selected) {
+    throw new Error(
+      'A futásidejű útvonal nem lehet üres.'
+    );
+  }
+
+  return path.isAbsolute(
+    selected
+  )
+    ? path.normalize(
+        selected
+      )
+    : path.resolve(
+        projectRoot,
+        selected
+      );
+}
+
+function createRuntimePaths(
+  environment = process.env,
+  projectRoot =
+    DEFAULT_PROJECT_ROOT
+) {
+  const root =
+    path.resolve(
+      projectRoot
+    );
+
+  const dataDir =
+    resolveFromRoot(
+      root,
+      environment.DATA_DIR,
+      'data'
+    );
+
+  const configDir =
+    resolveFromRoot(
+      root,
+      environment.CONFIG_DIR,
+      'config'
+    );
+
+  const schedulesDir =
+    resolveFromRoot(
+      root,
+      environment.SCHEDULES_DIR,
+      'schedules'
+    );
+
+  const firmwareDir =
+    resolveFromRoot(
+      root,
+      environment.FIRMWARE_DIR,
+      path.join(
+        dataDir,
+        'firmware'
+      )
+    );
+
+  return Object.freeze({
+    projectRoot:
+      root,
+    dataDir,
+    configDir,
+    schedulesDir,
+    firmwareDir,
+    publicDir:
+      resolveFromRoot(
+        root,
+        environment.PUBLIC_DIR,
+        'public'
+      ),
+    authFile:
+      resolveFromRoot(
+        root,
+        environment.AUTH_FILE,
+        path.join(
+          configDir,
+          'users.json'
+        )
+      ),
+    apiTokenFile:
+      resolveFromRoot(
+        root,
+        environment.API_TOKEN_FILE,
+        path.join(
+          configDir,
+          'api-v2-tokens.json'
+        )
+      ),
+    auditFile:
+      resolveFromRoot(
+        root,
+        environment.AUDIT_FILE,
+        path.join(
+          dataDir,
+          'audit-log.jsonl'
+        )
+      ),
+    eventStoreFile:
+      resolveFromRoot(
+        root,
+        environment.EVENT_STORE_FILE,
+        path.join(
+          dataDir,
+          'events.jsonl'
+        )
+      ),
+    eventArchiveDir:
+      resolveFromRoot(
+        root,
+        environment.EVENT_ARCHIVE_DIR,
+        path.join(
+          dataDir,
+          'event-archive'
+        )
+      ),
+    localSchedulesFile:
+      resolveFromRoot(
+        root,
+        environment.LOCAL_SCHEDULES_FILE,
+        path.join(
+          schedulesDir,
+          'weekly-led-schedules.json'
+        )
+      ),
+    localScheduleBackupDir:
+      resolveFromRoot(
+        root,
+        environment.LOCAL_SCHEDULE_BACKUP_DIR,
+        path.join(
+          schedulesDir,
+          'backups'
+        )
+      ),
+    firmwareBackupDir:
+      resolveFromRoot(
+        root,
+        environment.FIRMWARE_BACKUP_DIR,
+        path.join(
+          firmwareDir,
+          'backups'
+        )
+      ),
+    otaToolPath:
+      resolveFromRoot(
+        root,
+        environment.OTA_TOOL_PATH,
+        path.join(
+          'tools',
+          'arduinoOTA',
+          'arduinoOTA'
+        )
+      ),
+    openApiDocumentFile:
+      resolveFromRoot(
+        root,
+        environment.OPENAPI_DOCUMENT_FILE,
+        path.join(
+          'docs',
+          'api',
+          'openapi-v2.json'
+        )
+      ),
+    packageFile:
+      path.join(
+        root,
+        'package.json'
+      ),
+    versionFile:
+      path.join(
+        root,
+        'version.json'
+      ),
+    runtimeSettingsFile:
+      path.join(
+        configDir,
+        'server-settings.json'
+      ),
+    snapshotsDir:
+      resolveFromRoot(
+        root,
+        environment.SYSTEM_SNAPSHOTS_DIR,
+        path.join(
+          dataDir,
+          'snapshots'
+        )
+      ),
+    migrationDir:
+      resolveFromRoot(
+        root,
+        environment.SYSTEM_MIGRATION_DIR,
+        path.join(
+          dataDir,
+          'migrations'
+        )
+      ),
+    migrationStateFile:
+      resolveFromRoot(
+        root,
+        environment.SYSTEM_MIGRATION_STATE_FILE,
+        path.join(
+          dataDir,
+          'migrations',
+          'state.json'
+        )
+      ),
+    maintenanceStateFile:
+      resolveFromRoot(
+        root,
+        environment.MAINTENANCE_STATE_FILE,
+        path.join(
+          dataDir,
+          'maintenance.json'
+        )
+      ),
+    releaseGateReportDir:
+      resolveFromRoot(
+        root,
+        environment.RELEASE_GATE_REPORT_DIR,
+        path.join(
+          dataDir,
+          'release-gates'
+        )
+      ),
+    releasePromotionApprovalFile:
+      resolveFromRoot(
+        root,
+        environment.RELEASE_PROMOTION_APPROVAL_FILE,
+        path.join(
+          dataDir,
+          'release-gates',
+          'alpha2-promotion-approval.json'
+        )
+      ),
+    releaseMetadataFile:
+      resolveFromRoot(
+        root,
+        environment.RELEASE_METADATA_FILE,
+        'RELEASE-METADATA.json'
+      ),
+    releaseBundleDir:
+      resolveFromRoot(
+        root,
+        environment.RELEASE_BUNDLE_DIR,
+        path.join(
+          'dist',
+          'releases'
+        )
+      ),
+    releaseExecutionReceiptDir:
+      resolveFromRoot(
+        root,
+        environment.RELEASE_EXECUTION_RECEIPT_DIR,
+        path.join(
+          dataDir,
+          'release-execution'
+        )
+      ),
+    releaseFinalizationApprovalFile:
+      resolveFromRoot(
+        root,
+        environment.RELEASE_FINALIZATION_APPROVAL_FILE,
+        path.join(
+          dataDir,
+          'release-execution',
+          'alpha2-finalization-approval.json'
+        )
+      ),
+    releaseOrchestrationStateFile:
+      resolveFromRoot(
+        root,
+        environment.RELEASE_ORCHESTRATION_STATE_FILE,
+        path.join(
+          dataDir,
+          'release-execution',
+          'alpha2-orchestration-state.json'
+        )
+      ),
+    releaseOrchestrationArtifactDir:
+      resolveFromRoot(
+        root,
+        environment.RELEASE_ORCHESTRATION_ARTIFACT_DIR,
+        path.join(
+          dataDir,
+          'release-execution',
+          'artifacts'
+        )
+      ),
+    releaseOrchestrationArtifactIndexFile:
+      resolveFromRoot(
+        root,
+        environment.RELEASE_ORCHESTRATION_ARTIFACT_INDEX_FILE,
+        path.join(
+          dataDir,
+          'release-execution',
+          'artifacts',
+          'index.json'
+        )
+      ),
+    releaseProductionGuardFile:
+      resolveFromRoot(
+        root,
+        environment.RELEASE_PRODUCTION_GUARD_FILE,
+        path.join(
+          dataDir,
+          'release-execution',
+          'production-guard.json'
+        )
+      ),
+    releaseProductionGuardVerificationFile:
+      resolveFromRoot(
+        root,
+        environment.RELEASE_PRODUCTION_GUARD_VERIFICATION_FILE,
+        path.join(
+          dataDir,
+          'release-execution',
+          'production-guard-verification.json'
+        )
+      )
+  });
+}
+
+module.exports = {
+  DEFAULT_PROJECT_ROOT,
+  createRuntimePaths,
+  resolveFromRoot
+};

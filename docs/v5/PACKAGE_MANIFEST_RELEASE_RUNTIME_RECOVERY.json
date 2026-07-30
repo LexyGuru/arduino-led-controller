@@ -1,0 +1,104 @@
+{
+  "package": "v5-release-runtime-gitignore-recovery-hotfix",
+  "baseVersion": "5.0.0-alpha.1",
+  "targetVersion": "5.0.0-alpha.2",
+  "manifestPolicy": "archive-schema-only-after-supersession",
+  "releaseRuntimeFiles": 11,
+  "files": [
+    {
+      "path": ".gitignore",
+      "bytes": 595,
+      "sha256": "b8d0e108be8e04ef67bd8b531827e21b794778da0e0716a8c17ae28275583694"
+    },
+    {
+      "path": "config/release-secret-allowlist.json",
+      "bytes": 141,
+      "sha256": "924c7c0cf708be87246408ea0761d0b816bea2859883cd45569af94764e28e0f"
+    },
+    {
+      "path": "docs/v5/RELEASE_RUNTIME_GITIGNORE_RECOVERY.md",
+      "bytes": 1045,
+      "sha256": "545d0782636cd52e3a6d1fc738df1595e4caa1c37fb5c2f072aee5488935e2c8"
+    },
+    {
+      "path": "package.json",
+      "bytes": 29708,
+      "sha256": "fb0d7844d73c641fb4dff41233727843e9bee6bd0b138b086027dc6c429736ac"
+    },
+    {
+      "path": "scripts/test-release-runtime-completeness.js",
+      "bytes": 2873,
+      "sha256": "b0881f7983e4457ed51c9f822ccdcdc45e4951a44d9dae00c2b27d021f77b749"
+    },
+    {
+      "path": "scripts/test-release-runtime-gitignore.js",
+      "bytes": 3624,
+      "sha256": "ca70ba3c573a840651322a4d3ecb9658c42ee199f5c4dea20c32600ccb927321"
+    },
+    {
+      "path": "scripts/test-release-runtime-recovery-manifest.js",
+      "bytes": 1280,
+      "sha256": "726268cf21c9dd2cdf0b9128a58715456cf5b0154f1e12f23eb7476e3f8b3253"
+    },
+    {
+      "path": "scripts/validate-repository.sh",
+      "bytes": 19071,
+      "sha256": "3011c63fb4b45faaffa44b0ac592f4b74d635f0157d463818258a874ecfcb5ea"
+    },
+    {
+      "path": "server/release/alpha2-orchestration-service.js",
+      "bytes": 7859,
+      "sha256": "206c45510b71016e3be42fd132ceb3645027a3b13b59c878ca4612cee8541ba5"
+    },
+    {
+      "path": "server/release/alpha2-orchestration-state.js",
+      "bytes": 9094,
+      "sha256": "f58e1c18f58ead4dc6d665a212aab4e57bd529cef6dfabea70d4fefc0692bf1d"
+    },
+    {
+      "path": "server/release/release-error.js",
+      "bytes": 1806,
+      "sha256": "e69db8a3d00ec895f92d28b9e27cc07c70c3ea21a7147f14d2a267fcaa721abc"
+    },
+    {
+      "path": "server/release/release-evidence.js",
+      "bytes": 10664,
+      "sha256": "b37ce8875c89da3391a699a97313c4fe4c40a39b939d1fa1a65d6a94975c72d8"
+    },
+    {
+      "path": "server/release/release-execution-receipt.js",
+      "bytes": 9551,
+      "sha256": "393fdd43aa3228aaeedece667eea6239b67611b8c2c92f17f7f077897043e815"
+    },
+    {
+      "path": "server/release/release-finalization-service.js",
+      "bytes": 8528,
+      "sha256": "afa6ecc29295101fd7c691614da9d41f70fcf3c7bd0fe731fb1296563bcd52c4"
+    },
+    {
+      "path": "server/release/release-gate-report.js",
+      "bytes": 6689,
+      "sha256": "a9f205734f3db0579bcc81c2b6964fa168bef9f49d559069bfd8c8f83f676074"
+    },
+    {
+      "path": "server/release/release-gate-service.js",
+      "bytes": 10164,
+      "sha256": "da9be7ddcdec76296d67229af83f492338f857d904e9872723c52a65d0b196be"
+    },
+    {
+      "path": "server/release/release-provenance.js",
+      "bytes": 2224,
+      "sha256": "a8c7bffdbf8c7002c727edf720dcf5332e0899b0321ac238647289267cd755f9"
+    },
+    {
+      "path": "server/release/release-sbom.js",
+      "bytes": 6279,
+      "sha256": "7a135aa82940d3868f1af604f88ce47cdae6548ebc9b5b96375bc378db84496b"
+    },
+    {
+      "path": "server/release/release-secret-scanner.js",
+      "bytes": 6476,
+      "sha256": "62b546b1c748581f44e26bda156fb9a7a12881e8fa84aa0d940d42eb4745272f"
+    }
+  ]
+}
