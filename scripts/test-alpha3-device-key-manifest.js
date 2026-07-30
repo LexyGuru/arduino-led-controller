@@ -25,7 +25,7 @@ function main() {
   assert.strictEqual(manifest.schemaVersion, 1);
   assert.strictEqual(
     manifest.package,
-    'v5-alpha3-device-key-client-timeout-hotfix-v9'
+    'v5-alpha3-device-key-hardware-evidence-v10'
   );
   assert.strictEqual(
     manifest.baseCommit,
@@ -68,9 +68,31 @@ function main() {
   assert.strictEqual(manifest.nodeHealthTimeoutMinimumMs, 30000);
   assert.strictEqual(manifest.statusMonitorTimeoutMinimumMs, 30000);
   assert.strictEqual(manifest.apiPrivatePathLimitDocumented, true);
+  assert.strictEqual(manifest.hardwareValidationCompleted, true);
+  assert.strictEqual(manifest.hardwareValidationCompletedAt, '2026-07-30');
+  assert.strictEqual(
+    manifest.hardwareGateCommit,
+    '221d7dd56ccf4eed2b6048eb91aee0ea526b2c73'
+  );
+  assert.strictEqual(manifest.hardwareAuthMatrix.passed, true);
+  assert.deepStrictEqual(
+    manifest.hardwareAuthMatrix.statusSequence,
+    [200, 401, 401, 200, 401, 400, 200]
+  );
+  assert.strictEqual(manifest.nodeStaging.passed, true);
+  assert.strictEqual(manifest.nodeStaging.timeoutMs, 30000);
+  assert.strictEqual(manifest.tauriStaging.passed, true);
+  assert.strictEqual(manifest.tauriStaging.connectTimeoutMs, 5000);
+  assert.strictEqual(manifest.tauriStaging.responseTimeoutMs, 30000);
+  assert.strictEqual(manifest.fallbackOffHardwareGate.passed, true);
+  assert.strictEqual(manifest.fallbackOffHardwareGate.headerStatus, 200);
+  assert.strictEqual(manifest.fallbackOffHardwareGate.queryOnlyStatus, 401);
+  assert.strictEqual(manifest.fallbackOffHardwareGate.missingKeyStatus, 401);
+  assert.strictEqual(manifest.rollbackVerified, true);
+  assert.strictEqual(manifest.nextBranchMergeReady, true);
   assert.strictEqual(
     manifest.featureCommitBefore,
-    '0ab52d92592e29e43b353e767fcab7130cb66288'
+    '221d7dd56ccf4eed2b6048eb91aee0ea526b2c73'
   );
   assert.ok(Array.isArray(manifest.files));
   assert.strictEqual(manifest.fileCountExcludingManifest, manifest.files.length);

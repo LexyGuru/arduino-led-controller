@@ -2,7 +2,10 @@
 
 ## Állapot
 
-Fejlesztési munkacsomag. Nem produkciós kiadás és nem jogosít `main` merge-re.
+Az Alpha.3 hardveres és staging kapu 2026-07-30-án sikeresen teljesült a
+`221d7dd56ccf4eed2b6048eb91aee0ea526b2c73` feature commiton. A munkacsomag
+beolvasztható a `next/v5-rearchitecture` ágba, de továbbra sem produkciós kiadás,
+nem jogosít `main` merge-re és nem frissítheti a public firmware release-t.
 
 ## Biztonsági változás
 
@@ -46,16 +49,24 @@ X-Device-Key: <ARDUINO_API_KEY>
 - dokumentált firmware-first rollout és rollback;
 - külön valódi UNO R4 WiFi hardverteszt-runbook.
 
-## Nyitott kapuk
+## Kapuállapot
 
-- Arduino CLI fordítás GitHub Actionsben;
-- valódi eszközteszt;
-- staging gateway teszt;
-- firmware-first rollout bizonyítása;
+Teljesítve:
+
+- Arduino CLI fordítás és GitHub Actions artifact;
+- valódi UNO R4 WiFi auth-mátrix;
+- moduláris Node staging teszt;
+- Tauri/Rust közvetlen staging teszt;
+- firmware-first rollout és visszaállítás;
 - query fallback kikapcsolási próba;
-- új Alpha.3 gate, staging, rollback és evidence;
-- `5.0.0-alpha.3` finalization;
-- `main` továbbra is tiltott.
+- fallback-on rollback és utóellenőrzés;
+- titokmentes Node, Tauri és fallback-off evidence.
+
+Hátralévő, külön kapuk:
+
+- merge a `next/v5-rearchitecture` ágba;
+- `5.0.0-alpha.3` verziófinalizálás;
+- `main` merge és produkciós telepítés továbbra is tiltott.
 
 ## Teszt- és dokumentációs konzisztencia
 
@@ -84,8 +95,9 @@ hanem a polling útvonalon végzett ismételt szinkron WiFiS3 modemlekérdezés 
 A V8 megtartja az 512 bájtos biztonságos válaszdarabolást, de gyorsítótárazza a
 kapcsolatállapotot, IP-címet és RSSI-t. A státusz- és konzolpolling nem kérdezi le
 minden alkalommal a távoli kliens IP-jét, a HTTP feldolgozás pedig a periodikus
-NTP- és telemetriafrissítés előtt fut. A V8 továbbra is hardverteszt-jelölt; nem
-jogosít commitra, Alpha.3 finalizációra, `main` merge-re vagy produkciós telepítésre.
+NTP- és telemetriafrissítés előtt fut. A V8 hardveres auth-mátrixa, Node/Tauri staging próbája, fallback-off tesztje és
+rollbackje sikeresen teljesült. A jelölt bekerült a feature ágba; ez továbbra sem
+jogosít `main` merge-re vagy produkciós telepítésre.
 
 
 ## Arduino API 30 másodperces timeout V9
@@ -99,3 +111,24 @@ moduláris Node kliens, a health ellenőrzés, a státuszmonitor és a legacy kl
 számára. A Tauri közvetlen kliens 5 másodperces kapcsolódási kaput és 30
 másodperces olvasási/írási időkorlátot használ. A macOS curl transport 5
 másodperces kapcsolódási és legalább 30 másodperces teljes timeouttal fut.
+
+## Alpha.3 hardveres és staging gate – PASSED
+
+Validált feature commit:
+`221d7dd56ccf4eed2b6048eb91aee0ea526b2c73`.
+
+A fallback-on auth-mátrix eredménye: `200, 401, 401, 200, 401, 400, 200`.
+A moduláris Node és a Tauri/Rust közvetlen kliens egyaránt `X-Device-Key`
+fejlécet használt és sikeresen lekérte az `/api/status`, valamint az
+`/api/console/stats` végpontot. A fallback-off buildben a fejléc továbbra is
+HTTP 200, a csak query-alapú hitelesítés és a hiányzó kulcs HTTP 401 választ
+kapott. Az automatikus fallback-on rollback és a rollback utáni fejléc/query
+ellenőrzés sikeres volt.
+
+Elfogadott klienspolitika: 5 másodperces TCP-kapcsolódási kapu és minimum
+30 másodperces teljes Arduino API-válaszablak. A mért WiFiS3 válaszidő
+információs adat, nem önálló release-elutasítási feltétel.
+
+A következő engedélyezett művelet a feature ág izolált beolvasztása a
+`next/v5-rearchitecture` ágba. A `main`, a produkciós Arduino és a public
+firmware release változatlan marad.

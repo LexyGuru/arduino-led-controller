@@ -164,18 +164,18 @@ HTTP-válasz nélkül. A hotfix kötelező szerződése:
 
 | Ellenőrzés | Eredmény | Bizonyíték |
 |---|---|---|
-| 4.1.21 firmware |  |  |
-| helyes `X-Device-Key` |  |  |
-| hiányzó kulcs tiltva |  |  |
-| hibás kulcs tiltva |  |  |
-| duplikált fejléc tiltva |  |  |
-| hibás fejléc + query tiltva |  |  |
-| régi query fallback működik |  |  |
-| Node kliens fejlécet használ |  |  |
-| Tauri kliens fejlécet használ |  |  |
-| naplók titokmentesek |  |  |
-| fallback-off próba |  |  |
-| rollback próba |  |  |
+| 4.1.21 firmware | PASSED | V8 fallback-on SHA-256: `fff01debd1f95877c90328daa66fb62699652747e2af00841db2837508a690ca` |
+| helyes `X-Device-Key` | PASSED | HTTP 200; teljes auth-mátrix és rollback utáni ellenőrzés |
+| hiányzó kulcs tiltva | PASSED | HTTP 401 JSON |
+| hibás kulcs tiltva | PASSED | HTTP 401 JSON |
+| duplikált fejléc tiltva | PASSED | HTTP 400 JSON |
+| hibás fejléc + query tiltva | PASSED | HTTP 401; fejléc elsőbbsége bizonyítva |
+| régi query fallback működik | PASSED | fallback-on buildben HTTP 200 |
+| Node kliens fejlécet használ | PASSED | `/api/status` 200; `/api/console/stats` 200; timeout 30000 ms |
+| Tauri kliens fejlécet használ | PASSED | közvetlen `TcpStream`; connect 5000 ms; response 30000 ms |
+| naplók titokmentesek | PASSED | Node és Tauri evidence `secretIncluded=false` |
+| fallback-off próba | PASSED | header 200; csak `?k=` 401; kulcs nélkül 401 |
+| rollback próba | PASSED | fallback-on V8 visszatöltve és header/query HTTP 200 |
 ## Auth-response WiFiS3 darabolt V7 mérés és V8 telemetria-cache javítás
 
 A hardverteszt két elutasított jelöltet azonosított:
@@ -237,3 +237,57 @@ Kötelező Alpha.3 klienspolitika:
 
 A 30 másodperces érték nem teljesítménycél. Biztonsági tartalék a periodikus
 WiFiS3 műveletekhez és a későbbi firmware-bővítésekhez.
+
+## Alpha.3 hardveres gate lezárása – 2026-07-30
+
+A teljes Alpha.3 hardveres és kliensoldali kapu a tartalék Arduino UNO R4 WiFi
+eszközön sikeresen lezárult.
+
+Rögzített kiindulási állapot:
+
+- feature ág: `feature/v5-alpha3-device-key-header`;
+- validált feature commit: `221d7dd56ccf4eed2b6048eb91aee0ea526b2c73`;
+- változatlan produkciós baseline: `58e01b40e4568f5cd2648d370614077ef08aa1ba`;
+- firmware: `4.1.21`;
+- tartalék eszköz: Arduino UNO R4 WiFi, teszt-IP: `10.0.0.117`;
+- fallback-on firmware SHA-256: `fff01debd1f95877c90328daa66fb62699652747e2af00841db2837508a690ca`;
+- fallback-off firmware SHA-256: `ed91eb47bce9ccb3e1238940f7b2793725878bc655891d1cbfad5a4df2c388a5`.
+
+Végleges auth-mátrix, `API_ALLOW_QUERY_KEY_FALLBACK=1`:
+
+| Kérés | Elvárt | Eredmény |
+|---|---:|---:|
+| helyes `X-Device-Key` | 200 | 200 |
+| hiányzó kulcs | 401 | 401 |
+| hibás `X-Device-Key` | 401 | 401 |
+| helyes `?k=` fallback | 200 | 200 |
+| hibás fejléc + helyes query | 401 | 401 |
+| duplikált `X-Device-Key` | 400 | 400 |
+| mátrix utáni liveness | 200 | 200 |
+
+A teljes válaszidő 30 másodperces kliensablakon belül maradt. A mért késleltetés
+információs adat, nem release-elutasítási feltétel; a külön TCP-kapcsolódási kapu
+5 másodperc.
+
+Staging bizonyítékok:
+
+- moduláris Node kliens: `/api/status` HTTP 200, 3859 ms; `/api/console/stats`
+  HTTP 200, 10280 ms; normál és health timeout 30000 ms;
+- Tauri/Rust közvetlen kliens: `/api/status` HTTP 200, 5352 ms;
+  `/api/console/stats` HTTP 200, 10275 ms; connect timeout 5000 ms,
+  response timeout 30000 ms;
+- mindkét evidence fájl titokmentes, `X-Device-Key` hitelesítést rögzít és
+  `secretIncluded=false` értéket tartalmaz.
+
+Fallback-off kapu, `API_ALLOW_QUERY_KEY_FALLBACK=0`:
+
+- helyes `X-Device-Key`: HTTP 200;
+- csak helyes `?k=` query: HTTP 401;
+- kulcs nélkül: HTTP 401;
+- automatikus rollback: sikeres;
+- rollback után a fejléc és az átmeneti query fallback ismét HTTP 200.
+
+A hardveres gate eredménye: **PASSED**. A feature ág beolvasztható a
+`next/v5-rearchitecture` ágba. Ez nem engedélyezi a `main` merge-et, a
+produkciós telepítést vagy a public firmware release frissítését. Az
+`5.0.0-alpha.3` verziófinalizálás külön, következő kapu.

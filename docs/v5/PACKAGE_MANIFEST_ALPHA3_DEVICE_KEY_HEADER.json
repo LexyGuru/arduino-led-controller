@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "package": "v5-alpha3-device-key-client-timeout-hotfix-v9",
+  "package": "v5-alpha3-device-key-hardware-evidence-v10",
   "createdAt": "2026-07-30",
   "baseBranch": "next/v5-rearchitecture",
   "baseCommit": "bd5cb67d3a40d1fa5d8e39f53615a7f50e5c1d3b",
@@ -24,7 +24,7 @@
     "legacyCurlHeaderFromStdin": true,
     "queryFallbackMeasured": true
   },
-  "description": "Alpha.3 V9 client-timeout hardening on top of the hardware-tested V8 WiFi telemetry-cache candidate. Real UNO R4 WiFi measurements showed correct 401/200 responses with 2.6-9.9 second first-byte latency during periodic WiFiS3 background work. V9 prevents false offline and timeout failures by enforcing a minimum 30000 ms Arduino API request window for modular Node normal/health/status-monitor calls and legacy Node/curl calls, while the Tauri direct client uses a separate 5 second TCP connect gate and 30 second read/write response window. Firmware 4.1.21, header-first X-Device-Key authentication, measured query fallback, application version 5.0.0-alpha.2, main isolation, and production isolation remain unchanged.",
+  "description": "Alpha.3 V10 hardware-evidence package on top of feature commit 221d7dd56ccf4eed2b6048eb91aee0ea526b2c73. The real UNO R4 WiFi header-auth matrix, modular Node staging, Tauri/Rust direct staging, query-fallback-off gate, automatic fallback-on rollback, and rollback liveness verification all passed. The accepted client policy remains a 5 second TCP connection gate and minimum 30 second Arduino API response window. Application version remains 5.0.0-alpha.2; main, production and the public firmware release remain isolated.",
   "fileCountExcludingManifest": 33,
   "files": [
     {
@@ -74,13 +74,13 @@
     },
     {
       "path": "docs/v5/ALPHA3_HARDWARE_TEST_RUNBOOK.md",
-      "sha256": "52aaf7d1fc8529a24d4528ada02116e417a5785f4a11135d738815b39da99293",
-      "bytes": 8127
+      "sha256": "d3fe383f0af3146f427c99af14fc480e555d6a36051ad40db7b7b7537436986d",
+      "bytes": 11007
     },
     {
       "path": "docs/v5/ALPHA3_RELEASE_NOTES_DRAFT.md",
-      "sha256": "16e7aa65f3461097cf47b236011cde5ba59ed727f9766091b1291fc0f8687fc9",
-      "bytes": 5040
+      "sha256": "061a041e561bfe730600488dcdd00c0621751e5104919d6d8a6ed1d093935b0c",
+      "bytes": 6650
     },
     {
       "path": "docs/v5/NEXT_V5_INTEGRATION_RUNBOOK.md",
@@ -149,8 +149,8 @@
     },
     {
       "path": "scripts/test-alpha3-device-key-manifest.js",
-      "sha256": "094b372327e6d5c67316663122fb596b4bf359c18aa9e2b52bea90c866bb3cbf",
-      "bytes": 7357
+      "sha256": "ba79dbd5b50d1a466528375f93a680fb5d12abf4f5ae36525ae59d15ebf1cd52",
+      "bytes": 8512
     },
     {
       "path": "scripts/test-arduino-client.js",
@@ -196,7 +196,7 @@
   "firmwareLatestReleaseProtected": true,
   "alpha2ReadinessRegressionAligned": true,
   "desktopTypescriptBuildFixed": true,
-  "featureCommitBefore": "0ab52d92592e29e43b353e767fcab7130cb66288",
+  "featureCommitBefore": "221d7dd56ccf4eed2b6048eb91aee0ea526b2c73",
   "authFailureHttpResponsesFixed": true,
   "apiPrivatePathLimitDocumented": true,
   "authResponseFlushAdded": false,
@@ -247,5 +247,60 @@
     ],
     "responsesCorrect": true,
     "latencyAcceptedWithThirtySecondClientTimeout": true
-  }
+  },
+  "hardwareValidationCompleted": true,
+  "hardwareValidationCompletedAt": "2026-07-30",
+  "hardwareGateCommit": "221d7dd56ccf4eed2b6048eb91aee0ea526b2c73",
+  "hardwareTestDevice": "Arduino UNO R4 WiFi",
+  "hardwareTestIp": "10.0.0.117",
+  "fallbackOnFirmwareSha256": "fff01debd1f95877c90328daa66fb62699652747e2af00841db2837508a690ca",
+  "fallbackOffFirmwareSha256": "ed91eb47bce9ccb3e1238940f7b2793725878bc655891d1cbfad5a4df2c388a5",
+  "hardwareAuthMatrix": {
+    "passed": true,
+    "statusSequence": [
+      200,
+      401,
+      401,
+      200,
+      401,
+      400,
+      200
+    ],
+    "responseLatencyInformationalOnly": true,
+    "requestTimeoutSeconds": 30
+  },
+  "nodeStaging": {
+    "passed": true,
+    "authentication": "X-Device-Key",
+    "timeoutMs": 30000,
+    "healthTimeoutMs": 30000,
+    "statusHttp": 200,
+    "statusLatencyMs": 3859,
+    "consoleStatsHttp": 200,
+    "consoleStatsLatencyMs": 10280,
+    "secretIncluded": false
+  },
+  "tauriStaging": {
+    "passed": true,
+    "transport": "TcpStream",
+    "authentication": "X-Device-Key",
+    "connectTimeoutMs": 5000,
+    "responseTimeoutMs": 30000,
+    "statusHttp": 200,
+    "statusLatencyMs": 5352,
+    "consoleStatsHttp": 200,
+    "consoleStatsLatencyMs": 10275,
+    "secretIncluded": false
+  },
+  "fallbackOffHardwareGate": {
+    "passed": true,
+    "headerStatus": 200,
+    "queryOnlyStatus": 401,
+    "missingKeyStatus": 401,
+    "automaticRollbackPassed": true
+  },
+  "rollbackVerified": true,
+  "rollbackHeaderStatus": 200,
+  "rollbackQueryFallbackStatus": 200,
+  "nextBranchMergeReady": true
 }
