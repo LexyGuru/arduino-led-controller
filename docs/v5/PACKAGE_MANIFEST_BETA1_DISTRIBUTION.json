@@ -1,0 +1,226 @@
+{
+  "schemaVersion": 1,
+  "package": "v5-beta1-distribution-v13.4",
+  "baseCommit": "aca96f9d01d0d926f2643f4e48fd2bce5945b33a",
+  "targetBranch": "next/v5-rearchitecture",
+  "applicationVersionBefore": "5.0.0-alpha.3",
+  "applicationVersionAfter": "5.0.0-beta.1",
+  "firmwareVersion": "4.1.21",
+  "releaseTag": "v5.0.0-beta.1",
+  "releaseWorkflow": ".github/workflows/beta-release.yml",
+  "manualDispatchOnly": false,
+  "githubPrerelease": true,
+  "makeLatest": false,
+  "publicBetaReleaseIncluded": true,
+  "platforms": [
+    {
+      "id": "windows-x86_64",
+      "name": "Windows x86_64",
+      "assets": [
+        "NSIS .exe"
+      ],
+      "installable": true
+    },
+    {
+      "id": "macos-apple-silicon",
+      "name": "macOS Apple Silicon",
+      "assets": [
+        "DMG arm64"
+      ],
+      "installable": true
+    },
+    {
+      "id": "macos-intel",
+      "name": "macOS Intel",
+      "assets": [
+        "DMG x86_64"
+      ],
+      "installable": true
+    },
+    {
+      "id": "linux-x86_64",
+      "name": "Linux x86_64",
+      "assets": [
+        "AppImage",
+        "DEB"
+      ],
+      "installable": true
+    },
+    {
+      "id": "android",
+      "name": "Android",
+      "assets": [
+        "APK",
+        "AAB"
+      ],
+      "installable": true
+    },
+    {
+      "id": "ios-ipados",
+      "name": "iOS and iPadOS",
+      "assets": [
+        "unsigned IPA"
+      ],
+      "installable": false
+    },
+    {
+      "id": "lxc-server",
+      "name": "Debian and Proxmox LXC server",
+      "assets": [
+        "versioned TAR.GZ",
+        "installer",
+        "environment example"
+      ],
+      "installable": true
+    },
+    {
+      "id": "firmware-uno-r4-wifi",
+      "name": "Arduino UNO R4 WiFi firmware",
+      "assets": [
+        "BIN"
+      ],
+      "installable": false
+    }
+  ],
+  "supplyChain": {
+    "sha256Sums": true,
+    "releaseManifest": true,
+    "cycloneDxSbom": true,
+    "provenance": true,
+    "secretScan": true
+  },
+  "signing": {
+    "windowsCodeSigned": false,
+    "macDeveloperIdSigned": false,
+    "macNotarized": false,
+    "androidSignedWhenSecretsAvailable": true,
+    "iosSigned": false
+  },
+  "queryFallbackEnabled": true,
+  "arduinoResponseTimeoutMs": 30000,
+  "tauriConnectTimeoutMs": 5000,
+  "tauriResponseTimeoutMs": 30000,
+  "mainMergeIncluded": false,
+  "productionDeploymentIncluded": false,
+  "publicFirmwareLatestUpdated": false,
+  "productionArduinoUpdated": false,
+  "fileCountExcludingManifest": 22,
+  "files": [
+    {
+      "path": ".github/workflows/beta-release.yml",
+      "bytes": 23602,
+      "sha256": "935a464a1256471f9929dd71079d6d85cef6b52d63aee029ccebd816357eac48"
+    },
+    {
+      "path": "VERSION",
+      "bytes": 13,
+      "sha256": "3024ad0d638605bbf607fb36c769bca76ce43972e2c9a3668acf582b998aa9bc"
+    },
+    {
+      "path": "deploy/beta-lxc.env.example",
+      "bytes": 602,
+      "sha256": "48a542a2960bcad53437297f4253f54244c96390503aad5d7520d0d7d8abc269"
+    },
+    {
+      "path": "deploy/build-beta-release-bundle.sh",
+      "bytes": 1990,
+      "sha256": "d7ba9cf171a9bc04a37915c786507bcb89b58c98f77428fe9ccb2594d74c72c5"
+    },
+    {
+      "path": "deploy/install-beta-lxc.sh",
+      "bytes": 5266,
+      "sha256": "d7d05908257669515e7c4421e4b66736e4cf58178ecb0fa0ff05f5dc1e952220"
+    },
+    {
+      "path": "deploy/install-staging-service.sh",
+      "bytes": 6637,
+      "sha256": "665997e20cf69e13db2cca93f7f08f76f8bf7b153dba0b7ee4da455bf11c40d9"
+    },
+    {
+      "path": "deploy/staging.env.example",
+      "bytes": 2198,
+      "sha256": "1b14743821961482d2751a5c900a851b8e1f54183391c4e70118662625b56007"
+    },
+    {
+      "path": "deploy/systemd/arduino-led-controller-staging.service",
+      "bytes": 828,
+      "sha256": "d1749d82bd81cd35cafe89d50f5aa21c342c26684828abfe4c3808c12118bf67"
+    },
+    {
+      "path": "deploy/verify-versioned-release.sh",
+      "bytes": 3374,
+      "sha256": "25c72382188bf437c31561b44bea6a3a60c895078c467640cae914fed1b62ab2"
+    },
+    {
+      "path": "docs/v5/BETA1_INSTALLATION_GUIDE.md",
+      "bytes": 4390,
+      "sha256": "a22cf87926a3dc62577577d7eddad2828907f0837fa061ebddd08d6772e1e168"
+    },
+    {
+      "path": "docs/v5/BETA1_RELEASE_CHECKLIST.md",
+      "bytes": 4317,
+      "sha256": "2eea4534b927442eb1e4c0c26ee287a22e7592ac17499b93dd3363e80c2ae4f8"
+    },
+    {
+      "path": "docs/v5/BETA1_RELEASE_NOTES.md",
+      "bytes": 3276,
+      "sha256": "20488568a7d1e9928b6a5086f1b49d34d38501d84ffe4ede7745b57104fb91dd"
+    },
+    {
+      "path": "scripts/test-alpha2-next-integration-readiness.js",
+      "bytes": 1395,
+      "sha256": "ca6b7af551633398a01b13c596490a199057ddb66298514ff06b9993308337f3"
+    },
+    {
+      "path": "scripts/test-alpha2-release-gate.js",
+      "bytes": 2762,
+      "sha256": "c9f5f83087e05550211868cbe4b6a3eec2f886ddbd0846ceabc21374048b22bf"
+    },
+    {
+      "path": "scripts/test-alpha2-version-finalization-manifest.js",
+      "bytes": 4688,
+      "sha256": "ec6474c57784dd52a33e017d49734e8920ac5dd9129f46596084a089178bae76"
+    },
+    {
+      "path": "scripts/test-alpha2-version-finalization.js",
+      "bytes": 5055,
+      "sha256": "d1eeef20337fe2c9674be13aa1eee51360acd70406b488669a782e352baaa812"
+    },
+    {
+      "path": "scripts/test-alpha3-device-key-manifest.js",
+      "bytes": 9546,
+      "sha256": "d33741494538951ba5d435fdb521d16de43c4cbb4f286a7a56eb4a682ce65ed4"
+    },
+    {
+      "path": "scripts/test-beta-installation-assets.js",
+      "bytes": 5198,
+      "sha256": "b6a070e754e1c63f374363057abeb3f38e872a5bfb629271147128881f742b6e"
+    },
+    {
+      "path": "scripts/test-beta-release-manifest.js",
+      "bytes": 6343,
+      "sha256": "5cc8743bc459fc7a84b149bd43c69adbc5d4c8c7838abb09bf89fd7b78368bca"
+    },
+    {
+      "path": "scripts/test-beta-release-workflow.js",
+      "bytes": 4458,
+      "sha256": "af19142752b79cb2470dad46389639e7aed6d31f7b5df61c5720da5dd76742d7"
+    },
+    {
+      "path": "scripts/test-v5-documentation-status.js",
+      "bytes": 4005,
+      "sha256": "701f70ec6faeb40b4c0433f404078099e935d9c66a4cb8a0ba240d3a661f2d3f"
+    },
+    {
+      "path": "scripts/verify-alpha2-next-integration-readiness.js",
+      "bytes": 8063,
+      "sha256": "46099a058aeca114130e9f9da07dd8c4a19d50d6e8bc1f54c29e77695c02aa87"
+    }
+  ],
+  "initialPublicationTrigger": "guarded-push",
+  "pushTriggerBranch": "next/v5-rearchitecture",
+  "pushTriggerPaths": [
+    ".github/workflows/beta-release.yml",
+    "docs/v5/PACKAGE_MANIFEST_BETA1_DISTRIBUTION.json"
+  ]
+}

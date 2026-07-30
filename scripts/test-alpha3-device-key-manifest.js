@@ -6,7 +6,8 @@ const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..');
-const VERSION = '5.0.0-alpha.3';
+const ALPHA3_VERSION = '5.0.0-alpha.3';
+const CURRENT_VERSION = '5.0.0-beta.1';
 const MANIFEST_PATH = path.join(
   ROOT,
   'docs/v5/PACKAGE_MANIFEST_ALPHA3_DEVICE_KEY_HEADER.json'
@@ -41,9 +42,7 @@ function cargoPackageVersion(lockText, packageName) {
 }
 
 function main() {
-  const manifest = readJson(
-    'docs/v5/PACKAGE_MANIFEST_ALPHA3_DEVICE_KEY_HEADER.json'
-  );
+  const manifest = JSON.parse(fs.readFileSync(MANIFEST_PATH, 'utf8'));
 
   assert.strictEqual(manifest.schemaVersion, 1);
   assert.strictEqual(manifest.package, 'v5-alpha3-finalization-v11');
@@ -53,7 +52,7 @@ function main() {
   );
   assert.strictEqual(manifest.targetBranch, 'next/v5-rearchitecture');
   assert.strictEqual(manifest.applicationVersionBefore, '5.0.0-alpha.2');
-  assert.strictEqual(manifest.applicationVersionAfter, VERSION);
+  assert.strictEqual(manifest.applicationVersionAfter, ALPHA3_VERSION);
   assert.strictEqual(manifest.firmwareVersion, '4.1.21');
   assert.strictEqual(
     manifest.featureCommit,
@@ -104,8 +103,7 @@ function main() {
   ];
   assert.deepStrictEqual(manifest.versionFiles, expectedVersionFiles);
 
-  assert.strictEqual(readText('VERSION').trim(), VERSION);
-
+  assert.strictEqual(readText('VERSION').trim(), CURRENT_VERSION);
   const rootPackage = readJson('package.json');
   const rootLock = readJson('package-lock.json');
   const desktopPackage = readJson('desktop-tauri/package.json');
@@ -115,39 +113,45 @@ function main() {
   const cargoToml = readText('desktop-tauri/src-tauri/Cargo.toml');
   const cargoLock = readText('desktop-tauri/src-tauri/Cargo.lock');
 
-  assert.strictEqual(rootPackage.version, VERSION);
-  assert.strictEqual(rootLock.version, VERSION);
-  assert.strictEqual(rootLock.packages[''].version, VERSION);
-  assert.strictEqual(desktopPackage.version, VERSION);
-  assert.strictEqual(desktopLock.version, VERSION);
-  assert.strictEqual(desktopLock.packages[''].version, VERSION);
-  assert.match(cargoToml, /^version = "5\.0\.0-alpha\.3"$/m);
+  assert.strictEqual(rootPackage.version, CURRENT_VERSION);
+  assert.strictEqual(rootLock.version, CURRENT_VERSION);
+  assert.strictEqual(rootLock.packages[''].version, CURRENT_VERSION);
+  assert.strictEqual(desktopPackage.version, CURRENT_VERSION);
+  assert.strictEqual(desktopLock.version, CURRENT_VERSION);
+  assert.strictEqual(desktopLock.packages[''].version, CURRENT_VERSION);
+  assert.match(cargoToml, /^version = "5\.0\.0-beta\.1"$/m);
   assert.strictEqual(
     cargoPackageVersion(cargoLock, 'arduino-led-controller'),
-    VERSION
+    CURRENT_VERSION
   );
-  assert.strictEqual(tauriConfig.version, VERSION);
-  assert.strictEqual(openApi.info.version, VERSION);
+  assert.strictEqual(tauriConfig.version, CURRENT_VERSION);
+  assert.strictEqual(openApi.info.version, CURRENT_VERSION);
 
-  const releaseNotes = readText(
-    'docs/v5/ALPHA3_RELEASE_NOTES_DRAFT.md'
-  );
-  const runbook = readText(
-    'docs/v5/ALPHA3_HARDWARE_TEST_RUNBOOK.md'
-  );
+  for (const generatedFile of [
+    'desktop-tauri/src/api/generated/api-v2-types.ts',
+    'desktop-tauri/src/api/generated/api-v2-operations.ts',
+    'desktop-tauri/src/api/generated/api-v2-client.ts'
+  ]) {
+    assert.ok(
+      readText(generatedFile).includes(
+        `/* OpenAPI verzió: ${CURRENT_VERSION} */`
+      )
+    );
+  }
+
+  const releaseNotes = readText('docs/v5/ALPHA3_RELEASE_NOTES_DRAFT.md');
+  const runbook = readText('docs/v5/ALPHA3_HARDWARE_TEST_RUNBOOK.md');
   const roadmap = readText('fejlesztes_readme.md');
-  const implementationStatus = readText(
-    'docs/v5/V5_IMPLEMENTATION_STATUS.md'
-  );
-  const checklist = readText(
-    'docs/v5/V5_REARCHITECTURE_CHECKLIST.md'
-  );
-  const integrationRunbook = readText(
-    'docs/v5/NEXT_V5_INTEGRATION_RUNBOOK.md'
+  const implementationStatus = readText('docs/v5/V5_IMPLEMENTATION_STATUS.md');
+  const checklist = readText('docs/v5/V5_REARCHITECTURE_CHECKLIST.md');
+  const integrationRunbook = readText('docs/v5/NEXT_V5_INTEGRATION_RUNBOOK.md');
+  const betaNotes = readText('docs/v5/BETA1_RELEASE_NOTES.md');
+  const betaManifest = readJson(
+    'docs/v5/PACKAGE_MANIFEST_BETA1_DISTRIBUTION.json'
   );
 
   assert.match(releaseNotes, /^# V5 Alpha\.3 – kiadási jegyzetek$/m);
-  assert.ok(releaseNotes.includes('`5.0.0-alpha.3`'));
+  assert.ok(releaseNotes.includes(`\`${ALPHA3_VERSION}\``));
   assert.ok(
     releaseNotes.includes(
       '`295713798b1487ec2c788b170be2fce32fccea2a`'
@@ -157,6 +161,7 @@ function main() {
     runbook.includes('## Alpha.3 integráció és verziófinalizálás – 2026-07-30')
   );
   assert.ok(runbook.includes('Az Alpha.3 integrációs állapota: **COMPLETED**'));
+
   for (const document of [
     roadmap,
     implementationStatus,
@@ -166,23 +171,58 @@ function main() {
     assert.ok(
       document.includes('295713798b1487ec2c788b170be2fce32fccea2a')
     );
-    assert.ok(document.includes('5.0.0-alpha.3'));
+    assert.ok(document.includes(ALPHA3_VERSION));
   }
+
+  assert.ok(betaNotes.includes(CURRENT_VERSION));
+  assert.strictEqual(betaManifest.applicationVersionAfter, CURRENT_VERSION);
+  assert.strictEqual(betaManifest.githubPrerelease, true);
 
   assert.ok(Array.isArray(manifest.files));
   assert.strictEqual(manifest.fileCountExcludingManifest, manifest.files.length);
 
+  const evolvedAfterAlpha3 = new Set([
+    'VERSION',
+    'scripts/test-alpha2-version-finalization.js',
+    'scripts/test-alpha2-version-finalization-manifest.js',
+    'scripts/verify-alpha2-next-integration-readiness.js',
+    'scripts/test-alpha2-next-integration-readiness.js',
+    'scripts/test-alpha3-device-key-manifest.js',
+    'scripts/test-v5-documentation-status.js'
+  ]);
+
   const seen = new Set();
+  let unchangedHashChecks = 0;
+  let historicalEvolvedChecks = 0;
+
   for (const entry of manifest.files) {
     assert.strictEqual(typeof entry.path, 'string');
-    assert.strictEqual(seen.has(entry.path), false, `Duplikált útvonal: ${entry.path}`);
+    assert.strictEqual(
+      seen.has(entry.path),
+      false,
+      `Duplikált útvonal: ${entry.path}`
+    );
     assert.match(entry.sha256, /^[a-f0-9]{64}$/);
     assert.ok(Number.isInteger(entry.bytes) && entry.bytes > 0);
     assert.strictEqual(entry.path.endsWith('/secrets.h'), false);
     assert.notStrictEqual(entry.path, '.env');
+
     const content = read(entry.path);
-    assert.strictEqual(content.length, entry.bytes, `Méreteltérés: ${entry.path}`);
-    assert.strictEqual(sha256(content), entry.sha256, `SHA-256 eltérés: ${entry.path}`);
+    if (evolvedAfterAlpha3.has(entry.path)) {
+      historicalEvolvedChecks += 1;
+    } else {
+      assert.strictEqual(
+        content.length,
+        entry.bytes,
+        `Méreteltérés: ${entry.path}`
+      );
+      assert.strictEqual(
+        sha256(content),
+        entry.sha256,
+        `SHA-256 eltérés: ${entry.path}`
+      );
+      unchangedHashChecks += 1;
+    }
     seen.add(entry.path);
   }
 
@@ -203,12 +243,20 @@ function main() {
     'scripts/test-v5-documentation-status.js',
     'scripts/test-tauri-artifact-workflow.js'
   ]) {
-    assert.strictEqual(seen.has(required), true, `Hiányzó csomagfájl: ${required}`);
+    assert.strictEqual(
+      seen.has(required),
+      true,
+      `Hiányzó csomagfájl: ${required}`
+    );
   }
 
-  console.log('OK: Alpha.3 integrációs és verziófinalizálási manifest');
-  console.log('OK: minden projektverzió 5.0.0-alpha.3');
-  console.log('OK: hardver, Node, Tauri, fallback és rollback gate rögzítve');
+  assert.ok(unchangedHashChecks > 0);
+  assert.ok(historicalEvolvedChecks > 0);
+
+  console.log('OK: Alpha.3 történeti integrációs és finalizálási manifest');
+  console.log(`OK: ${unchangedHashChecks} változatlan Alpha.3 fájl SHA-256 ellenőrizve`);
+  console.log(`OK: ${historicalEvolvedChecks} Beta.1-ben fejlődött fájl történeti bejegyzése megőrizve`);
+  console.log('OK: minden aktuális projektverzió 5.0.0-beta.1');
   console.log('OK: nincs main merge, produkciós deploy vagy public firmware frissítés');
 }
 

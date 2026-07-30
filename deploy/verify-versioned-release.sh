@@ -57,14 +57,24 @@ fi
 WORK_DIR="$(
   mktemp -d
 )"
-
 trap 'rm -rf "${WORK_DIR}"' EXIT
 
 tar -xzf \
   "${ARCHIVE}" \
   -C "${WORK_DIR}"
 
-readarray -t ROOTS < <(
+# Bash 3.2 kompatibilis gyökérkönyvtár-ellenőrzés.
+# A Bash 4 tömbbeolvasó beépített parancsai macOS rendszer-Bash alatt nem érhetők el.
+ROOT=""
+ROOT_COUNT=0
+
+while IFS= read -r candidate; do
+  ROOT_COUNT=$((ROOT_COUNT + 1))
+
+  if [[ "${ROOT_COUNT}" -eq 1 ]]; then
+    ROOT="${candidate}"
+  fi
+done < <(
   find "${WORK_DIR}" \
     -mindepth 1 \
     -maxdepth 1 \
@@ -72,12 +82,10 @@ readarray -t ROOTS < <(
     -print
 )
 
-[[ "${#ROOTS[@]}" -eq 1 ]] || {
+[[ "${ROOT_COUNT}" -eq 1 && -n "${ROOT}" ]] || {
   echo 'HIBA: az archive pontosan egy gyökérkönyvtárat tartalmazzon.' >&2
   exit 1
 }
-
-ROOT="${ROOTS[0]}"
 
 for file in \
   VERSION \
@@ -100,7 +108,6 @@ const path = require('path');
 
 const root =
   process.argv[2];
-
 const metadata =
   JSON.parse(
     fs.readFileSync(
@@ -176,7 +183,7 @@ const expectedName =
 
 if (
   metadata.name !==
-    expectedName
+  expectedName
 ) {
   throw new Error(
     `Eltérő release név: ${metadata.name}`
@@ -185,7 +192,7 @@ if (
 
 if (
   path.basename(root) !==
-    metadata.name
+  metadata.name
 ) {
   throw new Error(
     'Az archive gyökérkönyvtára és a metadata.name eltér.'

@@ -6,8 +6,9 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 
 const ROOT = path.resolve(__dirname, '..');
-const EXPECTED_VERSION = '5.0.0-alpha.3';
+const EXPECTED_VERSION = '5.0.0-beta.1';
 const ALPHA2_VERSION = '5.0.0-alpha.2';
+const ALPHA3_VERSION = '5.0.0-alpha.3';
 const QUALIFIED_CANDIDATE =
   '1236becc37e9b4d8ed2334f3cd60b455c248e82d';
 const ALPHA2_MERGE =
@@ -30,14 +31,17 @@ function runGit(args, { allowFailure = false } = {}) {
     cwd: ROOT,
     encoding: 'utf8'
   });
+
   if (result.error) {
     if (allowFailure) return null;
     throw result.error;
   }
+
   if (result.status !== 0) {
     if (allowFailure) return null;
     throw new Error(`Git hiba: git ${args.join(' ')}\n${result.stderr.trim()}`);
   }
+
   return result.stdout.trim();
 }
 
@@ -81,6 +85,8 @@ function evaluate({ checkGit = true, requireGit = false } = {}) {
   const roadmap = read('fejlesztes_readme.md');
   const statusDocument = read('docs/v5/V5_IMPLEMENTATION_STATUS.md');
   const integrationRunbook = read('docs/v5/NEXT_V5_INTEGRATION_RUNBOOK.md');
+  const betaNotes = read('docs/v5/BETA1_RELEASE_NOTES.md');
+  const betaChecklist = read('docs/v5/BETA1_RELEASE_CHECKLIST.md');
   const manifest = readJson(MANIFEST_RELATIVE);
 
   const versions = {
@@ -122,18 +128,18 @@ function evaluate({ checkGit = true, requireGit = false } = {}) {
     'Az Alpha.2 és Alpha.3 legyen a next ágon, a main kapu maradjon nyitva.'
   );
   check(
-    'roadmap-current-status',
-    roadmap.includes(EXPECTED_VERSION) &&
+    'roadmap-alpha3-history',
+    roadmap.includes(ALPHA3_VERSION) &&
       roadmap.includes(ALPHA3_MERGE) &&
       roadmap.includes('10.0.0.123:80'),
-    'Hiányos master roadmap státusz.'
+    'Hiányos Alpha.3 master roadmap bizonyíték.'
   );
   check(
-    'implementation-status',
-    statusDocument.includes(EXPECTED_VERSION) &&
+    'implementation-alpha3-history',
+    statusDocument.includes(ALPHA3_VERSION) &&
       statusDocument.includes(ALPHA3_MERGE) &&
       statusDocument.includes('Tilos / korai'),
-    'Hiányos implementációs állapotjelentés.'
+    'Hiányos Alpha.3 implementációs állapotjelentés.'
   );
   check(
     'integration-runbook',
@@ -141,6 +147,15 @@ function evaluate({ checkGit = true, requireGit = false } = {}) {
       integrationRunbook.includes(ALPHA3_MERGE) &&
       integrationRunbook.includes('git merge --abort'),
     'Hiányos next integrációs runbook.'
+  );
+  check(
+    'beta1-release-documents',
+    betaNotes.includes(EXPECTED_VERSION) &&
+      /prerelease/i.test(betaNotes) &&
+      /main.*nem módosul/is.test(betaNotes) &&
+      betaChecklist.includes(EXPECTED_VERSION) &&
+      betaChecklist.includes('Teljes alkalmazási staging'),
+    'Hiányos Beta.1 release dokumentáció.'
   );
 
   const generatedFiles = [
@@ -176,17 +191,18 @@ function evaluate({ checkGit = true, requireGit = false } = {}) {
       QUALIFIED_CANDIDATE
     );
     warnings.push(
-      'Az Alpha.2 readiness itt történeti regressziós kapu; az aktív release-kapu az Alpha.3 manifest és staging.'
+      'Az Alpha.2 readiness történeti regressziós kapu; az aktív kiadási kapu a Beta.1 distribution manifest és workflow.'
     );
   } else if (checkGit && !gitAvailable) {
     warnings.push('Git-ellenőrzés kihagyva: nincs Git working tree.');
   }
 
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     passed: errors.length === 0,
     expectedVersion: EXPECTED_VERSION,
     alpha2Version: ALPHA2_VERSION,
+    alpha3Version: ALPHA3_VERSION,
     qualifiedCandidate: QUALIFIED_CANDIDATE,
     checks,
     warnings,
@@ -216,7 +232,7 @@ function main() {
     }
     console.log(
       result.passed
-        ? 'OK: Alpha.2 történeti integráció és Alpha.3 aktuális állapot konzisztens.'
+        ? 'OK: Alpha.2 és Alpha.3 történeti integráció, valamint Beta.1 aktuális állapot konzisztens.'
         : 'HIBA: integrációs readiness regresszió.'
     );
   }
@@ -227,6 +243,7 @@ function main() {
 module.exports = {
   EXPECTED_VERSION,
   ALPHA2_VERSION,
+  ALPHA3_VERSION,
   QUALIFIED_CANDIDATE,
   evaluate
 };

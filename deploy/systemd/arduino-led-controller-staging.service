@@ -1,5 +1,5 @@
 [Unit]
-Description=Arduino LED Controller Alpha.2 Staging
+Description=Arduino LED Controller 5.0.0-beta.1 Staging
 After=network-online.target
 Wants=network-online.target
 
@@ -14,7 +14,6 @@ Restart=on-failure
 RestartSec=5
 TimeoutStopSec=30
 KillSignal=SIGTERM
-
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=full

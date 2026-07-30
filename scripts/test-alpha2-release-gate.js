@@ -37,7 +37,6 @@ function main() {
     readJson(
       'docs/api/openapi-v2.json'
     );
-
   const checklist =
     fs.readFileSync(
       path.join(
@@ -63,8 +62,8 @@ function main() {
 
   assert.match(
     packageData.version,
-    /^5\.0\.0-alpha\.[1-9]\d*$/,
-    'A projektverzió nem érvényes alpha verzió.'
+    /^5\.0\.0(?:-(?:alpha|beta|rc)\.[1-9]\d*)?$/,
+    'A projektverzió nem érvényes V5 release-verzió.'
   );
 
   assert.strictEqual(
@@ -126,10 +125,10 @@ function main() {
     'OK: package és OpenAPI verzió egyezik'
   );
   console.log(
-    'OK: alpha release verzióformátum'
+    'OK: V5 alpha, beta, rc vagy végleges release-verzióformátum'
   );
   console.log(
-    'OK: alpha.2 release gate dokumentálva'
+    'OK: Alpha.2 történeti release gate dokumentálva'
   );
   console.log(
     'OK: teljes csomagmanifest és SHA-256 lista'

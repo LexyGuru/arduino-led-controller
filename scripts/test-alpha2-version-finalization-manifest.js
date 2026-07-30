@@ -66,6 +66,7 @@ function main() {
     'scripts/test-alpha2-version-finalization-manifest.js',
     'scripts/verify-alpha2-next-integration-readiness.js',
     'scripts/test-alpha2-next-integration-readiness.js',
+    'scripts/test-alpha2-release-gate.js',
     'scripts/test-v5-documentation-status.js'
   ]);
 
