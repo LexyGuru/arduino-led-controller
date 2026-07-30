@@ -139,16 +139,17 @@ Minősített Alpha.2 candidate: `1236becc37e9b4d8ed2334f3cd60b455c248e82d`
 - [x] Biztonságos feature → `next` integrációs runbook
 - [x] Alpha.2 integrációs readiness ellenőrző
 - [x] Dokumentációs és package-manifest tesztek
-- [ ] A finalizáló/integrációs csomag commitja és push-a
-- [ ] Pull Request a `next/v5-rearchitecture` ágba
+- [x] A finalizáló/integrációs csomag commitja és push-a
+- [x] Pull Request a `next/v5-rearchitecture` ágba (`#1`)
+- [ ] PR #1 whitespace- és státuszgate lezárása
 - [ ] Teljes integrációs teszt a `next` ágon
 
 ## Következő munkacsomag
 
-1. A teljes finalizáló és dokumentációs csomag helyi validációja.
-2. Commit és push a `feature/v5-server-modularization` ágra.
-3. Integrációs branch és Pull Request a `next/v5-rearchitecture` ágba.
-4. Teljes repository-, desktop- és LXC staging teszt a `next` ágon.
+1. A PR #1 whitespace- és generált kliens EOF-gate javítása.
+2. A 432 fájlos PR teljes GitHub API-, helyi Git- és secret-scan ellenőrzése.
+3. Merge kizárólag a `next/v5-rearchitecture` ágba.
+4. Teljes repository-, desktop- és LXC staging teszt a friss `next` ágon.
 5. Alpha.3 runtime munkacsomag: Arduino API-kulcs átállítása `X-Device-Key`
    fejlécre, firmware-kompatibilitási átmenettel.
 6. Külön hardveres schedule- és firmware-teszt.

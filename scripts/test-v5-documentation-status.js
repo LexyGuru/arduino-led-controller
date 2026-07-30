@@ -32,7 +32,8 @@ function main() {
 
   assert.match(checklist, /Utolsó frissítés: 2026-07-30/);
   assert.match(checklist, /## Dokumentáció és integrációs előkészítés/);
-  assert.match(checklist, /- \[ \] Pull Request a `next\/v5-rearchitecture` ágba/);
+  assert.match(checklist, /- \[x\] Pull Request a `next\/v5-rearchitecture` ágba \(`#1`\)/);
+  assert.match(checklist, /- \[ \] Beolvasztás `next\/v5-rearchitecture` ágba/);
   assert.match(checklist, /- \[ \] Beolvasztás `main` ágba/);
   assert.match(checklist, /Alpha\.3 runtime munkacsomag/);
 
@@ -40,6 +41,8 @@ function main() {
   assert.ok(status.includes(CANDIDATE));
   assert.ok(status.includes('Produkciós V5 telepítés | Tilos / korai'));
   assert.ok(status.includes('X-Device-Key'));
+  assert.ok(status.includes('Pull Request: `#1`'));
+  assert.ok(status.includes('módosított fájlok: 432'));
 
   assert.ok(
     runbook.includes(
@@ -49,13 +52,16 @@ function main() {
   assert.ok(runbook.includes('git merge --abort'));
   assert.ok(runbook.includes('feature/v5-arduino-device-key-header'));
   assert.ok(runbook.includes('10.0.0.123:80'));
+  assert.ok(runbook.includes('Pull Request `#1`'));
+  assert.ok(runbook.includes('432 fájlt'));
+  assert.ok(runbook.includes('HTTP 406'));
 
   assert.ok(finalization.includes('Dokumentációs lezárás'));
   assert.ok(finalization.includes('külön Alpha.3 munkacsomag'));
 
   console.log('OK: master roadmap és rövid checklist szinkronban');
   console.log('OK: részletes implementációs státusz naprakész');
-  console.log('OK: feature → next integráció dokumentált');
+  console.log('OK: feature → next integráció és PR #1 dokumentált');
   console.log('OK: main és produkciós telepítés továbbra is tiltott');
 }
 

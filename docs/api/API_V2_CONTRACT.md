@@ -835,4 +835,3 @@ A jóváhagyás nem módosít verziófájlt és nem készít Git commitot. A rea
 csak akkor `ready`, ha a staging deployment, rollback rehearsal és promotion
 deployment receipt ugyanarra a candidate commitra mutat, az evidence fázisok
 helyesek, és a receipt SHA-256 előzménylánc folytonos.
-

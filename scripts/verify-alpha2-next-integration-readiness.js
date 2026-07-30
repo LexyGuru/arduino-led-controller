@@ -142,10 +142,11 @@ function evaluate({ checkGit = true, requireGit = false } = {}) {
     `runtimeCodeChanged=${manifest.runtimeCodeChanged}`
   );
   check(
-    'checklist-next-pending',
-    checklist.includes('- [ ] Pull Request a `next/v5-rearchitecture` ágba') &&
+    'checklist-pr-open-next-pending',
+    checklist.includes('- [x] Pull Request a `next/v5-rearchitecture` ágba (`#1`)') &&
+      checklist.includes('- [ ] Beolvasztás `next/v5-rearchitecture` ágba') &&
       checklist.includes('- [ ] Beolvasztás `main` ágba'),
-    'A next és main kapuknak nyitva kell maradniuk.'
+    'A PR legyen dokumentált, a next és main merge kapu maradjon nyitva.'
   );
   check(
     'roadmap-current-status',
@@ -167,7 +168,9 @@ function evaluate({ checkGit = true, requireGit = false } = {}) {
       'integration/v5-alpha2-server-modularization → next/v5-rearchitecture'
     ) &&
       integrationRunbook.includes('git merge --abort') &&
-      integrationRunbook.includes('X-Device-Key'),
+      integrationRunbook.includes('X-Device-Key') &&
+      integrationRunbook.includes('Pull Request `#1`') &&
+      integrationRunbook.includes('432 fájlt'),
     'Hiányos next integrációs runbook.'
   );
 

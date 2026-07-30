@@ -20,7 +20,7 @@ function main() {
 
   assert.strictEqual(
     manifest.package,
-    'v5-alpha2-finalization-next-integration-readiness-v3'
+    'v5-alpha2-next-pr-whitespace-generator-hotfix-v5'
   );
   assert.strictEqual(manifest.schemaVersion, 1);
   assert.strictEqual(manifest.sourceVersion, '5.0.0-alpha.1');
@@ -31,13 +31,17 @@ function main() {
   );
   assert.strictEqual(
     manifest.targetBranch,
-    'feature/v5-server-modularization'
+    'integration/v5-alpha2-server-modularization'
   );
   assert.strictEqual(manifest.runtimeCodeChanged, false);
   assert.strictEqual(manifest.generatedClientMetadataChanged, true);
   assert.ok(Array.isArray(manifest.files));
   assert.strictEqual(manifest.fileCountExcludingManifest, manifest.files.length);
-  assert.ok(manifest.files.length >= 33);
+  assert.ok(manifest.files.length >= 39);
+  assert.strictEqual(manifest.prNumber, 1);
+  assert.strictEqual(manifest.whitespaceGateFixed, true);
+  assert.strictEqual(manifest.generatorEofNormalized, true);
+  assert.strictEqual(manifest.roadmapTrailingWhitespaceFixed, true);
 
   const seen = new Set();
   const required = new Set([
@@ -53,6 +57,7 @@ function main() {
     'desktop-tauri/src/api/generated/api-v2-types.ts',
     'desktop-tauri/src/api/generated/api-v2-operations.ts',
     'desktop-tauri/src/api/generated/api-v2-client.ts',
+    'desktop-tauri/src/api/generated/index.ts',
     'docs/v5/V5_REARCHITECTURE_CHECKLIST.md',
     'docs/v5/ALPHA2_RELEASE_NOTES.md',
     'docs/v5/ALPHA2_MIGRATION.md',
@@ -66,6 +71,10 @@ function main() {
     'scripts/verify-alpha2-next-integration-readiness.js',
     'scripts/test-alpha2-next-integration-readiness.js',
     'scripts/test-v5-documentation-status.js',
+    'scripts/generate-openapi-typescript.js',
+    'scripts/test-openapi-typescript-generator.js',
+    'docs/api/API_V2_CONTRACT.md',
+    'docs/v5/ALPHA2_RELEASE_NOTES_DRAFT.md',
   ]);
 
   for (const entry of manifest.files) {

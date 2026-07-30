@@ -21,6 +21,19 @@ melyekhez kell még hardveres, platform- vagy produkciós elfogadás.
 - izolált staging HTTP: `127.0.0.1:3100`;
 - izolált staging Arduino-cél: `127.0.0.1:65535`.
 
+
+## Integrációs Pull Request állapota
+
+- integrációs ág: `integration/v5-alpha2-server-modularization`;
+- Pull Request: `#1`;
+- célág: `next/v5-rearchitecture`;
+- módosított fájlok: 432;
+- GitHub API és helyi Git fájllista: egyezik;
+- PR merge: még nem történt meg;
+- aktuális blokkoló gate: négy fájl végén maradt fölösleges üres sor, továbbá
+  a generátort úgy kell javítani, hogy ezt újrageneráláskor se hozza vissza;
+- `main`, produkciós LXC és `10.0.0.123:80` Arduino: változatlan.
+
 ## Bizonyítékszintek
 
 | Jelölés | Jelentés |
@@ -120,15 +133,13 @@ A mobil rész jelenleg nem tekinthető késznek. Nyitott többek között:
 
 ## Következő biztonságos sorrend
 
-1. teljes helyi repository-validáció;
-2. Alpha.2 integrációs readiness ellenőrzés;
-3. finalizáló commit és push a feature ágra;
-4. külön integration branch;
-5. Pull Request a `next/v5-rearchitecture` ágba;
-6. teljes teszt a `next` ágon;
-7. Alpha.3 `X-Device-Key` runtime munkacsomag új gate-tel;
-8. firmware és schedule hardverteszt;
-9. csak később release branch és `main` Pull Request.
+1. a PR #1 whitespace- és generátor-EOF javítása az integrációs ágon;
+2. teljes repository-, OpenAPI-, secret- és PR-diff ellenőrzés;
+3. merge kizárólag a `next/v5-rearchitecture` ágba;
+4. teljes teszt a friss `next` ágon;
+5. Alpha.3 `X-Device-Key` runtime munkacsomag új gate-tel;
+6. firmware és schedule hardverteszt;
+7. csak később release branch és `main` Pull Request.
 
 ## Kifejezetten tiltott következő lépések
 

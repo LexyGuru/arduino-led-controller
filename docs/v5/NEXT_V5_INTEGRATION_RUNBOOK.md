@@ -11,6 +11,22 @@ beolvasztása a közös `next/v5-rearchitecture` integrációs ágba úgy, hogy:
 - merge-konfliktus vagy teszthiba esetén az integráció egyszerűen eldobható legyen;
 - a feature ág teljes története és bizonyítékai megmaradjanak.
 
+
+## Aktuális végrehajtási állapot – 2026-07-30
+
+- integrációs ág létrejött és felkerült az originre;
+- Pull Request `#1` nyitva van a `next/v5-rearchitecture` célággal;
+- a PR 432 fájlt tartalmaz;
+- a GitHub lapozott API-lista és a helyi Git diff fájllistája egyezik;
+- a teljes repository-validáció sikeres;
+- a merge előtt a `git diff --check` által jelzett EOF-üres sorokat és a
+  generátor regresszióját javítani kell;
+- a `main` ág és a produkciós rendszer továbbra is változatlan.
+
+Nagy PR esetén a `gh pr diff --name-only` 300 fájl felett HTTP 406 hibát adhat.
+Ilyenkor a lapozott `pulls/{number}/files?per_page=100` API és a helyi
+`git diff --name-only base...head` eredményét kell összehasonlítani.
+
 ## Előfeltételek
 
 A feature ág csak akkor integrálható, ha:

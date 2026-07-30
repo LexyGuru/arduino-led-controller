@@ -39,6 +39,17 @@ function main() {
         committed,
         `Eltérő generált TypeScript fájl: ${file}`
       );
+
+      assert.strictEqual(
+        generated.endsWith('\n'),
+        true,
+        `A generált fájlnak pontosan egy sortöréssel kell záródnia: ${file}`
+      );
+      assert.strictEqual(
+        generated.endsWith('\n\n'),
+        false,
+        `A generált fájl végén nem maradhat üres sor: ${file}`
+      );
     }
 
     const client = fs.readFileSync(

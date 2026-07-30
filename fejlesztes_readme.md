@@ -1,19 +1,19 @@
 # Arduino LED Controller – v5 teljes újratervezési menetrend
 
-**Létrehozva:** 2026-07-28
-**Stabil produkciós ág:** `main`
-**Újratervezési integrációs ág:** `next/v5-rearchitecture`
+**Létrehozva:** 2026-07-28<br>
+**Stabil produkciós ág:** `main`<br>
+**Újratervezési integrációs ág:** `next/v5-rearchitecture`<br>
 **Tervezett új főverzió:** `5.0.0`
 
 ---
 
 ## 0. Aktuális megvalósítási állapot
 
-**Státusz frissítve:** 2026-07-30
-**Aktuális mérföldkő:** `5.0.0-alpha.2` verziófinalizálás és a
-`next/v5-rearchitecture` integráció biztonságos előkészítése
+**Státusz frissítve:** 2026-07-30<br>
+**Aktuális mérföldkő:** az Alpha.2 integrációs Pull Request #1 ellenőrzése és
+a `next/v5-rearchitecture` merge biztonságos előkészítése
 **Minősített runtime candidate:**
-`1236becc37e9b4d8ed2334f3cd60b455c248e82d`
+`1236becc37e9b4d8ed2334f3cd60b455c248e82d`<br>
 **Minősítéskori produkciós baseline:**
 `58e01b40e4568f5cd2648d370614077ef08aa1ba`
 
@@ -35,7 +35,7 @@
 | Firmware újratervezés | Részleges | A jelenlegi firmware működő kompatibilitási alap; az EEPROM A/B, teljes időzóna/DST, watchdog és hardveres terhelési teszt még nyitott. |
 | Mobil Android/iOS | Nyitott | A párosítás, mobil életciklus, jogosultságok, build és valódi eszközteszt külön munkacsomag. |
 | Biztonsági hardening | Részleges | A gateway oldali auth, CSRF, szerepkörök, audit, secret scanner és release-integritás elkészült; az Arduino-kulcs fejlécbe költöztetése a következő runtime mérföldkő. |
-| `next` integráció | Következik | Előbb a finalizáló és dokumentációs csomag teljes validációja, commitja és push-a; utána külön PR a `next/v5-rearchitecture` ágba. |
+| `next` integráció | PR #1 megnyitva | Az integrációs ág és a 432 fájlos PR elkészült; a whitespace/generátor gate javítása és az utóvalidáció után merge-elhető a `next/v5-rearchitecture` ágba. |
 | `main` merge és produkciós V5 telepítés | Tilos / korai | Csak teljes integrációs, hardveres, desktop-, mobil-, migrációs és security elfogadás után. |
 
 ### Bizonyított Alpha.2 eredmények
@@ -55,10 +55,10 @@
 
 ### Következő mérföldkövek
 
-1. a finalizáló és integráció-előkészítő csomag teljes helyi validációja;
-2. commit és push kizárólag a `feature/v5-server-modularization` ágra;
-3. Pull Request a `next/v5-rearchitecture` ágba;
-4. teljes integrációs ellenőrzés a `next` ágon, produkciós telepítés nélkül;
+1. a PR #1 whitespace- és generált kliens EOF-gate javítása az integrációs ágon;
+2. teljes repository-, secret-, OpenAPI- és PR-diff ellenőrzés;
+3. a PR #1 merge-je kizárólag a `next/v5-rearchitecture` ágba;
+4. teljes utóvalidáció a friss `next` ágon, produkciós telepítés nélkül;
 5. új Alpha.3 runtime munkacsomag az Arduino `X-Device-Key` fejlécmigrációhoz;
 6. külön firmware-, hardver-, desktop- és mobiltesztek;
 7. csak később `release/v5.0.0`, majd jóváhagyott PR a `main` ágba.

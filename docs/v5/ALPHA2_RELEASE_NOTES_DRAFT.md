@@ -41,4 +41,3 @@ A release notes csak a sikeres LXC gate és a közvetlen
 - backend finalization readiness;
 - desktop execution receipt panel;
 - `FINALIZE_ALPHA2_VERSION_SYNC` jóváhagyás fájlmódosítás nélkül.
-

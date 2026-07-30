@@ -228,7 +228,7 @@ function generateTypes(document) {
     ''
   );
 
-  return `${lines.join('\n')}\n`;
+  return lines.join('\n');
 }
 
 function generateOperations(document, operations) {
@@ -344,7 +344,7 @@ function generateClient(document, operations) {
 
   lines.push('}', '');
 
-  return `${lines.join('\n')}\n`;
+  return lines.join('\n');
 }
 
 function generateIndex() {

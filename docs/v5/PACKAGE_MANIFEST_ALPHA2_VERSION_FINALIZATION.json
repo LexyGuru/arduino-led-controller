@@ -1,19 +1,25 @@
 {
   "schemaVersion": 1,
-  "package": "v5-alpha2-finalization-next-integration-readiness-v3",
+  "package": "v5-alpha2-next-pr-whitespace-generator-hotfix-v5",
   "createdAt": "2026-07-30",
-  "targetBranch": "feature/v5-server-modularization",
+  "targetBranch": "integration/v5-alpha2-server-modularization",
   "integrationTargetBranch": "next/v5-rearchitecture",
   "candidateCommit": "1236becc37e9b4d8ed2334f3cd60b455c248e82d",
+  "integrationBaseCommit": "542cf75d5898c35221c389617292f19c08f9c0e7",
   "qualifiedBaselineCommit": "58e01b40e4568f5cd2648d370614077ef08aa1ba",
   "sourceVersion": "5.0.0-alpha.1",
   "targetVersion": "5.0.0-alpha.2",
+  "prNumber": 1,
+  "prChangedFiles": 432,
   "runtimeCodeChanged": false,
+  "formattingOnlyGeneratedClientChange": true,
   "generatedClientMetadataChanged": true,
+  "generatorEofNormalized": true,
+  "whitespaceGateFixed": true,
   "documentationSynchronized": true,
   "nextIntegrationPrepared": true,
-  "description": "Final Alpha.2 version synchronization, deterministic generated client metadata refresh, release documentation, master roadmap status synchronization and safe next/v5-rearchitecture integration readiness tooling. No server, deploy or firmware runtime code is changed.",
-  "fileCountExcludingManifest": 34,
+  "description": "Complete Alpha.2 finalization overlay plus PR #1 documentation synchronization, deterministic OpenAPI TypeScript EOF normalization, and trailing-whitespace-free master roadmap metadata. Does not change server, deploy or firmware runtime behavior.",
+  "fileCountExcludingManifest": 39,
   "files": [
     {
       "path": "VERSION",
@@ -31,6 +37,26 @@
       "bytes": 2635
     },
     {
+      "path": "desktop-tauri/src/api/generated/api-v2-client.ts",
+      "sha256": "d8efc1ca918b75093031e7e1aee793e4b3face3b928f28a60547b053a2e914fb",
+      "bytes": 22822
+    },
+    {
+      "path": "desktop-tauri/src/api/generated/api-v2-operations.ts",
+      "sha256": "cc764e6556eca04bd700e6fa19c194f1b50c09066aa736ea0348136771564049",
+      "bytes": 18722
+    },
+    {
+      "path": "desktop-tauri/src/api/generated/api-v2-types.ts",
+      "sha256": "c3843988533ac189190d1d90e0d1507884b8934744b94df989b76841458643cc",
+      "bytes": 2060
+    },
+    {
+      "path": "desktop-tauri/src/api/generated/index.ts",
+      "sha256": "dfd6fb59fe9d850f111e870f9808f4d47a884310696a910a4e0ab7e702b889db",
+      "bytes": 149
+    },
+    {
       "path": "desktop-tauri/src-tauri/Cargo.lock",
       "sha256": "4ffe8da963d192930c913f13a7946a17c4c4de24893692f17dada1ff02fb18c9",
       "bytes": 134866
@@ -46,19 +72,9 @@
       "bytes": 1123
     },
     {
-      "path": "desktop-tauri/src/api/generated/api-v2-client.ts",
-      "sha256": "3b8d0cc352e75448660a627bc6d0836c673ecde071b4adf68c3765ed6cfd3b0c",
-      "bytes": 22823
-    },
-    {
-      "path": "desktop-tauri/src/api/generated/api-v2-operations.ts",
-      "sha256": "cc764e6556eca04bd700e6fa19c194f1b50c09066aa736ea0348136771564049",
-      "bytes": 18722
-    },
-    {
-      "path": "desktop-tauri/src/api/generated/api-v2-types.ts",
-      "sha256": "120261527df3232ee6be64392fbb9f48d056c459c7f5777407ab3845b6ea097d",
-      "bytes": 2061
+      "path": "docs/api/API_V2_CONTRACT.md",
+      "sha256": "8c2d874e19dbc272fc60b12785a0affdc4bdc8b30b92697500a09c75616f10d5",
+      "bytes": 21940
     },
     {
       "path": "docs/api/openapi-v2.json",
@@ -106,6 +122,11 @@
       "bytes": 4673
     },
     {
+      "path": "docs/v5/ALPHA2_RELEASE_NOTES_DRAFT.md",
+      "sha256": "94d4db02cb6350e8c9df07eadac984d6d93ca27f3d0318d625713f2357902423",
+      "bytes": 1323
+    },
+    {
       "path": "docs/v5/ALPHA2_STAGING_PROMOTION_RUNBOOK.md",
       "sha256": "5dda52adf9a134d7962b16747ae7030a55f8cab0541c0057dc6231bc7e78ea81",
       "bytes": 1768
@@ -117,23 +138,23 @@
     },
     {
       "path": "docs/v5/NEXT_V5_INTEGRATION_RUNBOOK.md",
-      "sha256": "c8fb727a3896cbab7c8280072d5e549a5675c9a7b2ce64970cc1e1a5ba8aa2d6",
-      "bytes": 4590
+      "sha256": "05a444c3d00f3b3fd47b306685f02d898bceb413f9817a99a22b7ef3996117a6",
+      "bytes": 5341
     },
     {
       "path": "docs/v5/V5_IMPLEMENTATION_STATUS.md",
-      "sha256": "d6e4e5ad0519f64841a5b634e8a4181fc4ae145d7e53bb2a3973a26cb9d627a8",
-      "bytes": 8319
+      "sha256": "37eb6c28035d8a5df978b8137102d57cec27f360f0af6ea99917f45948e94b28",
+      "bytes": 8829
     },
     {
       "path": "docs/v5/V5_REARCHITECTURE_CHECKLIST.md",
-      "sha256": "0b0e8214872b1fd06f9bf32ab5cf6f7c1efc44769336525029d2cd17517fc3a6",
-      "bytes": 6401
+      "sha256": "e025005b541ed8a372246e81292481213f8d318ba2eabdad7d89f89be4885c46",
+      "bytes": 6457
     },
     {
       "path": "fejlesztes_readme.md",
-      "sha256": "a29e3f04795ff3c1b95bb469d120ef53a3a58aa56e8460d91ee5e052d55c6463",
-      "bytes": 27869
+      "sha256": "fbde398d3736d5923c73f9f7a62fd305aba2542d24b3ca13bf245f59d203ec5b",
+      "bytes": 27938
     },
     {
       "path": "package-lock.json",
@@ -151,9 +172,14 @@
       "bytes": 4434
     },
     {
+      "path": "scripts/generate-openapi-typescript.js",
+      "sha256": "1e28261c05ed45a07aa6ea9ee432962c9413f2ea85497e4a6eb3901b919f2d61",
+      "bytes": 11842
+    },
+    {
       "path": "scripts/test-alpha2-next-integration-readiness.js",
-      "sha256": "ad2c4c816bd8862127fc030e09d2949260a374835e40ba08a61db561fe0ba35c",
-      "bytes": 1031
+      "sha256": "1f560e3d4d8e0b4152a65357fbef5152efb575b25d2eaa8dc3cd346a5ccbdab2",
+      "bytes": 1057
     },
     {
       "path": "scripts/test-alpha2-release-gate.js",
@@ -162,8 +188,8 @@
     },
     {
       "path": "scripts/test-alpha2-version-finalization-manifest.js",
-      "sha256": "7feed7875ac4bd6bb42ddab43753163334bce27167b89e739227696a8424b771",
-      "bytes": 3980
+      "sha256": "ca5c4e1d27a8e55c05f3b9dfc3d0452fec484bfae3ffe4d461f004d62dc973e5",
+      "bytes": 4445
     },
     {
       "path": "scripts/test-alpha2-version-finalization.js",
@@ -171,9 +197,14 @@
       "bytes": 5017
     },
     {
+      "path": "scripts/test-openapi-typescript-generator.js",
+      "sha256": "72ae4d879e3a51488458bcf3d1db735431ef7677d6894b85ddc1ac7caad8deff",
+      "bytes": 1853
+    },
+    {
       "path": "scripts/test-v5-documentation-status.js",
-      "sha256": "681b2612f65f98b45b21783a7970df83259ec39a2699dde18b44b277b8d008f1",
-      "bytes": 2618
+      "sha256": "0c8d79e6d0ff05cd815df973628955afcec91a5665a4f2e0d6ed38fde8d47866",
+      "bytes": 2971
     },
     {
       "path": "scripts/validate-repository.sh",
@@ -182,8 +213,9 @@
     },
     {
       "path": "scripts/verify-alpha2-next-integration-readiness.js",
-      "sha256": "98bd0c441ed9b1cba50999e5529134be9918526c5cfd41ea33461bd541d9b770",
-      "bytes": 8431
+      "sha256": "a030a1fcc0c702d657cfde3414060364712f8e9980940b9cbe3a854facd36aaa",
+      "bytes": 8658
     }
-  ]
+  ],
+  "roadmapTrailingWhitespaceFixed": true
 }

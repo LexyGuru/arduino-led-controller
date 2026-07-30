@@ -579,4 +579,3 @@ export class ApiV2Client {
   }
 
 }
-
