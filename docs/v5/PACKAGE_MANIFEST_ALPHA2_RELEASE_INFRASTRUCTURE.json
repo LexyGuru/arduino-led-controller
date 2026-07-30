@@ -1,0 +1,253 @@
+{
+  "package": "v5-alpha2-release-gate-staging-promotion-ready",
+  "baseVersion": "5.0.0-alpha.1",
+  "targetVersion": "5.0.0-alpha.2",
+  "manifestPolicy": "archive-schema-only-after-supersession",
+  "files": [
+    {
+      "path": ".env.example",
+      "bytes": 4227,
+      "sha256": "12d09ff10b1d0d54a2f8324bdb67dfb69158698b7387bb221fb621f7772036f5"
+    },
+    {
+      "path": "deploy/install-staging-service.sh",
+      "bytes": 952,
+      "sha256": "fd1259bbeaabfa91b4ca34b58874de8ca942bccff8bab82580e2c6245f834df1"
+    },
+    {
+      "path": "deploy/install-versioned-release.sh",
+      "bytes": 5114,
+      "sha256": "a4d38a2d161f82bb5a58a8205e6eb69541542d1fde91fe491f26a5db953502a3"
+    },
+    {
+      "path": "deploy/rollback-versioned-release.sh",
+      "bytes": 1812,
+      "sha256": "0e2ba2863f333084cc1847c67bc5f33d032260c996288a9c444036cf3e3597ad"
+    },
+    {
+      "path": "deploy/run-alpha2-release-gate.sh",
+      "bytes": 2111,
+      "sha256": "74e97bbb2e80b7cf730ee436588b9b8ca2063ab14365fad2fddb5261f408f96f"
+    },
+    {
+      "path": "deploy/stage-alpha2-bundle.sh",
+      "bytes": 678,
+      "sha256": "e19844169e7724147ea4b13dece22394318a40151220016aa33f76f2efb60e69"
+    },
+    {
+      "path": "deploy/staging.env.example",
+      "bytes": 757,
+      "sha256": "6b296b1c09ad654f71fc8bac3c9f0923f1a55443e50b5be4464b1ea27999d235"
+    },
+    {
+      "path": "deploy/systemd/arduino-led-controller-staging.service",
+      "bytes": 668,
+      "sha256": "35028713e39ca166d62a5a72e3f338b2f2a9a217d96a64fab2ddab9a77c340a3"
+    },
+    {
+      "path": "deploy/test-alpha2-lxc.sh",
+      "bytes": 2886,
+      "sha256": "c1637378bb9d60e621065677ea90d199cc3160417e6bea510d88c30f1b6f82c7"
+    },
+    {
+      "path": "desktop-tauri/package.json",
+      "bytes": 2446,
+      "sha256": "1a65e00dd4b87cc666dd91fba6f28fa941216c1db2dacb330aa2c38b85bfe56a"
+    },
+    {
+      "path": "desktop-tauri/src/api/generated/api-v2-client.ts",
+      "bytes": 20986,
+      "sha256": "183d5ebf6f7acc635f3e3d2d8694bf7df6ea3951c9b0be68a41c18408f566e99"
+    },
+    {
+      "path": "desktop-tauri/src/api/generated/api-v2-operations.ts",
+      "bytes": 16973,
+      "sha256": "8e46f277a31bc79e17920be243d4350e09be1921f21dbcbcf995cc6a3726939f"
+    },
+    {
+      "path": "desktop-tauri/src/api/generated/api-v2-types.ts",
+      "bytes": 2061,
+      "sha256": "4da37d6c7ff1e965e16425172d87998ffecdace82ee52bc6cecc016f0381fcdd"
+    },
+    {
+      "path": "desktop-tauri/src/api/generated/index.ts",
+      "bytes": 149,
+      "sha256": "dfd6fb59fe9d850f111e870f9808f4d47a884310696a910a4e0ab7e702b889db"
+    },
+    {
+      "path": "desktop-tauri/src/api/runtime/domain/system-api.mjs",
+      "bytes": 4014,
+      "sha256": "f9c600d806b5cc0e24e30d895fce1ec054abb4399b8c8ec8d1b62e7ffe0e0696"
+    },
+    {
+      "path": "desktop-tauri/src/api/runtime/index.d.mts",
+      "bytes": 8780,
+      "sha256": "3439cb8c5343c94412177399f2b823a8a9b33af3a953b7ad8f2a0b3e0c87dc8b"
+    },
+    {
+      "path": "desktop-tauri/src/api-v2.css",
+      "bytes": 7584,
+      "sha256": "fa57ac4b89b45c8f9d3b28e19d95965222e480028e6a38268bcfe7d24971da13"
+    },
+    {
+      "path": "desktop-tauri/src/components/v5/V5ReleaseGatePanel.tsx",
+      "bytes": 5407,
+      "sha256": "051babd8dd831687a55942f679625226b9635a789e8957a493d22d64798458c4"
+    },
+    {
+      "path": "desktop-tauri/src/hooks/useV5System.ts",
+      "bytes": 9681,
+      "sha256": "82238fd1e786cfb9e489ca9afba17b8663c3adb6ff7bb93be56120b0d9ac2bbf"
+    },
+    {
+      "path": "desktop-tauri/src/pages/V5SystemPage.tsx",
+      "bytes": 6640,
+      "sha256": "e60f74fa2baa6b86ed29b1ede0447652991f74a94b47cd347c394b4c093f27e3"
+    },
+    {
+      "path": "desktop-tauri/src/services/v5ReleaseGateModels.d.mts",
+      "bytes": 943,
+      "sha256": "b0cf0da548431575614118e4391a18507bc30013da8765994da585561787277a"
+    },
+    {
+      "path": "desktop-tauri/src/services/v5ReleaseGateModels.mjs",
+      "bytes": 1595,
+      "sha256": "21f0cf45af252366684e8075407791cca93a5f2dd6db713f7a987087fee6cd4f"
+    },
+    {
+      "path": "docs/api/API_V2_CONTRACT.md",
+      "bytes": 21249,
+      "sha256": "299beb92986acdfa5832e51777da8bee9cf0ee1f723fe166956ede13b9042597"
+    },
+    {
+      "path": "docs/api/openapi-v2.json",
+      "bytes": 55807,
+      "sha256": "b016f5e8b40d355033644874c27a266a2af1eba51489da724c0fcfc35a48660b"
+    },
+    {
+      "path": "docs/v5/ALPHA2_RELEASE_GATE_RUNBOOK.md",
+      "bytes": 1924,
+      "sha256": "663cd6676a6af1fefcc1a9aa58821e694e722cc649c5bc48627aef1b1a3e89db"
+    },
+    {
+      "path": "docs/v5/ALPHA2_RELEASE_NOTES_DRAFT.md",
+      "bytes": 1012,
+      "sha256": "6c9ca07b3e2a58209e2f0ce020d3401b032dc676a88837c46f335b311b47616b"
+    },
+    {
+      "path": "docs/v5/V5_REARCHITECTURE_CHECKLIST.md",
+      "bytes": 4969,
+      "sha256": "585c66e33be2873e9ca43faa3fd70ea3f1e27508cfb7c4847b946f65d8d23b62"
+    },
+    {
+      "path": "docs/v5/VERSIONED_STAGING_AND_ROLLBACK.md",
+      "bytes": 1183,
+      "sha256": "336e91c2d2c757dad72a21856394404b282b1ecc78db575fb686595cec84781c"
+    },
+    {
+      "path": "package.json",
+      "bytes": 20641,
+      "sha256": "c9a3bdd3671dd9f169570acaaee425c04b6de37b3ee5eadcc4abf8898eda4112"
+    },
+    {
+      "path": "scripts/test-alpha2-release-infrastructure-manifest.js",
+      "bytes": 1710,
+      "sha256": "b1f37c21d2d0ba2198b839884820ee3fc2b251cec94e9bbe331b5af17000cfe0"
+    },
+    {
+      "path": "scripts/test-alpha2-release-tooling.js",
+      "bytes": 1172,
+      "sha256": "e5de07b3b9d9767c338286b3915438df9921f04fe02fcc1b2ed2f67782dcb4fc"
+    },
+    {
+      "path": "scripts/test-desktop-release-gate-domain.js",
+      "bytes": 2030,
+      "sha256": "c7666c2ea23537a6292633723f2f969fe2f20f67d312cddffd029301afd5b50d"
+    },
+    {
+      "path": "scripts/test-desktop-release-gate-models.js",
+      "bytes": 1361,
+      "sha256": "b38a517e05fca1a5bd76613e3866370f7e680b123df2f96f4e84c4408ad89801"
+    },
+    {
+      "path": "scripts/test-desktop-release-gate-ui.js",
+      "bytes": 967,
+      "sha256": "384894636e018a257d2015c129323709a8163905fcba48bc2c33ea22fa345b87"
+    },
+    {
+      "path": "scripts/test-release-gate-report.js",
+      "bytes": 1925,
+      "sha256": "dd282ea365003449c56f2f7f03722947d11fbcbe15fcbfeadc69da9e7ee1f82d"
+    },
+    {
+      "path": "scripts/test-release-gate-service.js",
+      "bytes": 3660,
+      "sha256": "bc1c73cbaee17393b9d7f92e26dbfb116f03afe5ad5a8f4d701f55d919b5c2eb"
+    },
+    {
+      "path": "scripts/test-release-routes.js",
+      "bytes": 1803,
+      "sha256": "4fcbf28ff7ac52e78d0b884fa3190ba963dd632755880b30f56a55ac1e34a7db"
+    },
+    {
+      "path": "scripts/validate-repository.sh",
+      "bytes": 14594,
+      "sha256": "a91e80324fe4df61c6cb182ec87008c792b24bd90d37620777a67c24ff199af9"
+    },
+    {
+      "path": "scripts/verify-alpha2-promotion-readiness.js",
+      "bytes": 2225,
+      "sha256": "a11c2a67902a6f2eed25ab1766ef14731e6692b542e4ebefef3f490ced73270a"
+    },
+    {
+      "path": "scripts/verify-release-gate-report.js",
+      "bytes": 2049,
+      "sha256": "534024f9a2d51b462496de8321f90278b06843eec00f8fa4e56b8c41bb8e72a0"
+    },
+    {
+      "path": "server/api/v2/api-v2-bootstrap.js",
+      "bytes": 4569,
+      "sha256": "861f372cb13c2518e4dd4f6d15a61f6fe9e6870a8c5ff691da9648f48d0ffc24"
+    },
+    {
+      "path": "server/api/v2/release-routes.js",
+      "bytes": 3122,
+      "sha256": "b85d4929337fd7bf20dab655ec38c23c58dcb2409443879882aff9ea4927d424"
+    },
+    {
+      "path": "server/core/config.js",
+      "bytes": 12936,
+      "sha256": "b79f4bac23a1be03dce1172f715b9964bf993e6f3e85b3ac383699617aade05b"
+    },
+    {
+      "path": "server/core/runtime-paths.js",
+      "bytes": 5132,
+      "sha256": "a176378d365613d67ea420d14109a53e2ad10249492716ca8c0de2b6ac077dbe"
+    },
+    {
+      "path": "server/release/release-error.js",
+      "bytes": 1806,
+      "sha256": "e69db8a3d00ec895f92d28b9e27cc07c70c3ea21a7147f14d2a267fcaa721abc"
+    },
+    {
+      "path": "server/release/release-gate-report.js",
+      "bytes": 6689,
+      "sha256": "a9f205734f3db0579bcc81c2b6964fa168bef9f49d559069bfd8c8f83f676074"
+    },
+    {
+      "path": "server/release/release-gate-service.js",
+      "bytes": 10164,
+      "sha256": "da9be7ddcdec76296d67229af83f492338f857d904e9872723c52a65d0b196be"
+    },
+    {
+      "path": "server/security/roles.js",
+      "bytes": 3624,
+      "sha256": "a44171e3cb9dd335cd1dd3b92ad70dbc321fd2ffbf2f8b9c59271294a0227721"
+    },
+    {
+      "path": "server2_final.js",
+      "bytes": 15952,
+      "sha256": "1ccfed46f5f3e344e567383700a38d6502e7fd1185f5e2762ced9ce63b926067"
+    }
+  ]
+}

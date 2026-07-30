@@ -1,0 +1,221 @@
+{
+  "schemaVersion": 1,
+  "package": "v5-alpha2-next-pr-whitespace-generator-hotfix-v5",
+  "createdAt": "2026-07-30",
+  "targetBranch": "integration/v5-alpha2-server-modularization",
+  "integrationTargetBranch": "next/v5-rearchitecture",
+  "candidateCommit": "1236becc37e9b4d8ed2334f3cd60b455c248e82d",
+  "integrationBaseCommit": "542cf75d5898c35221c389617292f19c08f9c0e7",
+  "qualifiedBaselineCommit": "58e01b40e4568f5cd2648d370614077ef08aa1ba",
+  "sourceVersion": "5.0.0-alpha.1",
+  "targetVersion": "5.0.0-alpha.2",
+  "prNumber": 1,
+  "prChangedFiles": 432,
+  "runtimeCodeChanged": false,
+  "formattingOnlyGeneratedClientChange": true,
+  "generatedClientMetadataChanged": true,
+  "generatorEofNormalized": true,
+  "whitespaceGateFixed": true,
+  "documentationSynchronized": true,
+  "nextIntegrationPrepared": true,
+  "description": "Complete Alpha.2 finalization overlay plus PR #1 documentation synchronization, deterministic OpenAPI TypeScript EOF normalization, and trailing-whitespace-free master roadmap metadata. Does not change server, deploy or firmware runtime behavior.",
+  "fileCountExcludingManifest": 39,
+  "files": [
+    {
+      "path": "VERSION",
+      "sha256": "dd5dd091121c2c89c660698f59893f2c445e9c75fb0165f3c81d0366d08c1693",
+      "bytes": 14
+    },
+    {
+      "path": "desktop-tauri/package-lock.json",
+      "sha256": "dd577c09f2015c53a6b419efec493f19b1f092bb3e38f0f8d89b145705bf4d90",
+      "bytes": 70292
+    },
+    {
+      "path": "desktop-tauri/package.json",
+      "sha256": "e0d8665d64e750d0dd30aac5735903341f33e25e6ebd43d58752045a9e2bc289",
+      "bytes": 2635
+    },
+    {
+      "path": "desktop-tauri/src/api/generated/api-v2-client.ts",
+      "sha256": "d8efc1ca918b75093031e7e1aee793e4b3face3b928f28a60547b053a2e914fb",
+      "bytes": 22822
+    },
+    {
+      "path": "desktop-tauri/src/api/generated/api-v2-operations.ts",
+      "sha256": "cc764e6556eca04bd700e6fa19c194f1b50c09066aa736ea0348136771564049",
+      "bytes": 18722
+    },
+    {
+      "path": "desktop-tauri/src/api/generated/api-v2-types.ts",
+      "sha256": "c3843988533ac189190d1d90e0d1507884b8934744b94df989b76841458643cc",
+      "bytes": 2060
+    },
+    {
+      "path": "desktop-tauri/src/api/generated/index.ts",
+      "sha256": "dfd6fb59fe9d850f111e870f9808f4d47a884310696a910a4e0ab7e702b889db",
+      "bytes": 149
+    },
+    {
+      "path": "desktop-tauri/src-tauri/Cargo.lock",
+      "sha256": "4ffe8da963d192930c913f13a7946a17c4c4de24893692f17dada1ff02fb18c9",
+      "bytes": 134866
+    },
+    {
+      "path": "desktop-tauri/src-tauri/Cargo.toml",
+      "sha256": "538378a15ae99f475260362c58193c5a95a3cd71b6c24ee3c102dfc3855228e7",
+      "bytes": 846
+    },
+    {
+      "path": "desktop-tauri/src-tauri/tauri.conf.json",
+      "sha256": "d1ebe820eb04156eadacbdc2ccfe7ac268dbbae83f66e34de7b7c7a85b93f52e",
+      "bytes": 1123
+    },
+    {
+      "path": "docs/api/API_V2_CONTRACT.md",
+      "sha256": "8c2d874e19dbc272fc60b12785a0affdc4bdc8b30b92697500a09c75616f10d5",
+      "bytes": 21940
+    },
+    {
+      "path": "docs/api/openapi-v2.json",
+      "sha256": "2194ee60e0704288d0e732c861d19091fa4d52e909237fe3562186fa355d24b2",
+      "bytes": 62581
+    },
+    {
+      "path": "docs/v5/ALPHA2_CUTOVER_RUNBOOK.md",
+      "sha256": "16075263743fff098226888678a707e27cf3108223d3c77651b8ea554e27af87",
+      "bytes": 1345
+    },
+    {
+      "path": "docs/v5/ALPHA2_FINALIZATION_RUNBOOK.md",
+      "sha256": "3ef31ffbf68d2862b83d5e788f47225b8a9f3c07840b998ef9560b699a843982",
+      "bytes": 1764
+    },
+    {
+      "path": "docs/v5/ALPHA2_LXC_GATE_RUNBOOK.md",
+      "sha256": "73238c2f829f5af0ab4dd2149fd211f8ede5ffb9be3e309ebd0b495f721db7b1",
+      "bytes": 1031
+    },
+    {
+      "path": "docs/v5/ALPHA2_MIGRATION.md",
+      "sha256": "61966cc5d30a3c84775cd78a1a0ec827e4dc0746cf925be60a00de96045101c5",
+      "bytes": 3118
+    },
+    {
+      "path": "docs/v5/ALPHA2_RELEASE_CANDIDATE.md",
+      "sha256": "21f7852ca3325944665471aef47cf08c3f95bf0d677a477787bd1d8f7b1a0608",
+      "bytes": 996
+    },
+    {
+      "path": "docs/v5/ALPHA2_RELEASE_GATE.md",
+      "sha256": "09a5a9509043ca978fcac24ec6aa62db885f92962cae53e15458b5f8ff41e7ca",
+      "bytes": 1744
+    },
+    {
+      "path": "docs/v5/ALPHA2_RELEASE_GATE_RUNBOOK.md",
+      "sha256": "1545c0c18cf746a4d06054c3d9abed6d7f2dc052c2eaf3b3c1525d2fa0ddc8c5",
+      "bytes": 2092
+    },
+    {
+      "path": "docs/v5/ALPHA2_RELEASE_NOTES.md",
+      "sha256": "0f9bd7f7bf19a5bfc642ec2c8d31efef90710afb27123e811e0815df355a4126",
+      "bytes": 4673
+    },
+    {
+      "path": "docs/v5/ALPHA2_RELEASE_NOTES_DRAFT.md",
+      "sha256": "94d4db02cb6350e8c9df07eadac984d6d93ca27f3d0318d625713f2357902423",
+      "bytes": 1323
+    },
+    {
+      "path": "docs/v5/ALPHA2_STAGING_PROMOTION_RUNBOOK.md",
+      "sha256": "5dda52adf9a134d7962b16747ae7030a55f8cab0541c0057dc6231bc7e78ea81",
+      "bytes": 1768
+    },
+    {
+      "path": "docs/v5/ALPHA2_VERSION_FINALIZATION.md",
+      "sha256": "2f4ff53237d786f0bfa90198762e08ccc13b37c8dd7138093d401dffbdacbdaf",
+      "bytes": 2379
+    },
+    {
+      "path": "docs/v5/NEXT_V5_INTEGRATION_RUNBOOK.md",
+      "sha256": "05a444c3d00f3b3fd47b306685f02d898bceb413f9817a99a22b7ef3996117a6",
+      "bytes": 5341
+    },
+    {
+      "path": "docs/v5/V5_IMPLEMENTATION_STATUS.md",
+      "sha256": "37eb6c28035d8a5df978b8137102d57cec27f360f0af6ea99917f45948e94b28",
+      "bytes": 8829
+    },
+    {
+      "path": "docs/v5/V5_REARCHITECTURE_CHECKLIST.md",
+      "sha256": "e025005b541ed8a372246e81292481213f8d318ba2eabdad7d89f89be4885c46",
+      "bytes": 6457
+    },
+    {
+      "path": "fejlesztes_readme.md",
+      "sha256": "fbde398d3736d5923c73f9f7a62fd305aba2542d24b3ca13bf245f59d203ec5b",
+      "bytes": 27938
+    },
+    {
+      "path": "package-lock.json",
+      "sha256": "9bfe7492382e60c796a9c7e0f52f0b8290ce5bb570e5850d246650cfcd9d5f1d",
+      "bytes": 65537
+    },
+    {
+      "path": "package.json",
+      "sha256": "fb187f72152d7fc373d4c8e7417ff7aa1f62d121c950016c71edb1ccdb517396",
+      "bytes": 31316
+    },
+    {
+      "path": "scripts/check-versions.py",
+      "sha256": "ee16734df21fa5b370f94b174e90be21ba47fe021680d1b7b6c4e3308bdf12c1",
+      "bytes": 4434
+    },
+    {
+      "path": "scripts/generate-openapi-typescript.js",
+      "sha256": "1e28261c05ed45a07aa6ea9ee432962c9413f2ea85497e4a6eb3901b919f2d61",
+      "bytes": 11842
+    },
+    {
+      "path": "scripts/test-alpha2-next-integration-readiness.js",
+      "sha256": "1f560e3d4d8e0b4152a65357fbef5152efb575b25d2eaa8dc3cd346a5ccbdab2",
+      "bytes": 1057
+    },
+    {
+      "path": "scripts/test-alpha2-release-gate.js",
+      "sha256": "494bb2800ebb1870b25ade0b7538b6d251eef293ddd1036ea64405f8dfba0dbc",
+      "bytes": 2701
+    },
+    {
+      "path": "scripts/test-alpha2-version-finalization-manifest.js",
+      "sha256": "ca5c4e1d27a8e55c05f3b9dfc3d0452fec484bfae3ffe4d461f004d62dc973e5",
+      "bytes": 4445
+    },
+    {
+      "path": "scripts/test-alpha2-version-finalization.js",
+      "sha256": "fa5602cba87407f20eab8ad425f0e9d53ad815d0bc4364dc1e8d7a0fd4f84fbd",
+      "bytes": 5017
+    },
+    {
+      "path": "scripts/test-openapi-typescript-generator.js",
+      "sha256": "72ae4d879e3a51488458bcf3d1db735431ef7677d6894b85ddc1ac7caad8deff",
+      "bytes": 1853
+    },
+    {
+      "path": "scripts/test-v5-documentation-status.js",
+      "sha256": "0c8d79e6d0ff05cd815df973628955afcec91a5665a4f2e0d6ed38fde8d47866",
+      "bytes": 2971
+    },
+    {
+      "path": "scripts/validate-repository.sh",
+      "sha256": "45f43e98521d70dc8a855bc1cbd47f22ce03e063ff5758fc3bf2fbe6a0382ca6",
+      "bytes": 19854
+    },
+    {
+      "path": "scripts/verify-alpha2-next-integration-readiness.js",
+      "sha256": "a030a1fcc0c702d657cfde3414060364712f8e9980940b9cbe3a854facd36aaa",
+      "bytes": 8658
+    }
+  ],
+  "roadmapTrailingWhitespaceFixed": true
+}

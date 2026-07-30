@@ -1,0 +1,2830 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Arduino LED Controller API v2",
+    "version": "5.0.0-alpha.2",
+    "description": "Moduláris HTTP API az Arduino LED Controller szerverhez."
+  },
+  "servers": [
+    {
+      "url": "/",
+      "description": "Aktuális szerver"
+    }
+  ],
+  "tags": [
+    {
+      "name": "System"
+    },
+    {
+      "name": "Auth"
+    },
+    {
+      "name": "Users"
+    },
+    {
+      "name": "Tokens"
+    },
+    {
+      "name": "Arduino"
+    },
+    {
+      "name": "LED"
+    },
+    {
+      "name": "Schedules"
+    },
+    {
+      "name": "Local schedules"
+    },
+    {
+      "name": "Firmware"
+    },
+    {
+      "name": "Events"
+    },
+    {
+      "name": "Observability"
+    },
+    {
+      "name": "Console"
+    },
+    {
+      "name": "Files"
+    },
+    {
+      "name": "Cutover"
+    },
+    {
+      "name": "Web"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "opaque"
+      },
+      "sessionCookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "led_session"
+      },
+      "csrfHeader": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-CSRF-Token"
+      }
+    },
+    "schemas": {
+      "ApiSuccess": {
+        "type": "object",
+        "required": [
+          "success",
+          "data",
+          "meta"
+        ],
+        "properties": {
+          "success": {
+            "const": true
+          },
+          "data": {},
+          "meta": {
+            "type": "object"
+          }
+        }
+      },
+      "ApiError": {
+        "type": "object",
+        "required": [
+          "success",
+          "error",
+          "meta"
+        ],
+        "properties": {
+          "success": {
+            "const": false
+          },
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "message"
+            ],
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "details": {}
+            }
+          },
+          "meta": {
+            "type": "object"
+          }
+        }
+      },
+      "Color": {
+        "oneOf": [
+          {
+            "type": "array",
+            "prefixItems": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 255
+              },
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 255
+              },
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 255
+              }
+            ],
+            "minItems": 3,
+            "maxItems": 3
+          },
+          {
+            "type": "string",
+            "pattern": "^#[0-9A-Fa-f]{6}$"
+          },
+          {
+            "type": "object",
+            "required": [
+              "red",
+              "green",
+              "blue"
+            ],
+            "properties": {
+              "red": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 255
+              },
+              "green": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 255
+              },
+              "blue": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 255
+              }
+            }
+          }
+        ]
+      },
+      "LedCommand": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "brightness": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 255
+          },
+          "effect": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4
+          },
+          "speed": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "color": {
+            "$ref": "#/components/schemas/Color"
+          }
+        },
+        "additionalProperties": false
+      },
+      "PortableSchedule": {
+        "type": "object",
+        "required": [
+          "day",
+          "time",
+          "leds"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "day": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 7
+          },
+          "time": {
+            "type": "string",
+            "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+          },
+          "leds": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 3,
+            "items": {
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/LedCommand"
+                },
+                {
+                  "type": "object",
+                  "required": [
+                    "id"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 3
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      },
+      "ManagedApiTokenCreate": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string",
+            "maxLength": 96
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "admin",
+              "operator",
+              "viewer"
+            ]
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "expiresAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ManagedApiTokenUpdate": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string",
+            "maxLength": 96
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "admin",
+              "operator",
+              "viewer"
+            ]
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "expiresAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FirmwareRollbackRequest": {
+        "type": "object",
+        "required": [
+          "backupId"
+        ],
+        "properties": {
+          "backupId": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "responses": {
+      "Success": {
+        "description": "Sikeres válasz",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ApiSuccess"
+            }
+          }
+        }
+      },
+      "Error": {
+        "description": "Hibaválasz",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ApiError"
+            }
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/api/v2": {
+      "get": {
+        "summary": "API discovery",
+        "tags": [
+          "System"
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        }
+      }
+    },
+    "/api/v2/openapi.json": {
+      "get": {
+        "summary": "OpenAPI 3.1 dokumentum",
+        "tags": [
+          "System"
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        }
+      }
+    },
+    "/api/v2/docs": {
+      "get": {
+        "summary": "HTML API dokumentáció",
+        "tags": [
+          "System"
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        }
+      }
+    },
+    "/api/v2/openapi/status": {
+      "get": {
+        "summary": "OpenAPI dokumentum állapota",
+        "tags": [
+          "System"
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        }
+      }
+    },
+    "/api/v2/system/health": {
+      "get": {
+        "summary": "API v2 readiness",
+        "tags": [
+          "System"
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        }
+      }
+    },
+    "/api/v2/auth/status": {
+      "get": {
+        "summary": "Session állapot",
+        "tags": [
+          "Auth"
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        }
+      }
+    },
+    "/api/v2/auth/login": {
+      "post": {
+        "summary": "Bejelentkezés",
+        "tags": [
+          "Auth"
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "username",
+                  "password"
+                ],
+                "properties": {
+                  "username": {
+                    "type": "string"
+                  },
+                  "password": {
+                    "type": "string",
+                    "minLength": 12
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/auth/csrf": {
+      "get": {
+        "summary": "CSRF token",
+        "tags": [
+          "Auth"
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": []
+          }
+        ]
+      }
+    },
+    "/api/v2/auth/logout": {
+      "post": {
+        "summary": "Kijelentkezés",
+        "tags": [
+          "Auth"
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": []
+          }
+        ]
+      }
+    },
+    "/api/v2/system/status": {
+      "get": {
+        "summary": "Rendszerállapot",
+        "tags": [
+          "System"
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": []
+          }
+        ]
+      }
+    },
+    "/api/v2/arduino/status": {
+      "get": {
+        "summary": "Arduino állapot",
+        "tags": [
+          "Arduino"
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": []
+          }
+        ]
+      }
+    },
+    "/api/v2/users": {
+      "get": {
+        "summary": "Felhasználók listája",
+        "tags": [
+          "Users"
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": []
+          }
+        ]
+      },
+      "post": {
+        "summary": "Felhasználó létrehozása",
+        "tags": [
+          "Users"
+        ],
+        "responses": {
+          "201": {
+            "$ref": "#/components/responses/Success"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "username",
+                  "password",
+                  "role"
+                ],
+                "properties": {
+                  "username": {
+                    "type": "string",
+                    "pattern": "^[a-z0-9._-]{3,32}$"
+                  },
+                  "password": {
+                    "type": "string",
+                    "minLength": 12
+                  },
+                  "displayName": {
+                    "type": "string",
+                    "maxLength": 64
+                  },
+                  "role": {
+                    "enum": [
+                      "admin",
+                      "operator",
+                      "viewer"
+                    ]
+                  },
+                  "enabled": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/users/{username}": {
+      "patch": {
+        "summary": "Felhasználó módosítása",
+        "tags": [
+          "Users"
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "displayName": {
+                    "type": "string"
+                  },
+                  "role": {
+                    "enum": [
+                      "admin",
+                      "operator",
+                      "viewer"
+                    ]
+                  },
+                  "enabled": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "username",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      },
+      "delete": {
+        "summary": "Felhasználó törlése",
+        "tags": [
+          "Users"
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "username",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v2/users/{username}/password": {
+      "put": {
+        "summary": "Jelszó cseréje",
+        "tags": [
+          "Users"
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "password"
+                ],
+                "properties": {
+                  "password": {
+                    "type": "string",
+                    "minLength": 12
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "username",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v2/leds": {
+      "get": {
+        "summary": "LED állapotok",
+        "tags": [
+          "LED"
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": []
+          }
+        ]
+      }
+    },
+    "/api/v2/leds/{id}": {
+      "get": {
+        "summary": "LED állapot",
+        "tags": [
+          "LED"
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 3
+            }
+          }
+        ]
+      },
+      "put": {
+        "summary": "LED vezérlés",
+        "tags": [
+          "LED"
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LedCommand"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 3
+            }
+          }
+        ]
+      }
+    },
+    "/api/v2/leds/actions/all-on": {
+      "post": {
+        "summary": "LED művelet: all-on",
+        "tags": [
+          "LED"
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": []
+          }
+        ]
+      }
+    },
+    "/api/v2/leds/actions/all-off": {
+      "post": {
+        "summary": "LED művelet: all-off",
+        "tags": [
+          "LED"
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": []
+          }
+        ]
+      }
+    },
+    "/api/v2/leds/actions/reset": {
+      "post": {
+        "summary": "LED művelet: reset",
+        "tags": [
+          "LED"
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": []
+          }
+        ]
+      }
+    },
+    "/api/v2/schedules": {
+      "get": {
+        "summary": "Arduino schedule áttekintés",
+        "tags": [
+          "Schedules"
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": []
+          }
+        ]
+      },
+      "delete": {
+        "summary": "Arduino schedule törlése",
+        "tags": [
+          "Schedules"
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": []
+          }
+        ]
+      }
+    },
+    "/api/v2/schedules/status": {
+      "get": {
+        "summary": "Schedule status",
+        "tags": [
+          "Schedules"
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": []
+          }
+        ]
+      }
+    },
+    "/api/v2/schedules/files": {
+      "get": {
+        "summary": "Schedule files",
+        "tags": [
+          "Schedules"
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": []
+          }
+        ]
+      }
+    },
+    "/api/v2/schedules/debug": {
+      "get": {
+        "summary": "Schedule debug",
+        "tags": [
+          "Schedules"
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": []
+          }
+        ]
+      }
+    },
+    "/api/v2/schedules/days/{day}": {
+      "get": {
+        "summary": "Schedule nap",
+        "tags": [
+          "Schedules"
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "day",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 6
+            }
+          }
+        ]
+      }
+    },
+    "/api/v2/schedules/files/{filename}": {
+      "get": {
+        "summary": "Schedule fájl",
+        "tags": [
+          "Schedules"
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "filename",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^S[0-6]L[1-3]\\.JS$"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v2/schedules/actions/reload": {
+      "post": {
+        "summary": "Schedule reload",
+        "tags": [
+          "Schedules"
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": []
+          }
+        ]
+      }
+    },
+    "/api/v2/schedules/actions/generate": {
+      "post": {
+        "summary": "Schedule generate",
+        "tags": [
+          "Schedules"
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": []
+          }
+        ]
+      }
+    },
+    "/api/v2/schedules/actions/test": {
+      "post": {
+        "summary": "Schedule teszt",
+        "tags": [
+          "Schedules"
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "time"
+                ],
+                "properties": {
+                  "time": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/schedules/actions/sync": {
+      "post": {
+        "summary": "EEPROM schedule sync",
+        "tags": [
+          "Schedules"
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "schedules"
+                ],
+                "properties": {
+                  "schedules": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/PortableSchedule"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/local-schedules": {
+      "get": {
+        "summary": "Helyi időzítések",
+        "tags": [
+          "Local schedules"
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": []
+          }
+        ]
+      },
+      "post": {
+        "summary": "Helyi időzítés létrehozása",
+        "tags": [
+          "Local schedules"
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PortableSchedule"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/local-schedules/{id}": {
+      "put": {
+        "summary": "Helyi időzítés módosítása",
+        "tags": [
+          "Local schedules"
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PortableSchedule"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      },
+      "delete": {
+        "summary": "Helyi időzítés törlése",
+        "tags": [
+          "Local schedules"
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v2/local-schedules/export": {
+      "get": {
+        "summary": "Helyi schedule export",
+        "tags": [
+          "Local schedules"
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": []
+          }
+        ]
+      }
+    },
+    "/api/v2/local-schedules/import": {
+      "post": {
+        "summary": "Helyi schedule import",
+        "tags": [
+          "Local schedules"
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "schedules"
+                ],
+                "properties": {
+                  "schedules": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/PortableSchedule"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/local-schedules/actions/sync-arduino": {
+      "post": {
+        "summary": "Helyi schedule Arduino sync",
+        "tags": [
+          "Local schedules"
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": []
+          }
+        ]
+      }
+    },
+    "/api/v2/local-schedules/runner": {
+      "get": {
+        "summary": "Helyi runner állapot",
+        "tags": [
+          "Local schedules"
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": []
+          }
+        ]
+      }
+    },
+    "/api/v2/local-schedules/runner/actions/tick": {
+      "post": {
+        "summary": "Manuális schedule tick",
+        "tags": [
+          "Local schedules"
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": []
+          }
+        ]
+      }
+    },
+    "/api/v2/firmware/status": {
+      "get": {
+        "summary": "Firmware állapot",
+        "tags": [
+          "Firmware"
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": []
+          }
+        ]
+      }
+    },
+    "/api/v2/firmware/actions/check": {
+      "post": {
+        "summary": "Firmware check",
+        "tags": [
+          "Firmware"
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": []
+          }
+        ]
+      }
+    },
+    "/api/v2/firmware/actions/update": {
+      "post": {
+        "summary": "Firmware update",
+        "tags": [
+          "Firmware"
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": []
+          }
+        ]
+      }
+    },
+    "/api/v2/events/status": {
+      "get": {
+        "summary": "Eseményrendszer állapot",
+        "tags": [
+          "Events"
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": []
+          }
+        ]
+      }
+    },
+    "/api/v2/events/recent": {
+      "get": {
+        "summary": "Eseménytörténet",
+        "tags": [
+          "Events"
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000
+            }
+          },
+          {
+            "name": "topic",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "source",
+            "in": "query",
+            "schema": {
+              "enum": [
+                "memory",
+                "persistent"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "/api/v2/metrics": {
+      "get": {
+        "summary": "HTTP és szolgáltatás metrikák",
+        "tags": [
+          "Observability"
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": []
+          }
+        ]
+      }
+    },
+    "/api/v2/diagnostics": {
+      "get": {
+        "summary": "Rendszerdiagnosztika",
+        "tags": [
+          "Observability"
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": []
+          }
+        ]
+      }
+    },
+    "/api/v2/audit/status": {
+      "get": {
+        "summary": "Audit állapot",
+        "tags": [
+          "Observability"
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": []
+          }
+        ]
+      }
+    },
+    "/api/v2/audit/recent": {
+      "get": {
+        "summary": "Audit napló",
+        "tags": [
+          "Observability"
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500
+            }
+          }
+        ]
+      }
+    },
+    "/api/v2/metrics/prometheus": {
+      "get": {
+        "summary": "Prometheus 0.0.4 szöveges metrikaexport",
+        "tags": [
+          "Observability"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Prometheus text exposition",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v2/settings/arduino": {
+      "get": {
+        "summary": "Aktuális Arduino célgép",
+        "tags": [
+          "System"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "put": {
+        "summary": "Arduino célgép módosítása és mentése",
+        "tags": [
+          "System"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Session cookie használatakor kötelező."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "arduinoIP"
+                ],
+                "properties": {
+                  "arduinoIP": {
+                    "type": "string",
+                    "maxLength": 253
+                  },
+                  "arduinoPort": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 65535,
+                    "default": 80
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v2/system/cutover": {
+      "get": {
+        "summary": "Legacy cutover állapot",
+        "tags": [
+          "Cutover"
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": []
+          }
+        ]
+      }
+    },
+    "/api/v2/arduino/monitor": {
+      "get": {
+        "summary": "Arduino státuszmonitor állapot",
+        "tags": [
+          "Arduino"
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": []
+          }
+        ]
+      }
+    },
+    "/api/v2/arduino/monitor/actions/poll": {
+      "post": {
+        "summary": "Azonnali Arduino státuszlekérdezés",
+        "tags": [
+          "Arduino"
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": []
+          }
+        ]
+      }
+    },
+    "/api/v2/arduino/console/logs": {
+      "get": {
+        "summary": "Arduino konzolcache",
+        "tags": [
+          "Console"
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": []
+          }
+        ]
+      }
+    },
+    "/api/v2/arduino/console/stats": {
+      "get": {
+        "summary": "Arduino konzolstatisztika",
+        "tags": [
+          "Console"
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": []
+          }
+        ]
+      }
+    },
+    "/api/v2/arduino/console/actions/clear": {
+      "post": {
+        "summary": "Arduino konzol törlése",
+        "tags": [
+          "Console"
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": []
+          }
+        ]
+      }
+    },
+    "/api/v2/files/schedules": {
+      "get": {
+        "summary": "Schedule fájllista",
+        "tags": [
+          "Files"
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": []
+          }
+        ]
+      },
+      "post": {
+        "summary": "Schedule fájl feltöltése",
+        "tags": [
+          "Files"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "file"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  },
+                  "uploadArduino": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "$ref": "#/components/responses/Success"
+          }
+        }
+      }
+    },
+    "/api/v2/files/schedules/{filename}": {
+      "get": {
+        "summary": "Schedule fájl olvasása",
+        "tags": [
+          "Files"
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "filename",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^S[0-6]L[1-3]\\.JS$"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v2/web/status": {
+      "get": {
+        "summary": "Statikus webes réteg állapota",
+        "tags": [
+          "Web"
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": []
+          }
+        ]
+      }
+    },
+    "/api/v2/tokens": {
+      "get": {
+        "tags": [
+          "Tokens"
+        ],
+        "summary": "API-tokenek listázása titkok nélkül",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Tokens"
+        ],
+        "summary": "Új forgatható API-token létrehozása",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": [],
+            "csrfHeader": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManagedApiTokenCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "$ref": "#/components/responses/Success"
+          }
+        }
+      }
+    },
+    "/api/v2/tokens/{id}": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "patch": {
+        "tags": [
+          "Tokens"
+        ],
+        "summary": "Forgatható API-token módosítása",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": [],
+            "csrfHeader": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManagedApiTokenUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Tokens"
+        ],
+        "summary": "Forgatható API-token törlése",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": [],
+            "csrfHeader": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        }
+      }
+    },
+    "/api/v2/tokens/{id}/actions/rotate": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "post": {
+        "tags": [
+          "Tokens"
+        ],
+        "summary": "API-token rotálása és a régi token letiltása",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": [],
+            "csrfHeader": []
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManagedApiTokenUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        }
+      }
+    },
+    "/api/v2/firmware/backups": {
+      "get": {
+        "tags": [
+          "Firmware"
+        ],
+        "summary": "Ellenőrzött firmware backupok listája",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        }
+      }
+    },
+    "/api/v2/firmware/backups/{id}": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
+      "delete": {
+        "tags": [
+          "Firmware"
+        ],
+        "summary": "Nem aktív firmware backup törlése",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": [],
+            "csrfHeader": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        }
+      }
+    },
+    "/api/v2/firmware/actions/rollback": {
+      "post": {
+        "tags": [
+          "Firmware"
+        ],
+        "summary": "Korábbi ellenőrzött firmware visszaállítása",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": [],
+            "csrfHeader": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FirmwareRollbackRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "$ref": "#/components/responses/Success"
+          }
+        }
+      }
+    },
+    "/api/v2/firmware/actions/cancel": {
+      "post": {
+        "tags": [
+          "Firmware"
+        ],
+        "summary": "Futó firmware-frissítés vagy rollback megszakítása",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "sessionCookie": [],
+            "csrfHeader": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Success"
+          }
+        }
+      }
+    },
+    "/api/v2/system/release": {
+      "get": {
+        "operationId": "getSystemRelease",
+        "summary": "Release és runtime információ",
+        "responses": {
+          "200": {
+            "description": "Siker"
+          }
+        }
+      }
+    },
+    "/api/v2/system/preflight": {
+      "get": {
+        "operationId": "getSystemPreflight",
+        "summary": "Konfigurációs preflight",
+        "responses": {
+          "200": {
+            "description": "Siker"
+          }
+        }
+      }
+    },
+    "/api/v2/system/maintenance": {
+      "get": {
+        "operationId": "getMaintenanceStatus",
+        "summary": "Karbantartási mód állapota",
+        "responses": {
+          "200": {
+            "description": "Siker"
+          }
+        }
+      },
+      "put": {
+        "operationId": "enableMaintenanceMode",
+        "summary": "Karbantartási mód aktiválása",
+        "responses": {
+          "200": {
+            "description": "Aktiválva"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "disableMaintenanceMode",
+        "summary": "Karbantartási mód kikapcsolása",
+        "responses": {
+          "200": {
+            "description": "Kikapcsolva"
+          }
+        }
+      }
+    },
+    "/api/v2/system/snapshots": {
+      "get": {
+        "operationId": "listSystemSnapshots",
+        "summary": "Rendszer-snapshotok listája",
+        "responses": {
+          "200": {
+            "description": "Siker"
+          }
+        }
+      },
+      "post": {
+        "operationId": "createSystemSnapshot",
+        "summary": "Rendszer-snapshot létrehozása",
+        "responses": {
+          "201": {
+            "description": "Létrehozva"
+          }
+        }
+      }
+    },
+    "/api/v2/system/snapshots/{id}/verify": {
+      "get": {
+        "operationId": "verifySystemSnapshot",
+        "summary": "Snapshot integritás ellenőrzése",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Siker"
+          }
+        }
+      }
+    },
+    "/api/v2/system/snapshots/{id}/actions/restore": {
+      "post": {
+        "operationId": "restoreSystemSnapshot",
+        "summary": "Snapshot visszaállítása",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Visszaállítva"
+          }
+        }
+      }
+    },
+    "/api/v2/system/snapshots/{id}": {
+      "delete": {
+        "operationId": "deleteSystemSnapshot",
+        "summary": "Snapshot törlése",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Törölve"
+          }
+        }
+      }
+    },
+    "/api/v2/system/migrations": {
+      "get": {
+        "operationId": "getSystemMigrations",
+        "summary": "Migrációs állapot",
+        "responses": {
+          "200": {
+            "description": "Siker"
+          }
+        }
+      }
+    },
+    "/api/v2/system/migrations/actions/dry-run": {
+      "post": {
+        "operationId": "dryRunSystemMigrations",
+        "summary": "Migrációs dry-run",
+        "responses": {
+          "200": {
+            "description": "Siker"
+          }
+        }
+      }
+    },
+    "/api/v2/system/migrations/actions/apply": {
+      "post": {
+        "operationId": "applySystemMigrations",
+        "summary": "Migrációk alkalmazása",
+        "responses": {
+          "200": {
+            "description": "Siker"
+          }
+        }
+      }
+    },
+    "/api/v2/release/status": {
+      "get": {
+        "operationId": "getReleaseGateStatus",
+        "summary": "A legfrissebb alpha.2 release-gate állapota",
+        "responses": {
+          "200": {
+            "description": "Release-gate státusz"
+          }
+        }
+      }
+    },
+    "/api/v2/release/metadata": {
+      "get": {
+        "operationId": "getInstalledReleaseMetadata",
+        "summary": "Telepített verziózott release metadata",
+        "responses": {
+          "200": {
+            "description": "Telepített release metadata"
+          }
+        }
+      }
+    },
+    "/api/v2/release/promotion-readiness": {
+      "get": {
+        "operationId": "getAlpha2PromotionReadiness",
+        "summary": "Alpha.2 promóciós előfeltételek",
+        "responses": {
+          "200": {
+            "description": "Promóciós readiness"
+          }
+        }
+      }
+    },
+    "/api/v2/release/actions/verify-gate": {
+      "post": {
+        "operationId": "verifyAlpha2ReleaseGate",
+        "summary": "A release-gate szigorú ellenőrzése",
+        "responses": {
+          "200": {
+            "description": "Gate elfogadva"
+          },
+          "409": {
+            "description": "Gate elutasítva"
+          }
+        }
+      }
+    },
+    "/api/v2/release/actions/approve-promotion": {
+      "post": {
+        "operationId": "approveAlpha2Promotion",
+        "summary": "Alpha.2 promóció jóváhagyása",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "confirm"
+                ],
+                "properties": {
+                  "confirm": {
+                    "type": "string",
+                    "const": "APPROVE_ALPHA2_PROMOTION"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Jóváhagyás létrehozva"
+          },
+          "409": {
+            "description": "Előfeltétel hiányzik"
+          }
+        }
+      }
+    },
+    "/api/v2/release/promotion-approval": {
+      "delete": {
+        "operationId": "revokeAlpha2PromotionApproval",
+        "summary": "Alpha.2 promóciós jóváhagyás visszavonása",
+        "responses": {
+          "200": {
+            "description": "Jóváhagyás visszavonva"
+          },
+          "404": {
+            "description": "Nincs jóváhagyás"
+          }
+        }
+      }
+    },
+    "/api/v2/release/execution-receipts": {
+      "get": {
+        "tags": [
+          "Release"
+        ],
+        "summary": "Alpha.2 execution receiptek",
+        "operationId": "getAlpha2ExecutionReceipts",
+        "responses": {
+          "200": {
+            "description": "Execution receipt-lánc",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Nincs hitelesítés"
+          },
+          "403": {
+            "description": "Nincs jogosultság"
+          }
+        }
+      }
+    },
+    "/api/v2/release/finalization-readiness": {
+      "get": {
+        "tags": [
+          "Release"
+        ],
+        "summary": "Alpha.2 véglegesítési readiness",
+        "operationId": "getAlpha2FinalizationReadiness",
+        "responses": {
+          "200": {
+            "description": "Véglegesítési readiness",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Nincs hitelesítés"
+          },
+          "403": {
+            "description": "Nincs jogosultság"
+          }
+        }
+      }
+    },
+    "/api/v2/release/actions/verify-finalization": {
+      "post": {
+        "tags": [
+          "Release"
+        ],
+        "summary": "Alpha.2 receipt-lánc ellenőrzése",
+        "operationId": "verifyAlpha2Finalization",
+        "responses": {
+          "200": {
+            "description": "Receipt-lánc érvényes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Nincs hitelesítés"
+          },
+          "403": {
+            "description": "Nincs jogosultság"
+          }
+        }
+      }
+    },
+    "/api/v2/release/actions/approve-finalization": {
+      "post": {
+        "tags": [
+          "Release"
+        ],
+        "summary": "Alpha.2 verziószinkron véglegesítésének jóváhagyása",
+        "operationId": "approveAlpha2Finalization",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "confirm"
+                ],
+                "properties": {
+                  "confirm": {
+                    "type": "string",
+                    "const": "FINALIZE_ALPHA2_VERSION_SYNC"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Véglegesítés jóváhagyva",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Nincs hitelesítés"
+          },
+          "403": {
+            "description": "Nincs jogosultság"
+          },
+          "201": {
+            "description": "Véglegesítés jóváhagyva",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/release/finalization-approval": {
+      "delete": {
+        "tags": [
+          "Release"
+        ],
+        "summary": "Alpha.2 véglegesítési jóváhagyás visszavonása",
+        "operationId": "revokeAlpha2FinalizationApproval",
+        "responses": {
+          "200": {
+            "description": "Véglegesítési jóváhagyás visszavonva",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Nincs hitelesítés"
+          },
+          "403": {
+            "description": "Nincs jogosultság"
+          }
+        }
+      }
+    },
+    "/api/v2/release/lxc-orchestration": {
+      "get": {
+        "tags": [
+          "Release"
+        ],
+        "summary": "Alpha.2 LXC orchestration állapot",
+        "operationId": "getAlpha2LxcOrchestration",
+        "responses": {
+          "200": {
+            "description": "LXC orchestration állapot",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Nincs hitelesítés"
+          },
+          "403": {
+            "description": "Nincs jogosultság"
+          }
+        }
+      }
+    },
+    "/api/v2/release/lxc-artifacts": {
+      "get": {
+        "tags": [
+          "Release"
+        ],
+        "summary": "Alpha.2 LXC artifact index",
+        "operationId": "getAlpha2LxcArtifacts",
+        "responses": {
+          "200": {
+            "description": "LXC artifact index",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Nincs hitelesítés"
+          },
+          "403": {
+            "description": "Nincs jogosultság"
+          }
+        }
+      }
+    },
+    "/api/v2/release/actions/verify-lxc-orchestration": {
+      "post": {
+        "tags": [
+          "Release"
+        ],
+        "summary": "Alpha.2 LXC orchestration ellenőrzése",
+        "operationId": "verifyAlpha2LxcOrchestration",
+        "responses": {
+          "200": {
+            "description": "LXC orchestration érvényes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Nincs hitelesítés"
+          },
+          "403": {
+            "description": "Nincs jogosultság"
+          }
+        }
+      }
+    }
+  }
+}

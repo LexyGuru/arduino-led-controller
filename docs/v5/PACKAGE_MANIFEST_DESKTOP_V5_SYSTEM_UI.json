@@ -1,0 +1,162 @@
+{
+  "package": "v5-desktop-v5-system-ui-ready",
+  "baseVersion": "5.0.0-alpha.1",
+  "manifestPolicy": "archive-schema-only-after-supersession",
+  "files": [
+    {
+      "path": "desktop-tauri/package.json",
+      "bytes": 1677,
+      "sha256": "9a3c6f3f4772f37f33b5a01de21247e58b423374dc456fc4d2e51f866361f605"
+    },
+    {
+      "path": "desktop-tauri/src/App.tsx",
+      "bytes": 5931,
+      "sha256": "377e96f52fa263d5873bb5692824491f25817deccaa30c0306126dc7e4e04fab"
+    },
+    {
+      "path": "desktop-tauri/src/api/react/DesktopApiContext.tsx",
+      "bytes": 2797,
+      "sha256": "76ed4a8c4da804d3055d5ff6b81c209ac3a08cb21f9ae4061d7b4b8f990d78ed"
+    },
+    {
+      "path": "desktop-tauri/src/api/runtime/domain/system-api.mjs",
+      "bytes": 2860,
+      "sha256": "60930de8d4e4dd9eee83b3117e735b81714cfbf9afb7be6197f98d0ce3f3ac9d"
+    },
+    {
+      "path": "desktop-tauri/src/api/runtime/index.d.mts",
+      "bytes": 7073,
+      "sha256": "903782c0a880b4dbdbffb28aacf1dae66368711a6f19c5e4861bf6ce4dff7b21"
+    },
+    {
+      "path": "desktop-tauri/src/api/ui/api-payload.d.mts",
+      "bytes": 337,
+      "sha256": "8fbbe1ff6747800ee86f25bab94c8581bd109ef3b2f7ebfc09a510a0f02f0e9d"
+    },
+    {
+      "path": "desktop-tauri/src/api/ui/api-payload.mjs",
+      "bytes": 1725,
+      "sha256": "46c3e40b605e2556bee101abce7da3b4713b27ad58dca23bfebb59111ef0fd69"
+    },
+    {
+      "path": "desktop-tauri/src/api-v2.css",
+      "bytes": 6684,
+      "sha256": "047ea28447ead93ed0a0c3f2b6b7a71e0c784659c7820fef448dc9a922823465"
+    },
+    {
+      "path": "desktop-tauri/src/components/Sidebar.tsx",
+      "bytes": 2459,
+      "sha256": "51cdf44d93777a486bfc2d8571d8517f762432650d92093a315f0af8daf44bee"
+    },
+    {
+      "path": "desktop-tauri/src/components/v5/V5ConnectionPanel.tsx",
+      "bytes": 7219,
+      "sha256": "bc8d961d4e0648877bd1b8d5980d203a83d7b310c607d5450a762bae1de14345"
+    },
+    {
+      "path": "desktop-tauri/src/components/v5/V5MaintenancePanel.tsx",
+      "bytes": 2805,
+      "sha256": "ffb56461bd80d37a1f7633d7b522cea0739b1c3d7a3fac029a14311b8c99e6b7"
+    },
+    {
+      "path": "desktop-tauri/src/components/v5/V5MigrationPanel.tsx",
+      "bytes": 2946,
+      "sha256": "63116467a1feee2249d3dca3fb2aa51c434e5b9bc1be0e495fb94d9ed1cce8f4"
+    },
+    {
+      "path": "desktop-tauri/src/components/v5/V5PreflightPanel.tsx",
+      "bytes": 2766,
+      "sha256": "d4a1a5cfd70efe997e58dd51b498dbefa439ca159b8039833d5555a0e6f5631c"
+    },
+    {
+      "path": "desktop-tauri/src/components/v5/V5ReleasePanel.tsx",
+      "bytes": 2542,
+      "sha256": "664838ba85a84e91d3532e80cb4b48e37c3adfdf8590d623c038e9071b3e3975"
+    },
+    {
+      "path": "desktop-tauri/src/components/v5/V5SnapshotPanel.tsx",
+      "bytes": 5217,
+      "sha256": "62a13a2335c44f4b8118c5309caf6f078f46e286e3e22155d1d258fe0cd815d8"
+    },
+    {
+      "path": "desktop-tauri/src/components/v5/V5StatusBadge.tsx",
+      "bytes": 705,
+      "sha256": "777e0e433e77c52197716e63b6037439fa71f7d31d431ed179e95db44bd22619"
+    },
+    {
+      "path": "desktop-tauri/src/hooks/useV5System.ts",
+      "bytes": 8381,
+      "sha256": "67e0e2560ee9c9aa7c3e25c25e0ff067a1e4c8aeb8cf9fa6062a5062b5f2dff8"
+    },
+    {
+      "path": "desktop-tauri/src/main.tsx",
+      "bytes": 297,
+      "sha256": "02622478e63dd1428954a5bba13b6cda027d5b6d4fa7ea674903e54dd441cf7f"
+    },
+    {
+      "path": "desktop-tauri/src/pages/V5SystemPage.tsx",
+      "bytes": 5964,
+      "sha256": "81ff684da3d17b5428896d3f4366acb9e379569b61148fe24d22e26a6f89f127"
+    },
+    {
+      "path": "desktop-tauri/src/services/v5SystemModels.d.mts",
+      "bytes": 1306,
+      "sha256": "54527f88e183f0979be9f03866e7ef79e9ae8e8f1e28f7fd4a4a5d522b2fe6ad"
+    },
+    {
+      "path": "desktop-tauri/src/services/v5SystemModels.mjs",
+      "bytes": 3901,
+      "sha256": "2b636c51ea3d8702a3496896aaf470589ad4245263d0f403241d7a0bb41afef3"
+    },
+    {
+      "path": "desktop-tauri/src/types/index.ts",
+      "bytes": 2722,
+      "sha256": "e66f4210aff1721459bb831f42601e707fd65e54b67f4ba3c6bcb739de5ad1fb"
+    },
+    {
+      "path": "docs/v5/DESKTOP_V5_SYSTEM_UI.md",
+      "bytes": 1665,
+      "sha256": "435a29d011a5ba4aeb8185a0d337a4c160faed03187b944dcbdc59a463159f47"
+    },
+    {
+      "path": "docs/v5/V5_REARCHITECTURE_CHECKLIST.md",
+      "bytes": 4288,
+      "sha256": "e8f53a712423d9f2ae32d94a3b7ee0b98aa2f659428087bb231c8b6ace4a4a5c"
+    },
+    {
+      "path": "package.json",
+      "bytes": 16625,
+      "sha256": "27cf5297cdc0f9d4bd38b66d6ef6332504c35807d77a01e0b84651dffc0aa84f"
+    },
+    {
+      "path": "scripts/test-desktop-api-payload.js",
+      "bytes": 1144,
+      "sha256": "91d12437290885c39ecb641d2530a0bca50e70018d3f7672ba450d6a46cc14c2"
+    },
+    {
+      "path": "scripts/test-desktop-system-domain.js",
+      "bytes": 2433,
+      "sha256": "61f49eeba5d3657d9a501e6d12715d1666959b621dc11966a1a6762dc40cdf34"
+    },
+    {
+      "path": "scripts/test-desktop-v5-models.js",
+      "bytes": 2157,
+      "sha256": "643709628e914d12ff7a8670325d0afaab40318e1d3feb7282c9e7bca71acf4a"
+    },
+    {
+      "path": "scripts/test-desktop-v5-system-ui-manifest.js",
+      "bytes": 1513,
+      "sha256": "56ca4e124627751a96521a72cd38908166d3c5187fc5bdacb27e1fadd9ee556d"
+    },
+    {
+      "path": "scripts/test-desktop-v5-ui-contract.js",
+      "bytes": 1106,
+      "sha256": "23f9536e3c45c4d4889379d5a69321ce68ea29b373c925a646b7039ca3831307"
+    },
+    {
+      "path": "scripts/validate-repository.sh",
+      "bytes": 10912,
+      "sha256": "f1b1d2a603ca15890d82ac1c1cdcb710f8b7b889663a42749e9d3bd7d2f76e5c"
+    }
+  ]
+}

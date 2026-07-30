@@ -1,0 +1,220 @@
+{
+  "schemaVersion": 1,
+  "package": "v5-alpha2-candidate-security-ota-client-ready",
+  "baseVersion": "5.0.0-alpha.1",
+  "targetVersion": "5.0.0-alpha.2",
+  "createdAt": "2026-07-29T06:45:32.290584+00:00",
+  "fileCountExcludingManifest": 42,
+  "files": [
+    {
+      "path": ".env.example",
+      "bytes": 3487,
+      "sha256": "731c1823ff902ab6e72ea6cf36de837976fbd0c9fdd48d0384b133020f5aec87"
+    },
+    {
+      "path": "deploy/build-versioned-release.sh",
+      "bytes": 1206,
+      "sha256": "282bb3102ceb7c64245234d1a0ce54a6c1b19d0507758679285844f3fef63088"
+    },
+    {
+      "path": "deploy/test-alpha2-lxc.sh",
+      "bytes": 2663,
+      "sha256": "831a0ef008272556d7ebdf0eeb0db3d43fb6f61ec18b3f088b3535d269ce70c9"
+    },
+    {
+      "path": "deploy/update.sh",
+      "bytes": 19493,
+      "sha256": "d4a26f976278846c8043d7c16d489e829e86e1a77363678613217c9b46816f09"
+    },
+    {
+      "path": "deploy/verify-versioned-release.sh",
+      "bytes": 1475,
+      "sha256": "9463765b1d55a02f3919ea78b4b13b04ced7d01352b13398eb9e969fc1073ba1"
+    },
+    {
+      "path": "desktop-tauri/package.json",
+      "bytes": 1089,
+      "sha256": "6db61b9d22ec9409e83b84435dc0e8ab8625b205c837eb15068f137241a38ae2"
+    },
+    {
+      "path": "desktop-tauri/src/api/generated/api-v2-client.ts",
+      "bytes": 17005,
+      "sha256": "9e142fae745f81b90c53c7163e96390c5aae892a97db50420af911c4d023d234"
+    },
+    {
+      "path": "desktop-tauri/src/api/generated/api-v2-operations.ts",
+      "bytes": 13600,
+      "sha256": "1b193fd71ed6aef46d2c60cfcb385f950e70949bfce2c311a22e6be757eb1a57"
+    },
+    {
+      "path": "desktop-tauri/src/api/generated/api-v2-types.ts",
+      "bytes": 2061,
+      "sha256": "4da37d6c7ff1e965e16425172d87998ffecdace82ee52bc6cecc016f0381fcdd"
+    },
+    {
+      "path": "desktop-tauri/src/api/generated/index.ts",
+      "bytes": 149,
+      "sha256": "dfd6fb59fe9d850f111e870f9808f4d47a884310696a910a4e0ab7e702b889db"
+    },
+    {
+      "path": "docs/api/API_V2_CONTRACT.md",
+      "bytes": 19728,
+      "sha256": "6b2c55e328e501b2dfb032b5abc2b5ad3035271bcd4af4189d65202c44d973f9"
+    },
+    {
+      "path": "docs/api/openapi-v2.json",
+      "bytes": 49249,
+      "sha256": "007563170ce95d079e900b2cf48f7b0d78b1c5264b37d3197d87c53b8b419a16"
+    },
+    {
+      "path": "docs/v5/ALPHA2_LXC_GATE_RUNBOOK.md",
+      "bytes": 940,
+      "sha256": "ac60d8168c0e672aa8dca1306b83bef25e02edb87aed292070bda763ce3207ce"
+    },
+    {
+      "path": "docs/v5/ALPHA2_RELEASE_CANDIDATE.md",
+      "bytes": 787,
+      "sha256": "87ce7f5996f24122ce21738feef690c6ed890781df688193a6f2d2a8e1e35559"
+    },
+    {
+      "path": "docs/v5/FIRMWARE_BACKUP_ROLLBACK.md",
+      "bytes": 590,
+      "sha256": "8f1e4b8fe8ffdd6c154742612fad68b1fc2ac4f876a04618f5f2c8ffaf7f9b27"
+    },
+    {
+      "path": "docs/v5/SERVER_MODULE_MAP.md",
+      "bytes": 3776,
+      "sha256": "94f01859f2c1d6d6d20db9a22de510f6540f291662c9e7beb420971dcd7dc6bf"
+    },
+    {
+      "path": "docs/v5/TYPESCRIPT_API_CLIENT.md",
+      "bytes": 693,
+      "sha256": "fece6f9b5aaf1a8a1ec39ad35541d3d656d0be438c83ec2d93f5dae3c933eef0"
+    },
+    {
+      "path": "docs/v5/V5_REARCHITECTURE_CHECKLIST.md",
+      "bytes": 3020,
+      "sha256": "9f30d37b5df8c7e24022876935dfd3023bb4c9fe6c5b208a65ad5351a4f83fec"
+    },
+    {
+      "path": "package.json",
+      "bytes": 13085,
+      "sha256": "4cc7a445330878cf4df452a51159a3c54acbb4fd7adcd1e4e5dbda5fe2f7028f"
+    },
+    {
+      "path": "scripts/generate-openapi-typescript.js",
+      "bytes": 11856,
+      "sha256": "99ce4c6ff9cf1e5cd9bf4c893cfb0a22e1b2bb3c94ff314dc569a62109ec8354"
+    },
+    {
+      "path": "scripts/test-alpha2-candidate-package-manifest.js",
+      "bytes": 1363,
+      "sha256": "d1efe62f62ab28e96118628c2327f96eb04b3e9a30c11eae9dc9a2cedfc90830"
+    },
+    {
+      "path": "scripts/test-alpha2-candidate-tooling.js",
+      "bytes": 1410,
+      "sha256": "2bc5473db850f3e76d079fef40b716b648e80db678c089bf3a74deb2ef10aa34"
+    },
+    {
+      "path": "scripts/test-api-token-administration.js",
+      "bytes": 2605,
+      "sha256": "5bcffb5c9f65856f1b4c6ff7070ffdf919b61ef263155c55741fcff19470b3cb"
+    },
+    {
+      "path": "scripts/test-firmware-backup-rollback.js",
+      "bytes": 3058,
+      "sha256": "10bb212f62184c8b34eac8e1711fefd4af66f44d94be39d5ceaa83ee9e619254"
+    },
+    {
+      "path": "scripts/test-openapi-typescript-generator.js",
+      "bytes": 1532,
+      "sha256": "998de4696470d0370e412ce6ff256b339144f1598a4fef3ec35ebfef5488bc59"
+    },
+    {
+      "path": "scripts/test-ota-cancellation.js",
+      "bytes": 1319,
+      "sha256": "0b3686c86a6f2f651353e23a7295d6daaf61f621c59427872be69e6938cb4823"
+    },
+    {
+      "path": "scripts/validate-repository.sh",
+      "bytes": 7913,
+      "sha256": "0c83cd403fdeaa2f405f01672704c749b2e54fd7eb365bae8ffb07a575c98a03"
+    },
+    {
+      "path": "server/api/v2/api-v2-bootstrap.js",
+      "bytes": 3978,
+      "sha256": "267423ed868366ca09bfb9ce986188a4e5bfefaadd09efc0606f5117d4b86b1a"
+    },
+    {
+      "path": "server/api/v2/firmware-routes.js",
+      "bytes": 2751,
+      "sha256": "582faf93f2d26ec5a74fd87cfe65e72f27d804b505cfe8aefced26a83d514df8"
+    },
+    {
+      "path": "server/api/v2/token-routes.js",
+      "bytes": 2869,
+      "sha256": "14e11c0fa88be44149b40ec8b0eaf6d6d445356ead7aa9e0e0a85d094e92c22c"
+    },
+    {
+      "path": "server/core/config.js",
+      "bytes": 11887,
+      "sha256": "ba26f50428e41b1783905d7816d9bf1220416f2ed817660d4b8cfbdc676ac545"
+    },
+    {
+      "path": "server/core/runtime-paths.js",
+      "bytes": 3608,
+      "sha256": "38a86c24a3855ddbc3481e66f5dfd868c7c017e379504014f893766273eee2a3"
+    },
+    {
+      "path": "server/events/topics.js",
+      "bytes": 1641,
+      "sha256": "65ac1a92a3107e6e656717a8c4ec89d50f5b2cb25719ca2ccb9cc66f6745ba95"
+    },
+    {
+      "path": "server/firmware/firmware-backup-store.js",
+      "bytes": 8854,
+      "sha256": "2adcfbdad4f7af873726dfc7f00278ede83105fe7856d7be4a926935a85dba31"
+    },
+    {
+      "path": "server/firmware/firmware-error.js",
+      "bytes": 1090,
+      "sha256": "24c832796fef6f073e62c7b878f79340ea4aea1870fc41d87574cc1162fd2648"
+    },
+    {
+      "path": "server/firmware/firmware-service.js",
+      "bytes": 13757,
+      "sha256": "3f4a329e2daff77d1840cd74d3b84c4ecaa5b89f2f8523482445b0e615dd95fd"
+    },
+    {
+      "path": "server/firmware/ota-runner.js",
+      "bytes": 3514,
+      "sha256": "5347f6aa3b2e4bc84a0dd5fd100e929c750a3dc08508aeb8cf1953db61ee212b"
+    },
+    {
+      "path": "server/security/api-token-repository.js",
+      "bytes": 4548,
+      "sha256": "f6037b2e2aee7642a0b8fa7d7daa534c12d756db8a11be93698cae6d5682130b"
+    },
+    {
+      "path": "server/security/api-token-service.js",
+      "bytes": 8537,
+      "sha256": "86ef5d5cf334d63b08f68c77ca8bf96646053f0254b8cb1b5fba9cc16d42d2e8"
+    },
+    {
+      "path": "server/security/api-token-store.js",
+      "bytes": 5777,
+      "sha256": "b47d9346ef281d48aa0fc2c05ffc0f4522cf12adff31bbfce66991aa4d31cb0d"
+    },
+    {
+      "path": "server/security/roles.js",
+      "bytes": 3086,
+      "sha256": "b307f46ba071cea28b224e41ae9126be62799bc30d2a2b0b1e7e8f1122c0f71a"
+    },
+    {
+      "path": "server2_final.js",
+      "bytes": 13517,
+      "sha256": "d0d525db574783d9789d58f8b2a09043a84603dee9f10ae6703be223f994be74"
+    }
+  ]
+}

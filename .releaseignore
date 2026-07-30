@@ -1,0 +1,9 @@
+.git/
+node_modules/
+desktop-tauri/node_modules/
+desktop-tauri/src-tauri/target/
+data/
+config/*.json
+.env
+*.log
+dist/
