@@ -86,3 +86,16 @@ kapcsolatállapotot, IP-címet és RSSI-t. A státusz- és konzolpolling nem ké
 minden alkalommal a távoli kliens IP-jét, a HTTP feldolgozás pedig a periodikus
 NTP- és telemetriafrissítés előtt fut. A V8 továbbra is hardverteszt-jelölt; nem
 jogosít commitra, Alpha.3 finalizációra, `main` merge-re vagy produkciós telepítésre.
+
+
+## Arduino API 30 másodperces timeout V9
+
+A valós hardvermérés szerint a helyes Arduino-válasz első bájtja periodikus
+WiFiS3 háttérműveletek mellett 2,6–9,9 másodperc után érkezhet meg. A kliensoldali
+rövid health és státuszmonitor időkorlátok ezért hibás offline állapotot okozhattak.
+
+A V9 egységes minimum 30000 ms teljes Arduino API-időkorlátot vezet be a
+moduláris Node kliens, a health ellenőrzés, a státuszmonitor és a legacy kliens
+számára. A Tauri közvetlen kliens 5 másodperces kapcsolódási kaput és 30
+másodperces olvasási/írási időkorlátot használ. A macOS curl transport 5
+másodperces kapcsolódási és legalább 30 másodperces teljes timeouttal fut.

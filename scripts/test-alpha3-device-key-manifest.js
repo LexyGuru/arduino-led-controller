@@ -25,7 +25,7 @@ function main() {
   assert.strictEqual(manifest.schemaVersion, 1);
   assert.strictEqual(
     manifest.package,
-    'v5-alpha3-device-key-wifi-telemetry-cache-hotfix-v8'
+    'v5-alpha3-device-key-client-timeout-hotfix-v9'
   );
   assert.strictEqual(
     manifest.baseCommit,
@@ -60,10 +60,17 @@ function main() {
   assert.strictEqual(manifest.pollingRemoteIpLookupRemoved, true);
   assert.strictEqual(manifest.httpBeforeBackgroundModemQueries, true);
   assert.strictEqual(manifest.ntpUnsyncedRetryIntervalMs, 5000);
+  assert.strictEqual(manifest.clientTimeoutPolicyAdded, true);
+  assert.strictEqual(manifest.arduinoRequestTimeoutMinimumMs, 30000);
+  assert.strictEqual(manifest.arduinoRequestTimeoutMaximumMs, 120000);
+  assert.strictEqual(manifest.arduinoConnectTimeoutMs, 5000);
+  assert.strictEqual(manifest.tauriResponseTimeoutMs, 30000);
+  assert.strictEqual(manifest.nodeHealthTimeoutMinimumMs, 30000);
+  assert.strictEqual(manifest.statusMonitorTimeoutMinimumMs, 30000);
   assert.strictEqual(manifest.apiPrivatePathLimitDocumented, true);
   assert.strictEqual(
     manifest.featureCommitBefore,
-    '885718db43fca5e7ae25d0e965211520a5656f92'
+    '0ab52d92592e29e43b353e767fcab7130cb66288'
   );
   assert.ok(Array.isArray(manifest.files));
   assert.strictEqual(manifest.fileCountExcludingManifest, manifest.files.length);
@@ -90,6 +97,7 @@ function main() {
     'README.md',
     'package.json',
     'server/arduino/arduino-client.js',
+    'server/core/config.js',
     'server2_legacy.js',
     'desktop-tauri/src-tauri/src/lib.rs',
     'desktop-tauri/src/main.tsx',
@@ -107,6 +115,7 @@ function main() {
     'docs/v5/NEXT_V5_INTEGRATION_RUNBOOK.md',
     'fejlesztes_readme.md',
     'scripts/test-arduino-client.js',
+    'scripts/test-core-modules.js',
     'scripts/test-alpha3-device-key-header.js',
     'scripts/test-alpha3-device-key-manifest.js',
     'scripts/test-alpha3-desktop-typescript-contract.js',
@@ -128,7 +137,10 @@ function main() {
     assert.strictEqual(entry.path.endsWith('/secrets.h'), false, `Titkos firmware-fájl nem csomagolható: ${entry.path}`);
     assert.notStrictEqual(entry.path, '.env', 'Valódi .env nem csomagolható.');
     assert.strictEqual(
-      entry.path.startsWith('server/') && entry.path !== 'server/arduino/arduino-client.js',
+      entry.path.startsWith('server/') && ![
+        'server/arduino/arduino-client.js',
+        'server/core/config.js'
+      ].includes(entry.path),
       false,
       `Nem várt szerver runtime fájl: ${entry.path}`
     );

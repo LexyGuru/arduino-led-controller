@@ -267,14 +267,14 @@ function loadRuntimeConfig(options = {}) {
       timeoutMs: numberInRange(
         environment.ARDUINO_TIMEOUT_MS,
         30000,
-        500,
+        30000,
         120000
       ),
       healthTimeoutMs: numberInRange(
         environment.ARDUINO_HEALTH_TIMEOUT_MS,
-        2500,
-        500,
-        10000
+        30000,
+        30000,
+        120000
       )
     },
     console: {
@@ -310,9 +310,9 @@ function loadRuntimeConfig(options = {}) {
       ),
       timeoutMs: numberInRange(
         environment.ARDUINO_STATUS_MONITOR_TIMEOUT_MS,
-        5000,
-        500,
-        30000
+        30000,
+        30000,
+        120000
       )
     },
     files: {

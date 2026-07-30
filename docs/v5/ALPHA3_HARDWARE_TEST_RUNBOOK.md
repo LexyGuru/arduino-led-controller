@@ -219,3 +219,21 @@ Kötelező újrateszt:
 - `/api/console/stats` és `/api/status` válaszidő összehasonlítása a V7 méréssel;
 - legalább 20 egymást követő helyes és negatív kérés után az Arduino és a
   Wi-Fi bridge továbbra is elérhető marad.
+
+
+## Elfogadott kliensoldali időkorlátok
+
+A valós UNO R4 WiFi hardvermérés periodikus WiFiS3 háttérműveletek mellett
+2,6–9,9 másodperces elsőbájt-időt mutatott. Ez működési szempontból elfogadott,
+ha a kliens nem szakítja meg idő előtt a helyes HTTP-választ.
+
+Kötelező Alpha.3 klienspolitika:
+
+- Tauri TCP-kapcsolódási időkorlát: 5 másodperc;
+- Arduino API teljes olvasási/írási időkorlát: minimum 30 másodperc;
+- moduláris Node normál, health és státuszmonitor timeout: minimum 30000 ms;
+- legacy Node és macOS curl teljes kérési timeout: minimum 30 másodperc;
+- OTA és firmware-feltöltési timeoutok ettől külön kezelendők.
+
+A 30 másodperces érték nem teljesítménycél. Biztonsági tartalék a periodikus
+WiFiS3 műveletekhez és a későbbi firmware-bővítésekhez.

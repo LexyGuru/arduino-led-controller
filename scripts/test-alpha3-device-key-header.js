@@ -79,6 +79,9 @@ async function testModularClient() {
   assert.strictEqual(requests[0].headers['X-Request-Source'], 'alpha3-test');
   assert.strictEqual(requests[0].url.includes(DEVICE_KEY), false);
   assert.strictEqual(/[?&]k=/.test(requests[0].url), false);
+  assert.strictEqual(requests[0].timeout, 30000);
+  assert.strictEqual(client.config.timeoutMs, 30000);
+  assert.strictEqual(client.config.healthTimeoutMs, 30000);
 }
 
 function testFirmwareContract() {
@@ -145,6 +148,21 @@ function testFirmwareContract() {
   assert.match(secretsExample, /API_ALLOW_QUERY_KEY_FALLBACK 1/);
 }
 
+function testTimeoutConfigurationContract() {
+  const modular = read('server/arduino/arduino-client.js');
+  const config = read('server/core/config.js');
+  const environment = read('.env.example');
+
+  assert.match(modular, /ARDUINO_REQUEST_TIMEOUT_MINIMUM_MS = 30000/);
+  assert.match(modular, /ARDUINO_REQUEST_TIMEOUT_MAXIMUM_MS = 120000/);
+  assert.match(modular, /normalizeArduinoTimeoutMs/);
+  assert.match(config, /ARDUINO_HEALTH_TIMEOUT_MS,[\s\S]*30000,[\s\S]*30000,[\s\S]*120000/);
+  assert.match(config, /ARDUINO_STATUS_MONITOR_TIMEOUT_MS,[\s\S]*30000,[\s\S]*30000,[\s\S]*120000/);
+  assert.match(environment, /ARDUINO_TIMEOUT_MS=30000/);
+  assert.match(environment, /ARDUINO_HEALTH_TIMEOUT_MS=30000/);
+  assert.match(environment, /ARDUINO_STATUS_MONITOR_TIMEOUT_MS=30000/);
+}
+
 function testLegacyClientContract() {
   const legacy = read('server2_legacy.js');
 
@@ -156,6 +174,9 @@ function testLegacyClientContract() {
   assert.match(legacy, /return `\$\{this\.apiPath\}\$\{endpoint\}`/);
   assert.doesNotMatch(legacy, /separator}k=/);
   assert.doesNotMatch(legacy, /encodeURIComponent\(this\.apiKey\)/);
+  assert.match(legacy, /Math\.min\(120000, Math\.max\(30000, configuredTimeout\)\)/);
+  assert.match(legacy, /'--connect-timeout', '5'/);
+  assert.match(legacy, /'--max-time', String\(Math\.max\(5, Math\.ceil\(this\.timeout \/ 1000\)\)\)/);
 }
 
 function testTauriContract() {
@@ -168,6 +189,11 @@ function testTauriContract() {
   assert.doesNotMatch(rust, /\{sep\}k=/);
   assert.doesNotMatch(rust, /fn percent_encode\(/);
   assert.match(rust, /0x21\.\.=0x7e/);
+  assert.match(rust, /ARDUINO_CONNECT_TIMEOUT: Duration = Duration::from_secs\(5\)/);
+  assert.match(rust, /ARDUINO_RESPONSE_TIMEOUT: Duration = Duration::from_secs\(30\)/);
+  assert.match(rust, /TcpStream::connect_timeout\(&addr, connect_timeout\)/);
+  assert.match(rust, /set_read_timeout\(Some\(response_timeout\)\)/);
+  assert.match(rust, /set_write_timeout\(Some\(response_timeout\)\)/);
 }
 
 function testFirmwareWorkflowContract() {
@@ -201,12 +227,14 @@ function testNoClientQuerySecret() {
 async function main() {
   await testModularClient();
   testFirmwareContract();
+  testTimeoutConfigurationContract();
   testLegacyClientContract();
   testTauriContract();
   testFirmwareWorkflowContract();
   testNoClientQuerySecret();
 
   console.log('OK: moduláris Node kliens X-Device-Key fejlécet küld');
+  console.log('OK: Arduino API timeout minimum 30 másodperc, Tauri kapcsolatkapu 5 másodperc');
   console.log('OK: legacy Node és macOS curl transport fejlécet küld');
   console.log('OK: Tauri közvetlen Arduino kliens fejlécet küld');
   console.log('OK: firmware header-first auth, 512 bájtos válaszok és gyorsítótárazott WiFi-telemetria');

@@ -47,6 +47,7 @@ function main() {
         'core-test-secret-1234567890',
       ARDUINO_TIMEOUT_MS: '45000',
       ARDUINO_HEALTH_TIMEOUT_MS: '1500',
+      ARDUINO_STATUS_MONITOR_TIMEOUT_MS: '5000',
       API_V2_TOKEN:
         'api-v2-core-test-token-1234567890',
       API_V2_ALLOWED_ORIGIN:
@@ -144,7 +145,12 @@ function main() {
 
     assert.strictEqual(
       config.arduino.healthTimeoutMs,
-      1500
+      30000
+    );
+
+    assert.strictEqual(
+      config.monitor.timeoutMs,
+      30000
     );
 
     assert.deepStrictEqual(

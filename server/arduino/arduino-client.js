@@ -6,6 +6,21 @@ const {
   ArduinoClientError
 } = require('./arduino-error');
 
+const ARDUINO_REQUEST_TIMEOUT_MINIMUM_MS = 30000;
+const ARDUINO_REQUEST_TIMEOUT_MAXIMUM_MS = 120000;
+
+function normalizeArduinoTimeoutMs(value) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) {
+    return ARDUINO_REQUEST_TIMEOUT_MINIMUM_MS;
+  }
+
+  return Math.min(
+    ARDUINO_REQUEST_TIMEOUT_MAXIMUM_MS,
+    Math.max(ARDUINO_REQUEST_TIMEOUT_MINIMUM_MS, parsed)
+  );
+}
+
 function normalizeApiPath(value) {
   const normalized = String(value || '')
     .trim()
@@ -115,11 +130,11 @@ class ArduinoClient {
       apiKey: String(
         config?.apiKey || ''
       ).trim(),
-      timeoutMs: Number(
-        config?.timeoutMs || 30000
+      timeoutMs: normalizeArduinoTimeoutMs(
+        config?.timeoutMs
       ),
-      healthTimeoutMs: Number(
-        config?.healthTimeoutMs || 2500
+      healthTimeoutMs: normalizeArduinoTimeoutMs(
+        config?.healthTimeoutMs
       )
     });
 
@@ -450,6 +465,7 @@ module.exports = {
   configuredSecret,
   formatHttpHost,
   mapArduinoClientError,
+  normalizeArduinoTimeoutMs,
   normalizeApiPath,
   normalizeEndpoint,
   withoutDeviceKeyHeader

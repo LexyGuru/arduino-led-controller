@@ -63,6 +63,16 @@ async function main() {
     true
   );
 
+  assert.strictEqual(
+    client.config.timeoutMs,
+    30000
+  );
+
+  assert.strictEqual(
+    client.config.healthTimeoutMs,
+    30000
+  );
+
   const builtUrl = client.buildUrl(
     '/api/status',
     {
@@ -117,6 +127,11 @@ async function main() {
       'X-Request-Source'
     ],
     'unit-test'
+  );
+
+  assert.strictEqual(
+    requests[0].timeout,
+    30000
   );
 
   assert.strictEqual(

@@ -334,7 +334,10 @@ function requireAdmin(req, res, next) {
 class ArduinoAPI {
   constructor(ip, port, apiPath, apiKey) {
     this.setTarget(ip, port, apiPath, apiKey);
-    this.timeout = Number(process.env.ARDUINO_TIMEOUT_MS) || 30000;
+    const configuredTimeout = Number(process.env.ARDUINO_TIMEOUT_MS);
+    this.timeout = Number.isFinite(configuredTimeout)
+      ? Math.min(120000, Math.max(30000, configuredTimeout))
+      : 30000;
     this.maxRetries = Number(process.env.ARDUINO_RETRY_COUNT) || 3;
     this.retryDelay = Number(process.env.ARDUINO_RETRY_DELAY) || 2000;
     // Az UNO R4 WiFi HTTP-kiszolgálója egyszerre egy kapcsolatot kezel
@@ -593,7 +596,10 @@ async function refreshArduinoConsoleCache(force = false) {
 class LEDAPI {
   constructor(ip, port) {
     this.setTarget(ip, port);
-    this.timeout = Number(process.env.ARDUINO_TIMEOUT_MS) || 30000;
+    const configuredTimeout = Number(process.env.ARDUINO_TIMEOUT_MS);
+    this.timeout = Number.isFinite(configuredTimeout)
+      ? Math.min(120000, Math.max(30000, configuredTimeout))
+      : 30000;
     this.maxRetries = Number(process.env.ARDUINO_RETRY_COUNT) || 3;
     this.retryDelay = Number(process.env.ARDUINO_RETRY_DELAY) || 2000;
   }

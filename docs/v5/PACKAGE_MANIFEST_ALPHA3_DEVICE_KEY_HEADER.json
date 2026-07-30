@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "package": "v5-alpha3-device-key-wifi-telemetry-cache-hotfix-v8",
+  "package": "v5-alpha3-device-key-client-timeout-hotfix-v9",
   "createdAt": "2026-07-30",
   "baseBranch": "next/v5-rearchitecture",
   "baseCommit": "bd5cb67d3a40d1fa5d8e39f53615a7f50e5c1d3b",
@@ -24,13 +24,13 @@
     "legacyCurlHeaderFromStdin": true,
     "queryFallbackMeasured": true
   },
-  "description": "Alpha.3 hardware-discovered WiFiS3 telemetry-cache performance hotfix on top of commit 885718d and the V7 chunked-response candidate. The V7 hardware tests proved correct 401 and 200 responses without bridge lockup, but measured 2.75 s for a short auth failure, 6.86 s for a 266-byte console stats response, and 9.63 s for the 1457-byte status response. V8 retains maximum 512-byte response writes while removing synchronous remoteIP lookups from polling/auth-failure paths, caching WiFi connection/IP/RSSI telemetry, processing HTTP before periodic NTP and telemetry modem commands, and rate-limiting unsynchronised NTP retries. Header-first authentication, measured query fallback, production isolation, and application version 5.0.0-alpha.2 remain unchanged.",
-  "fileCountExcludingManifest": 31,
+  "description": "Alpha.3 V9 client-timeout hardening on top of the hardware-tested V8 WiFi telemetry-cache candidate. Real UNO R4 WiFi measurements showed correct 401/200 responses with 2.6-9.9 second first-byte latency during periodic WiFiS3 background work. V9 prevents false offline and timeout failures by enforcing a minimum 30000 ms Arduino API request window for modular Node normal/health/status-monitor calls and legacy Node/curl calls, while the Tauri direct client uses a separate 5 second TCP connect gate and 30 second read/write response window. Firmware 4.1.21, header-first X-Device-Key authentication, measured query fallback, application version 5.0.0-alpha.2, main isolation, and production isolation remain unchanged.",
+  "fileCountExcludingManifest": 33,
   "files": [
     {
       "path": ".env.example",
-      "sha256": "61f551c931246f25b99bb129f436c2031e0713e05ccfcecd65fb10768fdfd0ca",
-      "bytes": 4936
+      "sha256": "7afe98fcc843c8df068a89732e1e390ba044822ec03abab50735cf68efdd6a1a",
+      "bytes": 5055
     },
     {
       "path": ".github/workflows/firmware-build.yml",
@@ -44,8 +44,13 @@
     },
     {
       "path": "desktop-tauri/src-tauri/src/lib.rs",
-      "sha256": "bb13c3b706c1ca479b07c93e5f01f5d20d2553fa03522aadc5fa7b288a15d500",
-      "bytes": 81159
+      "sha256": "0d2cd1465b04838a469934b3005190b772632c4a4b0a2062aa867308b6223aad",
+      "bytes": 81446
+    },
+    {
+      "path": "desktop-tauri/src/components/v5/V5PreflightPanel.tsx",
+      "sha256": "d42dd7ffa7d4c81f5bf98015c886b38cc038bd06c4809982d45ef1162f7f47ba",
+      "bytes": 3025
     },
     {
       "path": "desktop-tauri/src/main.tsx",
@@ -56,11 +61,6 @@
       "path": "desktop-tauri/src/vite-env.d.ts",
       "sha256": "67afc4df8c8a356921ebfe2ab0a5770d689d8ea865de8e579bdc902f32d02622",
       "bytes": 182
-    },
-    {
-      "path": "desktop-tauri/src/components/v5/V5PreflightPanel.tsx",
-      "sha256": "d42dd7ffa7d4c81f5bf98015c886b38cc038bd06c4809982d45ef1162f7f47ba",
-      "bytes": 3025
     },
     {
       "path": "docs/api/API_V2_CONTRACT.md",
@@ -74,13 +74,13 @@
     },
     {
       "path": "docs/v5/ALPHA3_HARDWARE_TEST_RUNBOOK.md",
-      "sha256": "b6fd2beba453e416c5acc7ed2481792206933292fd1b15029cc81fff6bba35b2",
-      "bytes": 7303
+      "sha256": "52aaf7d1fc8529a24d4528ada02116e417a5785f4a11135d738815b39da99293",
+      "bytes": 8127
     },
     {
       "path": "docs/v5/ALPHA3_RELEASE_NOTES_DRAFT.md",
-      "sha256": "dc001351bf59106c91b563a0527c0b79a644b0f998def99ec6d3291955732d8f",
-      "bytes": 4326
+      "sha256": "16e7aa65f3461097cf47b236011cde5ba59ed727f9766091b1291fc0f8687fc9",
+      "bytes": 5040
     },
     {
       "path": "docs/v5/NEXT_V5_INTEGRATION_RUNBOOK.md",
@@ -144,18 +144,23 @@
     },
     {
       "path": "scripts/test-alpha3-device-key-header.js",
-      "sha256": "737b42af82d4184e63c26f09a93dc70c5512ee5e5812e05b30758ebb33eb19e1",
-      "bytes": 8191
+      "sha256": "1625e0fc391f17f725981e5d125721afc4514d817e8522e4d54529f1aaa506f7",
+      "bytes": 9911
     },
     {
       "path": "scripts/test-alpha3-device-key-manifest.js",
-      "sha256": "4497b4fd4864f5fa8ca5bc06101331242146f1a98797a67b3c204e0ae621dd80",
-      "bytes": 6777
+      "sha256": "094b372327e6d5c67316663122fb596b4bf359c18aa9e2b52bea90c866bb3cbf",
+      "bytes": 7357
     },
     {
       "path": "scripts/test-arduino-client.js",
-      "sha256": "7d264690d62bd756ff51cd6458e176558a67f09e279c66eb56b645c3b00858c9",
-      "bytes": 4883
+      "sha256": "a5e1821bd44782c85a88e23811e89b6b8a9f5eb2889f03fe0f6582037755db62",
+      "bytes": 5086
+    },
+    {
+      "path": "scripts/test-core-modules.js",
+      "sha256": "cde15a165e00efa6fdc1c52f4a780d3b14d9d1751c801a1ec23c28adac832d99",
+      "bytes": 5082
     },
     {
       "path": "scripts/test-v5-documentation-status.js",
@@ -174,19 +179,24 @@
     },
     {
       "path": "server/arduino/arduino-client.js",
-      "sha256": "6b0dbf6d46f46873346a448d0499d6b9b95481807baffc5f5282a596c99c15e3",
-      "bytes": 8350
+      "sha256": "5b6de7a316c65fe2284d5f81593348db6d968ce7fb1146c2e1c5b7c6ef121bcc",
+      "bytes": 8788
+    },
+    {
+      "path": "server/core/config.js",
+      "sha256": "ed30f104701e6d00c14909bbd86a37bb395e8d8febedeb9c3a7676402b542e76",
+      "bytes": 13289
     },
     {
       "path": "server2_legacy.js",
-      "sha256": "27104184d108a5af204d14ce4d853b7dba22c8ce54aefec4b1f1e50d318a7b89",
-      "bytes": 141895
+      "sha256": "8a94a12ebc37f7f4688d88911119b7a3b44474289877daa86048f1bb3b4be61f",
+      "bytes": 142159
     }
   ],
   "firmwareLatestReleaseProtected": true,
   "alpha2ReadinessRegressionAligned": true,
   "desktopTypescriptBuildFixed": true,
-  "featureCommitBefore": "885718db43fca5e7ae25d0e965211520a5656f92",
+  "featureCommitBefore": "0ab52d92592e29e43b353e767fcab7130cb66288",
   "authFailureHttpResponsesFixed": true,
   "apiPrivatePathLimitDocumented": true,
   "authResponseFlushAdded": false,
@@ -213,5 +223,29 @@
     "statusSeconds": 9.626099,
     "responsesCorrect": true,
     "performanceAccepted": false
+  },
+  "clientTimeoutPolicyAdded": true,
+  "arduinoRequestTimeoutMinimumMs": 30000,
+  "arduinoRequestTimeoutMaximumMs": 120000,
+  "arduinoConnectTimeoutMs": 5000,
+  "tauriResponseTimeoutMs": 30000,
+  "nodeHealthTimeoutMinimumMs": 30000,
+  "statusMonitorTimeoutMinimumMs": 30000,
+  "legacyCurlConnectTimeoutSeconds": 5,
+  "legacyCurlMinimumTotalTimeoutSeconds": 30,
+  "v8HardwareMeasurements": {
+    "detailedMissingKeyConnectSeconds": 0.051169,
+    "detailedMissingKeyFirstByteSeconds": 2.597886,
+    "detailedMissingKeyTotalSeconds": 2.598977,
+    "firstMissingKeySeconds": 9.905274,
+    "repeatedMissingKeySeconds": [
+      4.611414,
+      8.181643,
+      8.176709,
+      8.180141,
+      8.179751
+    ],
+    "responsesCorrect": true,
+    "latencyAcceptedWithThirtySecondClientTimeout": true
   }
 }
