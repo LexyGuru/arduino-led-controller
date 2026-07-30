@@ -69,6 +69,6 @@ PHASE=promotion \
   dist/releases/arduino-led-controller-*.tar.gz
 ```
 
-A csomag nem módosítja automatikusan a produkciós `main` ágat, és nem végzi el
-a `5.0.0-alpha.2` verzióemelést. A verziószinkron csak sikeres gate, staging,
-rollback-próba és promóciós evidence után következik.
+A csomag nem módosítja automatikusan a produkciós `main` ágat. A dokumentált
+gate, staging, rollback-próba, promotion és finalization evidence után a külön
+verziófinalizáló csomag elvégezte a `5.0.0-alpha.2` verziószinkront.

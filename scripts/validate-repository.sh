@@ -437,6 +437,12 @@ required_files=(
   "scripts/test-release-secret-env-hotfix-manifest.js"
   "docs/v5/RELEASE_SECRET_SCANNER_ENV_PLACEHOLDER_HOTFIX.md"
   "docs/v5/PACKAGE_MANIFEST_RELEASE_SECRET_ENV_HOTFIX.json"
+  "docs/v5/ALPHA2_RELEASE_NOTES.md"
+  "docs/v5/ALPHA2_MIGRATION.md"
+  "docs/v5/ALPHA2_VERSION_FINALIZATION.md"
+  "docs/v5/PACKAGE_MANIFEST_ALPHA2_VERSION_FINALIZATION.json"
+  "scripts/test-alpha2-version-finalization.js"
+  "scripts/test-alpha2-version-finalization-manifest.js"
 )
 for file in "${required_files[@]}"; do
   [[ -f "${file}" ]] || {

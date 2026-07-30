@@ -2,8 +2,10 @@
 
 ## Fontos állapot
 
-Ez a csomag **nem emeli meg automatikusan** a projektverziót. A repository
-továbbra is `5.0.0-alpha.1`, amíg a valódi izolált LXC gate nem sikeres.
+A valódi LXC gate, staging, rollback, promotion és finalization kapuk
+teljesültek a `1236becc37e9b4d8ed2334f3cd60b455c248e82d` candidate-re. A
+repository verziója a külön finalizáló csomagban `5.0.0-alpha.2` értékre lett
+szinkronizálva. A runbook alábbi lépései az eljárás reprodukálására szolgálnak.
 
 ## 1. Candidate branch letöltése az LXC-ben
 

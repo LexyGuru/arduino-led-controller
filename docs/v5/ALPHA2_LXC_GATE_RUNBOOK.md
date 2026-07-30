@@ -27,4 +27,6 @@ A gépi jelentés alapértelmezett helye:
 /var/lib/arduino-led-controller/release-gates/
 ```
 
-A `5.0.0-alpha.2` verziólépés csak `status: passed` jelentés után készülhet el.
+A minősített candidate `status: passed` jelentést kapott, majd a teljes
+execution receipt-lánc és finalization approval után elkészült a
+`5.0.0-alpha.2` verziószinkron.

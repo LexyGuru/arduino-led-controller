@@ -49,5 +49,21 @@ Verziószinkronra kész
 FINALIZE_ALPHA2_VERSION_SYNC
 ```
 
-Ez még nem emel verziót. A következő külön csomag végzi a teljes
-`5.0.0-alpha.2` verziószinkront.
+A jóváhagyás önmagában nem emel verziót. A külön finalizáló csomag ezután
+egységesen `5.0.0-alpha.2` értékre állítja a verziófájlokat és lockfile-okat,
+majd lefuttatja a teljes repository-validátort.
+
+## 7. Verziófinalizáló csomag
+
+A csomag alkalmazása után:
+
+```bash
+python3 scripts/check-versions.py
+node scripts/test-alpha2-version-finalization.js
+node scripts/test-alpha2-version-finalization-manifest.js
+bash scripts/validate-repository.sh
+git diff --check
+```
+
+A finalizáló commit először a feature ágra kerül. A `main` ág módosítása külön
+integrációs és jóváhagyási lépés.

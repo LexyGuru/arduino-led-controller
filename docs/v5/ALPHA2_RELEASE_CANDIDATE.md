@@ -1,8 +1,10 @@
 # 5.0.0-alpha.2 release candidate
 
-A repository verziója ebben a munkacsomagban még `5.0.0-alpha.1`. Ez
-szándékos: a candidate funkcionalitás elkészül, de a verziószinkron csak a
-valódi LXC release-gate után történik.
+A candidate funkcionalitást a
+`1236becc37e9b4d8ed2334f3cd60b455c248e82d` commit rögzítette. A valódi LXC
+gate, staging deployment, rollback rehearsal, promotion és finalization
+jóváhagyás után a repository verziója `5.0.0-alpha.2` értékre lett
+szinkronizálva.
 
 ## Candidate tartalom
 
@@ -11,7 +13,8 @@ valódi LXC release-gate után történik.
 - OTA feltöltés megszakítása;
 - OpenAPI-alapú TypeScript kliensgenerálás;
 - valódi LXC gate és gépi gate-jelentés;
-- verziózott, SHA-256 értékkel ellátott release bundle.
+- verziózott, SHA-256 értékkel ellátott release bundle;
+- izolált staging service és execution receipt-lánc.
 
 ## Release bundle
 
@@ -26,3 +29,6 @@ Ellenőrzés:
 bash deploy/verify-versioned-release.sh \
   dist/releases/<release>.tar.gz
 ```
+
+A finalizált kiadási összefoglaló:
+`docs/v5/ALPHA2_RELEASE_NOTES.md`.

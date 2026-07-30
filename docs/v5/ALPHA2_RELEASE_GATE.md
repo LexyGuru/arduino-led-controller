@@ -44,9 +44,14 @@ produkciós systemd szolgáltatást.
 
 A sikeres kapuk után egyszerre kell `5.0.0-alpha.2` értékre állítani:
 
-- `VERSION`
-- gyökér `package.json`
-- `docs/api/openapi-v2.json`
-- `desktop-tauri/package.json`
-- `desktop-tauri/src-tauri/Cargo.toml`
-- `desktop-tauri/src-tauri/tauri.conf.json`
+- `VERSION`;
+- gyökér `package.json` és `package-lock.json`;
+- `docs/api/openapi-v2.json`;
+- `desktop-tauri/package.json` és `desktop-tauri/package-lock.json`;
+- `desktop-tauri/src-tauri/Cargo.toml`;
+- a projektcsomag verziója a `desktop-tauri/src-tauri/Cargo.lock` fájlban;
+- `desktop-tauri/src-tauri/tauri.conf.json`.
+
+A verziószinkron véglegesítése után a
+`docs/v5/ALPHA2_RELEASE_NOTES.md` és `docs/v5/ALPHA2_MIGRATION.md` dokumentumok
+rögzítik a kiadás tartalmát és az integrációs sorrendet.

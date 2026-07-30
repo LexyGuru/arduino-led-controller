@@ -3,14 +3,17 @@
 Utolsó frissítés: 2026-07-29
 Integrációs ág: `next/v5-rearchitecture`
 Munkacsomag: `feature/v5-server-modularization`
+Minősített Alpha.2 candidate: `1236becc37e9b4d8ed2334f3cd60b455c248e82d`
 
 ## Repository és LXC
 
 - [x] Stabil `main`, külön `next` és feature ág
 - [x] Repository-validátor, titokellenőrzés és rollback
 - [x] Alpha.2 izolált worktree release-gate
-- [-] Alpha.2 gate valódi LXC-n
-- [-] Verziózott release bundle készítés és ellenőrzés
+- [x] Alpha.2 gate valódi LXC-n
+- [x] Verziózott release bundle készítés és ellenőrzés
+- [x] Izolált staging service és loopback-only hálózati kötés
+- [x] Staging Arduino-cél leválasztva a produkciós hardverről
 
 ## Hitelesítés, API és megfigyelhetőség
 
@@ -98,12 +101,16 @@ Munkacsomag: `feature/v5-server-modularization`
 
 ## Kiadás
 
-
-- [ ] Teljes izolált LXC integrációs és rollback teszt
-- [ ] `5.0.0-alpha.2` verziólépés
-- [ ] Staging telepítés
-- [ ] Release notes és migrációs dokumentáció
-- [ ] Beolvasztás `next`, majd `main` ágba
+- [x] Teljes izolált LXC integrációs és rollback teszt
+- [x] Staging telepítés és readiness
+- [x] Promotion és teljes execution receipt-lánc
+- [x] `FINALIZE_ALPHA2_VERSION_SYNC` jóváhagyás
+- [x] `5.0.0-alpha.2` verziólépés
+- [x] Release notes és migrációs dokumentáció
+- [ ] Beolvasztás `next/v5-rearchitecture` ágba
+- [ ] Új integrációs ellenőrzés a `next` ágon
+- [ ] Beolvasztás `main` ágba
+- [ ] Produkciós telepítés külön jóváhagyással
 
 ## Alpha.2 release-gate és staging
 
@@ -117,13 +124,19 @@ Munkacsomag: `feature/v5-server-modularization`
 - [x] Health-alapú automatikus rollback
 - [x] Külön kézi rollback eszköz
 - [x] Hardened staging systemd unit
-- [ ] Valódi LXC gate futtatása
-- [ ] Közvetlen `5.0.0-alpha.2` verziószinkron
+- [x] Valódi LXC gate futtatása
+- [x] Staging deployment receipt
+- [x] Rollback rehearsal receipt
+- [x] Promotion deployment receipt
+- [x] Receipt SHA-256 előzménylánc
+- [x] Artifact index és execution archive
+- [x] Közvetlen `5.0.0-alpha.2` verziószinkron
 
-## Következő hatalmas munkacsomag
+## Következő munkacsomag
 
-1. Valódi LXC `gate-stage` futtatása.
-2. Promotion approval és védett `promote` futtatása.
-3. `ready-for-finalization` állapot ellenőrzése.
-4. `FINALIZE_ALPHA2_VERSION_SYNC` jóváhagyás.
-5. Teljes `5.0.0-alpha.2` verziószinkron.
+1. A verziófinalizáló csomag teljes helyi validációja.
+2. Commit és push a `feature/v5-server-modularization` ágra.
+3. Beolvasztás a `next/v5-rearchitecture` ágba.
+4. Teljes integrációs teszt a `next` ágon.
+5. Külön, tudatos jóváhagyás után beolvasztás a `main` ágba.
+6. Produkciós snapshot, preflight, telepítés és utóellenőrzés.

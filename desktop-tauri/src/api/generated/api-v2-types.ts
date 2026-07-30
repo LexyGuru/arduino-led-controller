@@ -1,5 +1,5 @@
 /* AUTO-GENERÁLT — NE SZERKESZD KÉZZEL. */
-/* OpenAPI verzió: 5.0.0-alpha.1 */
+/* OpenAPI verzió: 5.0.0-alpha.2 */
 
 export type ApiPrimitive = string | number | boolean | null;
 export type ApiJson = ApiPrimitive | ApiJson[] | { [key: string]: ApiJson };

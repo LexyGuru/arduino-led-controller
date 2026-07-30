@@ -37,5 +37,6 @@ monitor állapotát, a schedule fájllistát és a rollback könyvtártesztet.
 
 ## Verziólépés
 
-A `5.0.0-alpha.2` verzió csak a valódi LXC gate sikeres lefutása után kerül a
-verziófájlokba és lockfile-okba.
+A valódi LXC gate és a teljes staging–rollback–promotion evidence-lánc után a
+verziófájlok és lockfile-ok egységesen `5.0.0-alpha.2` értékre lettek
+állítva.

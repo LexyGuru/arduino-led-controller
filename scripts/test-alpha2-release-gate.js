@@ -107,8 +107,14 @@ function main() {
 
   assert.strictEqual(
     manifest.currentVersion,
-    packageData.version,
-    'A csomagmanifest és a projektverzió eltér.'
+    '5.0.0-alpha.1',
+    'Az archivált csomagmanifest forrásverziója megváltozott.'
+  );
+
+  assert.strictEqual(
+    manifest.releaseTarget,
+    '5.0.0-alpha.2',
+    'Az archivált csomagmanifest célverziója megváltozott.'
   );
 
   assert.ok(
