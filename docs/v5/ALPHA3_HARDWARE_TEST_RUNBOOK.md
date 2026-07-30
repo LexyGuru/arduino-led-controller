@@ -291,3 +291,32 @@ A hardveres gate eredménye: **PASSED**. A feature ág beolvasztható a
 `next/v5-rearchitecture` ágba. Ez nem engedélyezi a `main` merge-et, a
 produkciós telepítést vagy a public firmware release frissítését. Az
 `5.0.0-alpha.3` verziófinalizálás külön, következő kapu.
+
+## Alpha.3 integráció és verziófinalizálás – 2026-07-30
+
+A hardveresen validált feature ág sikeresen bekerült a V5 integrációs ágba.
+
+Rögzített integrációs állapot:
+
+- feature végső commit: `e2dc8ac41edf39717b4e2708e6b03aba0b6431bb`;
+- `next/v5-rearchitecture` korábbi commit:
+  `bd5cb67d3a40d1fa5d8e39f53615a7f50e5c1d3b`;
+- `next/v5-rearchitecture` merge commit:
+  `295713798b1487ec2c788b170be2fce32fccea2a`;
+- merge típusa: `--no-ff`;
+- GitHub Actions firmware run: `30536184636`, eredmény: `success`;
+- alkalmazásverzió: `5.0.0-alpha.3`;
+- firmware-verzió: `4.1.21`.
+
+A finalizálás kötelező verziófájljai:
+
+- `VERSION`;
+- `package.json` és `package-lock.json`;
+- `desktop-tauri/package.json` és `desktop-tauri/package-lock.json`;
+- `desktop-tauri/src-tauri/Cargo.toml` és `Cargo.lock`;
+- `desktop-tauri/src-tauri/tauri.conf.json`;
+- `docs/api/openapi-v2.json`.
+
+Az Alpha.3 integrációs állapota: **COMPLETED**. A `main` merge, a produkciós
+Arduino frissítése, az LXC produkciós deploy és a public firmware release
+frissítése nem része ennek a kapunak.

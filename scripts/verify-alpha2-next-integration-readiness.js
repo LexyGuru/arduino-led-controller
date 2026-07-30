@@ -6,9 +6,14 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 
 const ROOT = path.resolve(__dirname, '..');
-const EXPECTED_VERSION = '5.0.0-alpha.2';
+const EXPECTED_VERSION = '5.0.0-alpha.3';
+const ALPHA2_VERSION = '5.0.0-alpha.2';
 const QUALIFIED_CANDIDATE =
   '1236becc37e9b4d8ed2334f3cd60b455c248e82d';
+const ALPHA2_MERGE =
+  'bd5cb67d3a40d1fa5d8e39f53615a7f50e5c1d3b';
+const ALPHA3_MERGE =
+  '295713798b1487ec2c788b170be2fce32fccea2a';
 const MANIFEST_RELATIVE =
   'docs/v5/PACKAGE_MANIFEST_ALPHA2_VERSION_FINALIZATION.json';
 
@@ -25,19 +30,14 @@ function runGit(args, { allowFailure = false } = {}) {
     cwd: ROOT,
     encoding: 'utf8'
   });
-
   if (result.error) {
     if (allowFailure) return null;
     throw result.error;
   }
-
   if (result.status !== 0) {
     if (allowFailure) return null;
-    throw new Error(
-      `Git hiba: git ${args.join(' ')}\n${result.stderr.trim()}`
-    );
+    throw new Error(`Git hiba: git ${args.join(' ')}\n${result.stderr.trim()}`);
   }
-
   return result.stdout.trim();
 }
 
@@ -56,29 +56,6 @@ function cargoPackageVersion(text, packageName) {
     )
   );
   return match ? match[1] : null;
-}
-
-function uniqueSorted(values) {
-  return [...new Set(values.filter(Boolean))].sort();
-}
-
-function featureChangedFiles() {
-  const committed = runGit([
-    'diff',
-    '--name-only',
-    QUALIFIED_CANDIDATE,
-    '--'
-  ]);
-  const untracked = runGit([
-    'ls-files',
-    '--others',
-    '--exclude-standard'
-  ]);
-
-  return uniqueSorted([
-    ...committed.split('\n'),
-    ...untracked.split('\n')
-  ]);
 }
 
 function evaluate({ checkGit = true, requireGit = false } = {}) {
@@ -122,56 +99,47 @@ function evaluate({ checkGit = true, requireGit = false } = {}) {
   };
 
   check(
-    'version-sync',
+    'current-version-sync',
     Object.values(versions).every((value) => value === EXPECTED_VERSION),
     JSON.stringify(versions)
   );
   check(
-    'manifest-target-version',
-    manifest.targetVersion === EXPECTED_VERSION,
+    'alpha2-manifest-target-version',
+    manifest.targetVersion === ALPHA2_VERSION,
     String(manifest.targetVersion)
   );
   check(
-    'manifest-qualified-candidate',
+    'alpha2-qualified-candidate',
     manifest.candidateCommit === QUALIFIED_CANDIDATE,
     String(manifest.candidateCommit)
   );
+  check('alpha2-runtime-scope', manifest.runtimeCodeChanged === false);
   check(
-    'manifest-runtime-scope',
-    manifest.runtimeCodeChanged === false,
-    `runtimeCodeChanged=${manifest.runtimeCodeChanged}`
-  );
-  check(
-    'checklist-next-merged-main-pending',
-    checklist.includes('- [x] Pull Request a `next/v5-rearchitecture` ágba (`#1`)') &&
-      checklist.includes('- [x] Beolvasztás `next/v5-rearchitecture` ágba') &&
-      checklist.includes('- [x] Új integrációs ellenőrzés a `next` ágon') &&
+    'checklist-integrations-main-pending',
+    (checklist.includes(ALPHA2_MERGE) || checklist.includes('bd5cb67')) &&
+      checklist.includes(ALPHA3_MERGE) &&
       checklist.includes('- [ ] Beolvasztás `main` ágba'),
-    'Az Alpha.2 legyen a next ágon, a main kapu maradjon nyitva.'
+    'Az Alpha.2 és Alpha.3 legyen a next ágon, a main kapu maradjon nyitva.'
   );
   check(
     'roadmap-current-status',
-    roadmap.includes('## 0. Aktuális megvalósítási állapot') &&
-      roadmap.includes(QUALIFIED_CANDIDATE) &&
+    roadmap.includes(EXPECTED_VERSION) &&
+      roadmap.includes(ALPHA3_MERGE) &&
       roadmap.includes('10.0.0.123:80'),
     'Hiányos master roadmap státusz.'
   );
   check(
     'implementation-status',
     statusDocument.includes(EXPECTED_VERSION) &&
-      statusDocument.includes(QUALIFIED_CANDIDATE) &&
+      statusDocument.includes(ALPHA3_MERGE) &&
       statusDocument.includes('Tilos / korai'),
     'Hiányos implementációs állapotjelentés.'
   );
   check(
     'integration-runbook',
-    integrationRunbook.includes(
-      'integration/v5-alpha2-server-modularization → next/v5-rearchitecture'
-    ) &&
-      integrationRunbook.includes('git merge --abort') &&
-      integrationRunbook.includes('X-Device-Key') &&
-      integrationRunbook.includes('Pull Request `#1`') &&
-      integrationRunbook.includes('432 fájlt'),
+    integrationRunbook.includes(ALPHA2_MERGE) &&
+      integrationRunbook.includes(ALPHA3_MERGE) &&
+      integrationRunbook.includes('git merge --abort'),
     'Hiányos next integrációs runbook.'
   );
 
@@ -194,54 +162,31 @@ function evaluate({ checkGit = true, requireGit = false } = {}) {
   } else if (checkGit && gitAvailable) {
     const branch = runGit(['branch', '--show-current']);
     const allowedBranches = new Set([
-      'feature/v5-server-modularization',
-      'integration/v5-alpha2-server-modularization',
       'next/v5-rearchitecture',
-      'feature/v5-alpha3-device-key-header'
+      'feature/v5-alpha3-device-key-header',
+      'feature/v5-alpha3-finalization',
+      'feature/v5-alpha3-application-staging'
     ]);
-    check(
-      'allowed-branch',
-      allowedBranches.has(branch),
-      branch || '(detached HEAD)'
-    );
-
-    const candidateExists = runGit(
-      ['cat-file', '-e', `${QUALIFIED_CANDIDATE}^{commit}`],
-      { allowFailure: true }
-    ) !== null;
+    check('allowed-branch', allowedBranches.has(branch), branch || '(detached HEAD)');
     check(
       'qualified-candidate-available',
-      candidateExists,
+      runGit(['cat-file', '-e', `${QUALIFIED_CANDIDATE}^{commit}`], {
+        allowFailure: true
+      }) !== null,
       QUALIFIED_CANDIDATE
     );
-
-    if (candidateExists && branch === 'feature/v5-server-modularization') {
-      const allowed = new Set([
-        ...manifest.files.map((entry) => entry.path),
-        MANIFEST_RELATIVE
-      ]);
-      const changed = featureChangedFiles();
-      const unexpected = changed.filter((file) => !allowed.has(file));
-      check(
-        'feature-change-scope',
-        unexpected.length === 0,
-        unexpected.length
-          ? `Nem engedélyezett változások: ${unexpected.join(', ')}`
-          : `${changed.length} finalizáló/integrációs fájl`
-      );
-    } else if (branch !== 'feature/v5-server-modularization') {
-      warnings.push(
-        'Integrációs vagy next ágon a candidate-hez viszonyított fájlscope nem kizárólagos; a teljes repository-validáció kötelező.'
-      );
-    }
+    warnings.push(
+      'Az Alpha.2 readiness itt történeti regressziós kapu; az aktív release-kapu az Alpha.3 manifest és staging.'
+    );
   } else if (checkGit && !gitAvailable) {
     warnings.push('Git-ellenőrzés kihagyva: nincs Git working tree.');
   }
 
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     passed: errors.length === 0,
     expectedVersion: EXPECTED_VERSION,
+    alpha2Version: ALPHA2_VERSION,
     qualifiedCandidate: QUALIFIED_CANDIDATE,
     checks,
     warnings,
@@ -271,8 +216,8 @@ function main() {
     }
     console.log(
       result.passed
-        ? 'OK: Alpha.2 kész a next integrációs kapura.'
-        : 'HIBA: Alpha.2 next integrációs readiness sikertelen.'
+        ? 'OK: Alpha.2 történeti integráció és Alpha.3 aktuális állapot konzisztens.'
+        : 'HIBA: integrációs readiness regresszió.'
     );
   }
 
@@ -281,6 +226,7 @@ function main() {
 
 module.exports = {
   EXPECTED_VERSION,
+  ALPHA2_VERSION,
   QUALIFIED_CANDIDATE,
   evaluate
 };

@@ -1,306 +1,127 @@
 {
   "schemaVersion": 1,
-  "package": "v5-alpha3-device-key-hardware-evidence-v10",
+  "package": "v5-alpha3-finalization-v11",
   "createdAt": "2026-07-30",
-  "baseBranch": "next/v5-rearchitecture",
-  "baseCommit": "bd5cb67d3a40d1fa5d8e39f53615a7f50e5c1d3b",
-  "targetBranch": "feature/v5-alpha3-device-key-header",
-  "qualifiedProductionBaseline": "58e01b40e4568f5cd2648d370614077ef08aa1ba",
+  "baseIntegrationCommit": "295713798b1487ec2c788b170be2fce32fccea2a",
+  "targetBranch": "next/v5-rearchitecture",
   "applicationVersionBefore": "5.0.0-alpha.2",
-  "applicationVersionAfter": "5.0.0-alpha.2",
-  "firmwareVersionBefore": "4.1.20",
-  "firmwareVersionAfter": "4.1.21",
-  "runtimeCodeChanged": true,
-  "productionDeploymentIncluded": false,
-  "mainMergeIncluded": false,
+  "applicationVersionAfter": "5.0.0-alpha.3",
+  "firmwareVersion": "4.1.21",
+  "featureCommit": "e2dc8ac41edf39717b4e2708e6b03aba0b6431bb",
+  "mergeParentNext": "bd5cb67d3a40d1fa5d8e39f53615a7f50e5c1d3b",
+  "mergeParentFeature": "e2dc8ac41edf39717b4e2708e6b03aba0b6431bb",
+  "firmwareWorkflowRun": 30536184636,
+  "firmwareWorkflowConclusion": "success",
+  "hardwareValidationCompleted": true,
+  "hardwareAuthMatrix": [
+    200,
+    401,
+    401,
+    200,
+    401,
+    400,
+    200
+  ],
+  "nodeStagingCompleted": true,
+  "tauriStagingCompleted": true,
+  "fallbackOffGateCompleted": true,
+  "rollbackVerified": true,
+  "nextIntegrationCompleted": true,
+  "alpha3FinalizationIncluded": true,
   "queryFallbackEnabled": true,
-  "hardwareValidationRequired": true,
-  "alpha3FinalizationIncluded": false,
-  "securityContract": {
-    "primaryHeader": "X-Device-Key",
-    "clientQuerySecretsRemoved": true,
-    "duplicateHeaderRejected": true,
-    "invalidHeaderCannotUseQueryFallback": true,
-    "legacyCurlHeaderFromStdin": true,
-    "queryFallbackMeasured": true
-  },
-  "description": "Alpha.3 V10 hardware-evidence package on top of feature commit 221d7dd56ccf4eed2b6048eb91aee0ea526b2c73. The real UNO R4 WiFi header-auth matrix, modular Node staging, Tauri/Rust direct staging, query-fallback-off gate, automatic fallback-on rollback, and rollback liveness verification all passed. The accepted client policy remains a 5 second TCP connection gate and minimum 30 second Arduino API response window. Application version remains 5.0.0-alpha.2; main, production and the public firmware release remain isolated.",
-  "fileCountExcludingManifest": 33,
+  "mainMergeIncluded": false,
+  "productionDeploymentIncluded": false,
+  "publicFirmwareReleaseUpdated": false,
+  "versionFiles": [
+    "VERSION",
+    "package.json",
+    "package-lock.json",
+    "desktop-tauri/package.json",
+    "desktop-tauri/package-lock.json",
+    "desktop-tauri/src-tauri/Cargo.toml",
+    "desktop-tauri/src-tauri/Cargo.lock",
+    "desktop-tauri/src-tauri/tauri.conf.json",
+    "docs/api/openapi-v2.json"
+  ],
+  "fileCountExcludingManifest": 15,
   "files": [
     {
-      "path": ".env.example",
-      "sha256": "7afe98fcc843c8df068a89732e1e390ba044822ec03abab50735cf68efdd6a1a",
-      "bytes": 5055
+      "path": ".github/workflows/tauri-artifact-build.yml",
+      "bytes": 3306,
+      "sha256": "5a6fc55f59105f2ad6222e0110baa7b83cf0c39bedf97254b730f14cba074d60"
     },
     {
-      "path": ".github/workflows/firmware-build.yml",
-      "sha256": "b2ff86119e75ed18da3711039de605d3e01331b6695cd41a96cbfd2bf84957d2",
-      "bytes": 3675
-    },
-    {
-      "path": "README.md",
-      "sha256": "15ec9913899097783ac72d6ff5694c491e31ca22f12a8bfa2669abbbda5671fe",
-      "bytes": 14369
-    },
-    {
-      "path": "desktop-tauri/src-tauri/src/lib.rs",
-      "sha256": "0d2cd1465b04838a469934b3005190b772632c4a4b0a2062aa867308b6223aad",
-      "bytes": 81446
-    },
-    {
-      "path": "desktop-tauri/src/components/v5/V5PreflightPanel.tsx",
-      "sha256": "d42dd7ffa7d4c81f5bf98015c886b38cc038bd06c4809982d45ef1162f7f47ba",
-      "bytes": 3025
-    },
-    {
-      "path": "desktop-tauri/src/main.tsx",
-      "sha256": "1b08bce5b454f0785a348f4e111e861b2cb1a11027798a425bcf652f452b1672",
-      "bytes": 1280
-    },
-    {
-      "path": "desktop-tauri/src/vite-env.d.ts",
-      "sha256": "67afc4df8c8a356921ebfe2ab0a5770d689d8ea865de8e579bdc902f32d02622",
-      "bytes": 182
-    },
-    {
-      "path": "docs/api/API_V2_CONTRACT.md",
-      "sha256": "1be3adf8df5ee1c33d3c35c949f5a78795c9310d33f56f2f56bdb105e39f76ab",
-      "bytes": 22265
-    },
-    {
-      "path": "docs/v5/ALPHA3_DEVICE_KEY_MIGRATION.md",
-      "sha256": "e0b992648784b3a9a0f9c8b592602731b32931e933170683286ffb1b4a52f6d1",
-      "bytes": 5094
-    },
-    {
-      "path": "docs/v5/ALPHA3_HARDWARE_TEST_RUNBOOK.md",
-      "sha256": "d3fe383f0af3146f427c99af14fc480e555d6a36051ad40db7b7b7537436986d",
-      "bytes": 11007
-    },
-    {
-      "path": "docs/v5/ALPHA3_RELEASE_NOTES_DRAFT.md",
-      "sha256": "061a041e561bfe730600488dcdd00c0621751e5104919d6d8a6ed1d093935b0c",
-      "bytes": 6650
-    },
-    {
-      "path": "docs/v5/NEXT_V5_INTEGRATION_RUNBOOK.md",
-      "sha256": "bd9cd5bae9a38c39ba9b332337ce2850803c71733649699cb731a43e4a77c68c",
-      "bytes": 5374
-    },
-    {
-      "path": "docs/v5/PACKAGE_MANIFEST_ALPHA2_VERSION_FINALIZATION.json",
-      "sha256": "e2b6daeffe13abbb3f2a86afcf844682506523e18fb05c7c662173d9143571fb",
-      "bytes": 7853
-    },
-    {
-      "path": "docs/v5/V5_IMPLEMENTATION_STATUS.md",
-      "sha256": "cf4065d64856d486d6b7fd89a7bff7311fac71383c7df086b92bcb22b2c506d4",
-      "bytes": 9750
-    },
-    {
-      "path": "docs/v5/V5_REARCHITECTURE_CHECKLIST.md",
-      "sha256": "1238d157f1fe9dcf2f9293b569ebe1500b734eaf09b57a77cf7ed2947fa8f6bd",
-      "bytes": 7864
+      "path": "VERSION",
+      "bytes": 14,
+      "sha256": "ea150b231542af1b56ee96d7486e2ca993bbb7fccbe430fe43f6e65a1edc7796"
     },
     {
       "path": "fejlesztes_readme.md",
-      "sha256": "5f8458b6d5ff9f8ae140ab5121709ce82b8d779aa50a6de2090feda566476347",
-      "bytes": 27938
+      "bytes": 28364,
+      "sha256": "8f5a3f86d3b2a8602fafb307bf064f269e45de5c0adced05f58d6f2d28d69b8d"
     },
     {
-      "path": "firmware/ArduinoLedController/ArduinoLedController.ino",
-      "sha256": "2caabccaa2d163ad3d2cb1a8cc6f2375fb0d1242b71f501f2fb80df7d7e31fca",
-      "bytes": 67140
+      "path": "docs/v5/ALPHA3_HARDWARE_TEST_RUNBOOK.md",
+      "bytes": 12109,
+      "sha256": "b8556729b2b4e9e0af565c30c3e4c88de20863b69ea088b89298b73ca2982e77"
     },
     {
-      "path": "firmware/ArduinoLedController/secrets.example.h",
-      "sha256": "5a42ab7cfede91ab760d63294b83ea588b529c4977e7ae6b8a4ebe62e295d5e6",
-      "bytes": 615
+      "path": "docs/v5/ALPHA3_RELEASE_NOTES_DRAFT.md",
+      "bytes": 7413,
+      "sha256": "65a342f34029bd78d3c08447d25fb8b50106991057d21519a0b3195b699355d8"
     },
     {
-      "path": "firmware/README.md",
-      "sha256": "60804d761ec714416eaba35c1463e779f6a3f743d6ba368d1f05b767396545e6",
-      "bytes": 3097
+      "path": "docs/v5/V5_IMPLEMENTATION_STATUS.md",
+      "bytes": 9988,
+      "sha256": "4d36d576bd5433edd96d4b253acdda009454381173765674208467e94710293f"
     },
     {
-      "path": "package.json",
-      "sha256": "f8b6599a80b77bdaecbe14f6018296bb22785fd564435ce92fb25e80bca7b90d",
-      "bytes": 31898
+      "path": "docs/v5/V5_REARCHITECTURE_CHECKLIST.md",
+      "bytes": 8040,
+      "sha256": "6bdf01651365ab37dbb08d3b1d92ab21e8807256ebc8e75c3a44fde7d5ba4dd3"
     },
     {
-      "path": "scripts/test-alpha2-next-integration-readiness.js",
-      "sha256": "180ff155f2fce3fb373ebaed48376c2ca5fc71a9c7d6374132f886970e82752b",
-      "bytes": 1054
+      "path": "docs/v5/NEXT_V5_INTEGRATION_RUNBOOK.md",
+      "bytes": 6327,
+      "sha256": "37ae6f3c108fa21ea15c6dfc0c68f00b29c0724442eee022e49a43e319e72054"
     },
     {
       "path": "scripts/test-alpha2-version-finalization.js",
-      "sha256": "d8c3fda27bec32fa655e4998989502ff89f91664c7313d641d13537d963fc5ed",
-      "bytes": 5225
+      "bytes": 4615,
+      "sha256": "0ff01dd5a2a66194e385d93839f31899373a634bb05fddb5f7d1eb1b3b6e6252"
     },
     {
-      "path": "scripts/test-alpha3-desktop-typescript-contract.js",
-      "sha256": "e184b6bceac5629122440e112d1bc40aaff36ac7f7648d8b3b5910239e745dba",
-      "bytes": 1815
-    },
-    {
-      "path": "scripts/test-alpha3-device-key-header.js",
-      "sha256": "1625e0fc391f17f725981e5d125721afc4514d817e8522e4d54529f1aaa506f7",
-      "bytes": 9911
-    },
-    {
-      "path": "scripts/test-alpha3-device-key-manifest.js",
-      "sha256": "ba79dbd5b50d1a466528375f93a680fb5d12abf4f5ae36525ae59d15ebf1cd52",
-      "bytes": 8512
-    },
-    {
-      "path": "scripts/test-arduino-client.js",
-      "sha256": "a5e1821bd44782c85a88e23811e89b6b8a9f5eb2889f03fe0f6582037755db62",
-      "bytes": 5086
-    },
-    {
-      "path": "scripts/test-core-modules.js",
-      "sha256": "cde15a165e00efa6fdc1c52f4a780d3b14d9d1751c801a1ec23c28adac832d99",
-      "bytes": 5082
-    },
-    {
-      "path": "scripts/test-v5-documentation-status.js",
-      "sha256": "77691704747bd5d27c6e5de84a3755aa34ab25b035669b208c56f75e7d02148b",
-      "bytes": 4109
-    },
-    {
-      "path": "scripts/validate-repository.sh",
-      "sha256": "d4f26c5aeb063e1e9f4b2fb3f1e3590c00ea69273aba9068c152c5e74c3d7d8c",
-      "bytes": 20447
+      "path": "scripts/test-alpha2-version-finalization-manifest.js",
+      "bytes": 4645,
+      "sha256": "ec13c6069d7ab100ec17a8449e33a71c2d3a78cea35130bdae9711fec259abb8"
     },
     {
       "path": "scripts/verify-alpha2-next-integration-readiness.js",
-      "sha256": "f4994d6a3b347f24f992f6ec1043f0ad086d5d9c7e75f013913ed486ac5b7c42",
-      "bytes": 8781
+      "bytes": 7457,
+      "sha256": "66e2cfd1192efae203d0fd1e2e6ed67453cf9675e97057bcdcdd9c404f13e62b"
     },
     {
-      "path": "server/arduino/arduino-client.js",
-      "sha256": "5b6de7a316c65fe2284d5f81593348db6d968ce7fb1146c2e1c5b7c6ef121bcc",
-      "bytes": 8788
+      "path": "scripts/test-alpha2-next-integration-readiness.js",
+      "bytes": 1215,
+      "sha256": "754fda7bbf3eb4ea5735555890e241252cbc757b323685d282cd61b08af7ed22"
     },
     {
-      "path": "server/core/config.js",
-      "sha256": "ed30f104701e6d00c14909bbd86a37bb395e8d8febedeb9c3a7676402b542e76",
-      "bytes": 13289
+      "path": "scripts/test-alpha3-device-key-manifest.js",
+      "bytes": 7872,
+      "sha256": "2ba70a6f7e45812667b8ad491c4d57081020502fb46f15c8a89862196de6049a"
     },
     {
-      "path": "server2_legacy.js",
-      "sha256": "8a94a12ebc37f7f4688d88911119b7a3b44474289877daa86048f1bb3b4be61f",
-      "bytes": 142159
+      "path": "scripts/test-v5-documentation-status.js",
+      "bytes": 2807,
+      "sha256": "77d26a5d3b245fda1e283d64602ba7b690ced0b88ff4e369d30e2b556e6c3ba6"
+    },
+    {
+      "path": "scripts/test-tauri-artifact-workflow.js",
+      "bytes": 1943,
+      "sha256": "02ca63435aac2c9bb7f8453265f35df3d8f7818c509842a285646318c04eca6b"
     }
   ],
-  "firmwareLatestReleaseProtected": true,
-  "alpha2ReadinessRegressionAligned": true,
-  "desktopTypescriptBuildFixed": true,
-  "featureCommitBefore": "221d7dd56ccf4eed2b6048eb91aee0ea526b2c73",
-  "authFailureHttpResponsesFixed": true,
-  "apiPrivatePathLimitDocumented": true,
-  "authResponseFlushAdded": false,
-  "authResponseSingleWriteAdded": false,
-  "authResponseSettleDelayMs": 150,
-  "authResponseChunkedWriteAdded": true,
-  "authResponseChunkSizeBytes": 512,
-  "rejectedHardwareCandidates": [
-    "v5-flush",
-    "v6-single-write",
-    "v7-chunked-uncached-telemetry"
-  ],
-  "wifiTelemetryCacheAdded": true,
-  "wifiLinkProbeIntervalMs": 15000,
-  "wifiRssiRefreshIntervalMs": 30000,
-  "pollingRemoteIpLookupRemoved": true,
-  "httpBeforeBackgroundModemQueries": true,
-  "ntpUnsyncedRetryIntervalMs": 5000,
-  "v7HardwareMeasurements": {
-    "missingKeySeconds": 2.751245,
-    "consoleStatsBytes": 266,
-    "consoleStatsSeconds": 6.855572,
-    "statusBytes": 1457,
-    "statusSeconds": 9.626099,
-    "responsesCorrect": true,
-    "performanceAccepted": false
-  },
-  "clientTimeoutPolicyAdded": true,
-  "arduinoRequestTimeoutMinimumMs": 30000,
-  "arduinoRequestTimeoutMaximumMs": 120000,
-  "arduinoConnectTimeoutMs": 5000,
-  "tauriResponseTimeoutMs": 30000,
-  "nodeHealthTimeoutMinimumMs": 30000,
-  "statusMonitorTimeoutMinimumMs": 30000,
-  "legacyCurlConnectTimeoutSeconds": 5,
-  "legacyCurlMinimumTotalTimeoutSeconds": 30,
-  "v8HardwareMeasurements": {
-    "detailedMissingKeyConnectSeconds": 0.051169,
-    "detailedMissingKeyFirstByteSeconds": 2.597886,
-    "detailedMissingKeyTotalSeconds": 2.598977,
-    "firstMissingKeySeconds": 9.905274,
-    "repeatedMissingKeySeconds": [
-      4.611414,
-      8.181643,
-      8.176709,
-      8.180141,
-      8.179751
-    ],
-    "responsesCorrect": true,
-    "latencyAcceptedWithThirtySecondClientTimeout": true
-  },
-  "hardwareValidationCompleted": true,
-  "hardwareValidationCompletedAt": "2026-07-30",
-  "hardwareGateCommit": "221d7dd56ccf4eed2b6048eb91aee0ea526b2c73",
-  "hardwareTestDevice": "Arduino UNO R4 WiFi",
-  "hardwareTestIp": "10.0.0.117",
-  "fallbackOnFirmwareSha256": "fff01debd1f95877c90328daa66fb62699652747e2af00841db2837508a690ca",
-  "fallbackOffFirmwareSha256": "ed91eb47bce9ccb3e1238940f7b2793725878bc655891d1cbfad5a4df2c388a5",
-  "hardwareAuthMatrix": {
-    "passed": true,
-    "statusSequence": [
-      200,
-      401,
-      401,
-      200,
-      401,
-      400,
-      200
-    ],
-    "responseLatencyInformationalOnly": true,
-    "requestTimeoutSeconds": 30
-  },
-  "nodeStaging": {
-    "passed": true,
-    "authentication": "X-Device-Key",
-    "timeoutMs": 30000,
-    "healthTimeoutMs": 30000,
-    "statusHttp": 200,
-    "statusLatencyMs": 3859,
-    "consoleStatsHttp": 200,
-    "consoleStatsLatencyMs": 10280,
-    "secretIncluded": false
-  },
-  "tauriStaging": {
-    "passed": true,
-    "transport": "TcpStream",
-    "authentication": "X-Device-Key",
-    "connectTimeoutMs": 5000,
-    "responseTimeoutMs": 30000,
-    "statusHttp": 200,
-    "statusLatencyMs": 5352,
-    "consoleStatsHttp": 200,
-    "consoleStatsLatencyMs": 10275,
-    "secretIncluded": false
-  },
-  "fallbackOffHardwareGate": {
-    "passed": true,
-    "headerStatus": 200,
-    "queryOnlyStatus": 401,
-    "missingKeyStatus": 401,
-    "automaticRollbackPassed": true
-  },
-  "rollbackVerified": true,
-  "rollbackHeaderStatus": 200,
-  "rollbackQueryFallbackStatus": 200,
-  "nextBranchMergeReady": true
+  "tauriArtifactWorkflowIncluded": true,
+  "tauriArtifactWorkflow": ".github/workflows/tauri-artifact-build.yml",
+  "tauriArtifactPublicRelease": false
 }

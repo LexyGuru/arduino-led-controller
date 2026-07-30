@@ -10,60 +10,59 @@
 ## 0. Aktuális megvalósítási állapot
 
 **Státusz frissítve:** 2026-07-30<br>
-**Aktuális mérföldkő:** Alpha.3 `X-Device-Key` runtime munkacsomag automatizált
-implementációja és firmware-first hardverteszt-előkészítése
-**Minősített runtime candidate:**
-`1236becc37e9b4d8ed2334f3cd60b455c248e82d`<br>
-**Alpha.2 `next` merge commit:**
-`bd5cb67d3a40d1fa5d8e39f53615a7f50e5c1d3b`<br>
-**Minősítéskori produkciós baseline:**
+**Aktuális mérföldkő:** Alpha.3 integráció és verziófinalizálás<br>
+**Integrációs ág:** `next/v5-rearchitecture`<br>
+**Alpha.3 integrációs merge:**
+`295713798b1487ec2c788b170be2fce32fccea2a`<br>
+**Alpha.3 feature commit:**
+`e2dc8ac41edf39717b4e2708e6b03aba0b6431bb`<br>
+**Alkalmazásverzió:** `5.0.0-alpha.3`<br>
+**Firmware-verzió:** `4.1.21`<br>
+**Változatlan produkciós baseline:**
 `58e01b40e4568f5cd2648d370614077ef08aa1ba`
 
 > Ez a fájl a teljes V5 master roadmap. A napi, bizonyítékokra épülő
 > állapotkövetés elsődleges forrása a
 > `docs/v5/V5_REARCHITECTURE_CHECKLIST.md`; a részletes pillanatkép a
-> `docs/v5/V5_IMPLEMENTATION_STATUS.md`; a következő integráció pontos
-> menete pedig a `docs/v5/NEXT_V5_INTEGRATION_RUNBOOK.md` dokumentumban van.
+> `docs/v5/V5_IMPLEMENTATION_STATUS.md`; az Alpha.2 és Alpha.3 integrációs
+> előzmény pedig a `docs/v5/NEXT_V5_INTEGRATION_RUNBOOK.md` dokumentumban van.
 
 ### Jelenlegi összkép
 
 | Terület | Állapot | Megjegyzés |
 |---|---|---|
 | Produkciós `main` és Arduino | Védett, változatlan | A produkciós LXC továbbra is a `main` ágat követi; a valódi Arduino címe `10.0.0.123:80`. |
-| Repository-alapok és validáció | Nagyrészt kész | Egységes verzióforrások, lockfile-ok, repository-validátor, titokellenőrzés és package manifestek működnek. |
-| Moduláris Node/LXC gateway | Alpha.2 mérföldkő kész | API v2, auth, audit, metrics, schedule, firmware, release-gate, staging és rollback automatizált tesztekkel rendelkezik. |
-| Staging és release evidence | Kész az Alpha.2-höz | A minősített candidate valódi LXC gate-en, izolált stagingen és rollback-próbán átment; a produkciós guard változatlan állapotot igazolt. |
-| Desktop/Tauri API v2 átállás | Nagyrészt kész | A fő rendszer-, dashboard-, LED-, schedule-, firmware- és naplóképernyők domain adaptereket használnak; teljes platformteszt még szükséges. |
-| Firmware újratervezés | Részleges | A jelenlegi firmware működő kompatibilitási alap; az EEPROM A/B, teljes időzóna/DST, watchdog és hardveres terhelési teszt még nyitott. |
-| Mobil Android/iOS | Nyitott | A párosítás, mobil életciklus, jogosultságok, build és valódi eszközteszt külön munkacsomag. |
-| Biztonsági hardening | Részleges – Alpha.3 implementálva | A gateway auth, CSRF, szerepkörök, audit és release-integritás mellett elkészült az `X-Device-Key` kód; a hardver-, staging- és fallback-off bizonyítás még nyitott. |
-| `next` integráció | Kész | A PR #1 beolvadt; a `next` HEAD `bd5cb67`, a teljes repository-validáció sikeres, a `main` változatlan. |
-| `main` merge és produkciós V5 telepítés | Tilos / korai | Csak teljes integrációs, hardveres, desktop-, mobil-, migrációs és security elfogadás után. |
+| Repository-alapok és validáció | Kész az Alpha.3 szintjén | Verzióforrások, lockfile-ok, repository-validátor, titokellenőrzés és package manifestek működnek. |
+| Moduláris Node/LXC gateway | Alpha.2 integráció kész | API v2, auth, audit, metrics, schedule, firmware, release-gate, staging és rollback automatizált tesztekkel rendelkezik. |
+| Alpha.3 eszközhitelesítés | Kész és hardveren igazolt | `X-Device-Key`, 30 másodperces kliensablak, Node/Tauri staging, fallback-off és rollback kapu teljesült. |
+| `next` integráció | Alpha.3 beolvasztva | A `2957137` merge commit a hardveresen validált feature történetét `--no-ff` merge-ben tartalmazza. |
+| Desktop/Tauri API v2 átállás | Nagyrészt kész | A fő képernyők domain adaptereket használnak; teljes alkalmazási és platformteszt még szükséges. |
+| Firmware újratervezés | Részleges | A header auth stabil; az EEPROM A/B, teljes időzóna/DST, watchdog, schedule upload és 3 × 300 LED terhelési teszt még nyitott. |
+| Mobil Android/iOS | Nyitott | Párosítás, mobil életciklus, jogosultságok, build és valódi eszközteszt külön munkacsomag. |
+| `main` merge és produkciós V5 telepítés | Tilos / korai | Csak teljes Alpha staging, Beta/RC, platform-, LXC-, migrációs és security elfogadás után. |
 
-### Bizonyított Alpha.2 eredmények
+### Bizonyított Alpha.3 eredmények
 
-- [x] izolált candidate worktree és teljes repository-validáció;
-- [x] valódi LXC release-gate;
-- [x] staging evidence bundle és SHA-256 ellenőrzés;
-- [x] loopback-only staging service `127.0.0.1:3100` címen;
-- [x] izolált staging Arduino-cél `127.0.0.1:65535` címen;
-- [x] staging readiness;
-- [x] szándékos health-hibás rollback rehearsal;
-- [x] staging–rollback–promotion execution receipt-lánc;
-- [x] `FINALIZE_ALPHA2_VERSION_SYNC` jóváhagyás;
-- [x] `5.0.0-alpha.2` verziószinkron előkészítése;
-- [x] generált TypeScript API-kliens verziószinkronja;
-- [x] release notes, migráció és finalizációs dokumentáció.
+- [x] firmware `4.1.21` header-first `X-Device-Key` hitelesítés;
+- [x] teljes hardveres auth-mátrix: `200, 401, 401, 200, 401, 400, 200`;
+- [x] moduláris Node staging, minimum 30000 ms request/health timeout;
+- [x] Tauri/Rust staging, 5000 ms connect és 30000 ms response timeout;
+- [x] fallback-off firmware build és hardverteszt;
+- [x] automatikus fallback-on rollback és utóellenőrzés;
+- [x] titokmentes evidence és dokumentáció;
+- [x] feature merge a `next/v5-rearchitecture` ágba;
+- [x] merge commit firmware workflow: `30536184636`, `success`;
+- [x] `5.0.0-alpha.3` verziófinalizálás.
 
 ### Következő mérföldkövek
 
-1. új `feature/v5-alpha3-device-key-header` ág a `bd5cb67` `next` commitból;
-2. az Alpha.3 nagy csomag teljes repository-validációja és push-a;
-3. firmware `4.1.21` GitHub Actions fordítás;
-4. firmware-first UNO R4 WiFi fejléc-, negatív és fallback-teszt;
-5. staging Node/Tauri fejlécmigráció és napló-redakció igazolása;
-6. fallback-off build, rollback-próba és új Alpha.3 evidence-lánc;
-7. csak új finalization után `5.0.0-alpha.3`, a `main` továbbra is tiltott.
+1. teljes Alpha.3 alkalmazási staging a tartalék Arduino ellen;
+2. LED-, schedule-, offline-, reconnect- és hibáskulcs-szcenáriók végponttól végpontig;
+3. artifact-only Tauri desktop CI sikeres macOS, Windows és Linux artifact builddel;
+4. LXC `next` staging, health, restart és rollback próba produkciós branchváltás nélkül;
+5. Alpha.2 történeti snapshot-tesztek verziófüggetlenítése és teljes `npm test`;
+6. query fallback kivezetési döntés, várhatóan Beta.1 előtt vagy Beta.1-ben;
+7. funkciózár és `5.0.0-beta.1` readiness gate.
 
 ---
 
@@ -1182,45 +1181,51 @@ Mobil Tauri ───────┤                                  │
 
 # 10. Aktuális következő konkrét lépések
 
-A korábbi baseline- és branch-létrehozási parancsok történeti lépések; azokat
-nem kell újra futtatni. A jelenlegi munkafolyamat:
+Az Alpha.3 feature integrációja és verziófinalizálása lezárult. A további munka
+közvetlenül a `next/v5-rearchitecture` integrációs ágból induló, külön
+feature ágakon folytatódik.
 
-```bash
-cd ~/Github
+## 10.1 Teljes alkalmazási staging
 
-git switch feature/v5-server-modularization
-bash scripts/validate-repository.sh
-node scripts/verify-alpha2-next-integration-readiness.js --require-git
+Külön feature munkacsomagban készüljön reprodukálható staging gate, amely a
+Tauri/desktop, Node gateway és a tartalék UNO R4 WiFi teljes láncát ellenőrzi:
 
-git add --all
-git diff --cached --check
-git commit -m "release: finalize alpha2 and prepare next integration"
-git push origin feature/v5-server-modularization
-```
+- alkalmazásindítás és konfigurációs preflight;
+- `/api/status` és `/api/console/stats`;
+- LED olvasás, egyedi vezérlés, all-on/all-off és állapot-visszaolvasás;
+- schedule listázás, létrehozás, módosítás, Arduino-szinkron és törlés;
+- offline, reconnect, timeout és hibás kulcs;
+- restart utáni helyreállás;
+- titokmentes napló és evidence.
 
-Ezután külön integrációs ágon, Pull Requesttel:
+## 10.2 Biztonságos desktop CI
 
-```bash
-git fetch --prune origin
+A `.github/workflows/tauri-artifact-build.yml` külön artifact-only CI-t ad a
+`next` és V5 feature ágakhoz. macOS, Windows és Linux staging csomagokat
+fordít és 14 napos workflow artifactként tárol, de nem hoz létre vagy módosít
+public GitHub release-t.
 
-git switch next/v5-rearchitecture
-git pull --ff-only origin next/v5-rearchitecture
+## 10.3 LXC staging
 
-git switch -c integration/v5-alpha2-server-modularization
-git merge --no-ff feature/v5-server-modularization
+Az Alpha.3 integrált `next` commit külön staging LXC-ben fusson át:
 
-bash scripts/validate-repository.sh
-node scripts/verify-alpha2-next-integration-readiness.js --require-git
+- dependency install;
+- config preflight;
+- loopback vagy tartalék-Arduino cél;
+- health/readiness;
+- restart;
+- rollback rehearsal;
+- production guard.
 
-git push -u origin integration/v5-alpha2-server-modularization
-```
+## 10.4 Beta.1 előtti stabilizáció
 
-A Pull Request célja:
+- történeti Alpha.2 snapshot-tesztek verziófüggetlenítése;
+- teljes repository- és `npm test` regresszió;
+- nyitott firmware schedule/EEPROM és terhelési kapuk;
+- query fallback kivezetési terv;
+- platformmátrix macOS, Windows és Linux;
+- funkciózár, ismert hibák és Beta.1 release checklist.
 
-```text
-integration/v5-alpha2-server-modularization → next/v5-rearchitecture
-```
-
-A `main` ág, a produkciós LXC és a `10.0.0.123:80` Arduino ettől változatlan
-marad. A `main` ágba közvetlen merge vagy produkciós V5 telepítés továbbra is
-tilos.
+A `main` ág, a produkciós LXC és a `10.0.0.123:80` Arduino a fenti lépések
+alatt változatlan marad. Produkciós telepítés és public release csak külön,
+explicit release-jóváhagyással történhet.

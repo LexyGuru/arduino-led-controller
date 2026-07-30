@@ -1,3 +1,4 @@
+
 'use strict';
 
 const assert = require('assert');
@@ -5,9 +6,14 @@ const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..');
-const EXPECTED_VERSION = '5.0.0-alpha.2';
+const CURRENT_VERSION = '5.0.0-alpha.3';
+const ALPHA2_VERSION = '5.0.0-alpha.2';
 const EXPECTED_CANDIDATE =
   '1236becc37e9b4d8ed2334f3cd60b455c248e82d';
+const ALPHA2_MERGE =
+  'bd5cb67d3a40d1fa5d8e39f53615a7f50e5c1d3b';
+const ALPHA3_MERGE =
+  '295713798b1487ec2c788b170be2fce32fccea2a';
 
 function read(relativePath) {
   return fs.readFileSync(path.join(ROOT, relativePath), 'utf8');
@@ -51,61 +57,36 @@ function main() {
     'desktop-tauri/src/api/generated/api-v2-client.ts'
   ];
 
-  assert.strictEqual(version, EXPECTED_VERSION);
-  assert.strictEqual(rootPackage.version, EXPECTED_VERSION);
-  assert.strictEqual(rootLock.version, EXPECTED_VERSION);
-  assert.strictEqual(rootLock.packages[''].version, EXPECTED_VERSION);
-  assert.strictEqual(desktopPackage.version, EXPECTED_VERSION);
-  assert.strictEqual(desktopLock.version, EXPECTED_VERSION);
-  assert.strictEqual(desktopLock.packages[''].version, EXPECTED_VERSION);
+  for (const actual of [
+    version,
+    rootPackage.version,
+    rootLock.version,
+    rootLock.packages[''].version,
+    desktopPackage.version,
+    desktopLock.version,
+    desktopLock.packages[''].version,
+    cargoPackageVersion(cargoLock, 'arduino-led-controller'),
+    tauriConfig.version,
+    openApi.info.version
+  ]) {
+    assert.strictEqual(actual, CURRENT_VERSION);
+  }
+
   assert.match(
     cargoToml,
-    /\[package\][\s\S]*?version\s*=\s*"5\.0\.0-alpha\.2"/
+    /\[package\][\s\S]*?version\s*=\s*"5\.0\.0-alpha\.3"/
   );
-  assert.strictEqual(
-    cargoPackageVersion(cargoLock, 'arduino-led-controller'),
-    EXPECTED_VERSION
-  );
-  assert.strictEqual(tauriConfig.version, EXPECTED_VERSION);
-  assert.strictEqual(openApi.info.version, EXPECTED_VERSION);
 
   for (const generatedFile of generatedApiFiles) {
     assert.match(
       read(generatedFile),
-      /\/\* OpenAPI verzió: 5\.0\.0-alpha\.2 \*\//,
+      /\/\* OpenAPI verzió: 5\.0\.0-alpha\.3 \*\//,
       `A generált OpenAPI kliens verziója eltér: ${generatedFile}`
     );
   }
 
-  assert.match(
-    checklist,
-    /- \[x\] Teljes izolált LXC integrációs és rollback teszt/
-  );
-  assert.match(checklist, /- \[x\] Staging telepítés és readiness/);
-  assert.match(checklist, /- \[x\] Promotion és teljes execution receipt-lánc/);
-  assert.match(
-    checklist,
-    /- \[x\] `FINALIZE_ALPHA2_VERSION_SYNC` jóváhagyás/
-  );
-  assert.match(checklist, /- \[x\] `5\.0\.0-alpha\.2` verziólépés/);
-  assert.match(
-    checklist,
-    /- \[x\] Beolvasztás `next\/v5-rearchitecture` ágba \(`PR #1`, `bd5cb67`\)/
-  );
-  assert.match(
-    checklist,
-    /- \[x\] Új integrációs ellenőrzés a `next` ágon/
-  );
-  assert.match(checklist, /- \[ ] Beolvasztás `main` ágba/);
-
-  for (const document of [
-    releaseNotes,
-    migration,
-    finalization,
-    roadmap,
-    implementationStatus
-  ]) {
-    assert.ok(document.includes(EXPECTED_VERSION));
+  for (const document of [releaseNotes, migration, finalization]) {
+    assert.ok(document.includes(ALPHA2_VERSION));
     assert.ok(document.includes(EXPECTED_CANDIDATE));
   }
 
@@ -114,22 +95,26 @@ function main() {
   assert.match(migration, /10\.0\.0\.123:80/);
   assert.match(migration, /nem írja\s+felül/i);
   assert.match(finalization, /nem változtat produkciós runtime logikát/i);
-  assert.match(roadmap, /## 0\. Aktuális megvalósítási állapot/);
-  assert.match(roadmap, /10\.0\.0\.123:80/);
-  assert.match(implementationStatus, /Produkciós V5 telepítés \| Tilos \/ korai/);
-  assert.match(implementationStatus, /X-Device-Key/);
-  assert.match(
-    integrationRunbook,
-    /integration\/v5-alpha2-server-modularization → next\/v5-rearchitecture/
-  );
-  assert.match(integrationRunbook, /git merge --abort/);
 
-  console.log('OK: teljes 5.0.0-alpha.2 verziószinkron');
-  console.log('OK: npm, Tauri, Cargo, lockfile és OpenAPI verziók');
-  console.log('OK: generált TypeScript API-kliens verziószinkron');
-  console.log('OK: Alpha.2 release notes, migráció és checklist');
-  console.log('OK: PR #1 és a next integráció bizonyítottan lezárva');
-  console.log('OK: master roadmap, implementációs státusz és next runbook');
+  assert.ok(checklist.includes(`Alpha.2 \`next\` merge commit: \`${ALPHA2_MERGE}\``) ||
+    checklist.includes('Beolvasztás `next/v5-rearchitecture` ágba (`PR #1`, `bd5cb67`)'));
+  assert.ok(checklist.includes('- [x] `5.0.0-alpha.2` verziólépés'));
+  assert.ok(checklist.includes('- [x] `5.0.0-alpha.3` finalization'));
+  assert.ok(checklist.includes('- [ ] Beolvasztás `main` ágba'));
+
+  assert.ok(roadmap.includes(CURRENT_VERSION));
+  assert.ok(roadmap.includes(ALPHA3_MERGE));
+  assert.ok(roadmap.includes('10.0.0.123:80'));
+  assert.ok(implementationStatus.includes(CURRENT_VERSION));
+  assert.ok(implementationStatus.includes('Tilos / korai'));
+  assert.ok(integrationRunbook.includes(ALPHA2_MERGE));
+  assert.ok(integrationRunbook.includes(ALPHA3_MERGE));
+  assert.ok(integrationRunbook.includes('git merge --abort'));
+
+  console.log('OK: Alpha.2 történeti finalizációs bizonyíték megmaradt');
+  console.log('OK: a jelenlegi projektverzió 5.0.0-alpha.3');
+  console.log('OK: generált TypeScript API-kliens Alpha.3 verziószinkron');
+  console.log('OK: Alpha.2 és Alpha.3 next integráció dokumentált');
   console.log('OK: main merge és produkciós telepítés továbbra is külön kapu');
 }
 

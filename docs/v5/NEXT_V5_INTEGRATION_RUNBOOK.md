@@ -1,5 +1,27 @@
 # V5 Alpha.2 integráció a `next/v5-rearchitecture` ágba
 
+## Alpha.3 integrációs frissítés – 2026-07-30
+
+Az Alpha.3 `X-Device-Key` munkacsomag teljes hardveres és kliensoldali kapu után
+sikeresen bekerült a `next/v5-rearchitecture` ágba.
+
+- feature ág: `feature/v5-alpha3-device-key-header`;
+- feature végső commit: `e2dc8ac41edf39717b4e2708e6b03aba0b6431bb`;
+- Alpha.2 `next` kiindulási commit:
+  `bd5cb67d3a40d1fa5d8e39f53615a7f50e5c1d3b`;
+- Alpha.3 `--no-ff` merge commit:
+  `295713798b1487ec2c788b170be2fce32fccea2a`;
+- firmware workflow run: `30536184636`, eredmény: `success`;
+- alkalmazásverzió a finalizálás után: `5.0.0-alpha.3`;
+- firmware-verzió: `4.1.21`;
+- `main`, produkciós LXC, produkciós Arduino és public firmware release:
+  változatlan.
+
+Az alábbi Alpha.2 integrációs leírás történeti és auditcélból változatlanul
+megmarad. A következő aktív kapu a teljes Alpha.3 alkalmazási staging, az
+artifact-only desktop CI és a Beta.1 előtti stabilizáció.
+
+
 ## Cél
 
 A `feature/v5-server-modularization` Alpha.2 munkacsomag biztonságos

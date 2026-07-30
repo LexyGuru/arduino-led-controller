@@ -6,147 +6,171 @@ const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..');
+const VERSION = '5.0.0-alpha.3';
 const MANIFEST_PATH = path.join(
   ROOT,
   'docs/v5/PACKAGE_MANIFEST_ALPHA3_DEVICE_KEY_HEADER.json'
 );
 
+function read(relativePath) {
+  return fs.readFileSync(path.join(ROOT, relativePath));
+}
+
+function readText(relativePath) {
+  return read(relativePath).toString('utf8');
+}
+
+function readJson(relativePath) {
+  return JSON.parse(readText(relativePath));
+}
+
 function sha256(buffer) {
   return crypto.createHash('sha256').update(buffer).digest('hex');
 }
 
-function readJson(relativePath) {
-  return JSON.parse(fs.readFileSync(path.join(ROOT, relativePath), 'utf8'));
+function cargoPackageVersion(lockText, packageName) {
+  const blocks = lockText.split(/\n\[\[package\]\]\n/);
+  for (const block of blocks) {
+    const name = block.match(/^name = "([^"]+)"$/m)?.[1];
+    const version = block.match(/^version = "([^"]+)"$/m)?.[1];
+    if (name === packageName) {
+      return version;
+    }
+  }
+  return null;
 }
 
 function main() {
-  const manifest = JSON.parse(fs.readFileSync(MANIFEST_PATH, 'utf8'));
+  const manifest = readJson(
+    'docs/v5/PACKAGE_MANIFEST_ALPHA3_DEVICE_KEY_HEADER.json'
+  );
 
   assert.strictEqual(manifest.schemaVersion, 1);
+  assert.strictEqual(manifest.package, 'v5-alpha3-finalization-v11');
   assert.strictEqual(
-    manifest.package,
-    'v5-alpha3-device-key-hardware-evidence-v10'
+    manifest.baseIntegrationCommit,
+    '295713798b1487ec2c788b170be2fce32fccea2a'
+  );
+  assert.strictEqual(manifest.targetBranch, 'next/v5-rearchitecture');
+  assert.strictEqual(manifest.applicationVersionBefore, '5.0.0-alpha.2');
+  assert.strictEqual(manifest.applicationVersionAfter, VERSION);
+  assert.strictEqual(manifest.firmwareVersion, '4.1.21');
+  assert.strictEqual(
+    manifest.featureCommit,
+    'e2dc8ac41edf39717b4e2708e6b03aba0b6431bb'
   );
   assert.strictEqual(
-    manifest.baseCommit,
+    manifest.mergeParentNext,
     'bd5cb67d3a40d1fa5d8e39f53615a7f50e5c1d3b'
   );
   assert.strictEqual(
-    manifest.targetBranch,
-    'feature/v5-alpha3-device-key-header'
+    manifest.mergeParentFeature,
+    'e2dc8ac41edf39717b4e2708e6b03aba0b6431bb'
   );
-  assert.strictEqual(manifest.applicationVersionBefore, '5.0.0-alpha.2');
-  assert.strictEqual(manifest.applicationVersionAfter, '5.0.0-alpha.2');
-  assert.strictEqual(manifest.firmwareVersionBefore, '4.1.20');
-  assert.strictEqual(manifest.firmwareVersionAfter, '4.1.21');
-  assert.strictEqual(manifest.runtimeCodeChanged, true);
-  assert.strictEqual(manifest.productionDeploymentIncluded, false);
-  assert.strictEqual(manifest.mainMergeIncluded, false);
-  assert.strictEqual(manifest.queryFallbackEnabled, true);
-  assert.strictEqual(manifest.hardwareValidationRequired, true);
-  assert.strictEqual(manifest.alpha3FinalizationIncluded, false);
-  assert.strictEqual(manifest.firmwareLatestReleaseProtected, true);
-  assert.strictEqual(manifest.alpha2ReadinessRegressionAligned, true);
-  assert.strictEqual(manifest.desktopTypescriptBuildFixed, true);
-  assert.strictEqual(manifest.authFailureHttpResponsesFixed, true);
-  assert.strictEqual(manifest.authResponseFlushAdded, false);
-  assert.strictEqual(manifest.authResponseSingleWriteAdded, false);
-  assert.strictEqual(manifest.authResponseChunkedWriteAdded, true);
-  assert.strictEqual(manifest.authResponseChunkSizeBytes, 512);
-  assert.strictEqual(manifest.authResponseSettleDelayMs, 150);
-  assert.strictEqual(manifest.wifiTelemetryCacheAdded, true);
-  assert.strictEqual(manifest.wifiLinkProbeIntervalMs, 15000);
-  assert.strictEqual(manifest.wifiRssiRefreshIntervalMs, 30000);
-  assert.strictEqual(manifest.pollingRemoteIpLookupRemoved, true);
-  assert.strictEqual(manifest.httpBeforeBackgroundModemQueries, true);
-  assert.strictEqual(manifest.ntpUnsyncedRetryIntervalMs, 5000);
-  assert.strictEqual(manifest.clientTimeoutPolicyAdded, true);
-  assert.strictEqual(manifest.arduinoRequestTimeoutMinimumMs, 30000);
-  assert.strictEqual(manifest.arduinoRequestTimeoutMaximumMs, 120000);
-  assert.strictEqual(manifest.arduinoConnectTimeoutMs, 5000);
-  assert.strictEqual(manifest.tauriResponseTimeoutMs, 30000);
-  assert.strictEqual(manifest.nodeHealthTimeoutMinimumMs, 30000);
-  assert.strictEqual(manifest.statusMonitorTimeoutMinimumMs, 30000);
-  assert.strictEqual(manifest.apiPrivatePathLimitDocumented, true);
+  assert.strictEqual(manifest.firmwareWorkflowRun, 30536184636);
+  assert.strictEqual(manifest.firmwareWorkflowConclusion, 'success');
   assert.strictEqual(manifest.hardwareValidationCompleted, true);
-  assert.strictEqual(manifest.hardwareValidationCompletedAt, '2026-07-30');
-  assert.strictEqual(
-    manifest.hardwareGateCommit,
-    '221d7dd56ccf4eed2b6048eb91aee0ea526b2c73'
-  );
-  assert.strictEqual(manifest.hardwareAuthMatrix.passed, true);
   assert.deepStrictEqual(
-    manifest.hardwareAuthMatrix.statusSequence,
+    manifest.hardwareAuthMatrix,
     [200, 401, 401, 200, 401, 400, 200]
   );
-  assert.strictEqual(manifest.nodeStaging.passed, true);
-  assert.strictEqual(manifest.nodeStaging.timeoutMs, 30000);
-  assert.strictEqual(manifest.tauriStaging.passed, true);
-  assert.strictEqual(manifest.tauriStaging.connectTimeoutMs, 5000);
-  assert.strictEqual(manifest.tauriStaging.responseTimeoutMs, 30000);
-  assert.strictEqual(manifest.fallbackOffHardwareGate.passed, true);
-  assert.strictEqual(manifest.fallbackOffHardwareGate.headerStatus, 200);
-  assert.strictEqual(manifest.fallbackOffHardwareGate.queryOnlyStatus, 401);
-  assert.strictEqual(manifest.fallbackOffHardwareGate.missingKeyStatus, 401);
+  assert.strictEqual(manifest.nodeStagingCompleted, true);
+  assert.strictEqual(manifest.tauriStagingCompleted, true);
+  assert.strictEqual(manifest.fallbackOffGateCompleted, true);
   assert.strictEqual(manifest.rollbackVerified, true);
-  assert.strictEqual(manifest.nextBranchMergeReady, true);
+  assert.strictEqual(manifest.nextIntegrationCompleted, true);
+  assert.strictEqual(manifest.alpha3FinalizationIncluded, true);
+  assert.strictEqual(manifest.queryFallbackEnabled, true);
+  assert.strictEqual(manifest.mainMergeIncluded, false);
+  assert.strictEqual(manifest.productionDeploymentIncluded, false);
+  assert.strictEqual(manifest.publicFirmwareReleaseUpdated, false);
+  assert.strictEqual(manifest.tauriArtifactWorkflowIncluded, true);
   assert.strictEqual(
-    manifest.featureCommitBefore,
-    '221d7dd56ccf4eed2b6048eb91aee0ea526b2c73'
+    manifest.tauriArtifactWorkflow,
+    '.github/workflows/tauri-artifact-build.yml'
   );
+  assert.strictEqual(manifest.tauriArtifactPublicRelease, false);
+
+  const expectedVersionFiles = [
+    'VERSION',
+    'package.json',
+    'package-lock.json',
+    'desktop-tauri/package.json',
+    'desktop-tauri/package-lock.json',
+    'desktop-tauri/src-tauri/Cargo.toml',
+    'desktop-tauri/src-tauri/Cargo.lock',
+    'desktop-tauri/src-tauri/tauri.conf.json',
+    'docs/api/openapi-v2.json'
+  ];
+  assert.deepStrictEqual(manifest.versionFiles, expectedVersionFiles);
+
+  assert.strictEqual(readText('VERSION').trim(), VERSION);
+
+  const rootPackage = readJson('package.json');
+  const rootLock = readJson('package-lock.json');
+  const desktopPackage = readJson('desktop-tauri/package.json');
+  const desktopLock = readJson('desktop-tauri/package-lock.json');
+  const tauriConfig = readJson('desktop-tauri/src-tauri/tauri.conf.json');
+  const openApi = readJson('docs/api/openapi-v2.json');
+  const cargoToml = readText('desktop-tauri/src-tauri/Cargo.toml');
+  const cargoLock = readText('desktop-tauri/src-tauri/Cargo.lock');
+
+  assert.strictEqual(rootPackage.version, VERSION);
+  assert.strictEqual(rootLock.version, VERSION);
+  assert.strictEqual(rootLock.packages[''].version, VERSION);
+  assert.strictEqual(desktopPackage.version, VERSION);
+  assert.strictEqual(desktopLock.version, VERSION);
+  assert.strictEqual(desktopLock.packages[''].version, VERSION);
+  assert.match(cargoToml, /^version = "5\.0\.0-alpha\.3"$/m);
+  assert.strictEqual(
+    cargoPackageVersion(cargoLock, 'arduino-led-controller'),
+    VERSION
+  );
+  assert.strictEqual(tauriConfig.version, VERSION);
+  assert.strictEqual(openApi.info.version, VERSION);
+
+  const releaseNotes = readText(
+    'docs/v5/ALPHA3_RELEASE_NOTES_DRAFT.md'
+  );
+  const runbook = readText(
+    'docs/v5/ALPHA3_HARDWARE_TEST_RUNBOOK.md'
+  );
+  const roadmap = readText('fejlesztes_readme.md');
+  const implementationStatus = readText(
+    'docs/v5/V5_IMPLEMENTATION_STATUS.md'
+  );
+  const checklist = readText(
+    'docs/v5/V5_REARCHITECTURE_CHECKLIST.md'
+  );
+  const integrationRunbook = readText(
+    'docs/v5/NEXT_V5_INTEGRATION_RUNBOOK.md'
+  );
+
+  assert.match(releaseNotes, /^# V5 Alpha\.3 – kiadási jegyzetek$/m);
+  assert.ok(releaseNotes.includes('`5.0.0-alpha.3`'));
+  assert.ok(
+    releaseNotes.includes(
+      '`295713798b1487ec2c788b170be2fce32fccea2a`'
+    )
+  );
+  assert.ok(
+    runbook.includes('## Alpha.3 integráció és verziófinalizálás – 2026-07-30')
+  );
+  assert.ok(runbook.includes('Az Alpha.3 integrációs állapota: **COMPLETED**'));
+  for (const document of [
+    roadmap,
+    implementationStatus,
+    checklist,
+    integrationRunbook
+  ]) {
+    assert.ok(
+      document.includes('295713798b1487ec2c788b170be2fce32fccea2a')
+    );
+    assert.ok(document.includes('5.0.0-alpha.3'));
+  }
+
   assert.ok(Array.isArray(manifest.files));
   assert.strictEqual(manifest.fileCountExcludingManifest, manifest.files.length);
-  assert.ok(manifest.files.length >= 31);
-
-  const packageJson = readJson('package.json');
-  assert.strictEqual(packageJson.version, '5.0.0-alpha.2');
-  assert.strictEqual(
-    packageJson.scripts['test:alpha3-device-key-header'],
-    'node scripts/test-alpha3-device-key-header.js'
-  );
-  assert.strictEqual(
-    packageJson.scripts['test:alpha3-device-key-manifest'],
-    'node scripts/test-alpha3-device-key-manifest.js'
-  );
-  assert.strictEqual(
-    packageJson.scripts['test:alpha3-desktop-typescript'],
-    'node scripts/test-alpha3-desktop-typescript-contract.js'
-  );
-
-  const required = new Set([
-    '.env.example',
-    '.github/workflows/firmware-build.yml',
-    'README.md',
-    'package.json',
-    'server/arduino/arduino-client.js',
-    'server/core/config.js',
-    'server2_legacy.js',
-    'desktop-tauri/src-tauri/src/lib.rs',
-    'desktop-tauri/src/main.tsx',
-    'desktop-tauri/src/vite-env.d.ts',
-    'desktop-tauri/src/components/v5/V5PreflightPanel.tsx',
-    'firmware/ArduinoLedController/ArduinoLedController.ino',
-    'firmware/ArduinoLedController/secrets.example.h',
-    'firmware/README.md',
-    'docs/api/API_V2_CONTRACT.md',
-    'docs/v5/ALPHA3_DEVICE_KEY_MIGRATION.md',
-    'docs/v5/ALPHA3_HARDWARE_TEST_RUNBOOK.md',
-    'docs/v5/ALPHA3_RELEASE_NOTES_DRAFT.md',
-    'docs/v5/V5_REARCHITECTURE_CHECKLIST.md',
-    'docs/v5/V5_IMPLEMENTATION_STATUS.md',
-    'docs/v5/NEXT_V5_INTEGRATION_RUNBOOK.md',
-    'fejlesztes_readme.md',
-    'scripts/test-arduino-client.js',
-    'scripts/test-core-modules.js',
-    'scripts/test-alpha3-device-key-header.js',
-    'scripts/test-alpha3-device-key-manifest.js',
-    'scripts/test-alpha3-desktop-typescript-contract.js',
-    'scripts/test-v5-documentation-status.js',
-    'scripts/test-alpha2-next-integration-readiness.js',
-    'scripts/test-alpha2-version-finalization.js',
-    'scripts/verify-alpha2-next-integration-readiness.js',
-    'scripts/validate-repository.sh'
-  ]);
 
   const seen = new Set();
   for (const entry of manifest.files) {
@@ -154,40 +178,38 @@ function main() {
     assert.strictEqual(seen.has(entry.path), false, `Duplikált útvonal: ${entry.path}`);
     assert.match(entry.sha256, /^[a-f0-9]{64}$/);
     assert.ok(Number.isInteger(entry.bytes) && entry.bytes > 0);
-    assert.notStrictEqual(entry.path, 'VERSION', 'Az alkalmazásverzió nem emelhető ebben a csomagban.');
-    assert.strictEqual(entry.path.startsWith('deploy/'), false, `Deploy fájl nem része az első Alpha.3 csomagnak: ${entry.path}`);
-    assert.strictEqual(entry.path.endsWith('/secrets.h'), false, `Titkos firmware-fájl nem csomagolható: ${entry.path}`);
-    assert.notStrictEqual(entry.path, '.env', 'Valódi .env nem csomagolható.');
-    assert.strictEqual(
-      entry.path.startsWith('server/') && ![
-        'server/arduino/arduino-client.js',
-        'server/core/config.js'
-      ].includes(entry.path),
-      false,
-      `Nem várt szerver runtime fájl: ${entry.path}`
-    );
-
-    const absolute = path.join(ROOT, entry.path);
-    assert.strictEqual(fs.existsSync(absolute), true, `Hiányzó fájl: ${entry.path}`);
-    const content = fs.readFileSync(absolute);
+    assert.strictEqual(entry.path.endsWith('/secrets.h'), false);
+    assert.notStrictEqual(entry.path, '.env');
+    const content = read(entry.path);
     assert.strictEqual(content.length, entry.bytes, `Méreteltérés: ${entry.path}`);
     assert.strictEqual(sha256(content), entry.sha256, `SHA-256 eltérés: ${entry.path}`);
     seen.add(entry.path);
   }
 
-  for (const relativePath of required) {
-    assert.strictEqual(seen.has(relativePath), true, `Hiányzó kötelező fájl: ${relativePath}`);
+  for (const required of [
+    '.github/workflows/tauri-artifact-build.yml',
+    'VERSION',
+    'fejlesztes_readme.md',
+    'docs/v5/ALPHA3_HARDWARE_TEST_RUNBOOK.md',
+    'docs/v5/ALPHA3_RELEASE_NOTES_DRAFT.md',
+    'docs/v5/V5_IMPLEMENTATION_STATUS.md',
+    'docs/v5/V5_REARCHITECTURE_CHECKLIST.md',
+    'docs/v5/NEXT_V5_INTEGRATION_RUNBOOK.md',
+    'scripts/test-alpha2-version-finalization.js',
+    'scripts/test-alpha2-version-finalization-manifest.js',
+    'scripts/verify-alpha2-next-integration-readiness.js',
+    'scripts/test-alpha2-next-integration-readiness.js',
+    'scripts/test-alpha3-device-key-manifest.js',
+    'scripts/test-v5-documentation-status.js',
+    'scripts/test-tauri-artifact-workflow.js'
+  ]) {
+    assert.strictEqual(seen.has(required), true, `Hiányzó csomagfájl: ${required}`);
   }
 
-  assert.strictEqual(
-    seen.has('docs/v5/PACKAGE_MANIFEST_ALPHA3_DEVICE_KEY_HEADER.json'),
-    false,
-    'A manifest nem hash-elheti önmagát.'
-  );
-
-  console.log('OK: Alpha.3 device-key header package manifest és SHA-256');
-  console.log('OK: az alkalmazásverzió 5.0.0-alpha.2 marad a hardveres gate-ig');
-  console.log('OK: nincs produkciós deploy, main merge vagy titkos fájl a csomagban');
+  console.log('OK: Alpha.3 integrációs és verziófinalizálási manifest');
+  console.log('OK: minden projektverzió 5.0.0-alpha.3');
+  console.log('OK: hardver, Node, Tauri, fallback és rollback gate rögzítve');
+  console.log('OK: nincs main merge, produkciós deploy vagy public firmware frissítés');
 }
 
 try {

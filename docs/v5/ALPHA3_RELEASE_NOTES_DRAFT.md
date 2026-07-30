@@ -1,11 +1,16 @@
-# V5 Alpha.3 – kiadási jegyzetek tervezete
+# V5 Alpha.3 – kiadási jegyzetek
 
 ## Állapot
 
-Az Alpha.3 hardveres és staging kapu 2026-07-30-án sikeresen teljesült a
-`221d7dd56ccf4eed2b6048eb91aee0ea526b2c73` feature commiton. A munkacsomag
-beolvasztható a `next/v5-rearchitecture` ágba, de továbbra sem produkciós kiadás,
-nem jogosít `main` merge-re és nem frissítheti a public firmware release-t.
+Az Alpha.3 hardveres, kliensoldali és integrációs kapuja 2026-07-30-án
+sikeresen teljesült. A validált feature commit
+`e2dc8ac41edf39717b4e2708e6b03aba0b6431bb` a
+`295713798b1487ec2c788b170be2fce32fccea2a` merge commitban bekerült a
+`next/v5-rearchitecture` ágba. Az alkalmazásverzió `5.0.0-alpha.3`, a
+firmware-verzió `4.1.21`.
+
+Ez továbbra is nem produkciós Alpha kiadás: nem jogosít `main` merge-re,
+produkciós telepítésre vagy a public `firmware-latest` release frissítésére.
 
 ## Biztonsági változás
 
@@ -62,10 +67,13 @@ Teljesítve:
 - fallback-on rollback és utóellenőrzés;
 - titokmentes Node, Tauri és fallback-off evidence.
 
-Hátralévő, külön kapuk:
+Lezárt integrációs kapuk:
 
-- merge a `next/v5-rearchitecture` ágba;
+- feature merge a `next/v5-rearchitecture` ágba;
 - `5.0.0-alpha.3` verziófinalizálás;
+- teljes Node, TypeScript és Tauri/Rust regresszió;
+- artifact-only Tauri desktop CI macOS, Windows és Linux staging csomagokhoz;
+- firmware GitHub Actions build a merge commiton;
 - `main` merge és produkciós telepítés továbbra is tiltott.
 
 ## Teszt- és dokumentációs konzisztencia
@@ -129,6 +137,16 @@ Elfogadott klienspolitika: 5 másodperces TCP-kapcsolódási kapu és minimum
 30 másodperces teljes Arduino API-válaszablak. A mért WiFiS3 válaszidő
 információs adat, nem önálló release-elutasítási feltétel.
 
-A következő engedélyezett művelet a feature ág izolált beolvasztása a
-`next/v5-rearchitecture` ágba. A `main`, a produkciós Arduino és a public
-firmware release változatlan marad.
+Az Alpha.3 integrációs merge sikeres:
+
+- `next/v5-rearchitecture` merge commit:
+  `295713798b1487ec2c788b170be2fce32fccea2a`;
+- merge első szülője: `bd5cb67d3a40d1fa5d8e39f53615a7f50e5c1d3b`;
+- merge második szülője: `e2dc8ac41edf39717b4e2708e6b03aba0b6431bb`;
+- firmware workflow: `30536184636`, eredmény: `success`;
+- alkalmazásverzió: `5.0.0-alpha.3`;
+- firmware-verzió: `4.1.21`.
+
+A következő fejlesztési szakasz a teljes Alpha.3 alkalmazási staging és a
+Beta.1 előtti stabilizáció. A `main`, a produkciós Arduino és a public firmware
+release változatlan marad.

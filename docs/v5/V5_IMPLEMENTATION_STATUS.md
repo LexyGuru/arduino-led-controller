@@ -11,10 +11,12 @@ melyekhez kell még hardveres, platform- vagy produkciós elfogadás.
 
 - stabil produkciós ág: `main`;
 - integrációs ág: `next/v5-rearchitecture`;
-- aktuális munkacsomag: `feature/v5-server-modularization`;
-- Alpha.2 célverzió: `5.0.0-alpha.2`;
-- minősített runtime candidate:
-  `1236becc37e9b4d8ed2334f3cd60b455c248e82d`;
+- aktuális ág: `next/v5-rearchitecture`;
+- aktuális alkalmazásverzió: `5.0.0-alpha.3`;
+- Alpha.3 feature commit:
+  `e2dc8ac41edf39717b4e2708e6b03aba0b6431bb`;
+- Alpha.3 integrációs merge:
+  `295713798b1487ec2c788b170be2fce32fccea2a`;
 - minősítéskori produkciós baseline:
   `58e01b40e4568f5cd2648d370614077ef08aa1ba`;
 - produkciós Arduino: `10.0.0.123:80`;
@@ -22,16 +24,17 @@ melyekhez kell még hardveres, platform- vagy produkciós elfogadás.
 - izolált staging Arduino-cél: `127.0.0.1:65535`.
 
 
-## Integrációs Pull Request állapota
+## Integrációs állapot
 
-- integrációs ág: `integration/v5-alpha2-server-modularization`;
-- Pull Request: `#1`;
-- célág: `next/v5-rearchitecture`;
-- módosított fájlok: 432;
-- GitHub API és helyi Git fájllista: egyezik;
-- PR merge: még nem történt meg;
-- aktuális blokkoló gate: négy fájl végén maradt fölösleges üres sor, továbbá
-  a generátort úgy kell javítani, hogy ezt újrageneráláskor se hozza vissza;
+- Alpha.2 Pull Request `#1` merge commit:
+  `bd5cb67d3a40d1fa5d8e39f53615a7f50e5c1d3b`;
+- Alpha.3 feature végső commit:
+  `e2dc8ac41edf39717b4e2708e6b03aba0b6431bb`;
+- Alpha.3 `--no-ff` merge commit a `next/v5-rearchitecture` ágon:
+  `295713798b1487ec2c788b170be2fce32fccea2a`;
+- firmware workflow run: `30536184636`, eredmény: `success`;
+- alkalmazásverzió: `5.0.0-alpha.3`;
+- firmware-verzió: `4.1.21`;
 - `main`, produkciós LXC és `10.0.0.123:80` Arduino: változatlan.
 
 ## Bizonyítékszintek
@@ -48,7 +51,7 @@ melyekhez kell még hardveres, platform- vagy produkciós elfogadás.
 
 | Tétel | Állapot | Bizonyíték / hátralévő feladat |
 |---|---|---|
-| Egységes verzióforrások | Kész – automatizált | `VERSION`, npm, Tauri, Cargo és OpenAPI `5.0.0-alpha.2` értékre szinkronizálva. |
+| Egységes verzióforrások | Kész – automatizált | `VERSION`, npm, Tauri, Cargo és OpenAPI `5.0.0-alpha.3` értékre szinkronizálva. |
 | Kötelező lockfile-ok | Kész – automatizált | Gyökér npm, desktop npm és Cargo lockfile ellenőrzött. |
 | Repository-validátor | Kész – automatizált | Szintaxis, kötelező fájlok, teljes tesztcsomag és titokellenőrzés. |
 | Secret scanner | Kész – automatizált | Redaktált diagnosztika, dokumentációs env-helyőrzők és célzott allowlist. |
@@ -102,7 +105,7 @@ melyekhez kell még hardveres, platform- vagy produkciós elfogadás.
 |---|---|---|
 | Jelenlegi firmware kompatibilitás | Részleges | LED, schedule, OTA és védett API működő alap. |
 | Arduino schedule upload hardverteszt | Nyitott | Valódi UNO R4 WiFi + EEPROM teszt szükséges. |
-| API-kulcs URL-ből fejlécbe | Részleges – automatizált | Node, legacy, macOS curl, Tauri és firmware kód elkészült; valódi UNO R4 WiFi, staging és fallback-off teszt még szükséges. |
+| API-kulcs URL-ből fejlécbe | Kész – hardveren igazolt | Node, legacy, macOS curl, Tauri és firmware `X-Device-Key` migráció; teljes auth-mátrix, Node/Tauri staging, fallback-off és rollback sikeres. |
 | EEPROM A/B bankok | Nyitott | A master roadmap célja, még nincs teljes bizonyíték. |
 | DST/időzóna/NTP kiesés | Nyitott | Valódi időváltási és hibatesztek szükségesek. |
 | Watchdog/reset ok/boot számláló | Nyitott | Firmware-hardening munkacsomag. |
@@ -142,25 +145,30 @@ A mobil rész jelenleg nem tekinthető késznek. Nyitott többek között:
 
 ## Alpha.3 aktuális állapot
 
-Az `X-Device-Key` runtime implementáció elkészült a forrásfán, de még nem
-tekinthető hardveresen minősített release candidate-nek. Az alkalmazásverzió
-szándékosan `5.0.0-alpha.2` marad az új gate és finalization befejezéséig.
-A firmware célverzió `4.1.21`, a query fallback kezdetben engedélyezett.
+Az `X-Device-Key` runtime implementáció, a firmware `4.1.21`, a 30 másodperces
+kliensablak, a hardveres auth-mátrix, a moduláris Node és Tauri/Rust staging,
+a fallback-off próba, valamint a rollback bizonyítása elkészült. A feature ág
+a `295713798b1487ec2c788b170be2fce32fccea2a` merge commitban bekerült a
+`next/v5-rearchitecture` ágba, az alkalmazásverzió `5.0.0-alpha.3`.
+
+A query fallback átmenetileg engedélyezett a kompatibilitási időszakra. Minden
+új kliens a `X-Device-Key` fejlécet használja.
 
 ## Következő biztonságos sorrend
 
-1. `feature/v5-alpha3-device-key-header` ág létrehozása a `bd5cb67` `next` commitból;
-2. az Alpha.3 csomag teljes repository-validációja, commitja és push-a;
-3. GitHub Actions firmware `4.1.21` fordítás és artifact SHA-256 ellenőrzés;
-4. firmware-first UNO R4 WiFi fejléc-, negatív és query-fallback hardverteszt;
-5. staging gateway és Tauri fejléc-hitelesítés, valamint napló-redakció igazolása;
-6. külön fallback-off firmware build, rollback-próba és új evidence-lánc;
-7. csak sikeres gate és finalization után `5.0.0-alpha.3`; a `main` továbbra is külön release-kapu.
+1. teljes Tauri/Node/Arduino alkalmazási staging a tartalék eszközön;
+2. LED- és schedule-műveletek, offline/reconnect, restart és hibáskulcs-próba;
+3. artifact-only Tauri desktop CI futtatása és artifact-ellenőrzése;
+4. `next` LXC staging és rollback rehearsal produkciós branchváltás nélkül;
+5. Alpha.2 történeti snapshot-tesztek verziófüggetlenítése, majd teljes tesztcsomag;
+6. query fallback kivezetési terv és Beta.1 readiness;
+7. csak külön release-kapuk után `main` merge vagy produkciós telepítés.
 
 ## Kifejezetten tiltott következő lépések
 
 - közvetlen merge a `main` ágba;
 - a produkciós LXC átváltása feature vagy `next` ágra;
 - a produkciós Arduino titkainak átmásolása stagingbe;
-- produkciós V5 telepítés új integrációs és hardvertesztek nélkül;
-- Alpha.2 minősített runtime candidate-be utólag új runtime funkció keverése.
+- a jelenlegi Tauri release workflow kézi futtatása `next` ágról, amíg nincs
+  külön artifact-only mód;
+- produkciós V5 telepítés teljes alkalmazási, LXC- és platformtesztek nélkül.

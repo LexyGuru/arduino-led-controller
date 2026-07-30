@@ -2,9 +2,10 @@
 
 Utolsó frissítés: 2026-07-30
 Integrációs ág: `next/v5-rearchitecture`
-Munkacsomag: `feature/v5-alpha3-device-key-header`
-Minősített Alpha.2 candidate: `1236becc37e9b4d8ed2334f3cd60b455c248e82d`
-Alpha.2 `next` merge commit: `bd5cb67d3a40d1fa5d8e39f53615a7f50e5c1d3b`
+Aktuális ág: `next/v5-rearchitecture`
+Aktuális verzió: `5.0.0-alpha.3`
+Alpha.3 feature commit: `e2dc8ac41edf39717b4e2708e6b03aba0b6431bb`
+Alpha.3 `next` merge commit: `295713798b1487ec2c788b170be2fce32fccea2a`
 
 ## Repository és LXC
 
@@ -32,12 +33,12 @@ Alpha.2 `next` merge commit: `bd5cb67d3a40d1fa5d8e39f53615a7f50e5c1d3b`
 - [x] Legacy 30 másodperces státuszcron letiltása
 - [x] Lapozott, TTL-alapú Arduino konzolcache
 - [x] API v2 és legacy konzolvégpontok
-- [-] Arduino query API-kulcs lecserélése `X-Device-Key` fejlécre
+- [x] Arduino query API-kulcs lecserélése `X-Device-Key` fejlécre
   - [x] moduláris Node kliens
   - [x] legacy Node és macOS curl transport
   - [x] Tauri közvetlen Arduino kliens
   - [x] firmware header-first auth és kikapcsolható query fallback
-  - [ ] valódi UNO R4 WiFi hardverteszt és fallback-off bizonyítás
+  - [x] valódi UNO R4 WiFi hardverteszt és fallback-off bizonyítás
 
 ## Schedule
 
@@ -59,8 +60,8 @@ Alpha.2 `next` merge commit: `bd5cb67d3a40d1fa5d8e39f53615a7f50e5c1d3b`
 - [x] Legacy firmware adapter
 - [x] OTA megszakítás
 - [x] Utolsó működő firmware backup és rollback
-- [-] Firmware `4.1.21` `X-Device-Key` migráció automatizált tesztekkel
-- [ ] Firmware `4.1.21` valódi hardverteszt és rollback-próba
+- [x] Firmware `4.1.21` `X-Device-Key` migráció automatizált tesztekkel
+- [x] Firmware `4.1.21` valódi hardverteszt és rollback-próba
 
 ## Web és szerver modularizáció
 
@@ -164,20 +165,21 @@ Alpha.2 `next` merge commit: `bd5cb67d3a40d1fa5d8e39f53615a7f50e5c1d3b`
 - [x] mérhető, compile-time kikapcsolható query fallback
 - [x] Alpha.3 automatizált szerződés- és manifestteszt
 - [x] rollout-, rollback- és hardverteszt-dokumentáció
-- [ ] Arduino CLI firmware build GitHub Actionsben
-- [ ] valódi UNO R4 WiFi fejléc- és negatív teszt
-- [ ] staging gateway és Tauri hardverteszt
-- [ ] fallback-off firmware-próba
-- [ ] új Alpha.3 gate–staging–rollback evidence
-- [ ] `5.0.0-alpha.3` finalization
+- [x] Arduino CLI firmware build GitHub Actionsben
+- [x] valódi UNO R4 WiFi fejléc- és negatív teszt
+- [x] staging gateway és Tauri hardverteszt
+- [x] fallback-off firmware-próba
+- [x] új Alpha.3 gate–staging–rollback evidence
+- [x] `5.0.0-alpha.3` finalization
+- [x] Artifact-only Tauri desktop CI macOS, Windows és Linux staging buildhez
 
 ## Következő munkacsomag
 
-1. Az Alpha.3 feature ág létrehozása a `bd5cb67` `next` commitból.
-2. A teljes Alpha.3 csomag tesztelése és push-a.
-3. GitHub Actions firmware `4.1.21` fordítás ellenőrzése.
-4. Firmware-first hardverteszt `API_ALLOW_QUERY_KEY_FALLBACK=1` állapotban.
-5. Staging Node/Tauri fejléc-hitelesítés és napló-redakció igazolása.
-6. Külön fallback-off firmware build és rollback-próba.
-7. Új gate–staging–rollback evidence, majd csak később Alpha.3 finalization.
-8. A `main` ág változatlan marad külön release-jóváhagyásig.
+1. Teljes Alpha.3 alkalmazási staging a tartalék Arduino ellen.
+2. LED-, schedule-, offline-, reconnect-, restart- és hibáskulcs-szcenáriók.
+3. Artifact-only Tauri CI futás és a három desktop artifact ellenőrzése.
+4. `next` LXC staging és rollback rehearsal változatlan produkciós `main` mellett.
+5. Alpha.2 történeti snapshot-tesztek verziófüggetlenítése és teljes regresszió.
+6. Firmware schedule/EEPROM, DST/watchdog és 3 × 300 LED terhelési kapuk.
+7. Query fallback kivezetési döntés és `5.0.0-beta.1` readiness.
+8. A `main` ág és a produkció változatlan marad külön release-jóváhagyásig.

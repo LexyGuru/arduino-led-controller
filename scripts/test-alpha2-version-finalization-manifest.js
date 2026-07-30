@@ -1,3 +1,4 @@
+
 'use strict';
 
 const assert = require('assert');
@@ -43,8 +44,7 @@ function main() {
   assert.strictEqual(manifest.generatorEofNormalized, true);
   assert.strictEqual(manifest.roadmapTrailingWhitespaceFixed, true);
 
-  const seen = new Set();
-  const required = new Set([
+  const evolvedAfterAlpha2 = new Set([
     'VERSION',
     'package.json',
     'package-lock.json',
@@ -59,61 +59,66 @@ function main() {
     'desktop-tauri/src/api/generated/api-v2-client.ts',
     'desktop-tauri/src/api/generated/index.ts',
     'docs/v5/V5_REARCHITECTURE_CHECKLIST.md',
-    'docs/v5/ALPHA2_RELEASE_NOTES.md',
-    'docs/v5/ALPHA2_MIGRATION.md',
-    'docs/v5/ALPHA2_VERSION_FINALIZATION.md',
-    'scripts/check-versions.py',
-    'scripts/test-alpha2-version-finalization.js',
-    'scripts/test-alpha2-version-finalization-manifest.js',
     'docs/v5/V5_IMPLEMENTATION_STATUS.md',
     'docs/v5/NEXT_V5_INTEGRATION_RUNBOOK.md',
     'fejlesztes_readme.md',
+    'scripts/test-alpha2-version-finalization.js',
+    'scripts/test-alpha2-version-finalization-manifest.js',
     'scripts/verify-alpha2-next-integration-readiness.js',
     'scripts/test-alpha2-next-integration-readiness.js',
-    'scripts/test-v5-documentation-status.js',
-    'scripts/generate-openapi-typescript.js',
-    'scripts/test-openapi-typescript-generator.js',
-    'docs/api/API_V2_CONTRACT.md',
-    'docs/v5/ALPHA2_RELEASE_NOTES_DRAFT.md',
+    'scripts/test-v5-documentation-status.js'
   ]);
+
+  const seen = new Set();
+  let unchangedHashChecks = 0;
+  let historicalEvolvedChecks = 0;
 
   for (const entry of manifest.files) {
     assert.strictEqual(typeof entry.path, 'string');
     assert.strictEqual(seen.has(entry.path), false, `Duplikált útvonal: ${entry.path}`);
     assert.match(entry.sha256, /^[a-f0-9]{64}$/);
     assert.ok(Number.isInteger(entry.bytes) && entry.bytes > 0);
-
-    assert.strictEqual(
-      entry.path.startsWith('server/'),
-      false,
-      `Runtime szerverfájl nem kerülhet a finalizáló csomagba: ${entry.path}`
-    );
-    assert.strictEqual(
-      entry.path.startsWith('deploy/'),
-      false,
-      `Telepítő runtime fájl nem kerülhet a finalizáló csomagba: ${entry.path}`
-    );
+    assert.strictEqual(entry.path.startsWith('server/'), false);
+    assert.strictEqual(entry.path.startsWith('deploy/'), false);
 
     const absolute = path.join(ROOT, entry.path);
     assert.strictEqual(fs.existsSync(absolute), true, `Hiányzó fájl: ${entry.path}`);
     const content = fs.readFileSync(absolute);
-    assert.strictEqual(content.length, entry.bytes, `Méreteltérés: ${entry.path}`);
-    assert.strictEqual(sha256(content), entry.sha256, `SHA-256 eltérés: ${entry.path}`);
+
+    if (evolvedAfterAlpha2.has(entry.path)) {
+      historicalEvolvedChecks += 1;
+    } else {
+      assert.strictEqual(content.length, entry.bytes, `Méreteltérés: ${entry.path}`);
+      assert.strictEqual(sha256(content), entry.sha256, `SHA-256 eltérés: ${entry.path}`);
+      unchangedHashChecks += 1;
+    }
+
     seen.add(entry.path);
   }
 
-  for (const relativePath of required) {
-    assert.strictEqual(seen.has(relativePath), true, `Hiányzó kötelező fájl: ${relativePath}`);
+  for (const required of [
+    'VERSION',
+    'docs/v5/ALPHA2_RELEASE_NOTES.md',
+    'docs/v5/ALPHA2_MIGRATION.md',
+    'docs/v5/ALPHA2_VERSION_FINALIZATION.md',
+    'scripts/test-alpha2-version-finalization.js',
+    'scripts/test-alpha2-version-finalization-manifest.js'
+  ]) {
+    assert.strictEqual(seen.has(required), true, `Hiányzó kötelező fájl: ${required}`);
   }
 
+  assert.ok(unchangedHashChecks > 0);
+  assert.ok(historicalEvolvedChecks > 0);
   assert.strictEqual(
     seen.has('docs/v5/PACKAGE_MANIFEST_ALPHA2_VERSION_FINALIZATION.json'),
     false,
     'A manifest nem hash-elheti önmagát.'
   );
 
-  console.log('OK: Alpha.2 verziófinalizáló manifest és SHA-256');
-  console.log('OK: a finalizáló csomag nem tartalmaz runtime szerver- vagy deploy-kódot');
+  console.log('OK: Alpha.2 történeti manifest szerkezete és kötelező fájljai');
+  console.log(`OK: ${unchangedHashChecks} változatlan Alpha.2 fájl SHA-256 ellenőrizve`);
+  console.log(`OK: ${historicalEvolvedChecks} később fejlődött fájl történeti bejegyzése megőrizve`);
+  console.log('OK: nincs runtime szerver- vagy deploy-kód a finalizáló csomagban');
 }
 
 try {
