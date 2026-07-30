@@ -5,10 +5,10 @@ A firmware az **Arduino UNO R4 WiFi** vezérlőn fut, és három WS2812B LED-sza
 ## Jelenlegi tesztverzió
 
 ```text
-4.1.20
+4.1.21
 ```
 
-A 4.1.20 a stabil 4.1.19 OTA-listener működését tartja meg. A verzióemelés célja az OTA-frissítési lánc tesztelése.
+A 4.1.21 megtartja a stabil OTA-listenert, és bevezeti az `X-Device-Key` fejlécalapú Arduino API-hitelesítést mérhető, kikapcsolható query fallbackkel.
 
 ## Fő funkciók
 
@@ -17,7 +17,8 @@ A 4.1.20 a stabil 4.1.19 OTA-listener működését tartja meg. A verzióemelés
 - heti EEPROM-időzítés, legfeljebb 60 eseménnyel;
 - manuális felülbírálás a következő érintett időzítési eseményig;
 - NTP és közép-európai téli/nyári idő;
-- privát útvonal és API-kulcs mögötti HTTP API;
+- privát útvonal és `X-Device-Key` fejléc mögötti HTTP API;
+- átmeneti, számlált és kikapcsolható régi `?k=` kompatibilitás;
 - folyamatosan nyitva tartott, jelszavas ArduinoOTA listener a `65280/TCP` porton;
 - `/api/ota/prepare` tehermentesített OTA-időablak;
 - Arduino LED-mátrixos állapotjelzés.
@@ -41,12 +42,32 @@ A saját `secrets.h` fájlban add meg:
 #define OTA_PASSWORD "HOSSZU_VELETLEN_OTA_JELSZO"
 #define API_SHARED_SECRET "LEGALABB_24_KARAKTERES_API_KULCS"
 #define API_PRIVATE_PATH "/HOSSZU_VELETLEN_PRIVAT_UTVONAL"
+#define API_ALLOW_QUERY_KEY_FALLBACK 1
 
 #define ENABLE_PIR_SENSORS 0
 #define ENABLE_PHYSICAL_BUTTONS 0
 ```
 
 Az első feltöltést USB-n végezd el. Ekkor a valódi WiFi-, OTA- és API-beállítások EEPROM-ba kerülnek. A GitHub Actions nyilvános buildje a mintaértékekkel fordul, ezért a későbbi OTA-frissítés nem írja felül a tárolt titkokat.
+
+
+## Védett API-kérés
+
+Az új kliensek a kulcsot fejlécben küldik. A következő példa nem teszi a
+kulcsot a parancssori argumentumok közé:
+
+```bash
+export ARDUINO_IP="TESZT_ARDUINO_IP"
+export ARDUINO_API_PATH="/SAJAT_PRIVAT_UTVONAL"
+read -s -p "Arduino API-kulcs: " ARDUINO_API_KEY
+echo
+printf 'X-Device-Key: %s\n' "${ARDUINO_API_KEY}" |
+curl --silent --show-error --fail --header @- \
+  "http://${ARDUINO_IP}${ARDUINO_API_PATH}/api/status"
+```
+
+A fallback `1` értéke csak migrációs átmenet. A végleges kikapcsolás előtt
+futtasd le a `docs/v5/ALPHA3_HARDWARE_TEST_RUNBOOK.md` teljes tesztmátrixát.
 
 ## Fordítás Arduino CLI-vel
 

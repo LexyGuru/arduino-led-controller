@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - "firmware/**"
+      - "scripts/test-alpha3-device-key-header.js"
       - ".github/workflows/firmware-build.yml"
   workflow_dispatch:
 
@@ -17,6 +18,9 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
+
+      - name: Verify Alpha.3 device-key contract
+        run: node scripts/test-alpha3-device-key-header.js
 
       - name: Install Arduino CLI
         uses: arduino/setup-arduino-cli@v2
@@ -101,6 +105,7 @@ jobs:
           echo "Firmware version: ${VERSION}"
 
       - name: Publish latest public firmware release
+        if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: firmware-latest

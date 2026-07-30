@@ -18,6 +18,9 @@ use tauri::{AppHandle, Emitter, Manager, State};
 
 mod credential_bridge;
 
+const ARDUINO_CONNECT_TIMEOUT: Duration = Duration::from_secs(5);
+const ARDUINO_RESPONSE_TIMEOUT: Duration = Duration::from_secs(30);
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 struct Config {
@@ -262,21 +265,24 @@ fn validate_config(c: &Config) -> Result<(), String> {
     Ok(())
 }
 
-fn percent_encode(v: &str) -> String {
-    v.bytes().map(|b| match b {
-        b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => (b as char).to_string(),
-        _ => format!("%{b:02X}"),
-    }).collect()
-}
-
 fn protected_path(c: &Config, path: &str) -> Result<String, String> {
     let prefix = c.arduino_api_path.trim_end_matches('/');
     if prefix.is_empty() { return Ok(path.to_string()); }
-    if prefix.len() < 18 || !prefix.starts_with('/') || c.arduino_api_key.len() < 24 {
-        return Err("A védett API-útvonal vagy API-kulcs nincs megfelelően beállítva.".into());
+    if prefix.len() < 18 || !prefix.starts_with('/') {
+        return Err("A védett API-útvonal nincs megfelelően beállítva.".into());
     }
-    let sep = if path.contains('?') { '&' } else { '?' };
-    Ok(format!("{prefix}{path}{sep}k={}", percent_encode(&c.arduino_api_key)))
+    Ok(format!("{prefix}{path}"))
+}
+
+fn device_key_header_value(c: &Config) -> Result<&str, String> {
+    let value = c.arduino_api_key.trim();
+    if value.len() < 24
+        || value.len() > 64
+        || !value.bytes().all(|byte| (0x21..=0x7e).contains(&byte))
+    {
+        return Err("Az Arduino API-kulcs nem használható biztonságos HTTP-fejlécértékként.".into());
+    }
+    Ok(value)
 }
 
 fn add_log(state: &AppState, endpoint: &str, ok: bool, message: String) {
@@ -349,7 +355,12 @@ fn connection_targets(config: &Config, learned_local_ip: Option<&str>) -> Vec<Ht
     }
 }
 
-fn raw_get_once(c: &Config, path: &str, timeout: Duration) -> Result<Value, String> {
+fn raw_get_once(
+    c: &Config,
+    path: &str,
+    connect_timeout: Duration,
+    response_timeout: Duration,
+) -> Result<Value, String> {
     validate_config(c)?;
     let host = c.arduino_ip.trim();
     let addresses = (host, c.arduino_port)
@@ -359,7 +370,7 @@ fn raw_get_once(c: &Config, path: &str, timeout: Duration) -> Result<Value, Stri
     let mut connected = None;
     let mut last_error = String::new();
     for addr in addresses {
-        match TcpStream::connect_timeout(&addr, timeout) {
+        match TcpStream::connect_timeout(&addr, connect_timeout) {
             Ok(stream) => {
                 connected = Some(stream);
                 break;
@@ -375,12 +386,17 @@ fn raw_get_once(c: &Config, path: &str, timeout: Duration) -> Result<Value, Stri
         )
     })?;
     stream.set_nodelay(true).ok();
-    stream.set_read_timeout(Some(timeout)).map_err(|e| e.to_string())?;
-    stream.set_write_timeout(Some(timeout)).map_err(|e| e.to_string())?;
+    stream
+        .set_read_timeout(Some(response_timeout))
+        .map_err(|e| e.to_string())?;
+    stream
+        .set_write_timeout(Some(response_timeout))
+        .map_err(|e| e.to_string())?;
 
     let request_path = protected_path(c, path)?;
+    let device_key = device_key_header_value(c)?;
     let request = format!(
-        "GET {request_path} HTTP/1.1\r\nHost: {host}:{}\r\nUser-Agent: Arduino-LED-Controller-Tauri/3.0.19\r\nAccept: application/json\r\nConnection: close\r\n\r\n",
+        "GET {request_path} HTTP/1.1\r\nHost: {host}:{}\r\nUser-Agent: Arduino-LED-Controller-Tauri/3.0.19\r\nAccept: application/json\r\nX-Device-Key: {device_key}\r\nConnection: close\r\n\r\n",
         c.arduino_port
     );
     stream
@@ -474,9 +490,14 @@ async fn get_json(state: &AppState, path: &str) -> Result<Value, String> {
             let mut target_config = base_config.clone();
             target_config.arduino_ip = target.host.clone();
             target_config.arduino_port = target.port;
-            // LAN-on gyorsan hibázzunk; DDNS-en se tartsuk fel hosszú ideig az egész alkalmazást.
-            let timeout = if is_private_or_local_ipv4(&target.host) { Duration::from_millis(1200) } else { Duration::from_millis(2200) };
-            match raw_get_once(&target_config, &request_path, timeout) {
+            // A kapcsolatfelépítés külön, rövid kaput kap, a már elindult
+            // Arduino API-válasz viszont 30 másodpercig befejezhető.
+            match raw_get_once(
+                &target_config,
+                &request_path,
+                ARDUINO_CONNECT_TIMEOUT,
+                ARDUINO_RESPONSE_TIMEOUT,
+            ) {
                 Ok(value) => {
                     let endpoint = format!("http://{}:{}{}", target.host, target.port, request_path);
                     return Ok((value, endpoint, target.label));

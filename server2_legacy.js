@@ -9,20 +9,65 @@ const fs = require('fs-extra');
 const path = require('path');
 const axios = require('axios');
 const crypto = require('crypto');
-const { spawn, execFile } = require('child_process');
-const { promisify } = require('util');
+const { spawn } = require('child_process');
 const { v4: uuidv4 } = require('uuid');
 const cron = require('node-cron');
 const winston = require('winston');
 require('dotenv').config();
-
-const execFileAsync = promisify(execFile);
 
 // Az Electron alkalmazás futó háttérfolyamata biztonságosan, csak memóriában
 // adhatja át a rendszer titkosított tárhelyéből kiolvasott OTA-jelszót.
 process.on('message', (message) => {
   if (message && message.type === 'set-ota-password' && typeof message.password === 'string') config.otaPassword = message.password;
 });
+
+function spawnWithInput(command, args, input, { maxBuffer = 2 * 1024 * 1024 } = {}) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, args, {
+      stdio: ['pipe', 'pipe', 'pipe']
+    });
+    let stdout = '';
+    let stderr = '';
+    let buffered = 0;
+    let settled = false;
+
+    const fail = (error) => {
+      if (settled) return;
+      settled = true;
+      child.kill('SIGTERM');
+      reject(error);
+    };
+
+    const collect = (target, chunk) => {
+      buffered += chunk.length;
+      if (buffered > maxBuffer) {
+        fail(new Error(`A natív HTTP folyamat kimenete meghaladta a ${maxBuffer} bájtot.`));
+        return target;
+      }
+      return target + chunk.toString('utf8');
+    };
+
+    child.stdout.on('data', (chunk) => { stdout = collect(stdout, chunk); });
+    child.stderr.on('data', (chunk) => { stderr = collect(stderr, chunk); });
+    child.on('error', fail);
+    child.on('close', (code, signal) => {
+      if (settled) return;
+      settled = true;
+      if (code === 0) {
+        resolve({ stdout, stderr });
+        return;
+      }
+      const error = new Error(`Natív HTTP folyamat hiba: ${code ?? signal ?? 'ismeretlen'}`);
+      error.code = code;
+      error.signal = signal;
+      error.stderr = stderr;
+      reject(error);
+    });
+
+    child.stdin.on('error', fail);
+    child.stdin.end(input);
+  });
+}
 
 // ========================= KONFIGURÁCIÓ =========================
 
@@ -289,7 +334,10 @@ function requireAdmin(req, res, next) {
 class ArduinoAPI {
   constructor(ip, port, apiPath, apiKey) {
     this.setTarget(ip, port, apiPath, apiKey);
-    this.timeout = Number(process.env.ARDUINO_TIMEOUT_MS) || 30000;
+    const configuredTimeout = Number(process.env.ARDUINO_TIMEOUT_MS);
+    this.timeout = Number.isFinite(configuredTimeout)
+      ? Math.min(120000, Math.max(30000, configuredTimeout))
+      : 30000;
     this.maxRetries = Number(process.env.ARDUINO_RETRY_COUNT) || 3;
     this.retryDelay = Number(process.env.ARDUINO_RETRY_DELAY) || 2000;
     // Az UNO R4 WiFi HTTP-kiszolgálója egyszerre egy kapcsolatot kezel
@@ -305,8 +353,7 @@ class ArduinoAPI {
 
   protectedEndpoint(endpoint) {
     if (!this.apiPath || !this.apiKey) throw new Error('Hiányzik az Arduino védett API útvonala vagy API-kulcsa a szerver beállításaiból.');
-    const separator = endpoint.includes('?') ? '&' : '?';
-    return `${this.apiPath}${endpoint}${separator}k=${encodeURIComponent(this.apiKey)}`;
+    return `${this.apiPath}${endpoint}`;
   }
 
   // A macOS-es Electron gyermekfolyamatoknál egyes hálózatokon a Node TCP
@@ -320,16 +367,24 @@ class ArduinoAPI {
       '--connect-timeout', '5',
       '--max-time', String(Math.max(5, Math.ceil(this.timeout / 1000))),
       '--request', String(method).toUpperCase(),
-      '--header', 'Content-Type: application/json',
-      '--header', `X-Request-ID: ${options.headers['X-Request-ID']}`,
-      '--write-out', `\\n${marker}%{http_code}`,
+      // A fejlécfájl stdinről érkezik, ezért a titok nem látható a
+      // process listában és nem kerül a curl parancssori argumentumaiba.
+      '--header', '@-',
+      '--write-out', `\n${marker}%{http_code}`,
       url
     ];
+    const headerInput = [
+      'Content-Type: application/json',
+      `X-Request-ID: ${options.headers['X-Request-ID']}`,
+      `X-Device-Key: ${this.apiKey}`
+    ].join('\n') + '\n';
     if (options.data) args.splice(args.length - 1, 0, '--data', JSON.stringify(options.data));
 
     let stdout;
     try {
-      ({ stdout } = await execFileAsync('/usr/bin/curl', args, { encoding: 'utf8', maxBuffer: 2 * 1024 * 1024 }));
+      ({ stdout } = await spawnWithInput('/usr/bin/curl', args, headerInput, {
+        maxBuffer: 2 * 1024 * 1024
+      }));
     } catch (error) {
       throw new Error(`macOS natív HTTP hiba: ${error.stderr?.trim() || error.message}`);
     }
@@ -359,7 +414,8 @@ class ArduinoAPI {
       timeout: this.timeout,
       headers: {
         'Content-Type': 'application/json',
-        'X-Request-ID': uuidv4()
+        'X-Request-ID': uuidv4(),
+        'X-Device-Key': this.apiKey
       }
     };
 
@@ -540,7 +596,10 @@ async function refreshArduinoConsoleCache(force = false) {
 class LEDAPI {
   constructor(ip, port) {
     this.setTarget(ip, port);
-    this.timeout = Number(process.env.ARDUINO_TIMEOUT_MS) || 30000;
+    const configuredTimeout = Number(process.env.ARDUINO_TIMEOUT_MS);
+    this.timeout = Number.isFinite(configuredTimeout)
+      ? Math.min(120000, Math.max(30000, configuredTimeout))
+      : 30000;
     this.maxRetries = Number(process.env.ARDUINO_RETRY_COUNT) || 3;
     this.retryDelay = Number(process.env.ARDUINO_RETRY_DELAY) || 2000;
   }

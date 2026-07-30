@@ -302,10 +302,19 @@ változata cookie-alapú hitelesítést nem használ.
 A kliens és az LXC között az API v2 már nem használ URL-paraméteres kulcsot,
 hanem `Authorization: Bearer ...` fejlécet.
 
-Az LXC és a jelenlegi Arduino firmware között átmenetileg megmarad a
-`?k=<ARDUINO_API_KEY>` lekérdezési paraméter, mert a jelenlegi firmware ezt
-várja. Egy későbbi firmware-verzióban ezt `X-API-Key` vagy más dedikált
-fejléc váltja fel. A migráció alatt az LXC lesz a kompatibilitási réteg.
+Az LXC, a legacy gateway és a Tauri közvetlen Arduino kliens az Alpha.3
+munkacsomagtól kezdve az alábbi belső eszközhitelesítést használja:
+
+```http
+X-Device-Key: <ARDUINO_API_KEY>
+```
+
+A kulcs nem kerülhet URL-be, request logba, auditba vagy a macOS `curl`
+folyamat argumentumai közé. A firmware `4.1.21` átmenetileg elfogadhatja a
+régi `?k=` formátumot, ha `API_ALLOW_QUERY_KEY_FALLBACK=1`, de a query
+fallback csak fejléc hiányában használható. Hibás vagy duplikált fejléc nem
+kerülhető meg helyes query-kulccsal. A fallback kikapcsolása külön
+hardverteszt és firmware-jóváhagyás után történhet.
 
 ## 10. Verziózás és törési szabályok
 

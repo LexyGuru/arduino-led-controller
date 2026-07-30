@@ -16,8 +16,8 @@
 #include <stdarg.h>
 #include "secrets.h"
 
-#define FIRMWARE_VERSION "4.1.20"
-#define FIRMWARE_FEATURE "ota-validation-4.1.20"
+#define FIRMWARE_VERSION "4.1.21"
+#define FIRMWARE_FEATURE "device-key-header-4.1.21"
 #define DEVICE_NAME "arduino-led-controller"
 #ifndef API_SHARED_SECRET
 #define API_SHARED_SECRET "CHANGE_THIS_TO_A_LONG_RANDOM_API_SECRET"
@@ -25,6 +25,10 @@
 #ifndef API_PRIVATE_PATH
 #define API_PRIVATE_PATH "/CHANGE_THIS_TO_A_LONG_RANDOM_API_PATH"
 #endif
+#ifndef API_ALLOW_QUERY_KEY_FALLBACK
+#define API_ALLOW_QUERY_KEY_FALLBACK 1
+#endif
+#define API_DEVICE_KEY_HEADER "X-Device-Key"
 #ifndef ENABLE_PIR_SENSORS
 #define ENABLE_PIR_SENSORS 0
 #endif
@@ -58,13 +62,23 @@ constexpr uint8_t HTTP_CLIENTS_PER_LOOP = 1;
 constexpr uint8_t CONSOLE_LOGS_PER_RESPONSE = 4;
 constexpr uint8_t LOG_CAPACITY = 32;
 constexpr size_t HTTP_BODY_BUFFER_SIZE = 2304;
+constexpr size_t HTTP_RESPONSE_HEADER_SIZE = 176;
 constexpr size_t HTTP_WRITE_CHUNK_SIZE = 512;
+constexpr unsigned long HTTP_RESPONSE_SETTLE_DELAY_MS = 150;
+constexpr unsigned long WIFI_LINK_PROBE_INTERVAL_MS = 15000;
+constexpr unsigned long WIFI_RSSI_REFRESH_INTERVAL_MS = 30000;
+constexpr unsigned long NTP_UNSYNCED_RETRY_INTERVAL_MS = 5000;
 constexpr unsigned long HTTP_FIRST_BYTE_TIMEOUT = 180;
 constexpr unsigned long HTTP_READ_TIMEOUT = 220;
 constexpr unsigned long OTA_PREPARE_WINDOW = 30000;
 constexpr unsigned long OTA_ERROR_INDICATOR_TIME = 5000;
 constexpr uint32_t SCHEDULE_MAGIC = 0x53434831UL; // "SCH1"
 enum Effect : uint8_t { STATIC = 0, BLINK, BREATHE, RAINBOW, CHASE };
+enum HttpHeaderReadResult : uint8_t {
+  HTTP_HEADERS_OK = 0,
+  HTTP_HEADERS_TIMEOUT,
+  HTTP_HEADERS_INVALID
+};
 
 struct Led { bool enabled; uint8_t brightness, effect, speed, red, green, blue; };
 struct Log { uint32_t id; unsigned long timestamp; const char* type; char message[128]; };
@@ -134,11 +148,16 @@ uint8_t MATRIX_ERROR[8][12] = {
 WiFiServer server(HTTP_API_PORT);
 Led leds[STRIP_COUNT]; Log logs[LOG_CAPACITY];
 bool pirRaw[STRIP_COUNT] = {}, pirActive[STRIP_COUNT] = {}, otaReady = false, timeSynced = false, wifiReported = false;
+bool cachedWifiConnected = false;
+IPAddress cachedWifiIp(0, 0, 0, 0);
+long cachedWifiRssi = 0;
+unsigned long lastWifiLinkProbe = 0, lastWifiRssiRefresh = 0;
 unsigned long pirChanged[STRIP_COUNT] = {}, lastMotion[STRIP_COUNT] = {}, lastWifi = 0, lastFrame = 0, lastTimeCheck = 0;
 uint8_t logStart = 0, logSize = 0;
 uint32_t nextLogId = 1;
 unsigned long httpRequests = 0, httpTimeouts = 0;
 unsigned long httpRejected = 0, httpWriteFailures = 0;
+unsigned long httpHeaderAuthAccepted = 0, httpQueryFallbackAccepted = 0;
 unsigned long otaRestartCount = 0, lastOtaRestartAt = 0;
 bool otaTransferActive = false;
 unsigned long otaPrepareUntil = 0, otaErrorIndicatorUntil = 0;
@@ -492,19 +511,50 @@ void runArduinoSchedules() {
   reconcileArduinoSchedules(newMinute);
 }
 
-bool wifiHasAddress() {
-  if (WiFi.status() != WL_CONNECTED) return false;
-  IPAddress ip = WiFi.localIP();
+bool ipAddressAssigned(const IPAddress& ip) {
   return ip[0] || ip[1] || ip[2] || ip[3];
 }
 
-void connectWifi() {
-  if (!wifiHasAddress()) {
-    showMatrix(MATRIX_WIFI);
-    WiFi.begin(networkSettings.ssid, networkSettings.password);
-    lastWifi = millis();
-    logEvent("info", "WiFi kapcsolodas inditva");
+void refreshWifiTelemetry(bool force = false) {
+  const unsigned long now = millis();
+
+  if (force || now - lastWifiLinkProbe >= WIFI_LINK_PROBE_INTERVAL_MS) {
+    lastWifiLinkProbe = now;
+    const bool linkConnected = WiFi.status() == WL_CONNECTED;
+
+    if (!linkConnected) {
+      cachedWifiConnected = false;
+      cachedWifiIp = IPAddress(0, 0, 0, 0);
+      cachedWifiRssi = 0;
+      return;
+    }
+
+    if (!cachedWifiConnected || !ipAddressAssigned(cachedWifiIp)) {
+      const IPAddress refreshedIp = WiFi.localIP();
+      cachedWifiIp = refreshedIp;
+      cachedWifiConnected = ipAddressAssigned(refreshedIp);
+    }
   }
+
+  if (cachedWifiConnected &&
+      (force || now - lastWifiRssiRefresh >= WIFI_RSSI_REFRESH_INTERVAL_MS)) {
+    lastWifiRssiRefresh = now;
+    cachedWifiRssi = WiFi.RSSI();
+  }
+}
+
+bool wifiHasAddress() {
+  return cachedWifiConnected && ipAddressAssigned(cachedWifiIp);
+}
+
+void connectWifi() {
+  if (wifiHasAddress()) return;
+
+  showMatrix(MATRIX_WIFI);
+  logEvent("info", "WiFi kapcsolodas inditva");
+  WiFi.begin(networkSettings.ssid, networkSettings.password);
+  lastWifi = millis();
+  refreshWifiTelemetry(true);
 }
 void reportWifiConnected() {
   if (!wifiHasAddress()) { wifiReported = false; return; }
@@ -512,12 +562,12 @@ void reportWifiConnected() {
 
   wifiReported = true;
   showMatrix(MATRIX_OK);
-  IPAddress ip = WiFi.localIP();
+  const IPAddress ip = cachedWifiIp;
 
   char message[128];
   snprintf(message, sizeof(message),
     "WiFi kesz: %u.%u.%u.%u, jel: %ld dBm, HTTP: %u, OTA: %u",
-    ip[0], ip[1], ip[2], ip[3], static_cast<long>(WiFi.RSSI()), HTTP_API_PORT, OTA_UPLOAD_PORT);
+    ip[0], ip[1], ip[2], ip[3], cachedWifiRssi, HTTP_API_PORT, OTA_UPLOAD_PORT);
   logEvent("success", message);
 
   consoleLine("");
@@ -526,7 +576,7 @@ void reportWifiConnected() {
   snprintf(message, sizeof(message), "Firmware:            %s", FIRMWARE_VERSION); consoleLine(message);
   snprintf(message, sizeof(message), "WiFi modul firmware: %s", WiFi.firmwareVersion()); consoleLine(message);
   snprintf(message, sizeof(message), "IP cim:              %u.%u.%u.%u", ip[0], ip[1], ip[2], ip[3]); consoleLine(message);
-  snprintf(message, sizeof(message), "Jelerosseg:           %ld dBm", static_cast<long>(WiFi.RSSI())); consoleLine(message);
+  snprintf(message, sizeof(message), "Jelerosseg:           %ld dBm", cachedWifiRssi); consoleLine(message);
   consoleLine("------------------------------------------");
   snprintf(message, sizeof(message), "Web API:             http://%u.%u.%u.%u:%u/api/status", ip[0], ip[1], ip[2], ip[3], HTTP_API_PORT); consoleLine(message);
   snprintf(message, sizeof(message), "OTA feltoltes:       %u.%u.%u.%u:%u", ip[0], ip[1], ip[2], ip[3], OTA_UPLOAD_PORT); consoleLine(message);
@@ -615,10 +665,10 @@ void startOta() {
   ArduinoOTA.onStart(otaTransferStarted);
   ArduinoOTA.beforeApply(otaBeforeApply);
   ArduinoOTA.onError(otaTransferError);
-  ArduinoOTA.begin(WiFi.localIP(), DEVICE_NAME, networkSettings.otaPassword, InternalStorage);
+  ArduinoOTA.begin(cachedWifiIp, DEVICE_NAME, networkSettings.otaPassword, InternalStorage);
   otaReady = true;
 
-  IPAddress ip = WiFi.localIP();
+  const IPAddress ip = cachedWifiIp;
   char message[112];
   snprintf(message, sizeof(message),
     "OTA fogado szolgaltatas aktiv: %u.%u.%u.%u:%u",
@@ -762,24 +812,32 @@ bool appendJsonEscaped(FixedBuffer& buffer, const char* source) {
   return true;
 }
 
-bool writeClientData(WiFiClient& client, const char* data, size_t length) {
-  size_t offset = 0;
-  while (offset < length) {
-    const size_t remaining = length - offset;
-    const size_t chunk = remaining > HTTP_WRITE_CHUNK_SIZE ? HTTP_WRITE_CHUNK_SIZE : remaining;
-    const size_t written = client.write(reinterpret_cast<const uint8_t*>(data + offset), chunk);
-    if (written == 0) {
-      httpWriteFailures++;
-      return false;
-    }
-    offset += written;
+bool writeClientChunk(WiFiClient& client, const uint8_t* data, size_t length) {
+  if (length == 0) return true;
+  const size_t written = client.write(data, length);
+  if (written != length) {
+    httpWriteFailures++;
+    return false;
   }
   return true;
 }
 
 bool sendJsonBuffer(WiFiClient& client, const char* body, size_t bodyLength, int code = 200) {
-  char header[176];
-  const char* status = code == 200 ? "200 OK" : (code == 503 ? "503 Service Unavailable" : "400 Bad Request");
+  if (bodyLength > HTTP_BODY_BUFFER_SIZE) {
+    httpWriteFailures++;
+    return false;
+  }
+
+  char header[HTTP_RESPONSE_HEADER_SIZE];
+  const char* status =
+    code == 200 ? "200 OK" :
+    code == 400 ? "400 Bad Request" :
+    code == 401 ? "401 Unauthorized" :
+    code == 403 ? "403 Forbidden" :
+    code == 404 ? "404 Not Found" :
+    code == 408 ? "408 Request Timeout" :
+    code == 503 ? "503 Service Unavailable" :
+    "500 Internal Server Error";
   const int headerLength = snprintf(header, sizeof(header),
     "HTTP/1.1 %s\r\n"
     "Content-Type: application/json; charset=utf-8\r\n"
@@ -791,8 +849,45 @@ bool sendJsonBuffer(WiFiClient& client, const char* body, size_t bodyLength, int
     httpWriteFailures++;
     return false;
   }
-  if (!writeClientData(client, header, static_cast<size_t>(headerLength))) return false;
-  return writeClientData(client, body, bodyLength);
+
+  // A rövid 400/401/408 válasz egyetlen, legfeljebb 512 bájtos írásba fér.
+  // A nagyobb 200 válaszok további, legfeljebb 512 bájtos darabokban mennek.
+  // Ez elkerüli a V5 blokkoló flush() késleltetését és a V6 túl nagy,
+  // egyetlen CLIENTSEND műveletét is.
+  uint8_t firstChunk[HTTP_WRITE_CHUNK_SIZE];
+  const size_t headerBytes = static_cast<size_t>(headerLength);
+  memcpy(firstChunk, header, headerBytes);
+
+  const size_t firstBodyBytes =
+    bodyLength < (HTTP_WRITE_CHUNK_SIZE - headerBytes)
+      ? bodyLength
+      : (HTTP_WRITE_CHUNK_SIZE - headerBytes);
+  if (firstBodyBytes > 0) {
+    memcpy(firstChunk + headerBytes, body, firstBodyBytes);
+  }
+
+  if (!writeClientChunk(client, firstChunk, headerBytes + firstBodyBytes)) {
+    return false;
+  }
+
+  size_t offset = firstBodyBytes;
+  while (offset < bodyLength) {
+    const size_t remaining = bodyLength - offset;
+    const size_t chunkLength =
+      remaining < HTTP_WRITE_CHUNK_SIZE ? remaining : HTTP_WRITE_CHUNK_SIZE;
+    if (!writeClientChunk(
+          client,
+          reinterpret_cast<const uint8_t*>(body + offset),
+          chunkLength)) {
+      return false;
+    }
+    offset += chunkLength;
+  }
+
+  // A CLIENTSEND válasz az ESP32-S3 bridge általi átvételt igazolja, de a
+  // TCP-kimenet lezárása előtt rövid időt hagyunk a hálózati puffernek.
+  delay(HTTP_RESPONSE_SETTLE_DELAY_MS);
+  return true;
 }
 
 void sendJsonLiteral(WiFiClient& client, const char* body, int code = 200) {
@@ -802,7 +897,7 @@ void sendJsonLiteral(WiFiClient& client, const char* body, int code = 200) {
 bool buildStatusJson(size_t& bodyLength) {
   FixedBuffer buffer;
   resetBuffer(buffer, httpBodyBuffer, sizeof(httpBodyBuffer));
-  IPAddress currentIp = WiFi.localIP();
+  const IPAddress currentIp = cachedWifiIp;
 
   appendFormat(buffer,
     "{\"connected\":%s,\"timesynced\":%s,"
@@ -845,13 +940,17 @@ bool buildStatusJson(size_t& bodyLength) {
     "\"pirSensorsEnabled\":%s,\"physicalButtonsEnabled\":%s,"
     "\"uptime\":%lu,\"rssi\":%ld,"
     "\"http\":{\"requests\":%lu,\"timeouts\":%lu,\"rejected\":%lu,"
-    "\"writeFailures\":%lu,\"maxBatch\":%u,\"lastClientIp\":\"",
+    "\"writeFailures\":%lu,\"maxBatch\":%u,"
+    "\"deviceKeyHeaderAccepted\":%lu,\"queryKeyFallbackAccepted\":%lu,"
+    "\"queryKeyFallbackEnabled\":%s,\"lastClientIp\":\"",
     apiSettingsStored ? "true" : "false",
     ENABLE_PIR_SENSORS ? "true" : "false",
     ENABLE_PHYSICAL_BUTTONS ? "true" : "false",
     millis() / 1000UL,
-    static_cast<long>(wifiHasAddress() ? WiFi.RSSI() : 0),
-    httpRequests, httpTimeouts, httpRejected, httpWriteFailures, httpMaxBatch);
+    cachedWifiConnected ? cachedWifiRssi : 0,
+    httpRequests, httpTimeouts, httpRejected, httpWriteFailures, httpMaxBatch,
+    httpHeaderAuthAccepted, httpQueryFallbackAccepted,
+    API_ALLOW_QUERY_KEY_FALLBACK ? "true" : "false");
 
   appendJsonEscaped(buffer, lastHttpClientIp);
   appendRaw(buffer, "\",\"lastPath\":\"");
@@ -926,11 +1025,15 @@ void sendConsoleStatsJson(WiFiClient& client) {
   appendFormat(buffer,
     "{\"logCount\":%u,\"uptime\":%lu,\"wifiSignal\":%ld,"
     "\"http\":{\"requests\":%lu,\"timeouts\":%lu,\"rejected\":%lu,"
-    "\"writeFailures\":%lu,\"maxBatch\":%u},"
+    "\"writeFailures\":%lu,\"maxBatch\":%u,"
+    "\"deviceKeyHeaderAccepted\":%lu,\"queryKeyFallbackAccepted\":%lu,"
+    "\"queryKeyFallbackEnabled\":%s},"
     "\"system\":{\"wifiConnected\":%s,\"consoleActive\":true}}",
-    logSize, millis() / 1000, static_cast<long>(wifiHasAddress() ? WiFi.RSSI() : 0),
+    logSize, millis() / 1000, cachedWifiConnected ? cachedWifiRssi : 0,
     httpRequests, httpTimeouts, httpRejected, httpWriteFailures, httpMaxBatch,
-    wifiHasAddress() ? "true" : "false");
+    httpHeaderAuthAccepted, httpQueryFallbackAccepted,
+    API_ALLOW_QUERY_KEY_FALLBACK ? "true" : "false",
+    cachedWifiConnected ? "true" : "false");
   if (!buffer.valid) {
     sendJsonLiteral(client, "{\"error\":\"Konzol statisztika memoriahiba\"}", 503);
     return;
@@ -941,7 +1044,7 @@ void sendConsoleStatsJson(WiFiClient& client) {
 void sendOtaStatusJson(WiFiClient& client) {
   FixedBuffer buffer;
   resetBuffer(buffer, httpBodyBuffer, sizeof(httpBodyBuffer));
-  IPAddress ip = WiFi.localIP();
+  const IPAddress ip = cachedWifiIp;
   appendFormat(buffer,
     "{\"success\":true,\"firmwareVersion\":\"%s\","
     "\"firmwareFeature\":\"%s\",\"buildDate\":\"%s\","
@@ -968,19 +1071,26 @@ void sendJson(WiFiClient& client, const String& body, int code = 200) {
   sendJsonBuffer(client, body.c_str(), body.length(), code);
 }
 void rememberHttpClient(WiFiClient& c, const char* method, const String& path, bool timedOut = false) {
-  IPAddress remote = c.remoteIP();
-  char ip[16]; snprintf(ip, sizeof(ip), "%u.%u.%u.%u", remote[0], remote[1], remote[2], remote[3]);
   String cleanPath = path.substring(0, path.indexOf('?') < 0 ? path.length() : path.indexOf('?'));
-  strncpy(lastHttpClientIp, ip, sizeof(lastHttpClientIp) - 1); lastHttpClientIp[sizeof(lastHttpClientIp) - 1] = 0;
   strncpy(lastHttpPath, cleanPath.c_str(), sizeof(lastHttpPath) - 1); lastHttpPath[sizeof(lastHttpPath) - 1] = 0;
   lastHttpClientAt = millis();
-  // A statusz- es konzolpolling sajat magat ne naplozza vissza a konzolba.
-  // Csak timeoutot, illetve valodi vezerlesi kerest irunk a gyurupufferbe.
+
+  // A gyakori statusz- es konzolpolling kozben nem kerdezzuk le szinkron
+  // modemparanccsal a tavoli IP-cimet. A WiFiS3 remoteIP() minden hivasnal
+  // kulon ESP32-S3 parancsot indit, ami feleslegesen lassitja az API-valaszt.
   const bool pollingRequest = strcmp(lastHttpPath, "/api/status") == 0 ||
     strcmp(lastHttpPath, "/api/led/status") == 0 ||
     strcmp(lastHttpPath, "/api/console/logs") == 0 ||
     strcmp(lastHttpPath, "/api/console/stats") == 0 ||
     strcmp(lastHttpPath, "/api/ota/status") == 0;
+
+  char ip[16] = "-";
+  if (!pollingRequest && !timedOut) {
+    const IPAddress remote = c.remoteIP();
+    snprintf(ip, sizeof(ip), "%u.%u.%u.%u", remote[0], remote[1], remote[2], remote[3]);
+  }
+  strncpy(lastHttpClientIp, ip, sizeof(lastHttpClientIp) - 1); lastHttpClientIp[sizeof(lastHttpClientIp) - 1] = 0;
+
   if (timedOut || (!pollingRequest && (!lastHttpClientLog || millis() - lastHttpClientLog >= 15000))) {
     char message[88];
     snprintf(message, sizeof(message), timedOut ? "HTTP kliens %s: adat timeout" : "HTTP kliens %s: %s %s", ip, method, lastHttpPath);
@@ -1082,18 +1192,20 @@ bool extractQueryValue(const String& query, const char* name, String& value) {
   }
   return false;
 }
-bool unwrapProtectedPath(const String& requestPath, String& apiPath) {
+bool unwrapProtectedPath(const String& requestPath, String& apiPath, String& queryDeviceKey, bool& queryDeviceKeyPresent) {
   if (!apiSettingsStored) return false;
   const int queryAt = requestPath.indexOf('?');
   const String base = queryAt < 0 ? requestPath : requestPath.substring(0, queryAt);
   const String prefix = String(apiSettings.privatePath) + "/api/";
   if (!base.startsWith(prefix)) return false;
-  String supplied;
-  const String query = queryAt < 0 ? "" : requestPath.substring(queryAt + 1);
-  if (!extractQueryValue(query, "k", supplied) || !constantTimeEquals(supplied, apiSettings.sharedSecret)) return false;
+
   apiPath = base.substring(strlen(apiSettings.privatePath));
-  // A hitelesítő paramétert nem adjuk tovább az alkalmazáslogikának. Így a
-  // nagyobb ütemezési payload végét sem szennyezi meg az API-kulcs.
+  const String query = queryAt < 0 ? "" : requestPath.substring(queryAt + 1);
+  queryDeviceKeyPresent = extractQueryValue(query, "k", queryDeviceKey);
+
+  // A régi query-kulcsot soha nem adjuk tovább az alkalmazáslogikának és
+  // nem tesszük bele a naplózott útvonalba. Az Alpha.3 kliens már kizárólag
+  // X-Device-Key fejlécet használ; ez csak átmeneti firmware fallback.
   String cleanQuery; int start = 0;
   while (start < query.length()) {
     int end = query.indexOf('&', start); if (end < 0) end = query.length();
@@ -1104,6 +1216,70 @@ bool unwrapProtectedPath(const String& requestPath, String& apiPath) {
   if (cleanQuery.length()) apiPath += "?" + cleanQuery;
   return true;
 }
+HttpHeaderReadResult readHttpHeaders(WiFiClient& client, String& deviceKey, bool& deviceKeyPresent) {
+  char line[192];
+  size_t length = 0;
+  const unsigned long started = millis();
+  deviceKey = "";
+  deviceKeyPresent = false;
+
+  while (millis() - started < HTTP_READ_TIMEOUT) {
+    if (!client.available()) { delay(1); continue; }
+    const char value = static_cast<char>(client.read());
+    if (value == '\r') continue;
+    if (value == '\n') {
+      if (length == 0) return HTTP_HEADERS_OK;
+      line[length] = 0;
+      String headerLine(line);
+      const int separator = headerLine.indexOf(':');
+      if (separator > 0) {
+        String name = headerLine.substring(0, separator);
+        name.trim();
+        if (name.equalsIgnoreCase(API_DEVICE_KEY_HEADER)) {
+          // Többszörös fejlécet és túl hosszú értéket nem fogadunk el.
+          if (deviceKeyPresent) return HTTP_HEADERS_INVALID;
+          String supplied = headerLine.substring(separator + 1);
+          supplied.trim();
+          if (!supplied.length() || supplied.length() >= sizeof(apiSettings.sharedSecret)) return HTTP_HEADERS_INVALID;
+          deviceKey = supplied;
+          deviceKeyPresent = true;
+        }
+      }
+      length = 0;
+      continue;
+    }
+    if (length + 1 >= sizeof(line)) return HTTP_HEADERS_INVALID;
+    line[length++] = value;
+  }
+  return HTTP_HEADERS_TIMEOUT;
+}
+bool authenticateDeviceRequest(
+  const String& headerDeviceKey,
+  bool headerDeviceKeyPresent,
+  const String& queryDeviceKey,
+  bool queryDeviceKeyPresent,
+  bool& usedQueryFallback
+) {
+  usedQueryFallback = false;
+
+  // Ha a kliens küldött X-Device-Key fejlécet, annak kell helyesnek lennie.
+  // Hibás fejléc mellett nem engedünk visszaesést query-paraméterre.
+  if (headerDeviceKeyPresent) {
+    return constantTimeEquals(headerDeviceKey, apiSettings.sharedSecret);
+  }
+
+#if API_ALLOW_QUERY_KEY_FALLBACK
+  if (queryDeviceKeyPresent && constantTimeEquals(queryDeviceKey, apiSettings.sharedSecret)) {
+    usedQueryFallback = true;
+    return true;
+  }
+#else
+  (void)queryDeviceKey;
+  (void)queryDeviceKeyPresent;
+#endif
+
+  return false;
+}
 bool readRequestLine(WiFiClient& c, char* output, size_t outputSize) {
   size_t length = 0; const unsigned long started = millis();
   while (millis() - started < HTTP_READ_TIMEOUT) {
@@ -1113,21 +1289,6 @@ bool readRequestLine(WiFiClient& c, char* output, size_t outputSize) {
     if (item == '\r') continue;
     if (length + 1 >= outputSize) return false;
     output[length++] = item;
-  }
-  return false;
-}
-bool drainHttpHeaders(WiFiClient& client) {
-  bool lineHasData = false;
-  const unsigned long started = millis();
-  while (millis() - started < HTTP_READ_TIMEOUT) {
-    if (!client.available()) { delay(1); continue; }
-    const char value = static_cast<char>(client.read());
-    if (value == '\n') {
-      if (!lineHasData) return true;
-      lineHasData = false;
-    } else if (value != '\r') {
-      lineHasData = true;
-    }
   }
   return false;
 }
@@ -1147,11 +1308,48 @@ void handleHttp() {
     int a = line.indexOf(' '), b = line.indexOf(' ', a + 1);
     if (a >= 0 && b >= 0) {
       String method = line.substring(0, a), requestedPath = line.substring(a + 1, b), path;
-      // A rossz útvonalú vagy kulcs nélküli kérésnél szándékosan nem olvassuk
-      // el a fejléceket és nem küldünk választ. Ez védi a kevés RAM-ot.
-      if ((method != "GET" && method != "POST") || !unwrapProtectedPath(requestedPath, path)) { httpRejected++; c.stop(); continue; }
+      String queryDeviceKey, headerDeviceKey;
+      bool queryDeviceKeyPresent = false, headerDeviceKeyPresent = false, usedQueryFallback = false;
+
+      // A hibás módszert vagy privát útvonalat még a fejlécek olvasása előtt
+      // elutasítjuk. A megfelelő útvonalon az eszközkulcs már fejlécből jön.
+      if ((method != "GET" && method != "POST") ||
+          !unwrapProtectedPath(requestedPath, path, queryDeviceKey, queryDeviceKeyPresent)) {
+        httpRejected++; c.stop(); continue;
+      }
+
       c.setTimeout(HTTP_READ_TIMEOUT);
-      if (!drainHttpHeaders(c)) { httpTimeouts++; rememberHttpClient(c, method.c_str(), path, true); c.stop(); continue; }
+      const HttpHeaderReadResult headerReadResult =
+        readHttpHeaders(c, headerDeviceKey, headerDeviceKeyPresent);
+      if (headerReadResult != HTTP_HEADERS_OK) {
+        if (headerReadResult == HTTP_HEADERS_TIMEOUT) {
+          httpTimeouts++;
+          rememberHttpClient(c, method.c_str(), path, true);
+          sendJsonLiteral(c, "{\"error\":\"HTTP fejlec olvasasi idotullepes\"}", 408);
+        } else {
+          httpRejected++;
+          rememberHttpClient(c, method.c_str(), path);
+          sendJsonLiteral(c, "{\"error\":\"Ervenytelen vagy tobbszoros X-Device-Key fejlec\"}", 400);
+        }
+        delay(8);
+        c.stop();
+        continue;
+      }
+
+      if (!authenticateDeviceRequest(
+            headerDeviceKey, headerDeviceKeyPresent,
+            queryDeviceKey, queryDeviceKeyPresent,
+            usedQueryFallback)) {
+        httpRejected++;
+        rememberHttpClient(c, method.c_str(), path);
+        sendJsonLiteral(c, "{\"error\":\"Ervenytelen vagy hianyzo eszkozazonosito kulcs\"}", 401);
+        delay(8);
+        c.stop();
+        continue;
+      }
+
+      if (usedQueryFallback) httpQueryFallbackAccepted++;
+      else httpHeaderAuthAccepted++;
       rememberHttpClient(c, method.c_str(), path);
       route(c, path);
     } else { httpRejected++; }
@@ -1191,13 +1389,6 @@ void setup() {
 void loop() {
   updateOtaVisualState();
 
-  if (!wifiHasAddress()) {
-    wifiReported = false;
-    otaTransferActive = false;
-    otaPrepareUntil = 0;
-    if (millis() - lastWifi > WIFI_RETRY) { otaReady = false; connectWifi(); }
-  }
-
   if (wifiHasAddress()) {
     startOta();
     reportWifiConnected();
@@ -1206,24 +1397,39 @@ void loop() {
     // HTTP API, NTP, időzítés vagy LED-animáció, így az RA4M1 a firmware
     // fogadására koncentrálhat.
     if (otaReady) ArduinoOTA.poll();
-
-    if (!otaTransferActive) {
-      if (millis() - lastTimeCheck > 60000 || !timeSynced) {
-        lastTimeCheck = millis();
-        unsigned long epoch = WiFi.getTime();
-        if (epoch > 1700000000UL) {
-          bool firstSync = !timeSynced;
-          lastClockEpoch = epoch;
-          lastClockMillis = millis();
-          timeSynced = true;
-          if (firstSync) logEvent("success", "NTP ido szinkronizalva");
-        }
-      }
-      runArduinoSchedules();
-    }
   }
 
+  // A HTTP-kérést a periodikus RSSI/IP/NTP modemlekérdezések előtt dolgozzuk
+  // fel, így a kliens válaszidejét nem növeli egy háttér-telemetria frissítés.
   if (!otaTransferActive) handleHttp();
+
+  if (wifiHasAddress() && !otaTransferActive) {
+    const unsigned long ntpRetryInterval =
+      timeSynced ? 60000UL : NTP_UNSYNCED_RETRY_INTERVAL_MS;
+    if (millis() - lastTimeCheck >= ntpRetryInterval) {
+      lastTimeCheck = millis();
+      unsigned long epoch = WiFi.getTime();
+      if (epoch > 1700000000UL) {
+        bool firstSync = !timeSynced;
+        lastClockEpoch = epoch;
+        lastClockMillis = millis();
+        timeSynced = true;
+        if (firstSync) logEvent("success", "NTP ido szinkronizalva");
+      }
+    }
+    runArduinoSchedules();
+  }
+
+  // A linkallapotot es az RSSI-t ritkan frissitjuk; a HTTP JSON-epitok csak
+  // ezt a gyorsitotarazott allapotot olvassak.
+  refreshWifiTelemetry(false);
+
+  if (!wifiHasAddress()) {
+    wifiReported = false;
+    otaTransferActive = false;
+    otaPrepareUntil = 0;
+    if (millis() - lastWifi > WIFI_RETRY) { otaReady = false; connectWifi(); }
+  }
 
   // Az OTA-elokeszitesi idoablakban az aktualis LED-kep megmarad, de az
   // animaciok es a fizikai bemenetek nem terhelik a vezerlot. Ez az idoablak

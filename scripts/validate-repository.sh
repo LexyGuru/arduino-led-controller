@@ -448,6 +448,19 @@ required_files=(
   "scripts/verify-alpha2-next-integration-readiness.js"
   "scripts/test-alpha2-next-integration-readiness.js"
   "scripts/test-v5-documentation-status.js"
+  "firmware/ArduinoLedController/ArduinoLedController.ino"
+  "firmware/ArduinoLedController/secrets.example.h"
+  "firmware/README.md"
+  "docs/v5/ALPHA3_DEVICE_KEY_MIGRATION.md"
+  "docs/v5/ALPHA3_HARDWARE_TEST_RUNBOOK.md"
+  "docs/v5/ALPHA3_RELEASE_NOTES_DRAFT.md"
+  "docs/v5/PACKAGE_MANIFEST_ALPHA3_DEVICE_KEY_HEADER.json"
+  "scripts/test-alpha3-device-key-header.js"
+  "scripts/test-alpha3-device-key-manifest.js"
+  "scripts/test-alpha3-desktop-typescript-contract.js"
+  "desktop-tauri/src/main.tsx"
+  "desktop-tauri/src/vite-env.d.ts"
+  "desktop-tauri/src/components/v5/V5PreflightPanel.tsx"
 )
 for file in "${required_files[@]}"; do
   [[ -f "${file}" ]] || {
