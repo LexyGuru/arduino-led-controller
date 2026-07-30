@@ -29,8 +29,9 @@ csak az alábbi kategóriákra korlátozódnak:
 - verziófájlok és lockfile-ok;
 - az OpenAPI dokumentumból determinisztikusan újragenerált TypeScript kliensfájlok;
 - kiadási és migrációs dokumentáció;
-- checklist;
-- verzió- és manifestellenőrző tesztek.
+- checklist és master roadmap státuszszinkron;
+- implementációs állapotjelentés és `next` integrációs runbook;
+- verzió-, dokumentáció-, readiness- és manifestellenőrző tesztek.
 
 Ez megakadályozza, hogy a minősített candidate után új, gate-en át nem ment
 runtime kód kerüljön ugyanabba a kiadásba. A három generált TypeScript fájlban
@@ -48,3 +49,15 @@ feature/v5-server-modularization
 → külön integrációs ellenőrzés
 → main
 ```
+
+
+## Dokumentációs lezárás és következő integráció
+
+A finalizáló commit a hosszú távú `fejlesztes_readme.md` roadmapet és a rövid
+`V5_REARCHITECTURE_CHECKLIST.md` állapotlistát ugyanarra a bizonyított
+Alpha.2 mérföldkőre hozza. A következő lépés nem a `main`, hanem egy külön
+integrációs branch és Pull Request a `next/v5-rearchitecture` ágba.
+
+A következő runtime-változás, az Arduino API-kulcs `X-Device-Key` fejlécbe
+költöztetése, külön Alpha.3 munkacsomag lesz. Így az Alpha.2 minősített
+runtime candidate bizonyítékláncába nem kerül utólag gate-en át nem ment kód.

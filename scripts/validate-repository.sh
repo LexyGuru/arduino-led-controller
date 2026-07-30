@@ -443,6 +443,11 @@ required_files=(
   "docs/v5/PACKAGE_MANIFEST_ALPHA2_VERSION_FINALIZATION.json"
   "scripts/test-alpha2-version-finalization.js"
   "scripts/test-alpha2-version-finalization-manifest.js"
+  "docs/v5/V5_IMPLEMENTATION_STATUS.md"
+  "docs/v5/NEXT_V5_INTEGRATION_RUNBOOK.md"
+  "scripts/verify-alpha2-next-integration-readiness.js"
+  "scripts/test-alpha2-next-integration-readiness.js"
+  "scripts/test-v5-documentation-status.js"
 )
 for file in "${required_files[@]}"; do
   [[ -f "${file}" ]] || {

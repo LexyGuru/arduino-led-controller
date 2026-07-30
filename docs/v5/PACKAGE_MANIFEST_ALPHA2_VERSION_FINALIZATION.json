@@ -1,16 +1,19 @@
 {
   "schemaVersion": 1,
-  "package": "v5-alpha2-version-finalization-complete-v2",
+  "package": "v5-alpha2-finalization-next-integration-readiness-v3",
   "createdAt": "2026-07-30",
   "targetBranch": "feature/v5-server-modularization",
+  "integrationTargetBranch": "next/v5-rearchitecture",
   "candidateCommit": "1236becc37e9b4d8ed2334f3cd60b455c248e82d",
   "qualifiedBaselineCommit": "58e01b40e4568f5cd2648d370614077ef08aa1ba",
   "sourceVersion": "5.0.0-alpha.1",
   "targetVersion": "5.0.0-alpha.2",
   "runtimeCodeChanged": false,
   "generatedClientMetadataChanged": true,
-  "description": "Final Alpha.2 version synchronization, lockfile alignment, deterministic OpenAPI TypeScript client regeneration, release documentation, checklist completion and verification tooling after the qualified evidence chain.",
-  "fileCountExcludingManifest": 28,
+  "documentationSynchronized": true,
+  "nextIntegrationPrepared": true,
+  "description": "Final Alpha.2 version synchronization, deterministic generated client metadata refresh, release documentation, master roadmap status synchronization and safe next/v5-rearchitecture integration readiness tooling. No server, deploy or firmware runtime code is changed.",
+  "fileCountExcludingManifest": 34,
   "files": [
     {
       "path": "VERSION",
@@ -109,13 +112,28 @@
     },
     {
       "path": "docs/v5/ALPHA2_VERSION_FINALIZATION.md",
-      "sha256": "c7fcc93b36f1c1aae30830aa6c739afe22195b68b7370bda1cfbc6b1cd5efcde",
-      "bytes": 1620
+      "sha256": "2f4ff53237d786f0bfa90198762e08ccc13b37c8dd7138093d401dffbdacbdaf",
+      "bytes": 2379
+    },
+    {
+      "path": "docs/v5/NEXT_V5_INTEGRATION_RUNBOOK.md",
+      "sha256": "c8fb727a3896cbab7c8280072d5e549a5675c9a7b2ce64970cc1e1a5ba8aa2d6",
+      "bytes": 4590
+    },
+    {
+      "path": "docs/v5/V5_IMPLEMENTATION_STATUS.md",
+      "sha256": "d6e4e5ad0519f64841a5b634e8a4181fc4ae145d7e53bb2a3973a26cb9d627a8",
+      "bytes": 8319
     },
     {
       "path": "docs/v5/V5_REARCHITECTURE_CHECKLIST.md",
-      "sha256": "61d41e60f8611c23c6639d33778c25b254b42c0d8c6447cab1e79b3bdd00012d",
-      "bytes": 5703
+      "sha256": "0b0e8214872b1fd06f9bf32ab5cf6f7c1efc44769336525029d2cd17517fc3a6",
+      "bytes": 6401
+    },
+    {
+      "path": "fejlesztes_readme.md",
+      "sha256": "a29e3f04795ff3c1b95bb469d120ef53a3a58aa56e8460d91ee5e052d55c6463",
+      "bytes": 27869
     },
     {
       "path": "package-lock.json",
@@ -124,13 +142,18 @@
     },
     {
       "path": "package.json",
-      "sha256": "6944dfd54f16adbf6d1492e6e68c418390e6ec677bfc10407b5a2f134484b7bc",
-      "bytes": 30736
+      "sha256": "fb187f72152d7fc373d4c8e7417ff7aa1f62d121c950016c71edb1ccdb517396",
+      "bytes": 31316
     },
     {
       "path": "scripts/check-versions.py",
       "sha256": "ee16734df21fa5b370f94b174e90be21ba47fe021680d1b7b6c4e3308bdf12c1",
       "bytes": 4434
+    },
+    {
+      "path": "scripts/test-alpha2-next-integration-readiness.js",
+      "sha256": "ad2c4c816bd8862127fc030e09d2949260a374835e40ba08a61db561fe0ba35c",
+      "bytes": 1031
     },
     {
       "path": "scripts/test-alpha2-release-gate.js",
@@ -139,18 +162,28 @@
     },
     {
       "path": "scripts/test-alpha2-version-finalization-manifest.js",
-      "sha256": "b61258451efd81fe797083e494575d1fa330a942a144035b161ce02bd764e23f",
-      "bytes": 3689
+      "sha256": "7feed7875ac4bd6bb42ddab43753163334bce27167b89e739227696a8424b771",
+      "bytes": 3980
     },
     {
       "path": "scripts/test-alpha2-version-finalization.js",
-      "sha256": "3fd408a1b26811600f15bbc2cb27eabb4a1e52e9744ea591c2ef6f2627f14699",
-      "bytes": 4243
+      "sha256": "fa5602cba87407f20eab8ad425f0e9d53ad815d0bc4364dc1e8d7a0fd4f84fbd",
+      "bytes": 5017
+    },
+    {
+      "path": "scripts/test-v5-documentation-status.js",
+      "sha256": "681b2612f65f98b45b21783a7970df83259ec39a2699dde18b44b277b8d008f1",
+      "bytes": 2618
     },
     {
       "path": "scripts/validate-repository.sh",
-      "sha256": "baad8e851743af115c494bc64837766ae0e5aa4e3fbef53a8f3220803ca7b798",
-      "bytes": 19617
+      "sha256": "45f43e98521d70dc8a855bc1cbd47f22ce03e063ff5758fc3bf2fbe6a0382ca6",
+      "bytes": 19854
+    },
+    {
+      "path": "scripts/verify-alpha2-next-integration-readiness.js",
+      "sha256": "98bd0c441ed9b1cba50999e5529134be9918526c5cfd41ea33461bd541d9b770",
+      "bytes": 8431
     }
   ]
 }

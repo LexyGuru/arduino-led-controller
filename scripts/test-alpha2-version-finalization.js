@@ -42,6 +42,9 @@ function main() {
   const releaseNotes = read('docs/v5/ALPHA2_RELEASE_NOTES.md');
   const migration = read('docs/v5/ALPHA2_MIGRATION.md');
   const finalization = read('docs/v5/ALPHA2_VERSION_FINALIZATION.md');
+  const roadmap = read('fejlesztes_readme.md');
+  const implementationStatus = read('docs/v5/V5_IMPLEMENTATION_STATUS.md');
+  const integrationRunbook = read('docs/v5/NEXT_V5_INTEGRATION_RUNBOOK.md');
   const generatedApiFiles = [
     'desktop-tauri/src/api/generated/api-v2-types.ts',
     'desktop-tauri/src/api/generated/api-v2-operations.ts',
@@ -88,7 +91,13 @@ function main() {
   assert.match(checklist, /- \[ ] Beolvasztás `next\/v5-rearchitecture` ágba/);
   assert.match(checklist, /- \[ ] Beolvasztás `main` ágba/);
 
-  for (const document of [releaseNotes, migration, finalization]) {
+  for (const document of [
+    releaseNotes,
+    migration,
+    finalization,
+    roadmap,
+    implementationStatus
+  ]) {
     assert.ok(document.includes(EXPECTED_VERSION));
     assert.ok(document.includes(EXPECTED_CANDIDATE));
   }
@@ -98,11 +107,21 @@ function main() {
   assert.match(migration, /10\.0\.0\.123:80/);
   assert.match(migration, /nem írja\s+felül/i);
   assert.match(finalization, /nem változtat produkciós runtime logikát/i);
+  assert.match(roadmap, /## 0\. Aktuális megvalósítási állapot/);
+  assert.match(roadmap, /10\.0\.0\.123:80/);
+  assert.match(implementationStatus, /Produkciós V5 telepítés \| Tilos \/ korai/);
+  assert.match(implementationStatus, /X-Device-Key/);
+  assert.match(
+    integrationRunbook,
+    /integration\/v5-alpha2-server-modularization → next\/v5-rearchitecture/
+  );
+  assert.match(integrationRunbook, /git merge --abort/);
 
   console.log('OK: teljes 5.0.0-alpha.2 verziószinkron');
   console.log('OK: npm, Tauri, Cargo, lockfile és OpenAPI verziók');
   console.log('OK: generált TypeScript API-kliens verziószinkron');
   console.log('OK: Alpha.2 release notes, migráció és checklist');
+  console.log('OK: master roadmap, implementációs státusz és next runbook');
   console.log('OK: main merge és produkciós telepítés továbbra is külön kapu');
 }
 

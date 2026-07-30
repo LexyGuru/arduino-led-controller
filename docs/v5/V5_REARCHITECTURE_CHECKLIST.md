@@ -1,6 +1,6 @@
 # V5 újraarchitektúra – állapot-checklist
 
-Utolsó frissítés: 2026-07-29
+Utolsó frissítés: 2026-07-30
 Integrációs ág: `next/v5-rearchitecture`
 Munkacsomag: `feature/v5-server-modularization`
 Minősített Alpha.2 candidate: `1236becc37e9b4d8ed2334f3cd60b455c248e82d`
@@ -132,11 +132,24 @@ Minősített Alpha.2 candidate: `1236becc37e9b4d8ed2334f3cd60b455c248e82d`
 - [x] Artifact index és execution archive
 - [x] Közvetlen `5.0.0-alpha.2` verziószinkron
 
+## Dokumentáció és integrációs előkészítés
+
+- [x] A master roadmap aktuális státuszszekcióval kiegészítve
+- [x] Részletes V5 implementációs állapotjelentés
+- [x] Biztonságos feature → `next` integrációs runbook
+- [x] Alpha.2 integrációs readiness ellenőrző
+- [x] Dokumentációs és package-manifest tesztek
+- [ ] A finalizáló/integrációs csomag commitja és push-a
+- [ ] Pull Request a `next/v5-rearchitecture` ágba
+- [ ] Teljes integrációs teszt a `next` ágon
+
 ## Következő munkacsomag
 
-1. A verziófinalizáló csomag teljes helyi validációja.
+1. A teljes finalizáló és dokumentációs csomag helyi validációja.
 2. Commit és push a `feature/v5-server-modularization` ágra.
-3. Beolvasztás a `next/v5-rearchitecture` ágba.
-4. Teljes integrációs teszt a `next` ágon.
-5. Külön, tudatos jóváhagyás után beolvasztás a `main` ágba.
-6. Produkciós snapshot, preflight, telepítés és utóellenőrzés.
+3. Integrációs branch és Pull Request a `next/v5-rearchitecture` ágba.
+4. Teljes repository-, desktop- és LXC staging teszt a `next` ágon.
+5. Alpha.3 runtime munkacsomag: Arduino API-kulcs átállítása `X-Device-Key`
+   fejlécre, firmware-kompatibilitási átmenettel.
+6. Külön hardveres schedule- és firmware-teszt.
+7. A `main` ág csak későbbi release branchből, külön jóváhagyással módosítható.

@@ -20,7 +20,7 @@ function main() {
 
   assert.strictEqual(
     manifest.package,
-    'v5-alpha2-version-finalization-complete-v2'
+    'v5-alpha2-finalization-next-integration-readiness-v3'
   );
   assert.strictEqual(manifest.schemaVersion, 1);
   assert.strictEqual(manifest.sourceVersion, '5.0.0-alpha.1');
@@ -37,7 +37,7 @@ function main() {
   assert.strictEqual(manifest.generatedClientMetadataChanged, true);
   assert.ok(Array.isArray(manifest.files));
   assert.strictEqual(manifest.fileCountExcludingManifest, manifest.files.length);
-  assert.ok(manifest.files.length >= 28);
+  assert.ok(manifest.files.length >= 33);
 
   const seen = new Set();
   const required = new Set([
@@ -59,7 +59,13 @@ function main() {
     'docs/v5/ALPHA2_VERSION_FINALIZATION.md',
     'scripts/check-versions.py',
     'scripts/test-alpha2-version-finalization.js',
-    'scripts/test-alpha2-version-finalization-manifest.js'
+    'scripts/test-alpha2-version-finalization-manifest.js',
+    'docs/v5/V5_IMPLEMENTATION_STATUS.md',
+    'docs/v5/NEXT_V5_INTEGRATION_RUNBOOK.md',
+    'fejlesztes_readme.md',
+    'scripts/verify-alpha2-next-integration-readiness.js',
+    'scripts/test-alpha2-next-integration-readiness.js',
+    'scripts/test-v5-documentation-status.js',
   ]);
 
   for (const entry of manifest.files) {

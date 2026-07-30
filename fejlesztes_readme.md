@@ -1,9 +1,67 @@
 # Arduino LED Controller – v5 teljes újratervezési menetrend
 
-**Létrehozva:** 2026-07-28  
-**Stabil produkciós ág:** `main`  
-**Újratervezési integrációs ág:** `next/v5-rearchitecture`  
+**Létrehozva:** 2026-07-28
+**Stabil produkciós ág:** `main`
+**Újratervezési integrációs ág:** `next/v5-rearchitecture`
 **Tervezett új főverzió:** `5.0.0`
+
+---
+
+## 0. Aktuális megvalósítási állapot
+
+**Státusz frissítve:** 2026-07-30
+**Aktuális mérföldkő:** `5.0.0-alpha.2` verziófinalizálás és a
+`next/v5-rearchitecture` integráció biztonságos előkészítése
+**Minősített runtime candidate:**
+`1236becc37e9b4d8ed2334f3cd60b455c248e82d`
+**Minősítéskori produkciós baseline:**
+`58e01b40e4568f5cd2648d370614077ef08aa1ba`
+
+> Ez a fájl a teljes V5 master roadmap. A napi, bizonyítékokra épülő
+> állapotkövetés elsődleges forrása a
+> `docs/v5/V5_REARCHITECTURE_CHECKLIST.md`; a részletes pillanatkép a
+> `docs/v5/V5_IMPLEMENTATION_STATUS.md`; a következő integráció pontos
+> menete pedig a `docs/v5/NEXT_V5_INTEGRATION_RUNBOOK.md` dokumentumban van.
+
+### Jelenlegi összkép
+
+| Terület | Állapot | Megjegyzés |
+|---|---|---|
+| Produkciós `main` és Arduino | Védett, változatlan | A produkciós LXC továbbra is a `main` ágat követi; a valódi Arduino címe `10.0.0.123:80`. |
+| Repository-alapok és validáció | Nagyrészt kész | Egységes verzióforrások, lockfile-ok, repository-validátor, titokellenőrzés és package manifestek működnek. |
+| Moduláris Node/LXC gateway | Alpha.2 mérföldkő kész | API v2, auth, audit, metrics, schedule, firmware, release-gate, staging és rollback automatizált tesztekkel rendelkezik. |
+| Staging és release evidence | Kész az Alpha.2-höz | A minősített candidate valódi LXC gate-en, izolált stagingen és rollback-próbán átment; a produkciós guard változatlan állapotot igazolt. |
+| Desktop/Tauri API v2 átállás | Nagyrészt kész | A fő rendszer-, dashboard-, LED-, schedule-, firmware- és naplóképernyők domain adaptereket használnak; teljes platformteszt még szükséges. |
+| Firmware újratervezés | Részleges | A jelenlegi firmware működő kompatibilitási alap; az EEPROM A/B, teljes időzóna/DST, watchdog és hardveres terhelési teszt még nyitott. |
+| Mobil Android/iOS | Nyitott | A párosítás, mobil életciklus, jogosultságok, build és valódi eszközteszt külön munkacsomag. |
+| Biztonsági hardening | Részleges | A gateway oldali auth, CSRF, szerepkörök, audit, secret scanner és release-integritás elkészült; az Arduino-kulcs fejlécbe költöztetése a következő runtime mérföldkő. |
+| `next` integráció | Következik | Előbb a finalizáló és dokumentációs csomag teljes validációja, commitja és push-a; utána külön PR a `next/v5-rearchitecture` ágba. |
+| `main` merge és produkciós V5 telepítés | Tilos / korai | Csak teljes integrációs, hardveres, desktop-, mobil-, migrációs és security elfogadás után. |
+
+### Bizonyított Alpha.2 eredmények
+
+- [x] izolált candidate worktree és teljes repository-validáció;
+- [x] valódi LXC release-gate;
+- [x] staging evidence bundle és SHA-256 ellenőrzés;
+- [x] loopback-only staging service `127.0.0.1:3100` címen;
+- [x] izolált staging Arduino-cél `127.0.0.1:65535` címen;
+- [x] staging readiness;
+- [x] szándékos health-hibás rollback rehearsal;
+- [x] staging–rollback–promotion execution receipt-lánc;
+- [x] `FINALIZE_ALPHA2_VERSION_SYNC` jóváhagyás;
+- [x] `5.0.0-alpha.2` verziószinkron előkészítése;
+- [x] generált TypeScript API-kliens verziószinkronja;
+- [x] release notes, migráció és finalizációs dokumentáció.
+
+### Következő mérföldkövek
+
+1. a finalizáló és integráció-előkészítő csomag teljes helyi validációja;
+2. commit és push kizárólag a `feature/v5-server-modularization` ágra;
+3. Pull Request a `next/v5-rearchitecture` ágba;
+4. teljes integrációs ellenőrzés a `next` ágon, produkciós telepítés nélkül;
+5. új Alpha.3 runtime munkacsomag az Arduino `X-Device-Key` fejlécmigrációhoz;
+6. külön firmware-, hardver-, desktop- és mobiltesztek;
+7. csak később `release/v5.0.0`, majd jóváhagyott PR a `main` ágba.
 
 ---
 
@@ -1018,7 +1076,7 @@ A produkciós LXC továbbra is `main` ágon marad.
 
 ---
 
-# 6. Első végrehajtandó munkacsomag
+# 6. Történeti első végrehajtandó munkacsomag
 
 ```bash
 git switch next/v5-rearchitecture
@@ -1120,30 +1178,47 @@ Mobil Tauri ───────┤                                  │
 
 ---
 
-# 10. Következő konkrét parancsok
+# 10. Aktuális következő konkrét lépések
+
+A korábbi baseline- és branch-létrehozási parancsok történeti lépések; azokat
+nem kell újra futtatni. A jelenlegi munkafolyamat:
 
 ```bash
-git switch main
-git pull --ff-only origin main
+cd ~/Github
 
-git tag -a baseline-before-v5-2026-07-28 \
-  -m "Stabil main állapot a teljes v5 újratervezés előtt"
+git switch feature/v5-server-modularization
+bash scripts/validate-repository.sh
+node scripts/verify-alpha2-next-integration-readiness.js --require-git
 
-git push origin baseline-before-v5-2026-07-28
-
-git switch -c next/v5-rearchitecture
-
-git add fejlesztes_readme.md
-git commit -m "docs: add v5 rearchitecture roadmap"
-
-git push -u origin next/v5-rearchitecture
+git add --all
+git diff --cached --check
+git commit -m "release: finalize alpha2 and prepare next integration"
+git push origin feature/v5-server-modularization
 ```
 
-Ezután:
+Ezután külön integrációs ágon, Pull Requesttel:
 
 ```bash
-git switch -c feature/v5-repository-foundation
-git push -u origin feature/v5-repository-foundation
+git fetch --prune origin
+
+git switch next/v5-rearchitecture
+git pull --ff-only origin next/v5-rearchitecture
+
+git switch -c integration/v5-alpha2-server-modularization
+git merge --no-ff feature/v5-server-modularization
+
+bash scripts/validate-repository.sh
+node scripts/verify-alpha2-next-integration-readiness.js --require-git
+
+git push -u origin integration/v5-alpha2-server-modularization
 ```
 
-A `main` ág és a produkciós LXC ettől változatlan marad.
+A Pull Request célja:
+
+```text
+integration/v5-alpha2-server-modularization → next/v5-rearchitecture
+```
+
+A `main` ág, a produkciós LXC és a `10.0.0.123:80` Arduino ettől változatlan
+marad. A `main` ágba közvetlen merge vagy produkciós V5 telepítés továbbra is
+tilos.
