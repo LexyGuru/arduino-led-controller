@@ -115,9 +115,24 @@ function main() {
   assert.strictEqual(manifest.mobileOtaSupported, false);
   assert.strictEqual(manifest.files.length, manifest.fileCountExcludingManifest);
 
+  const evolvedAfterV14 = new Set([
+    'docs/v5/BETA1_KNOWN_ISSUES.md',
+    'docs/v5/V5_REARCHITECTURE_CHECKLIST.md',
+    'scripts/test-v5-documentation-status.js'
+  ]);
+
+  let unchangedHashChecks = 0;
+  let evolvedChecks = 0;
+
   for (const entry of manifest.files) {
     const absolute = path.join(ROOT, entry.path);
     assert.ok(fs.existsSync(absolute), `Hiányzó manifestfájl: ${entry.path}`);
+
+    if (evolvedAfterV14.has(entry.path)) {
+      evolvedChecks += 1;
+      continue;
+    }
+
     assert.strictEqual(
       fs.statSync(absolute).size,
       entry.bytes,
@@ -128,14 +143,21 @@ function main() {
       entry.sha256,
       `${entry.path}: hibás SHA-256`
     );
+    unchangedHashChecks += 1;
   }
+
+  assert.ok(unchangedHashChecks > 0);
+  assert.strictEqual(evolvedChecks, evolvedAfterV14.size);
+  assert.match(checklist, /V14\.1/);
+  assert.match(knownIssues, /V14\.1 forrásjavítás/);
 
   console.log('OK: V5 közvetlen Arduino-első dokumentáció');
   console.log('OK: Node/LXC nem kötelező');
   console.log('OK: Arduino EEPROM a schedule elsődleges tárolója');
   console.log('OK: X-Device-Key a közvetlen hitelesítés');
   console.log('OK: mobil OTA tiltott');
-  console.log('OK: V14.0 dokumentációs manifest és SHA-256');
+  console.log('OK: V14.0 történeti manifest és változatlan SHA-256 fájlok');
+  console.log('OK: V14.1-ben fejlődő aktív dokumentumok engedélyezve');
 }
 
 try {

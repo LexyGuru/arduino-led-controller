@@ -4,7 +4,6 @@ export type PageId =
   | 'schedules'
   | 'firmware'
   | 'logs'
-  | 'system'
   | 'settings';
 
 export interface RuntimeCapabilities {
@@ -21,13 +20,15 @@ export interface ConnectionConfig {
   localArduinoIp: string;
   localArduinoPort: number;
   preferLocal: boolean;
-  /** OTA-cél, például No-IP/DDNS név. Üresen a távoli Arduino címet használja. */
+  /** OTA-cél. Desktopon lehetőleg a helyi Arduino-cím legyen. */
   otaAddress: string;
   otaPort: number;
   /** auto | native | terminal */
   otaUploadMode: string;
   otaToolPath: string;
+  /** A secrets.h API_PRIVATE_PATH értékével egyező privát előtag. */
   arduinoApiPath: string;
+  /** A secrets.h API_SHARED_SECRET értékével egyező X-Device-Key. */
   arduinoApiKey: string;
 }
 

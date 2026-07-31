@@ -38,19 +38,64 @@ const main =
     'desktop-tauri/src/main.tsx'
   );
 
-const page =
+const types =
+  read(
+    'desktop-tauri/src/types/index.ts'
+  );
+
+const settings =
+  read(
+    'desktop-tauri/src/pages/SettingsPage.tsx'
+  );
+
+const archivedPage =
   read(
     'desktop-tauri/src/pages/V5SystemPage.tsx'
   );
 
-assert.match(
+const architecture =
+  read(
+    'docs/v5/V5_DIRECT_ARDUINO_ARCHITECTURE.md'
+  );
+
+assert.doesNotMatch(
+  app,
+  /V5SystemPage/
+);
+
+assert.doesNotMatch(
   app,
   /page ===\s*'system'/
 );
 
-assert.match(
+assert.doesNotMatch(
   sidebar,
   /V5 rendszer/
+);
+
+assert.doesNotMatch(
+  sidebar,
+  /ServerCog/
+);
+
+assert.doesNotMatch(
+  types,
+  /\|\s*'system'/
+);
+
+assert.match(
+  sidebar,
+  /Arduino kapcsolat/
+);
+
+assert.match(
+  settings,
+  /KÖZVETLEN ARDUINO KAPCSOLAT/
+);
+
+assert.match(
+  settings,
+  /X-Device-Key/
 );
 
 assert.match(
@@ -66,18 +111,35 @@ for (
     'V5PreflightPanel',
     'V5MaintenancePanel',
     'V5SnapshotPanel',
-    'V5MigrationPanel'
+    'V5MigrationPanel',
+    'V5ReleaseGatePanel',
+    'V5ReleaseFinalizationPanel',
+    'V5LxcOrchestrationPanel'
   ]
 ) {
   assert.match(
-    page,
+    archivedPage,
     new RegExp(marker)
   );
 }
 
-console.log(
-  'OK: V5 rendszeroldal bekötve az alkalmazásba'
+assert.match(
+  architecture,
+  /opcionális szerver/i
 );
+
 console.log(
-  'OK: kapcsolat, release, preflight, maintenance, snapshot és migráció panelek'
+  'OK: közvetlen Arduino kapcsolat bekötve a normál alkalmazásba'
+);
+
+console.log(
+  'OK: a V5/LXC rendszeroldal nincs a normál navigációban'
+);
+
+console.log(
+  'OK: a történeti szerver-, release- és LXC panelek forrása megőrizve'
+);
+
+console.log(
+  'OK: DesktopApiProvider megmaradt az átmeneti API v2 fallbackekhez'
 );

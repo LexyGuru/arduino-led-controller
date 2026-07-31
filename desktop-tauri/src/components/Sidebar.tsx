@@ -4,7 +4,6 @@ import {
   Gauge,
   Lightbulb,
   ScrollText,
-  ServerCog,
   Settings
 } from 'lucide-react';
 
@@ -44,13 +43,8 @@ const items:
       icon: ScrollText
     },
     {
-      id: 'system',
-      label: 'V5 rendszer',
-      icon: ServerCog
-    },
-    {
       id: 'settings',
-      label: 'Beállítások',
+      label: 'Arduino kapcsolat',
       icon: Settings
     }
   ];
@@ -79,17 +73,15 @@ export function Sidebar({
         <span className="brand-mark">
           L
         </span>
-
         <div>
           <strong>
             LED Controller
           </strong>
           <small>
-            Standalone Tauri
+            Közvetlen Arduino
           </small>
         </div>
       </div>
-
       <nav>
         {items
           .filter(
@@ -122,7 +114,6 @@ export function Sidebar({
             )
           )}
       </nav>
-
       <div className="sidebar-footer">
         <small>
           Arduino UNO R4 WiFi

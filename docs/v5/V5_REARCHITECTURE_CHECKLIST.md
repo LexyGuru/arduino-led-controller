@@ -10,6 +10,7 @@
 ## Történeti állapot
 
 - [x] Alpha.2 moduláris Node/LXC és release infrastruktúra
+- [x] Teljes izolált LXC integrációs és rollback teszt
 - [x] `5.0.0-alpha.2` verziólépés
 - [x] Alpha.3 `X-Device-Key`
 - [x] `5.0.0-alpha.3` finalization
@@ -53,23 +54,24 @@ Alpha.3 feature:
 
 ## V14.1 – kapcsolat és eszközprofilok
 
-- [ ] `ConnectionMode = directArduino | optionalServer`
-- [ ] `directArduino` legyen alapérték
+- [x] közvetlen Arduino mód az egyetlen alapértelmezett UI-út
+- [x] félrevezető `V5 rendszer` menü eltávolítása
+- [x] történeti `V5SystemPage` és release/LXC panelek megőrizve, de leválasztva a normál navigációról
+- [x] helyi host külön mező
+- [x] helyi port külön mező
+- [x] távoli DDNS/IP külön mező
+- [x] távoli port külön mező
+- [x] privát API-útvonal magyarázata és validációja
+- [x] Arduino eszközkulcs magyarázata és validációja
+- [x] mentés és teljes védett Arduino-státuszteszt
+- [x] DDNS host validáció
+- [x] port validáció
+- [x] régi üres `10.0.0.123` placeholder automatikus kivezetése
+- [x] Beta Arduino címsegéd: `10.0.0.117:80` + `beta-lexyguruhome.ddns.net:25666`
 - [ ] több eszközprofil
-- [ ] profilnév
-- [ ] helyi host
-- [ ] helyi port
-- [ ] távoli DDNS/IP
-- [ ] távoli port
-- [ ] privát API-útvonal
-- [ ] Arduino eszközkulcs
-- [ ] helyi kapcsolat teszt
-- [ ] távoli kapcsolat teszt
-- [ ] DDNS host validáció
-- [ ] port validáció
-- [ ] aktív profil váltása
-- [ ] „V5 rendszer” szerverpanel alapból rejtve
-- [ ] régi szerverprofil biztonságos migrációja
+- [ ] profilnév és aktív profil váltása
+- [ ] helyi és távoli végpont külön-külön kényszerített tesztje
+- [ ] optionalServer mód külön kísérleti beállítás mögött
 
 ## V14.2 – titkos profilimport
 

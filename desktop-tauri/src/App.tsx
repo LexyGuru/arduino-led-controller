@@ -43,10 +43,6 @@ import {
   SettingsPage
 } from './pages/SettingsPage';
 
-import {
-  V5SystemPage
-} from './pages/V5SystemPage';
-
 import type {
   PageId
 } from './types';
@@ -122,7 +118,6 @@ export default function App() {
             .otaSupported
         }
       />
-
       <div className="content-shell">
         <Topbar
           online={
@@ -143,7 +138,6 @@ export default function App() {
                 .refresh()
           }
         />
-
         <main className="content">
           {page ===
             'dashboard' && (
@@ -263,11 +257,6 @@ export default function App() {
           )}
 
           {page ===
-            'system' && (
-            <V5SystemPage />
-          )}
-
-          {page ===
             'settings' && (
             <SettingsPage
               otaSupported={
@@ -287,6 +276,11 @@ export default function App() {
                 () =>
                   void controller
                     .saveConfig()
+              }
+              onTest={
+                () =>
+                  void controller
+                    .testConnection()
               }
               otaPassword={
                 controller.otaPassword

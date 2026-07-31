@@ -82,3 +82,20 @@ Beta.1 alatt:
 4. ne adj meg Mac/GitHub/Wi-Fi jelszót a session mezőben;
 5. a „V5 rendszer” panelt ne használd Arduino DDNS-címmel;
 6. OTA-t csak desktopon és helyi hálózaton használj.
+
+## V14.1 forrásjavítás
+
+A V14.1 csomag a `next/v5-rearchitecture` ágon:
+
+- eltávolítja a normál navigációból a félrevezető `V5 rendszer` menüt;
+- a közvetlen Arduino-kapcsolatot teszi az egyetlen alapértelmezett felhasználói úttá;
+- külön és jól látható helyi IP/port, illetve távoli DDNS/port mezőket ad;
+- megmagyarázza az `API_PRIVATE_PATH` és `API_SHARED_SECRET` eredetét;
+- teljes védett `/api/status` kapcsolatpróbát ad;
+- nem indít automatikus pollingot hiányos cím vagy hitelesítés mellett;
+- kivezeti a titkok nélküli régi `10.0.0.123` placeholdert;
+- egyetlen gombbal betölthetővé teszi a Beta tesztcímeket.
+
+A kiadott `v5.0.0-beta.1` telepítők ettől nem változnak meg. A javítás a következő Beta buildbe kerül.
+
+A V14.1 még a korábbi Rust konfigurációs tárolást használja. Az API-útvonal és eszközkulcs natív kulcstárba költöztetése a közvetlenül következő V14.2 csomag feladata.
