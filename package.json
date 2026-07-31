@@ -112,7 +112,11 @@
     "test:release-env-example-scan": "node scripts/test-release-env-example-scan.js",
     "test:release-secret-diagnostics": "node scripts/test-release-secret-diagnostics.js",
     "test:v5-documentation-status": "node scripts/test-v5-documentation-status.js",
-    "test:beta-release-workflow": "node scripts/test-beta-release-workflow.js"
+    "test:beta-release-workflow": "node scripts/test-beta-release-workflow.js",
+    "test:tauri-direct-profile": "node scripts/test-tauri-direct-profile.js",
+    "test:tauri-direct-auth": "node scripts/test-tauri-direct-auth.js",
+    "test:tauri-direct-connectivity": "node scripts/test-tauri-direct-connectivity.js",
+    "test:tauri-direct-foundation": "npm run test:tauri-direct-profile && npm run test:tauri-direct-auth && npm run test:tauri-direct-connectivity"
   },
   "engines": {
     "node": ">=20"
