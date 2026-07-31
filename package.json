@@ -117,7 +117,8 @@
     "test:tauri-direct-auth": "node scripts/test-tauri-direct-auth.js",
     "test:tauri-direct-connectivity": "node scripts/test-tauri-direct-connectivity.js",
     "test:tauri-direct-foundation": "npm run test:tauri-direct-profile && npm run test:tauri-direct-auth && npm run test:tauri-direct-connectivity",
-    "test:tauri-config-update": "node scripts/test-tauri-direct-profile.js && node scripts/test-tauri-direct-auth.js && node scripts/test-tauri-direct-connectivity.js && node scripts/test-tauri-update-channel.js && node scripts/test-tauri-ota-tool-config.js && node scripts/test-tauri-settings-update-contract.js"
+    "test:tauri-config-update": "node scripts/test-tauri-direct-profile.js && node scripts/test-tauri-direct-auth.js && node scripts/test-tauri-direct-connectivity.js && node scripts/test-tauri-update-channel.js && node scripts/test-tauri-ota-tool-config.js && node scripts/test-tauri-settings-update-contract.js",
+    "test:tauri-native-credential-ota": "node scripts/test-tauri-native-credential-ota.js"
   },
   "engines": {
     "node": ">=20"

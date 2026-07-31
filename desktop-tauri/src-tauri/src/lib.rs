@@ -24,37 +24,50 @@ const ARDUINO_RESPONSE_TIMEOUT: Duration = Duration::from_secs(30);
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 struct Config {
-    // Távoli/DDNS HTTP elérés. Helyi hálózaton nem ezt használjuk elsőként.
+    profile_name: String,
+    protocol: String,
     arduino_ip: String,
     arduino_port: u16,
-    // Közvetlen LAN-cím. Ez kerüli el a router NAT-loopback/hairpin hibáit.
     local_arduino_ip: String,
     local_arduino_port: u16,
     prefer_local: bool,
-    // OTA cél teljesen független a HTTP API címétől. Üresen a távoli/DDNS Arduino-címet használja.
+    ota_use_api_host: bool,
     ota_address: String,
     ota_port: u16,
-    // auto | native | terminal
     ota_upload_mode: String,
     ota_tool_path: String,
+    ota_timeout_seconds: u64,
     arduino_api_path: String,
+    #[serde(skip_serializing, default)]
     arduino_api_key: String,
+    update_channel: String,
+    auto_check_updates: bool,
+    auto_download_updates: bool,
+    firmware_update_checks: bool,
 }
 
 impl Default for Config {
     fn default() -> Self {
         Self {
-            arduino_ip: "10.0.0.123".into(),
-            arduino_port: 80,
-            local_arduino_ip: "10.0.0.123".into(),
+            profile_name: "Arduino vezérlő".into(),
+            protocol: "http".into(),
+            arduino_ip: String::new(),
+            arduino_port: 25666,
+            local_arduino_ip: String::new(),
             local_arduino_port: 80,
             prefer_local: true,
+            ota_use_api_host: true,
             ota_address: String::new(),
             ota_port: 65280,
             ota_upload_mode: "auto".into(),
             ota_tool_path: "/usr/local/bin/arduinoOTA".into(),
+            ota_timeout_seconds: 120,
             arduino_api_path: String::new(),
             arduino_api_key: String::new(),
+            update_channel: "beta".into(),
+            auto_check_updates: true,
+            auto_download_updates: false,
+            firmware_update_checks: true,
         }
     }
 }
@@ -80,8 +93,9 @@ struct Schedule {
     leds: Vec<ScheduleLed>,
 }
 
-
-fn default_schedule_speed() -> u8 { 50 }
+fn default_schedule_speed() -> u8 {
+    50
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -95,10 +109,17 @@ struct ScheduleFile {
 fn normalize_schedules(mut schedules: Vec<Schedule>) -> Result<Vec<Schedule>, String> {
     for (index, schedule) in schedules.iter_mut().enumerate() {
         if schedule.id.trim().is_empty() {
-            schedule.id = format!("imported-{}-{}-{}", schedule.day, schedule.time.replace(':', ""), index);
+            schedule.id = format!(
+                "imported-{}-{}-{}",
+                schedule.day,
+                schedule.time.replace(':', ""),
+                index
+            );
         }
         for led in &mut schedule.leds {
-            if led.speed == 0 { led.speed = 50; }
+            if led.speed == 0 {
+                led.speed = 50;
+            }
         }
     }
     schedules.sort_by(|a, b| a.day.cmp(&b.day).then(a.time.cmp(&b.time)));
@@ -107,11 +128,15 @@ fn normalize_schedules(mut schedules: Vec<Schedule>) -> Result<Vec<Schedule>, St
 }
 
 fn parse_schedules_json(bytes: &[u8]) -> Result<Vec<Schedule>, String> {
-    let value: Value = serde_json::from_slice(bytes).map_err(|e| format!("Hibás JSON-fájl: {e}"))?;
+    let value: Value =
+        serde_json::from_slice(bytes).map_err(|e| format!("Hibás JSON-fájl: {e}"))?;
     let schedules_value = if value.is_array() {
         value
     } else {
-        value.get("schedules").cloned().ok_or_else(|| "A JSON nem tartalmaz schedules listát.".to_string())?
+        value
+            .get("schedules")
+            .cloned()
+            .ok_or_else(|| "A JSON nem tartalmaz schedules listát.".to_string())?
     };
     let schedules: Vec<Schedule> = serde_json::from_value(schedules_value)
         .map_err(|e| format!("Hibás időzítés-formátum: {e}"))?;
@@ -120,7 +145,11 @@ fn parse_schedules_json(bytes: &[u8]) -> Result<Vec<Schedule>, String> {
 
 fn schedule_file_bytes(schedules: Vec<Schedule>) -> Result<Vec<u8>, String> {
     let schedules = normalize_schedules(schedules)?;
-    let exported_at = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs().to_string();
+    let exported_at = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs()
+        .to_string();
     let wrapper = ScheduleFile {
         format: "arduino-led-controller-schedules".into(),
         version: 1,
@@ -205,15 +234,20 @@ fn app_dir(app: &AppHandle) -> Result<PathBuf, String> {
     fs::create_dir_all(&p).map_err(|e| e.to_string())?;
     Ok(p)
 }
-fn config_path(app: &AppHandle) -> Result<PathBuf, String> { Ok(app_dir(app)?.join("connection.json")) }
-fn schedules_path(app: &AppHandle) -> Result<PathBuf, String> { Ok(app_dir(app)?.join("weekly-led-schedules.json")) }
-fn secret_path(app: &AppHandle) -> Result<PathBuf, String> { Ok(app_dir(app)?.join("ota-secret.txt")) }
+fn config_path(app: &AppHandle) -> Result<PathBuf, String> {
+    Ok(app_dir(app)?.join("connection.json"))
+}
+fn schedules_path(app: &AppHandle) -> Result<PathBuf, String> {
+    Ok(app_dir(app)?.join("weekly-led-schedules.json"))
+}
+fn secret_path(app: &AppHandle) -> Result<PathBuf, String> {
+    Ok(app_dir(app)?.join("ota-secret.txt"))
+}
 fn firmware_dir(app: &AppHandle) -> Result<PathBuf, String> {
     let p = app_dir(app)?.join("firmware");
     fs::create_dir_all(&p).map_err(|e| e.to_string())?;
     Ok(p)
 }
-
 
 fn unix_millis() -> u64 {
     SystemTime::now()
@@ -240,9 +274,13 @@ fn emit_ota_progress(
 }
 
 fn validate_host(host: &str, label: &str) -> Result<(), String> {
-    if host.is_empty() { return Ok(()); }
+    if host.is_empty() {
+        return Ok(());
+    }
     if host.contains("://") || host.contains('/') || host.contains(' ') || host.len() > 253 {
-        return Err(format!("A(z) {label} mezőben csak IP-címet vagy DDNS-nevet adj meg, protokoll nélkül."));
+        return Err(format!(
+            "A(z) {label} mezőben csak IP-címet vagy DDNS-nevet adj meg, protokoll nélkül."
+        ));
     }
     Ok(())
 }
@@ -256,18 +294,38 @@ fn validate_config(c: &Config) -> Result<(), String> {
     validate_host(remote, "távoli Arduino-cím")?;
     validate_host(local, "helyi Arduino-cím")?;
     validate_host(c.ota_address.trim(), "OTA DDNS/IP-cím")?;
-    if !remote.is_empty() && c.arduino_port == 0 { return Err("Érvénytelen távoli HTTP-port.".into()); }
-    if !local.is_empty() && c.local_arduino_port == 0 { return Err("Érvénytelen helyi HTTP-port.".into()); }
-    if c.ota_port == 0 { return Err("Érvénytelen OTA feltöltési port.".into()); }
-    if !matches!(c.ota_upload_mode.as_str(), "auto" | "native" | "terminal") {
-        return Err("Az OTA feltöltési mód csak auto, native vagy terminal lehet.".into());
+    if !remote.is_empty() && c.arduino_port == 0 {
+        return Err("Érvénytelen távoli HTTP-port.".into());
+    }
+    if !local.is_empty() && c.local_arduino_port == 0 {
+        return Err("Érvénytelen helyi HTTP-port.".into());
+    }
+    if c.ota_port == 0 {
+        return Err("Érvénytelen OTA feltöltési port.".into());
+    }
+    if !matches!(c.protocol.as_str(), "http" | "https") {
+        return Err("A protokoll csak http vagy https lehet.".into());
+    }
+    if !matches!(
+        c.ota_upload_mode.as_str(),
+        "auto" | "system" | "bundled" | "custom"
+    ) {
+        return Err("Az OTA feltöltési mód csak auto, system, bundled vagy custom lehet.".into());
+    }
+    if c.ota_timeout_seconds < 30 || c.ota_timeout_seconds > 600 {
+        return Err("Az OTA timeout 30 és 600 másodperc közötti lehet.".into());
+    }
+    if !matches!(c.update_channel.as_str(), "stable" | "beta") {
+        return Err("A frissítési csatorna csak stable vagy beta lehet.".into());
     }
     Ok(())
 }
 
 fn protected_path(c: &Config, path: &str) -> Result<String, String> {
     let prefix = c.arduino_api_path.trim_end_matches('/');
-    if prefix.is_empty() { return Ok(path.to_string()); }
+    if prefix.is_empty() {
+        return Ok(path.to_string());
+    }
     if prefix.len() < 18 || !prefix.starts_with('/') {
         return Err("A védett API-útvonal nincs megfelelően beállítva.".into());
     }
@@ -280,25 +338,41 @@ fn device_key_header_value(c: &Config) -> Result<&str, String> {
         || value.len() > 64
         || !value.bytes().all(|byte| (0x21..=0x7e).contains(&byte))
     {
-        return Err("Az Arduino API-kulcs nem használható biztonságos HTTP-fejlécértékként.".into());
+        return Err(
+            "Az Arduino API-kulcs nem használható biztonságos HTTP-fejlécértékként.".into(),
+        );
     }
     Ok(value)
 }
 
 fn add_log(state: &AppState, endpoint: &str, ok: bool, message: String) {
-    let timestamp = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs();
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs();
     if let Ok(mut logs) = state.network_logs.lock() {
         // Az ismétlődő sikeres polling ne árassza el a hálózati naplót.
         if ok {
             if let Some(last) = logs.last() {
-                if last.ok && last.endpoint == endpoint && last.message == message && timestamp.saturating_sub(last.timestamp) < 30 {
+                if last.ok
+                    && last.endpoint == endpoint
+                    && last.message == message
+                    && timestamp.saturating_sub(last.timestamp) < 30
+                {
                     return;
                 }
             }
         }
-        logs.push(NetworkLog { timestamp, endpoint: endpoint.into(), ok, message });
+        logs.push(NetworkLog {
+            timestamp,
+            endpoint: endpoint.into(),
+            ok,
+            message,
+        });
         let excess = logs.len().saturating_sub(200);
-        if excess > 0 { logs.drain(0..excess); }
+        if excess > 0 {
+            logs.drain(0..excess);
+        }
     }
 }
 
@@ -331,20 +405,46 @@ struct HttpTarget {
 
 fn push_target(targets: &mut Vec<HttpTarget>, host: &str, port: u16, label: &'static str) {
     let host = host.trim();
-    if host.is_empty() || port == 0 { return; }
-    if targets.iter().any(|item| item.host.eq_ignore_ascii_case(host) && item.port == port) { return; }
-    targets.push(HttpTarget { host: host.to_string(), port, label });
+    if host.is_empty() || port == 0 {
+        return;
+    }
+    if targets
+        .iter()
+        .any(|item| item.host.eq_ignore_ascii_case(host) && item.port == port)
+    {
+        return;
+    }
+    targets.push(HttpTarget {
+        host: host.to_string(),
+        port,
+        label,
+    });
 }
 
 fn connection_targets(config: &Config, learned_local_ip: Option<&str>) -> Vec<HttpTarget> {
     let mut local = Vec::new();
-    push_target(&mut local, &config.local_arduino_ip, config.local_arduino_port, "helyi");
+    push_target(
+        &mut local,
+        &config.local_arduino_ip,
+        config.local_arduino_port,
+        "helyi",
+    );
     if let Some(ip) = learned_local_ip {
-        push_target(&mut local, ip, config.local_arduino_port.max(1), "felismert helyi");
+        push_target(
+            &mut local,
+            ip,
+            config.local_arduino_port.max(1),
+            "felismert helyi",
+        );
     }
 
     let mut remote = Vec::new();
-    push_target(&mut remote, &config.arduino_ip, config.arduino_port, "távoli/DDNS");
+    push_target(
+        &mut remote,
+        &config.arduino_ip,
+        config.arduino_port,
+        "távoli/DDNS",
+    );
 
     if config.prefer_local {
         local.extend(remote);
@@ -402,7 +502,9 @@ fn raw_get_once(
     stream
         .write_all(request.as_bytes())
         .map_err(|e| format!("Arduino kérés küldési hiba: {e}"))?;
-    stream.flush().map_err(|e| format!("Arduino kérés flush hiba: {e}"))?;
+    stream
+        .flush()
+        .map_err(|e| format!("Arduino kérés flush hiba: {e}"))?;
 
     let mut response = Vec::with_capacity(4096);
     let mut buffer = [0u8; 2048];
@@ -412,7 +514,9 @@ fn raw_get_once(
             Ok(read) => {
                 response.extend_from_slice(&buffer[..read]);
                 if response.len() > HTTP_MAX_RESPONSE_BYTES {
-                    return Err(format!("Az Arduino HTTP-válasza túl nagy (>{HTTP_MAX_RESPONSE_BYTES} bájt)."));
+                    return Err(format!(
+                        "Az Arduino HTTP-válasza túl nagy (>{HTTP_MAX_RESPONSE_BYTES} bájt)."
+                    ));
                 }
             }
             Err(error) if error.kind() == ErrorKind::Interrupted => continue,
@@ -424,7 +528,9 @@ fn raw_get_once(
                     || error.kind() == ErrorKind::UnexpectedEof =>
             {
                 if response.is_empty() {
-                    return Err(format!("Az Arduino nem küldött teljes HTTP-választ: {error}"));
+                    return Err(format!(
+                        "Az Arduino nem küldött teljes HTTP-választ: {error}"
+                    ));
                 }
                 break;
             }
@@ -439,7 +545,9 @@ fn raw_get_once(
     let split = response
         .windows(4)
         .position(|part| part == b"\r\n\r\n")
-        .ok_or_else(|| "Az Arduino csonka HTTP-választ adott: hiányzik a fejléc vége.".to_string())?;
+        .ok_or_else(|| {
+            "Az Arduino csonka HTTP-választ adott: hiányzik a fejléc vége.".to_string()
+        })?;
     let headers = String::from_utf8_lossy(&response[..split]);
     let status_line = headers.lines().next().unwrap_or_default();
     let status_code = status_line
@@ -454,37 +562,62 @@ fn raw_get_once(
     let mut body = &response[split + 4..];
     if let Some(expected) = parse_content_length(&headers) {
         if body.len() < expected {
-            return Err(format!("Az Arduino csonka HTTP-választ adott: {} / {} bájt érkezett.", body.len(), expected));
+            return Err(format!(
+                "Az Arduino csonka HTTP-választ adott: {} / {} bájt érkezett.",
+                body.len(),
+                expected
+            ));
         }
         body = &body[..expected];
     }
 
-    let body = body.iter().copied().skip_while(|byte| byte.is_ascii_whitespace()).collect::<Vec<_>>();
+    let body = body
+        .iter()
+        .copied()
+        .skip_while(|byte| byte.is_ascii_whitespace())
+        .collect::<Vec<_>>();
     if body.is_empty() {
         return Err("Az Arduino HTTP-válaszának törzse üres volt.".into());
     }
 
     serde_json::from_slice(&body).map_err(|error| {
-        let preview = String::from_utf8_lossy(&body).chars().take(160).collect::<String>();
+        let preview = String::from_utf8_lossy(&body)
+            .chars()
+            .take(160)
+            .collect::<String>();
         format!("Hibás vagy csonka Arduino JSON-válasz: {error}. Részlet: {preview}")
     })
 }
 
 async fn get_json(state: &AppState, path: &str) -> Result<Value, String> {
     if state.ota_in_progress.load(Ordering::SeqCst) {
-        return Err("OTA-frissítés folyamatban; az automatikus Arduino-lekérések szünetelnek.".into());
+        return Err(
+            "OTA-frissítés folyamatban; az automatikus Arduino-lekérések szünetelnek.".into(),
+        );
     }
-    let config = state.config.lock().map_err(|_| "Beállítás zárolva".to_string())?.clone();
-    let learned_local = state.last_known_local_ip.lock().ok().and_then(|value| value.clone());
+    let config = state
+        .config
+        .lock()
+        .map_err(|_| "Beállítás zárolva".to_string())?
+        .clone();
+    let learned_local = state
+        .last_known_local_ip
+        .lock()
+        .ok()
+        .and_then(|value| value.clone());
     let targets = connection_targets(&config, learned_local.as_deref());
-    if targets.is_empty() { return Err("Nincs használható Arduino-cím beállítva.".into()); }
+    if targets.is_empty() {
+        return Err("Nincs használható Arduino-cím beállítva.".into());
+    }
 
     let request_path = path.to_string();
     let request_lock = Arc::clone(&state.arduino_request_lock);
     let base_config = config.clone();
 
     let result = tauri::async_runtime::spawn_blocking(move || {
-        let _guard = request_lock.lock().map_err(|_| "Az Arduino kérési sor zárolása megsérült.".to_string())?;
+        let _guard = request_lock
+            .lock()
+            .map_err(|_| "Az Arduino kérési sor zárolása megsérült.".to_string())?;
         let mut errors = Vec::new();
         for target in targets {
             let mut target_config = base_config.clone();
@@ -499,20 +632,34 @@ async fn get_json(state: &AppState, path: &str) -> Result<Value, String> {
                 ARDUINO_RESPONSE_TIMEOUT,
             ) {
                 Ok(value) => {
-                    let endpoint = format!("http://{}:{}{}", target.host, target.port, request_path);
+                    let endpoint =
+                        format!("http://{}:{}{}", target.host, target.port, request_path);
                     return Ok((value, endpoint, target.label));
                 }
-                Err(error) => errors.push(format!("{} {}:{}: {}", target.label, target.host, target.port, error)),
+                Err(error) => errors.push(format!(
+                    "{} {}:{}: {}",
+                    target.label, target.host, target.port, error
+                )),
             }
         }
-        Err(format!("Az Arduino egyik beállított címen sem érhető el. {}", errors.join(" | ")))
-    }).await;
+        Err(format!(
+            "Az Arduino egyik beállított címen sem érhető el. {}",
+            errors.join(" | ")
+        ))
+    })
+    .await;
 
     match result {
         Ok(Ok((value, endpoint, label))) => {
             if path.starts_with("/api/status") {
-                if let Some(ip) = value.get("ipAddress").and_then(Value::as_str).filter(|ip| is_private_or_local_ipv4(ip)) {
-                    if let Ok(mut cached) = state.last_known_local_ip.lock() { *cached = Some(ip.to_string()); }
+                if let Some(ip) = value
+                    .get("ipAddress")
+                    .and_then(Value::as_str)
+                    .filter(|ip| is_private_or_local_ipv4(ip))
+                {
+                    if let Ok(mut cached) = state.last_known_local_ip.lock() {
+                        *cached = Some(ip.to_string());
+                    }
                 }
             }
             add_log(state, &endpoint, true, format!("Sikeres kérés ({label})"));
@@ -525,7 +672,12 @@ async fn get_json(state: &AppState, path: &str) -> Result<Value, String> {
         }
         Err(error) => {
             let message = format!("Arduino háttérfeladat hiba: {error}");
-            add_log(state, &format!("Arduino API: {path}"), false, message.clone());
+            add_log(
+                state,
+                &format!("Arduino API: {path}"),
+                false,
+                message.clone(),
+            );
             Err(message)
         }
     }
@@ -572,7 +724,10 @@ struct ArduinoScheduleExport {
 fn decode_schedule_payload(payload: &str, index: u8) -> Result<Schedule, String> {
     let bytes = hex::decode(payload).map_err(|e| format!("Hibás időzítési HEX-adat: {e}"))?;
     if bytes.len() != 27 {
-        return Err(format!("Hibás időzítési rekordméret: {} bájt, 27 helyett.", bytes.len()));
+        return Err(format!(
+            "Hibás időzítési rekordméret: {} bájt, 27 helyett.",
+            bytes.len()
+        ));
     }
 
     let day = bytes[0];
@@ -585,7 +740,9 @@ fn decode_schedule_payload(payload: &str, index: u8) -> Result<Schedule, String>
     let mut leds = Vec::new();
     for led_index in 0..3usize {
         let at = 3 + led_index * 8;
-        if bytes[at] == 0 { continue; }
+        if bytes[at] == 0 {
+            continue;
+        }
         leds.push(ScheduleLed {
             id: (led_index + 1) as u8,
             enabled: bytes[at + 1] != 0,
@@ -605,17 +762,22 @@ fn decode_schedule_payload(payload: &str, index: u8) -> Result<Schedule, String>
 }
 
 async fn fetch_schedules(state: &AppState) -> Result<Vec<Schedule>, String> {
-    let status: ArduinoScheduleStatus = serde_json::from_value(get_json(state, "/api/status").await?)
-        .map_err(|e| format!("Az Arduino státuszválasza hibás: {e}"))?;
+    let status: ArduinoScheduleStatus =
+        serde_json::from_value(get_json(state, "/api/status").await?)
+            .map_err(|e| format!("Az Arduino státuszválasza hibás: {e}"))?;
 
     let mut all = Vec::with_capacity(status.schedule_count as usize);
     for index in 0..status.schedule_count {
         let exported: ArduinoScheduleExport = serde_json::from_value(
-            get_json(state, &format!("/api/schedules/export?index={index}")).await?
-        ).map_err(|e| format!("A(z) {index}. időzítés exportválasza hibás: {e}"))?;
+            get_json(state, &format!("/api/schedules/export?index={index}")).await?,
+        )
+        .map_err(|e| format!("A(z) {index}. időzítés exportválasza hibás: {e}"))?;
 
         if exported.index != index || exported.count != status.schedule_count {
-            return Err(format!("Az Arduino időzítés-export sorszáma eltér: várt {index}/{}, kapott {}/{}.", status.schedule_count, exported.index, exported.count));
+            return Err(format!(
+                "Az Arduino időzítés-export sorszáma eltér: várt {index}/{}, kapott {}/{}.",
+                status.schedule_count, exported.index, exported.count
+            ));
         }
         all.push(decode_schedule_payload(&exported.payload, index)?);
     }
@@ -625,15 +787,33 @@ async fn fetch_schedules(state: &AppState) -> Result<Vec<Schedule>, String> {
 }
 
 fn validate_schedules(items: &[Schedule]) -> Result<(), String> {
-    if items.len() > 60 { return Err("Az Arduino legfeljebb 60 időzítést tárolhat.".into()); }
+    if items.len() > 60 {
+        return Err("Az Arduino legfeljebb 60 időzítést tárolhat.".into());
+    }
     for s in items {
-        if !(1..=7).contains(&s.day) || s.time.len() != 5 || s.leds.is_empty() { return Err("Érvénytelen időzítés.".into()); }
+        if !(1..=7).contains(&s.day) || s.time.len() != 5 || s.leds.is_empty() {
+            return Err("Érvénytelen időzítés.".into());
+        }
         let mut parts = s.time.split(':');
-        let h: u8 = parts.next().and_then(|v| v.parse().ok()).ok_or("Hibás idő")?;
-        let m: u8 = parts.next().and_then(|v| v.parse().ok()).ok_or("Hibás idő")?;
-        if h > 23 || m > 59 { return Err("Hibás időérték.".into()); }
+        let h: u8 = parts
+            .next()
+            .and_then(|v| v.parse().ok())
+            .ok_or("Hibás idő")?;
+        let m: u8 = parts
+            .next()
+            .and_then(|v| v.parse().ok())
+            .ok_or("Hibás idő")?;
+        if h > 23 || m > 59 {
+            return Err("Hibás időérték.".into());
+        }
         for l in &s.leds {
-            if !(1..=3).contains(&l.id) || l.effect > 4 || !(1..=100).contains(&l.speed) || l.color.len() != 3 { return Err("Érvénytelen LED-időzítés.".into()); }
+            if !(1..=3).contains(&l.id)
+                || l.effect > 4
+                || !(1..=100).contains(&l.speed)
+                || l.color.len() != 3
+            {
+                return Err("Érvénytelen LED-időzítés.".into());
+            }
         }
     }
     Ok(())
@@ -641,35 +821,97 @@ fn validate_schedules(items: &[Schedule]) -> Result<(), String> {
 
 fn encode_schedule(s: &Schedule) -> Result<String, String> {
     let mut parts = s.time.split(':');
-    let hour: u8 = parts.next().and_then(|v| v.parse().ok()).ok_or("Hibás idő")?;
-    let minute: u8 = parts.next().and_then(|v| v.parse().ok()).ok_or("Hibás idő")?;
+    let hour: u8 = parts
+        .next()
+        .and_then(|v| v.parse().ok())
+        .ok_or("Hibás idő")?;
+    let minute: u8 = parts
+        .next()
+        .and_then(|v| v.parse().ok())
+        .ok_or("Hibás idő")?;
     let mut bytes = vec![s.day, hour, minute];
     for id in 1..=3u8 {
         if let Some(l) = s.leds.iter().find(|l| l.id == id) {
-            bytes.extend_from_slice(&[1, l.enabled as u8, l.brightness, l.effect, l.speed, l.color[0], l.color[1], l.color[2]]);
-        } else { bytes.extend_from_slice(&[0; 8]); }
+            bytes.extend_from_slice(&[
+                1,
+                l.enabled as u8,
+                l.brightness,
+                l.effect,
+                l.speed,
+                l.color[0],
+                l.color[1],
+                l.color[2],
+            ]);
+        } else {
+            bytes.extend_from_slice(&[0; 8]);
+        }
     }
     Ok(hex::encode(bytes))
 }
 
-#[derive(Debug, Deserialize)] struct GitHubRelease { tag_name: String, published_at: Option<String>, body: Option<String>, assets: Vec<GitHubAsset> }
-#[derive(Debug, Deserialize)] struct GitHubAsset { name: String, browser_download_url: String }
+#[derive(Debug, Deserialize)]
+struct GitHubRelease {
+    tag_name: String,
+    published_at: Option<String>,
+    body: Option<String>,
+    assets: Vec<GitHubAsset>,
+}
+#[derive(Debug, Deserialize)]
+struct GitHubAsset {
+    name: String,
+    browser_download_url: String,
+}
 
 const FIRMWARE_REPOSITORY: &str = "LexyGuru/arduino-led-controller";
 const FIRMWARE_RELEASE_TAG: &str = "firmware-latest";
 const OTA_UPLOAD_PORT: u16 = 65280;
 
 async fn latest_firmware(_config: &Config) -> Result<FirmwareArtifact, String> {
-    let url = format!("https://api.github.com/repos/{}/releases/tags/{}", FIRMWARE_REPOSITORY, FIRMWARE_RELEASE_TAG);
-    let client = reqwest::Client::builder().timeout(Duration::from_secs(25)).build().map_err(|e| e.to_string())?;
-    let release: GitHubRelease = client.get(url).header("User-Agent", "arduino-led-controller-tauri").header("Accept", "application/vnd.github+json")
-        .send().await.map_err(|e| format!("GitHub kapcsolati hiba: {e}"))?.error_for_status().map_err(|e| format!("GitHub válaszhiba: {e}"))?.json().await.map_err(|e| e.to_string())?;
-    let binary = release.assets.iter().find(|a| a.name.ends_with(".ino.bin")).ok_or("A kiadás nem tartalmaz .ino.bin firmware-t.")?;
-    let checksum = release.assets.iter().find(|a| a.name.ends_with(".ino.bin.sha256")).ok_or("A kiadás nem tartalmaz SHA-256 fájlt.")?;
-    let version = release.body.as_deref().and_then(|b| b.lines().find_map(|line| line.strip_prefix("Firmware verzió:").map(|v| v.trim().to_string())));
-    Ok(FirmwareArtifact { name: binary.name.clone(), download_url: binary.browser_download_url.clone(), checksum_url: checksum.browser_download_url.clone(), firmware_version: version, tag: release.tag_name, created_at: release.published_at })
+    let url = format!(
+        "https://api.github.com/repos/{}/releases/tags/{}",
+        FIRMWARE_REPOSITORY, FIRMWARE_RELEASE_TAG
+    );
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(25))
+        .build()
+        .map_err(|e| e.to_string())?;
+    let release: GitHubRelease = client
+        .get(url)
+        .header("User-Agent", "arduino-led-controller-tauri")
+        .header("Accept", "application/vnd.github+json")
+        .send()
+        .await
+        .map_err(|e| format!("GitHub kapcsolati hiba: {e}"))?
+        .error_for_status()
+        .map_err(|e| format!("GitHub válaszhiba: {e}"))?
+        .json()
+        .await
+        .map_err(|e| e.to_string())?;
+    let binary = release
+        .assets
+        .iter()
+        .find(|a| a.name.ends_with(".ino.bin"))
+        .ok_or("A kiadás nem tartalmaz .ino.bin firmware-t.")?;
+    let checksum = release
+        .assets
+        .iter()
+        .find(|a| a.name.ends_with(".ino.bin.sha256"))
+        .ok_or("A kiadás nem tartalmaz SHA-256 fájlt.")?;
+    let version = release.body.as_deref().and_then(|b| {
+        b.lines().find_map(|line| {
+            line.strip_prefix("Firmware verzió:")
+                .map(|v| v.trim().to_string())
+        })
+    });
+    Ok(FirmwareArtifact {
+        name: binary.name.clone(),
+        download_url: binary.browser_download_url.clone(),
+        checksum_url: checksum.browser_download_url.clone(),
+        firmware_version: version,
+        tag: release.tag_name,
+        created_at: release.published_at,
+    })
 }
-
 
 fn normalize_version(value: &str) -> String {
     value.trim().trim_start_matches('v').to_ascii_lowercase()
@@ -697,11 +939,50 @@ fn safe_firmware_filename(name: &str) -> String {
     }
 }
 
-fn read_ota_password(app: &AppHandle) -> Result<String, String> { Ok(fs::read_to_string(secret_path(app)?).unwrap_or_default().trim().to_string()) }
+fn profile_slug(value: &str) -> String {
+    let slug: String = value
+        .trim()
+        .to_ascii_lowercase()
+        .chars()
+        .map(|ch| {
+            if ch.is_ascii_alphanumeric() || matches!(ch, '-' | '_' | '.') {
+                ch
+            } else {
+                '-'
+            }
+        })
+        .collect();
+    let slug = slug.trim_matches('-');
+    if slug.is_empty() {
+        "default".into()
+    } else {
+        slug.chars().take(80).collect()
+    }
+}
+
+fn profile_account(config: &Config, kind: &str) -> String {
+    format!("direct:{}:{}", profile_slug(&config.profile_name), kind)
+}
+
+fn read_ota_password(app: &AppHandle) -> Result<String, String> {
+    Ok(fs::read_to_string(secret_path(app)?)
+        .unwrap_or_default()
+        .trim()
+        .to_string())
+}
+
+async fn read_profile_ota_password(config: &Config) -> Result<String, String> {
+    Ok(
+        credential_bridge::get_profile_secret(profile_account(config, "ota-password"))
+            .await?
+            .unwrap_or_default(),
+    )
+}
 fn write_ota_password(app: &AppHandle, password: &str) -> Result<(), String> {
     let path = secret_path(app)?;
     fs::write(&path, password.as_bytes()).map_err(|e| e.to_string())?;
-    #[cfg(unix)] {
+    #[cfg(unix)]
+    {
         use std::os::unix::fs::PermissionsExt;
         fs::set_permissions(path, fs::Permissions::from_mode(0o600)).map_err(|e| e.to_string())?;
     }
@@ -731,7 +1012,11 @@ fn status_ota_target(status: &Value) -> Result<(String, u16), String> {
     Ok((address, port))
 }
 
-fn ota_target_from_status(config: &Config, status: &Value, terminal_mode: bool) -> Result<(String, u16), String> {
+fn ota_target_from_status(
+    config: &Config,
+    status: &Value,
+    terminal_mode: bool,
+) -> Result<(String, u16), String> {
     // A macOS Terminal külön folyamatként fut, ezért ott mindig az Arduino
     // saját, aktuális LAN-címét használjuk. Ezt minden OTA előtt frissen az
     // /api/status ipAddress és otaPort mezőiből olvassuk ki; nincs beégetett IP.
@@ -805,27 +1090,34 @@ fn find_ota_tool(app: &AppHandle, config: &Config) -> Option<PathBuf> {
     }
 
     if let Ok(resource_dir) = app.path().resource_dir() {
-        candidates.push(resource_dir.join("tools").join("arduinoOTA").join("arduinoOTA"));
+        candidates.push(
+            resource_dir
+                .join("tools")
+                .join("arduinoOTA")
+                .join("arduinoOTA"),
+        );
         candidates.push(resource_dir.join("arduinoOTA"));
     }
 
-    candidates.into_iter().find(|candidate| ota_tool_works(candidate))
+    candidates
+        .into_iter()
+        .find(|candidate| ota_tool_works(candidate))
 }
 
 fn use_terminal_ota(app: &AppHandle, config: &Config) -> Result<bool, String> {
     match config.ota_upload_mode.trim() {
-        "native" => Ok(false),
-        "terminal" => {
+        "bundled" => Ok(false),
+        "system" | "custom" => {
             #[cfg(target_os = "macos")]
             {
                 if find_ota_tool(app, config).is_none() {
-                    return Err("A Terminal OTA mód van kiválasztva, de nem található működő arduinoOTA feltöltő.".into());
+                    return Err("A rendszer/egyedi arduinoOTA mód van kiválasztva, de nem található működő arduinoOTA feltöltő.".into());
                 }
                 Ok(true)
             }
             #[cfg(not(target_os = "macos"))]
             {
-                Err("A Terminal OTA mód csak macOS-en használható.".into())
+                Err("A külső arduinoOTA konzol ebben a csomagban macOS-en támogatott; Windowson és Linuxon a beépített uploader az alapértelmezett.".into())
             }
         }
         _ => {
@@ -851,7 +1143,10 @@ fn percentage_from_ota_line(line: &str) -> Option<u8> {
     if start == percent_at {
         return None;
     }
-    line[start..percent_at].parse::<u8>().ok().map(|value| value.min(100))
+    line[start..percent_at]
+        .parse::<u8>()
+        .ok()
+        .map(|value| value.min(100))
 }
 
 fn shell_single_quote(value: &str) -> String {
@@ -873,7 +1168,8 @@ async fn upload_firmware_in_terminal(
         "A macOS Terminal módhoz nem található működő arduinoOTA. Ellenőrzött helyek: a beállított útvonal, /usr/local/bin/arduinoOTA és /opt/homebrew/bin/arduinoOTA.".to_string()
     })?;
     let work_dir = firmware_dir(app)?.join("terminal-ota");
-    fs::create_dir_all(&work_dir).map_err(|error| format!("Az OTA Terminal munkamappa nem hozható létre: {error}"))?;
+    fs::create_dir_all(&work_dir)
+        .map_err(|error| format!("Az OTA Terminal munkamappa nem hozható létre: {error}"))?;
 
     let run_id = unix_millis();
     let script_path = work_dir.join(format!("ota-upload-{run_id}.command"));
@@ -955,7 +1251,10 @@ exit "$STATUS"
         &app,
         "Terminal",
         "info",
-        format!("macOS Terminal megnyitása: {}", script_path.to_string_lossy()),
+        format!(
+            "macOS Terminal megnyitása: {}",
+            script_path.to_string_lossy()
+        ),
         Some(53),
     );
 
@@ -965,7 +1264,9 @@ exit "$STATUS"
         .status()
         .map_err(|error| format!("A macOS Terminal nem indítható: {error}"))?;
     if !open_status.success() {
-        return Err(format!("A macOS Terminal megnyitása sikertelen: {open_status}"));
+        return Err(format!(
+            "A macOS Terminal megnyitása sikertelen: {open_status}"
+        ));
     }
 
     let connection_hint = format!(
@@ -1108,7 +1409,9 @@ fn parse_ota_http_response(response: &[u8]) -> Result<(u16, String), String> {
         .nth(1)
         .and_then(|value| value.parse::<u16>().ok())
         .ok_or_else(|| format!("Érvénytelen Arduino OTA HTTP-státusz: {status_line}"))?;
-    let body = String::from_utf8_lossy(&response[split + 4..]).trim().to_string();
+    let body = String::from_utf8_lossy(&response[split + 4..])
+        .trim()
+        .to_string();
     Ok((status_code, body))
 }
 
@@ -1426,23 +1729,114 @@ fn runtime_capabilities() -> RuntimeCapabilities {
     } else {
         "unknown"
     };
-    RuntimeCapabilities { platform: platform.into(), mobile, ota_supported: !mobile }
+    RuntimeCapabilities {
+        platform: platform.into(),
+        mobile,
+        ota_supported: !mobile,
+    }
 }
 
-#[tauri::command] fn load_config(state: State<AppState>) -> Result<Config, String> { Ok(state.config.lock().map_err(|_| "Beállítás zárolva".to_string())?.clone()) }
-#[tauri::command] fn save_config(app: AppHandle, state: State<AppState>, config: Config) -> Result<(), String> {
+#[tauri::command]
+fn load_config(state: State<AppState>) -> Result<Config, String> {
+    Ok(state
+        .config
+        .lock()
+        .map_err(|_| "Beállítás zárolva".to_string())?
+        .clone())
+}
+
+#[tauri::command]
+async fn migrate_native_credentials(
+    app: AppHandle,
+    state: State<'_, AppState>,
+) -> Result<bool, String> {
+    let mut config = state
+        .config
+        .lock()
+        .map_err(|_| "Beállítás zárolva".to_string())?
+        .clone();
+    let mut changed = false;
+    if !config.arduino_api_key.trim().is_empty() {
+        credential_bridge::set_profile_secret(
+            profile_account(&config, "device-key"),
+            config.arduino_api_key.clone(),
+        )
+        .await?;
+        config.arduino_api_key.clear();
+        changed = true;
+    }
+    let legacy_ota = read_ota_password(&app)?;
+    if !legacy_ota.is_empty() {
+        credential_bridge::set_profile_secret(profile_account(&config, "ota-password"), legacy_ota)
+            .await?;
+        let _ = fs::remove_file(secret_path(&app)?);
+        changed = true;
+    }
+    if let Some(secret) =
+        credential_bridge::get_profile_secret(profile_account(&config, "device-key")).await?
+    {
+        config.arduino_api_key = secret;
+    }
+    fs::write(
+        config_path(&app)?,
+        serde_json::to_vec_pretty(&config).map_err(|e| e.to_string())?,
+    )
+    .map_err(|e| e.to_string())?;
+    *state
+        .config
+        .lock()
+        .map_err(|_| "Beállítás zárolva".to_string())? = config;
+    Ok(changed)
+}
+
+#[tauri::command]
+async fn save_config(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    mut config: Config,
+) -> Result<(), String> {
     validate_config(&config)?;
-    fs::write(config_path(&app)?, serde_json::to_vec_pretty(&config).map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
-    *state.config.lock().map_err(|_| "Beállítás zárolva".to_string())? = config;
-    if let Ok(mut cached) = state.last_known_local_ip.lock() { *cached = None; }
+    if !config.arduino_api_key.trim().is_empty() {
+        credential_bridge::set_profile_secret(
+            profile_account(&config, "device-key"),
+            config.arduino_api_key.clone(),
+        )
+        .await?;
+    }
+    let persisted = config.clone();
+    fs::write(
+        config_path(&app)?,
+        serde_json::to_vec_pretty(&persisted).map_err(|e| e.to_string())?,
+    )
+    .map_err(|e| e.to_string())?;
+    if let Some(secret) =
+        credential_bridge::get_profile_secret(profile_account(&config, "device-key")).await?
+    {
+        config.arduino_api_key = secret;
+    }
+    *state
+        .config
+        .lock()
+        .map_err(|_| "Beállítás zárolva".to_string())? = config;
+    if let Ok(mut cached) = state.last_known_local_ip.lock() {
+        *cached = None;
+    }
     Ok(())
 }
+
 #[tauri::command]
-fn save_ota_password(app: AppHandle, password: String) -> Result<(), String> {
+async fn save_ota_password(state: State<'_, AppState>, password: String) -> Result<(), String> {
     if cfg!(any(target_os = "android", target_os = "ios")) {
-        return Err("Mobilplatformon az OTA-jelszó mentése és a firmware-frissítés le van tiltva.".into());
+        return Err(
+            "Mobilplatformon az OTA-jelszó mentése és a firmware-frissítés le van tiltva.".into(),
+        );
     }
-    write_ota_password(&app, &password)
+    let config = state
+        .config
+        .lock()
+        .map_err(|_| "Beállítás zárolva".to_string())?
+        .clone();
+    credential_bridge::set_profile_secret(profile_account(&config, "ota-password"), password).await
 }
 #[tauri::command]
 async fn arduino_status(state: State<'_, AppState>) -> Result<Value, String> {
@@ -1454,15 +1848,35 @@ async fn arduino_logs(state: State<'_, AppState>, after_id: u32) -> Result<Value
     let value = get_json(&state, &format!("/api/console/logs?after={after_id}")).await?;
     normalize_console_response(value)
 }
-#[tauri::command] fn network_logs(state: State<AppState>) -> Result<Vec<NetworkLog>, String> { Ok(state.network_logs.lock().map_err(|_| "Napló zárolva".to_string())?.clone()) }
-#[tauri::command] async fn set_led(state: State<'_, AppState>, id: u8, enabled: bool, brightness: u8, effect: u8, speed: u8, color: Vec<u8>) -> Result<Value, String> {
-    if !(1..=3).contains(&id) || color.len() != 3 || effect > 4 || speed == 0 { return Err("Érvénytelen LED-beállítás.".into()); }
+#[tauri::command]
+fn network_logs(state: State<AppState>) -> Result<Vec<NetworkLog>, String> {
+    Ok(state
+        .network_logs
+        .lock()
+        .map_err(|_| "Napló zárolva".to_string())?
+        .clone())
+}
+#[tauri::command]
+async fn set_led(
+    state: State<'_, AppState>,
+    id: u8,
+    enabled: bool,
+    brightness: u8,
+    effect: u8,
+    speed: u8,
+    color: Vec<u8>,
+) -> Result<Value, String> {
+    if !(1..=3).contains(&id) || color.len() != 3 || effect > 4 || speed == 0 {
+        return Err("Érvénytelen LED-beállítás.".into());
+    }
     get_json(&state, &format!("/api/led/{id}?enabled={}&brightness={brightness}&effect={effect}&speed={speed}&color={},{},{}", enabled as u8, color[0], color[1], color[2])).await
 }
 #[tauri::command]
 fn load_schedules(app: AppHandle) -> Result<Vec<Schedule>, String> {
     let path = schedules_path(&app)?;
-    if !path.exists() { return Ok(Vec::new()); }
+    if !path.exists() {
+        return Ok(Vec::new());
+    }
     let bytes = fs::read(path).map_err(|e| format!("A helyi időzítésfájl nem olvasható: {e}"))?;
     parse_schedules_json(&bytes)
 }
@@ -1476,25 +1890,50 @@ fn import_schedules_file(path: String) -> Result<Vec<Schedule>, String> {
 #[tauri::command]
 fn export_schedules_file(path: String, schedules: Vec<Schedule>) -> Result<(), String> {
     let mut output = PathBuf::from(path);
-    if output.extension().and_then(|v| v.to_str()).map(|v| !v.eq_ignore_ascii_case("json")).unwrap_or(true) {
+    if output
+        .extension()
+        .and_then(|v| v.to_str())
+        .map(|v| !v.eq_ignore_ascii_case("json"))
+        .unwrap_or(true)
+    {
         output.set_extension("json");
     }
     let bytes = schedule_file_bytes(schedules)?;
     fs::write(&output, bytes).map_err(|e| format!("A JSON-fájl nem menthető: {e}"))
 }
-#[tauri::command] async fn load_schedules_from_arduino(app: AppHandle, state: State<'_, AppState>) -> Result<Vec<Schedule>, String> {
+#[tauri::command]
+async fn load_schedules_from_arduino(
+    app: AppHandle,
+    state: State<'_, AppState>,
+) -> Result<Vec<Schedule>, String> {
     let schedules = fetch_schedules(&state).await?;
-    fs::write(schedules_path(&app)?, schedule_file_bytes(schedules.clone())?).map_err(|e| e.to_string())?;
+    fs::write(
+        schedules_path(&app)?,
+        schedule_file_bytes(schedules.clone())?,
+    )
+    .map_err(|e| e.to_string())?;
     Ok(schedules)
 }
-#[tauri::command] async fn save_and_sync_schedules(app: AppHandle, state: State<'_, AppState>, schedules: Vec<Schedule>) -> Result<Value, String> {
+#[tauri::command]
+async fn save_and_sync_schedules(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    schedules: Vec<Schedule>,
+) -> Result<Value, String> {
     validate_schedules(&schedules)?;
-    fs::write(schedules_path(&app)?, schedule_file_bytes(schedules.clone())?).map_err(|e| e.to_string())?;
+    fs::write(
+        schedules_path(&app)?,
+        schedule_file_bytes(schedules.clone())?,
+    )
+    .map_err(|e| e.to_string())?;
     if schedules.is_empty() {
         get_json(&state, "/api/schedules/clear").await?;
         let verified = fetch_schedules(&state).await?;
         if !verified.is_empty() {
-            return Err(format!("Az Arduino törlés után még {} időzítést jelent.", verified.len()));
+            return Err(format!(
+                "Az Arduino törlés után még {} időzítést jelent.",
+                verified.len()
+            ));
         }
         return Ok(serde_json::json!({"success":true,"count":0,"verifiedCount":0}));
     }
@@ -1502,15 +1941,26 @@ fn export_schedules_file(path: String, schedules: Vec<Schedule>) -> Result<(), S
     let mut last = Value::Null;
     for (index, schedule) in schedules.iter().enumerate() {
         let payload = encode_schedule(schedule)?;
-        last = get_json(&state, &format!("/api/schedules/chunk?index={index}&total={total}&payload={payload}")).await?;
+        last = get_json(
+            &state,
+            &format!("/api/schedules/chunk?index={index}&total={total}&payload={payload}"),
+        )
+        .await?;
     }
     let count = last.get("count").and_then(Value::as_u64).unwrap_or(0) as usize;
-    if count != total { return Err(format!("Az Arduino csak {count}/{total} időzítést mentett el.")); }
+    if count != total {
+        return Err(format!(
+            "Az Arduino csak {count}/{total} időzítést mentett el."
+        ));
+    }
     let verified = fetch_schedules(&state).await?;
     Ok(serde_json::json!({"success":true,"count":count,"verifiedCount":verified.len()}))
 }
 #[tauri::command]
-async fn firmware_status(app: AppHandle, state: State<'_, AppState>) -> Result<FirmwareStatus, String> {
+async fn firmware_status(
+    app: AppHandle,
+    state: State<'_, AppState>,
+) -> Result<FirmwareStatus, String> {
     let config = state
         .config
         .lock()
@@ -1548,7 +1998,8 @@ async fn firmware_status(app: AppHandle, state: State<'_, AppState>) -> Result<F
         Ok(true) => {
             let tool = find_ota_tool(&app, &config);
             status.ota_tool_installed = tool.is_some();
-            status.ota_tool_path = tool.map(|path| format!("macOS Terminal + {}", path.to_string_lossy()));
+            status.ota_tool_path =
+                tool.map(|path| format!("macOS Terminal + {}", path.to_string_lossy()));
             status.ota_tool_error = None;
         }
         Ok(false) => {
@@ -1562,7 +2013,7 @@ async fn firmware_status(app: AppHandle, state: State<'_, AppState>) -> Result<F
             status.ota_tool_error = Some(error);
         }
     }
-    status.ota_password_configured = !read_ota_password(&app)?.is_empty();
+    status.ota_password_configured = !read_profile_ota_password(&config).await?.is_empty();
 
     match latest_firmware(&config).await {
         Ok(artifact) => {
@@ -1606,21 +2057,34 @@ async fn firmware_update_inner(
     app: &AppHandle,
     state: &AppState,
 ) -> Result<FirmwareStatus, String> {
-    emit_ota_progress(app, "Indítás", "info", "Önálló Tauri OTA-frissítés előkészítése…", Some(1));
+    emit_ota_progress(
+        app,
+        "Indítás",
+        "info",
+        "Önálló Tauri OTA-frissítés előkészítése…",
+        Some(1),
+    );
 
     let config = state
         .config
         .lock()
         .map_err(|_| "Beállítás zárolva".to_string())?
         .clone();
-    let password = read_ota_password(app)?;
+    let password = read_profile_ota_password(&config).await?;
     if password.is_empty() {
         return Err("Hiányzik az OTA-jelszó.".into());
     }
-    emit_ota_progress(app, "Előkészítés", "success", "OTA-jelszó betöltve.", Some(3));
+    emit_ota_progress(
+        app,
+        "Előkészítés",
+        "success",
+        "OTA-jelszó betöltve.",
+        Some(3),
+    );
     let terminal_mode = use_terminal_ota(app, &config)?;
     let ota_engine_label = if terminal_mode {
-        let tool = find_ota_tool(app, &config).ok_or("A Terminal OTA módhoz nem található arduinoOTA.")?;
+        let tool =
+            find_ota_tool(app, &config).ok_or("A Terminal OTA módhoz nem található arduinoOTA.")?;
         format!("macOS Terminal + arduinoOTA ({})", tool.to_string_lossy())
     } else {
         "Beépített Tauri/Rust HTTP OTA-motor".to_string()
@@ -1633,7 +2097,13 @@ async fn firmware_update_inner(
         Some(5),
     );
 
-    emit_ota_progress(app, "GitHub", "info", "Legfrissebb firmware-kiadás lekérdezése…", Some(7));
+    emit_ota_progress(
+        app,
+        "GitHub",
+        "info",
+        "Legfrissebb firmware-kiadás lekérdezése…",
+        Some(7),
+    );
     let artifact = latest_firmware(&config).await?;
     let available = artifact
         .firmware_version
@@ -1648,7 +2118,13 @@ async fn firmware_update_inner(
         Some(10),
     );
 
-    emit_ota_progress(app, "Arduino", "info", "Arduino státuszának és OTA-céljának ellenőrzése…", Some(12));
+    emit_ota_progress(
+        app,
+        "Arduino",
+        "info",
+        "Arduino státuszának és OTA-céljának ellenőrzése…",
+        Some(12),
+    );
     let status_json = get_json(state, "/api/status")
         .await
         .map_err(|error| format!("OTA indítás előtt nem olvasható az Arduino státusza: {error}"))?;
@@ -1727,7 +2203,13 @@ async fn firmware_update_inner(
         Some(30),
     );
 
-    emit_ota_progress(app, "Ellenőrzés", "info", "SHA-256 ellenőrzőösszeg letöltése…", Some(33));
+    emit_ota_progress(
+        app,
+        "Ellenőrzés",
+        "info",
+        "SHA-256 ellenőrzőösszeg letöltése…",
+        Some(33),
+    );
     let checksum_text = download_client
         .get(&artifact.checksum_url)
         .header("User-Agent", "arduino-led-controller-tauri/3.0.19")
@@ -1802,9 +2284,7 @@ async fn firmware_update_inner(
         .unwrap_or("");
 
     let installed_normalized = installed.as_deref().map(normalize_version);
-    if firmware_feature == "ota-diagnostics"
-        && installed_normalized.as_deref() == Some("4.1.15")
-    {
+    if firmware_feature == "ota-diagnostics" && installed_normalized.as_deref() == Some("4.1.15") {
         emit_ota_progress(
             app,
             "Arduino",
@@ -1848,7 +2328,6 @@ async fn firmware_update_inner(
         }
     }
 
-
     {
         let mut current = state
             .firmware_status
@@ -1857,7 +2336,10 @@ async fn firmware_update_inner(
         current.state = "uploading".into();
         current.phase = Some("Feltöltés".into());
         current.progress = Some(52);
-        current.message = format!("OTA feltöltés: {}:{} • {}…", ota_address, ota_port, ota_engine_label);
+        current.message = format!(
+            "OTA feltöltés: {}:{} • {}…",
+            ota_address, ota_port, ota_engine_label
+        );
     }
 
     emit_ota_progress(
@@ -1867,12 +2349,16 @@ async fn firmware_update_inner(
         if terminal_mode {
             format!(
                 "A Tauri macOS Terminal ablakban indítja az arduinoOTA feltöltőt: {}:{} • {} bájt",
-                ota_address, ota_port, firmware.len()
+                ota_address,
+                ota_port,
+                firmware.len()
             )
         } else {
             format!(
                 "A Tauri beépített kliense küldi a binárist: POST http://{}:{}/sketch • {} bájt",
-                ota_address, ota_port, firmware.len()
+                ota_address,
+                ota_port,
+                firmware.len()
             )
         },
         Some(52),
@@ -1921,7 +2407,8 @@ async fn firmware_update_inner(
         Some(92),
     );
 
-    let installed_after_restart = confirm_restart(app, state, artifact.firmware_version.clone()).await?;
+    let installed_after_restart =
+        confirm_restart(app, state, artifact.firmware_version.clone()).await?;
     state.ota_in_progress.store(false, Ordering::SeqCst);
     let final_status = FirmwareStatus {
         state: "success".into(),
@@ -1954,7 +2441,10 @@ async fn firmware_update_inner(
 }
 
 #[tauri::command]
-async fn firmware_update(app: AppHandle, state: State<'_, AppState>) -> Result<FirmwareStatus, String> {
+async fn firmware_update(
+    app: AppHandle,
+    state: State<'_, AppState>,
+) -> Result<FirmwareStatus, String> {
     if cfg!(any(target_os = "android", target_os = "ios")) {
         return Err("Mobilalkalmazásból firmware-frissítés nem indítható. Használj Windows, macOS vagy Linux gépet.".into());
     }
@@ -1972,7 +2462,6 @@ async fn firmware_update(app: AppHandle, state: State<'_, AppState>) -> Result<F
         }
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -1995,7 +2484,10 @@ mod tests {
         });
         let output = normalize_console_response(input).expect("normalizálható konzolválasz");
         assert_eq!(output.get("lastId").and_then(Value::as_u64), Some(7));
-        assert_eq!(output.get("logs").and_then(Value::as_array).map(Vec::len), Some(2));
+        assert_eq!(
+            output.get("logs").and_then(Value::as_array).map(Vec::len),
+            Some(2)
+        );
     }
 
     #[test]
@@ -2007,7 +2499,6 @@ mod tests {
         let output = normalize_console_response(input).expect("normalizálható konzoltömb");
         assert_eq!(output.get("lastId").and_then(Value::as_u64), Some(9));
     }
-
 
     #[test]
     fn native_ota_http_response_is_parsed() {
@@ -2069,7 +2560,10 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
-            let config = fs::read(config_path(app.handle()).map_err(std::io::Error::other)?).ok().and_then(|b| serde_json::from_slice(&b).ok()).unwrap_or_default();
+            let config = fs::read(config_path(app.handle()).map_err(std::io::Error::other)?)
+                .ok()
+                .and_then(|b| serde_json::from_slice(&b).ok())
+                .unwrap_or_default();
             app.manage(AppState {
                 config: Mutex::new(config),
                 network_logs: Mutex::new(Vec::new()),
@@ -2083,6 +2577,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             runtime_capabilities,
             load_config,
+            migrate_native_credentials,
             save_config,
             save_ota_password,
             arduino_status,

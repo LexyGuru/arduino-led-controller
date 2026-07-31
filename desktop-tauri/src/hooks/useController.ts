@@ -740,6 +740,9 @@ export function useController(
                 })
               );
 
+          await tauriApi
+            .migrateNativeCredentials();
+
           const saved =
             await tauriApi
               .loadConfig()

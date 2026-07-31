@@ -3,6 +3,7 @@ import type { ArduinoConsoleResponse, ArduinoStatus, ConnectionConfig, FirmwareS
 
 export const tauriApi = {
   runtimeCapabilities: () => invoke<RuntimeCapabilities>('runtime_capabilities'),
+  migrateNativeCredentials: () => invoke<boolean>('migrate_native_credentials'),
   loadConfig: () => invoke<ConnectionConfig>('load_config'),
   saveConfig: (config: ConnectionConfig) => invoke<void>('save_config', { config }),
   saveOtaPassword: (password: string) => invoke<void>('save_ota_password', { password }),
