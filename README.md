@@ -9,7 +9,7 @@ Többplatformos LED-vezérlő rendszer Arduino UNO R4 WiFi és három WS2812B LE
 
 | Elem | Verzió / állapot |
 |---|---|
-| Alkalmazás | `5.0.0-beta.1` |
+| Alkalmazás | `5.0.0-beta.2` |
 | Firmware | `4.3.0-beta.1` |
 | Direct API | `1.0.0` |
 | Firmware feature | `f14-complete-direct-api-storage` |

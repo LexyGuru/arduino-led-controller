@@ -25,7 +25,7 @@ concurrency:
 env:
   NODE_VERSION: "24"
   EXPECTED_BRANCH: next/v5-rearchitecture
-  EXPECTED_VERSION: 5.0.0-beta.1
+  EXPECTED_VERSION: 5.0.0-beta.2
   EXPECTED_FIRMWARE_VERSION: 4.3.0-beta.1
 
 jobs:
@@ -481,7 +481,9 @@ jobs:
           test -f "${BIN}"
           FW_VERSION="$(sed -nE 's/^#define[[:space:]]+FIRMWARE_VERSION[[:space:]]+"([^"]+)".*/\1/p' firmware/ArduinoLedController/ArduinoLedController.ino | head -n 1)"
           test "${FW_VERSION}" = "${EXPECTED_FIRMWARE_VERSION}"
-          cp "${BIN}" "artifacts/Arduino_LED_Controller_Firmware_${FW_VERSION}_UNO_R4_WiFi.bin"
+          OUT="artifacts/Arduino_LED_Controller_Firmware_${FW_VERSION}_UNO_R4_WiFi.bin"
+          cp "${BIN}" "${OUT}"
+          sha256sum "${OUT}" > "${OUT}.sha256"
 
       - name: Upload firmware artifact
         uses: actions/upload-artifact@v5
@@ -545,9 +547,9 @@ jobs:
 
       - name: Add installation assets and release documentation
         run: |
-          cp docs/v5/BETA1_INSTALLATION_GUIDE.md release-assets/
-          cp docs/v5/BETA1_RELEASE_NOTES.md release-assets/
-          cp docs/v5/BETA1_RELEASE_CHECKLIST.md release-assets/
+          cp docs/v5/BETA2_INSTALLATION_GUIDE.md release-assets/
+          cp docs/v5/BETA2_RELEASE_NOTES.md release-assets/
+          cp docs/v5/BETA2_RELEASE_CHECKLIST.md release-assets/
           cp deploy/install-beta-lxc.sh release-assets/
           cp deploy/beta-lxc.env.example release-assets/
           chmod 0755 release-assets/install-beta-lxc.sh
@@ -564,6 +566,7 @@ jobs:
           test "$(find release-assets -maxdepth 1 -type f -name '*.aab' | wc -l | tr -d ' ')" -eq 1
           test "$(find release-assets -maxdepth 1 -type f -name '*.ipa' | wc -l | tr -d ' ')" -eq 1
           test "$(find release-assets -maxdepth 1 -type f -name '*.bin' | wc -l | tr -d ' ')" -eq 1
+          test "$(find release-assets -maxdepth 1 -type f -name '*.bin.sha256' | wc -l | tr -d ' ')" -eq 1
           test "$(find release-assets -maxdepth 1 -type f -name '*.tar.gz' | wc -l | tr -d ' ')" -eq 1
           find release-assets -maxdepth 1 -type f -print | sort
 
@@ -615,19 +618,64 @@ jobs:
                   "sha256": hashlib.sha256(payload).hexdigest(),
               })
 
+          version = os.environ["VERSION"]
+          tag = os.environ["TAG"]
+          firmware_version = "4.3.0-beta.1"
+          firmware_name = f"Arduino_LED_Controller_Firmware_{firmware_version}_UNO_R4_WiFi.bin"
+          firmware = next(item for item in files if item["name"] == firmware_name)
+
           manifest = {
-              "schemaVersion": 1,
+              "schemaVersion": 2,
               "product": "Arduino LED Controller",
-              "version": os.environ["VERSION"],
-              "tag": os.environ["TAG"],
+              "version": version,
+              "tag": tag,
               "commit": os.environ["GITHUB_SHA"],
               "channel": "beta",
               "prerelease": True,
               "productionDeploymentIncluded": False,
+              "compatibility": {
+                  "board": "arduino-uno-r4-wifi",
+                  "directApiVersion": "1.0.0",
+                  "applicationVersion": version,
+                  "firmwareVersion": firmware_version,
+              },
               "files": files,
           }
           (root / "RELEASE-MANIFEST.json").write_text(
               json.dumps(manifest, indent=2, ensure_ascii=False) + "\n",
+              encoding="utf-8",
+          )
+
+          base_url = f"https://github.com/LexyGuru/arduino-led-controller/releases/download/{tag}"
+          app_assets = {
+              "windows-x86_64": f"Arduino_LED_Controller_{version}_Windows_x86_64_Setup.exe",
+              "linux-x86_64-appimage": f"Arduino_LED_Controller_{version}_Linux_x86_64.AppImage",
+              "linux-x86_64-deb": f"Arduino_LED_Controller_{version}_Linux_x86_64.deb",
+              "macos-aarch64": f"Arduino_LED_Controller_{version}_macOS_Apple_Silicon.dmg",
+              "macos-x86_64": f"Arduino_LED_Controller_{version}_macOS_Intel.dmg",
+          }
+          latest = {
+              "schemaVersion": 1,
+              "channel": "beta",
+              "publishedAt": os.environ.get("GITHUB_RUN_ID", "github-actions"),
+              "app": {
+                  "version": version,
+                  "directApiVersion": "1.0.0",
+                  "releaseUrl": f"https://github.com/LexyGuru/arduino-led-controller/releases/tag/{tag}",
+                  "artifacts": {key: {"name": name, "url": f"{base_url}/{name}"} for key, name in app_assets.items()},
+              },
+              "firmware": {
+                  "version": firmware_version,
+                  "board": "arduino-uno-r4-wifi",
+                  "directApiVersion": "1.0.0",
+                  "name": firmware_name,
+                  "url": f"{base_url}/{firmware_name}",
+                  "checksumUrl": f"{base_url}/{firmware_name}.sha256",
+                  "sha256": firmware["sha256"],
+              },
+          }
+          (root / "latest-beta.json").write_text(
+              json.dumps(latest, indent=2, ensure_ascii=False) + "\n",
               encoding="utf-8",
           )
           PY
@@ -638,7 +686,7 @@ jobs:
           tag_name: ${{ needs.validate.outputs.tag }}
           target_commitish: ${{ github.sha }}
           name: Arduino LED Controller ${{ needs.validate.outputs.version }}
-          body_path: docs/v5/BETA1_RELEASE_NOTES.md
+          body_path: docs/v5/BETA2_RELEASE_NOTES.md
           prerelease: true
           make_latest: false
           overwrite_files: true
@@ -653,7 +701,7 @@ jobs:
           gh release view "${TAG}" --json isPrerelease,targetCommitish,assets \
             --jq '{isPrerelease,targetCommitish,assetCount:(.assets|length),assets:[.assets[].name]}'
           test "$(gh release view "${TAG}" --json isPrerelease --jq '.isPrerelease')" = "true"
-          test "$(gh release view "${TAG}" --json assets --jq '.assets | length')" -ge 20
+          test "$(gh release view "${TAG}" --json assets --jq '.assets | length')" -ge 22
 
       - name: Upload complete release set as workflow artifact
         uses: actions/upload-artifact@v5

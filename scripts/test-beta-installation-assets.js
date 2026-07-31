@@ -44,7 +44,7 @@ assert.match(verifier, /command -v sha256sum/);
 assert.match(verifier, /command -v shasum/);
 
 const installer = read('deploy/install-beta-lxc.sh');
-assert.match(installer, /VERSION="\$\{BETA_VERSION:-5\.0\.0-beta\.1\}"/);
+assert.match(installer, /VERSION="\$\{BETA_VERSION:-5\.0\.0-beta\.2\}"/);
 assert.match(installer, /SHA256SUMS/);
 assert.match(installer, /ALLOW_PRODUCTION_ARDUINO/);
 assert.match(installer, /10\.0\.0\.123/);
@@ -59,8 +59,8 @@ for (const expected of [
   'ARDUINO_HEALTH_TIMEOUT_MS 30000',
   'ARDUINO_STATUS_MONITOR_TIMEOUT_MS 30000',
   'RELEASE_CHANNEL beta',
-  'RELEASE_CANDIDATE beta.1-gate',
-  'RELEASE_TARGET_VERSION 5.0.0-beta.1'
+  'RELEASE_CANDIDATE beta.2-gate',
+  'RELEASE_TARGET_VERSION 5.0.0-beta.2'
 ]) {
   assert.ok(stagingInstaller.includes(expected), `Hiányzó staging beállítás: ${expected}`);
 }
@@ -77,7 +77,7 @@ for (const expected of [
   'ARDUINO_HEALTH_TIMEOUT_MS=30000',
   'ARDUINO_STATUS_MONITOR_TIMEOUT_MS=30000',
   'RELEASE_CHANNEL=beta',
-  'RELEASE_TARGET_VERSION=5.0.0-beta.1'
+  'RELEASE_TARGET_VERSION=5.0.0-beta.2'
 ]) {
   assert.ok(stagingEnv.includes(expected), `Hiányzó staging.env érték: ${expected}`);
 }
@@ -89,13 +89,13 @@ assert.match(betaEnv, /STAGING_ARDUINO_IP=127\.0\.0\.1/);
 assert.doesNotMatch(betaEnv, /^STAGING_ARDUINO_IP=10\.0\.0\.123$/m);
 
 const unit = read('deploy/systemd/arduino-led-controller-staging.service');
-assert.match(unit, /Description=Arduino LED Controller 5\.0\.0-beta\.1 Staging/);
+assert.match(unit, /Description=Arduino LED Controller 5\.0\.0-beta\.2 Staging/);
 assert.match(unit, /NoNewPrivileges=true/);
 assert.match(unit, /ProtectSystem=full/);
 assert.match(unit, /PrivateTmp=true/);
 assert.match(unit, /Restart=on-failure/);
 
-const guide = read('docs/v5/BETA1_INSTALLATION_GUIDE.md');
+const guide = read('docs/v5/BETA2_INSTALLATION_GUIDE.md');
 for (const expected of [
   'Windows x86_64',
   'macOS Apple Silicon',
@@ -116,14 +116,14 @@ assert.match(guide, /nincs notarizálva/);
 assert.match(guide, /SmartScreen/);
 assert.match(guide, /unsigned\.ipa.*nincs.*aláírva/is);
 
-const notes = read('docs/v5/BETA1_RELEASE_NOTES.md');
-assert.match(notes, /5\.0\.0-beta\.1/);
+const notes = read('docs/v5/BETA2_RELEASE_NOTES.md');
+assert.match(notes, /5\.0\.0-beta\.2/);
 assert.match(notes, /prerelease/);
 assert.match(notes, /main.*nem módosul/is);
 assert.match(notes, /produkciós.*10\.0\.0\.123/is);
 assert.match(notes, /SBOM/);
 
-const checklist = read('docs/v5/BETA1_RELEASE_CHECKLIST.md');
+const checklist = read('docs/v5/BETA2_RELEASE_CHECKLIST.md');
 assert.match(checklist, /Windows x86_64/);
 assert.match(checklist, /macOS Apple Silicon/);
 assert.match(checklist, /macOS Intel/);
@@ -134,7 +134,7 @@ assert.match(checklist, /LXC \/ Debian szerver/);
 assert.match(checklist, /Arduino UNO R4 WiFi firmware/);
 assert.match(checklist, /Teljes alkalmazási staging/);
 
-console.log('OK: Beta.1 LXC bundle, telepítő, systemd és rollback szerződés');
+console.log('OK: Beta.2 LXC bundle, telepítő, systemd és rollback szerződés');
 console.log('OK: macOS Bash 3.2-kompatibilis verziózott release-ellenőrző');
 console.log('OK: 30 másodperces timeout és alapértelmezett hardverizoláció');
 console.log('OK: minden kiadási platform telepítési és smoke-test dokumentációja');

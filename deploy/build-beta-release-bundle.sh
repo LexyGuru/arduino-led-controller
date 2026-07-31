@@ -43,7 +43,7 @@ fs.writeFileSync(file, `${JSON.stringify({
   commit,
   channel: 'beta',
   phase: 'staging',
-  candidate: 'beta.1-gate',
+  candidate: 'beta.2-gate',
   createdAt: new Date().toISOString(),
   nodeMajorMinimum: 20,
   installRoot: '/opt/arduino-led-controller-staging',

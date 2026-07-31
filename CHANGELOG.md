@@ -1,5 +1,26 @@
 # Változásnapló
 
+## 5.0.0-beta.2 / firmware 4.3.0-beta.1 — 2026-07-31
+
+### Direct kapcsolat és biztonság
+
+- Szerkeszthető helyi IP/hostname és távoli DDNS célpont, külön API-portokkal és automatikus fallbackkel.
+- Profilonkénti `X-Device-Key` és OTA-jelszó a macOS Keychain, Windows Credential Manager vagy Linux Secret Service tárban.
+- Régi plaintext credentialök automatikus migrációja és eltávolítása a konfigurációból.
+
+### Frissítés és OTA
+
+- Stable/Beta GitHub Release kiválasztás és platform-specifikus alkalmazásartifact felismerés.
+- Firmware BIN cache és kötelező SHA-256 újraellenőrzés.
+- Kézzel megadható `arduinoOTA` útvonal, OTA-host, port és timeout.
+- Megszakítható OTA, élő konzol, Boot ID változás és schedule revision/checksum persistence kapu.
+
+### Kiadás
+
+- Az alkalmazás verziója `5.0.0-beta.2`; a párosított firmware továbbra is `4.3.0-beta.1`, Direct API `1.0.0`.
+- Új Beta.2 telepítési útmutató, release notes és checklist.
+- Gépileg olvasható Beta channel manifest az alkalmazás- és firmware-artifactok kompatibilitási adataival.
+
 ## 5.0.0-beta.1 / firmware 4.3.0-beta.1 — 2026-07-31
 
 ### Firmware
