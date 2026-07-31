@@ -16,8 +16,8 @@ function main() {
   const execution = read('docs/v5/FIRMWARE_FIRST_EXECUTION_PLAN.md');
   const audit = read('docs/firmware/F14_0_FIRMWARE_AUDIT.md');
   const f141 = read('docs/firmware/F14_1_FIRMWARE_DIAGNOSTICS.md');
-  const serial = read('docs/firmware/ARDUINO_SERIAL_COMMAND_CONTRACT.md');
-  const hardware = read('docs/firmware/ARDUINO_HARDWARE_ACCEPTANCE_MATRIX.md');
+  const complete = read('docs/firmware/F14_COMPLETE_FIRMWARE_ADAPTATION.md');
+  const gate = read('docs/firmware/F14_COMPLETE_HARDWARE_GATE.md');
   const firmware = read('firmware/ArduinoLedController/ArduinoLedController.ino');
 
   for (const marker of [
@@ -28,28 +28,26 @@ function main() {
     assert.ok(checklist.includes(marker) || status.includes(marker));
   }
 
-  assert.match(checklist, /F14\.1 diagnosztika.*forrás/);
-  assert.match(checklist, /F14\.1 Arduino CLI fordítás/);
-  assert.match(checklist, /F14\.4 hardveres stabilitási gate/);
-  assert.match(checklist, /SZÜNETEL F14\.4-IG/);
-  assert.match(status, /Firmware-first döntés/);
-  assert.match(status, /F14\.1 forrásimplementáció/);
-  assert.match(known, /F14\.1 javítási állapot/);
-  assert.match(execution, /Tauri V15 belépési feltétel/);
   assert.match(audit, /Auditált firmware:[^\n]*`4\.1\.21`/);
   assert.match(f141, /4\.2\.0-beta\.1/);
-  assert.match(serial, /hardveres validáció következik/);
-  assert.match(hardware, /hardveres mérésig nyitva/);
-  assert.match(firmware, /#define FIRMWARE_VERSION "4\.2\.0-beta\.1"/);
+  assert.match(complete, /4\.3\.0-beta\.1/);
+  assert.match(complete, /Direct API/i);
+  assert.match(complete, /1\.0\.0/);
+  assert.match(gate, /hardver/i);
+  assert.match(execution, /Tauri V15 belépési feltétel/);
+  assert.match(firmware, /#define FIRMWARE_VERSION "4\.3\.0-beta\.1"/);
+  assert.match(firmware, /#define DIRECT_API_VERSION "1\.0\.0"/);
+  assert.match(firmware, /#define API_ALLOW_QUERY_KEY_FALLBACK 0/);
   assert.match(checklist, /Beolvasztás `main` ágba/);
   assert.match(status, /Tilos \/ korai/);
+  assert.match(known, /F14/i);
 
   console.log('OK: alkalmazásverzió 5.0.0-beta.1');
-  console.log('OK: történeti Alpha.2/Alpha.3 bizonyítékok megmaradtak');
-  console.log('OK: F14.0 audit történeti 4.1.21 dokumentum');
-  console.log('OK: F14.1 firmware-forrás 4.2.0-beta.1');
-  console.log('OK: Arduino CLI és hardveres kapuk nyitva maradtak');
-  console.log('OK: Tauri fejlesztés F14.4-ig szünetel');
+  console.log('OK: Alpha.2/Alpha.3 történeti bizonyítékok megmaradtak');
+  console.log('OK: F14.0 audit és F14.1 diagnosztikai történet megmaradt');
+  console.log('OK: aktív firmware-dokumentáció 4.3.0-beta.1 / API 1.0.0');
+  console.log('OK: teljes hardveres gate dokumentálva');
+  console.log('OK: Tauri V15 csak firmware-gate után indul');
 }
 
 try {

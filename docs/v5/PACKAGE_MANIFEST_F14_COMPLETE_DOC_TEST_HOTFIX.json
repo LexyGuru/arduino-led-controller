@@ -1,0 +1,15 @@
+{
+  "package": "f14-complete-documentation-test-hotfix",
+  "expectedBaseCommit": "4a6051d8cb6b5ab3a98ef674a155ccc064d653b5",
+  "firmwareVersion": "4.3.0-beta.1",
+  "directApiVersion": "1.0.0",
+  "reason": "Accept the actual Markdown form **Direct API:** `1.0.0` in the V5 documentation regression test.",
+  "firmwareSourceModified": false,
+  "files": [
+    {
+      "path": "scripts/test-v5-documentation-status.js",
+      "bytes": 2332,
+      "sha256": "1589c8c5bfd53b7dca236d60a160b0f40043a50f481a0e227acff01e6c9236d3"
+    }
+  ]
+}

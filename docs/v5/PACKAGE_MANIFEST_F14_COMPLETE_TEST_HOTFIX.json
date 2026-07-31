@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "package": "f14-complete-historical-test-hotfix",
+  "expectedBaseCommit": "4a6051d8cb6b5ab3a98ef674a155ccc064d653b5",
+  "firmwareVersion": "4.3.0-beta.1",
+  "directApiVersion": "1.0.0",
+  "reason": "Historical F14.1 tests incorrectly asserted the active firmware was still 4.2.0-beta.1",
+  "files": [
+    {
+      "path": "docs/v5/PACKAGE_MANIFEST_F14_COMPLETE_FIRMWARE.json",
+      "bytes": 5982,
+      "sha256": "d039fc743ef71d52123a0f399ce6961b5a0dbc98630cc517c50e4302ce91f4e4"
+    },
+    {
+      "path": "scripts/test-alpha3-device-key-header.js",
+      "bytes": 1688,
+      "sha256": "e53e6cfa6fe0279d33fb48e8ed1fc4876c05045c55dc114f39bed9ba905ef88f"
+    },
+    {
+      "path": "scripts/test-f14-1-firmware-diagnostics.js",
+      "bytes": 3619,
+      "sha256": "513864a1d62e4779a3e7b71bc2984c6a951a4dfd73c5c3e34870c80218baa486"
+    },
+    {
+      "path": "scripts/test-f14-1-http-response-transport.js",
+      "bytes": 1575,
+      "sha256": "bee8028f5ed12ccf9cbd2df88d9a32b510d8177facb7be3bac58b0f0c2c5c5c9"
+    },
+    {
+      "path": "scripts/test-f14-firmware-audit-contract.js",
+      "bytes": 2556,
+      "sha256": "d941e674ab611c1547728f72fb3b59e89cbe35d9ce0e4696c6d9cddd2602809c"
+    },
+    {
+      "path": "scripts/test-v5-documentation-status.js",
+      "bytes": 2307,
+      "sha256": "0f517a99a1dbd4ce086bc818c2c5e5234f083c3938b4ebade92a55ecc64dadc6"
+    }
+  ]
+}

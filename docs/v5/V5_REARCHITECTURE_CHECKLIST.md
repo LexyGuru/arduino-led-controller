@@ -210,3 +210,11 @@ Alpha.3 feature:
 - [ ] teljes repository-validáció
 - [ ] többplatformos release workflow
 - [ ] `main` továbbra is változatlan a külön merge-döntésig
+
+
+## F14 Complete firmware adaptation
+
+- Firmware `4.3.0-beta.1`; Direct API `1.0.0`.
+- Header-only auth, JSON LED API, tranzakciós schedule, A/B EEPROM és legacy migráció forrásban elkészült.
+- Tauri-forrás változatlan.
+- Publikus firmware kiadás előtt a `F14_COMPLETE_HARDWARE_GATE.md` teljesítendő.

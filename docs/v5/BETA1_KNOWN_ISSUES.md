@@ -157,3 +157,11 @@ Gyökérok: túl nagy WiFiS3 write darab és nagy lokális válaszpufferek.
 
 Javítás: F14.1.3, 128 bájtos darabolt response transport. Hardveres újrateszt
 szükséges.
+
+
+## F14 Complete firmware adaptation
+
+- Firmware `4.3.0-beta.1`; Direct API `1.0.0`.
+- Header-only auth, JSON LED API, tranzakciós schedule, A/B EEPROM és legacy migráció forrásban elkészült.
+- Tauri-forrás változatlan.
+- Publikus firmware kiadás előtt a `F14_COMPLETE_HARDWARE_GATE.md` teljesítendő.

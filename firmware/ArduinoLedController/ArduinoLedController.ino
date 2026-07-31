@@ -1,7 +1,7 @@
 /*
- * Arduino LED Controller – 4.2.0-beta.1
- * F14.1.3: WiFiS3-biztos, kis darabos HTTP választransport.
- * Az F14.2 hozza a teljes JSON body API-t; az F14.3 az A/B EEPROM-ot.
+ * Arduino LED Controller – 4.3.0-beta.1
+ * F14 Complete: Direct API v1, JSON body, header-only auth, A/B EEPROM és
+ * tranzakciós schedule. A Tauri újratervezésének stabil firmware-alapja.
  */
 #include <WiFiS3.h>
 #include <Adafruit_NeoPixel.h>
@@ -13,9 +13,9 @@
 #include <stdarg.h>
 #include "secrets.h"
 
-#define FIRMWARE_VERSION "4.2.0-beta.1"
-#define FIRMWARE_FEATURE "f14.1.3-wifis3-response-transport"
-#define DIRECT_API_VERSION "1.0.0-beta.1"
+#define FIRMWARE_VERSION "4.3.0-beta.1"
+#define FIRMWARE_FEATURE "f14-complete-direct-api-storage"
+#define DIRECT_API_VERSION "1.0.0"
 #define DEVICE_NAME "arduino-led-controller"
 #define API_DEVICE_KEY_HEADER "X-Device-Key"
 
@@ -26,7 +26,7 @@
 #define API_PRIVATE_PATH "/CHANGE_THIS_TO_A_LONG_RANDOM_API_PATH"
 #endif
 #ifndef API_ALLOW_QUERY_KEY_FALLBACK
-#define API_ALLOW_QUERY_KEY_FALLBACK 1
+#define API_ALLOW_QUERY_KEY_FALLBACK 0
 #endif
 #ifndef ENABLE_PIR_SENSORS
 #define ENABLE_PIR_SENSORS 0
@@ -46,6 +46,19 @@ constexpr uint8_t BUTTON_MODE = A0, BUTTON_UP = A1, BUTTON_DOWN = A2;
 constexpr uint8_t SCHEDULE_MAX = 60;
 constexpr uint16_t SCHEDULE_EEPROM_OFFSET = 256;
 constexpr uint16_t API_SETTINGS_EEPROM_OFFSET = 2300;
+// F14 Complete A/B storage layout (UNO R4 WiFi 8192-byte EEPROM).
+constexpr uint16_t CONFIG_SLOT_A_OFFSET = 0;
+constexpr uint16_t CONFIG_SLOT_B_OFFSET = 384;
+constexpr uint16_t SCHEDULE_SLOT_A_OFFSET = 768;
+constexpr uint16_t SCHEDULE_SLOT_B_OFFSET = 2560;
+constexpr uint16_t CONFIG_SLOT_SIZE = 384;
+constexpr uint16_t SCHEDULE_SLOT_SIZE = 1792;
+constexpr uint32_t CONFIG_SLOT_MAGIC = 0x43464732UL; // CFG2
+constexpr uint32_t SCHEDULE_SLOT_MAGIC_V2 = 0x53434832UL; // SCH2
+constexpr uint16_t STORAGE_SCHEMA_VERSION = 2;
+constexpr uint8_t SLOT_STATE_EMPTY = 0;
+constexpr uint8_t SLOT_STATE_WRITING = 1;
+constexpr uint8_t SLOT_STATE_VALID = 2;
 constexpr uint32_t NETWORK_SETTINGS_MAGIC = 0x4C454431UL;
 constexpr uint16_t NETWORK_SETTINGS_VERSION = 1;
 constexpr uint32_t API_SETTINGS_MAGIC = 0x41504931UL;
@@ -56,7 +69,7 @@ constexpr uint32_t MANUAL_OVERRIDE_INDEFINITE = 0xFFFFFFFFUL;
 constexpr uint8_t HTTP_CLIENTS_PER_LOOP = 1;
 constexpr uint8_t LOG_CAPACITY = 32;
 constexpr uint8_t CONSOLE_LOGS_PER_RESPONSE = 8;
-constexpr size_t HTTP_BODY_BUFFER_SIZE = 2560;
+constexpr size_t HTTP_BODY_BUFFER_SIZE = 2048;
 constexpr size_t HTTP_RESPONSE_HEADER_SIZE = 192;
 constexpr size_t HTTP_WRITE_CHUNK_SIZE = 128;
 constexpr unsigned long HTTP_WRITE_INTER_CHUNK_DELAY_MS = 2UL;
@@ -69,7 +82,7 @@ constexpr unsigned long WIFI_RETRY = 15000UL;
 constexpr unsigned long EFFECT_FRAME = 50UL;
 constexpr unsigned long SCHEDULE_AUDIT_INTERVAL = 30000UL;
 constexpr unsigned long HTTP_FIRST_BYTE_TIMEOUT = 300UL;
-constexpr unsigned long HTTP_READ_TIMEOUT = 500UL;
+constexpr unsigned long HTTP_READ_TIMEOUT = 800UL;
 constexpr unsigned long HTTP_RESPONSE_SETTLE_DELAY_MS = 80UL;
 constexpr unsigned long HTTP_POLLING_SUMMARY_INTERVAL = 30000UL;
 constexpr unsigned long HTTP_TRACE_MAX_TIME = 600000UL;
@@ -123,6 +136,25 @@ struct __attribute__((packed)) ScheduleHeader {
   uint8_t version, count;
   uint32_t checksum;
 };
+struct __attribute__((packed)) StorageSlotHeader {
+  uint32_t magic;
+  uint16_t schemaVersion;
+  uint16_t payloadLength;
+  uint32_t generation;
+  uint32_t checksum;
+  uint8_t state;
+  uint8_t count;
+  uint8_t reserved[6];
+};
+struct __attribute__((packed)) ConfigPayload {
+  NetworkSettings network;
+  ApiSettings api;
+};
+static_assert(sizeof(StorageSlotHeader) == 24, "StorageSlotHeader layout changed");
+static_assert(sizeof(ConfigPayload) + sizeof(StorageSlotHeader) <= CONFIG_SLOT_SIZE,
+  "Config A/B slot too small");
+static_assert(sizeof(StoredSchedule) * SCHEDULE_MAX + sizeof(StorageSlotHeader) <= SCHEDULE_SLOT_SIZE,
+  "Schedule A/B slot too small");
 static_assert(sizeof(StoredLed) == 8, "StoredLed EEPROM layout changed");
 static_assert(sizeof(StoredSchedule) == 27, "StoredSchedule EEPROM layout changed");
 static_assert(sizeof(ScheduleHeader) == 10, "ScheduleHeader EEPROM layout changed");
@@ -205,7 +237,16 @@ IPAddress cachedWifiIp(0,0,0,0);
 long cachedWifiRssi = 0;
 uint8_t logStart = 0, logSize = 0, scheduleCount = 0, httpMaxBatch = 0;
 uint32_t nextLogId = 1, nextHttpRequestId = 1, bootId = 0;
-uint32_t deviceKeyFingerprint = 0, scheduleRevision = 1;
+uint32_t deviceKeyFingerprint = 0, scheduleRevision = 0;
+uint32_t configGeneration = 0;
+uint16_t activeConfigSlotOffset = 0, activeScheduleSlotOffset = 0;
+bool legacyStorageMigrated = false;
+bool scheduleTransactionActive = false;
+uint32_t scheduleTransactionId = 0, scheduleTransactionGeneration = 0;
+uint32_t scheduleTransactionExpectedRevision = 0;
+uint16_t scheduleTransactionSlotOffset = 0;
+uint8_t scheduleTransactionTotal = 0;
+uint64_t scheduleTransactionReceivedMask = 0;
 unsigned long httpRequests = 0, httpTimeouts = 0, httpRejected = 0;
 unsigned long httpWriteFailures = 0, httpHeaderAuthAccepted = 0;
 unsigned long httpQueryFallbackAccepted = 0, httpSuccessResponses = 0;
@@ -231,6 +272,8 @@ char httpBodyBuffer[HTTP_BODY_BUFFER_SIZE] = {};
 char httpHeaderBuffer[HTTP_RESPONSE_HEADER_SIZE] = {};
 char serialCommandBuffer[SERIAL_COMMAND_SIZE] = {};
 size_t serialCommandLength = 0;
+size_t currentContentLength = 0;
+bool currentContentTypeJson = false;
 
 void showMatrix(uint8_t frame[8][12]) { matrix.renderBitmap(frame, 8, 12); }
 void copyText(char* target, size_t size, const char* source) {
@@ -327,6 +370,140 @@ void consoleLine(const char* message) {
   storeConsoleLine("console", message, false);
 }
 void clearRamLogs() { logStart = 0; logSize = 0; }
+
+
+uint32_t fnv1aUpdate(uint32_t value, const uint8_t* data, size_t length) {
+  for (size_t i = 0; i < length; i++) value = (value ^ data[i]) * 16777619UL;
+  return value;
+}
+bool eepromBytesEqual(uint16_t offset, const uint8_t* expected, size_t length) {
+  for (size_t i = 0; i < length; i++) {
+    if (EEPROM.read(offset + i) != expected[i]) return false;
+  }
+  return true;
+}
+void eepromWriteBytes(uint16_t offset, const uint8_t* data, size_t length) {
+  for (size_t i = 0; i < length; i++) EEPROM.update(offset + i, data[i]);
+}
+void eepromReadBytes(uint16_t offset, uint8_t* data, size_t length) {
+  for (size_t i = 0; i < length; i++) data[i] = EEPROM.read(offset + i);
+}
+uint32_t eepromChecksum(uint16_t offset, size_t length) {
+  uint32_t value = 2166136261UL;
+  for (size_t i = 0; i < length; i++) {
+    uint8_t byteValue = EEPROM.read(offset + i);
+    value = (value ^ byteValue) * 16777619UL;
+  }
+  return value;
+}
+bool readSlotHeader(uint16_t offset, uint32_t magic, uint16_t maxPayload,
+    StorageSlotHeader& header) {
+  eepromReadBytes(offset, reinterpret_cast<uint8_t*>(&header), sizeof(header));
+  return slotHeaderValid(header, magic, maxPayload) &&
+    eepromChecksum(offset + sizeof(header), header.payloadLength) == header.checksum;
+}
+bool slotHeaderValid(const StorageSlotHeader& h, uint32_t magic,
+    uint16_t maxPayload) {
+  return h.magic == magic && h.schemaVersion == STORAGE_SCHEMA_VERSION &&
+    h.state == SLOT_STATE_VALID && h.payloadLength <= maxPayload;
+}
+bool writeSlot(uint16_t offset, uint32_t magic, uint32_t generation,
+    uint8_t count, const uint8_t* payload, uint16_t payloadLength) {
+  StorageSlotHeader h = {magic, STORAGE_SCHEMA_VERSION, payloadLength,
+    generation, fnv1a(payload, payloadLength), SLOT_STATE_WRITING, count, {0}};
+  eepromWriteBytes(offset, reinterpret_cast<const uint8_t*>(&h), sizeof(h));
+  eepromWriteBytes(offset + sizeof(h), payload, payloadLength);
+  if (!eepromBytesEqual(offset + sizeof(h), payload, payloadLength)) return false;
+  h.state = SLOT_STATE_VALID;
+  eepromWriteBytes(offset, reinterpret_cast<const uint8_t*>(&h), sizeof(h));
+  StorageSlotHeader verify = {};
+  eepromReadBytes(offset, reinterpret_cast<uint8_t*>(&verify), sizeof(verify));
+  return slotHeaderValid(verify, magic, payloadLength) &&
+    verify.generation == generation && verify.checksum == h.checksum;
+}
+bool readValidSlot(uint16_t offset, uint32_t magic, uint16_t maxPayload,
+    StorageSlotHeader& h, uint8_t* payload) {
+  eepromReadBytes(offset, reinterpret_cast<uint8_t*>(&h), sizeof(h));
+  if (!slotHeaderValid(h, magic, maxPayload)) return false;
+  eepromReadBytes(offset + sizeof(h), payload, h.payloadLength);
+  return fnv1a(payload, h.payloadLength) == h.checksum;
+}
+uint16_t inactiveScheduleSlotOffset() {
+  return activeScheduleSlotOffset == SCHEDULE_SLOT_A_OFFSET
+    ? SCHEDULE_SLOT_B_OFFSET : SCHEDULE_SLOT_A_OFFSET;
+}
+uint16_t inactiveConfigSlotOffset() {
+  return activeConfigSlotOffset == CONFIG_SLOT_A_OFFSET
+    ? CONFIG_SLOT_B_OFFSET : CONFIG_SLOT_A_OFFSET;
+}
+bool saveConfigAb() {
+  ConfigPayload payload = {networkSettings, apiSettings};
+  uint16_t target = inactiveConfigSlotOffset();
+  uint32_t generation = configGeneration + 1;
+  if (!writeSlot(target, CONFIG_SLOT_MAGIC, generation, 0,
+      reinterpret_cast<const uint8_t*>(&payload), sizeof(payload))) return false;
+  activeConfigSlotOffset = target;
+  configGeneration = generation;
+  networkSettingsStored = networkSettingsValid(networkSettings);
+  apiSettingsStored = apiSettingsValid(apiSettings);
+  return networkSettingsStored && apiSettingsStored;
+}
+void loadPersistentConfig() {
+  StorageSlotHeader ah = {}, bh = {};
+  bool av = readSlotHeader(CONFIG_SLOT_A_OFFSET, CONFIG_SLOT_MAGIC,
+    sizeof(ConfigPayload), ah);
+  bool bv = readSlotHeader(CONFIG_SLOT_B_OFFSET, CONFIG_SLOT_MAGIC,
+    sizeof(ConfigPayload), bh);
+  if (av || bv) {
+    bool useB = bv && (!av || bh.generation > ah.generation);
+    uint16_t selectedOffset = useB ? CONFIG_SLOT_B_OFFSET : CONFIG_SLOT_A_OFFSET;
+    StorageSlotHeader selectedHeader = useB ? bh : ah;
+    ConfigPayload selected = {};
+    eepromReadBytes(selectedOffset + sizeof(StorageSlotHeader),
+      reinterpret_cast<uint8_t*>(&selected), sizeof(selected));
+    activeConfigSlotOffset = selectedOffset;
+    configGeneration = selectedHeader.generation;
+    networkSettings = selected.network;
+    apiSettings = selected.api;
+    networkSettingsStored = networkSettingsValid(networkSettings);
+    apiSettingsStored = apiSettingsValid(apiSettings);
+  } else {
+    NetworkSettings legacyNetwork = {};
+    ApiSettings legacyApi = {};
+    EEPROM.get(0, legacyNetwork);
+    EEPROM.get(API_SETTINGS_EEPROM_OFFSET, legacyApi);
+    if (networkSettingsValid(legacyNetwork)) networkSettings = legacyNetwork;
+    else {
+      memset(&networkSettings, 0, sizeof(networkSettings));
+      networkSettings.magic = NETWORK_SETTINGS_MAGIC;
+      networkSettings.version = NETWORK_SETTINGS_VERSION;
+      copyText(networkSettings.ssid, sizeof(networkSettings.ssid), WIFI_SSID);
+      copyText(networkSettings.password, sizeof(networkSettings.password), WIFI_PASSWORD);
+      copyText(networkSettings.otaPassword, sizeof(networkSettings.otaPassword), OTA_PASSWORD);
+      networkSettings.checksum = settingsChecksum(networkSettings);
+    }
+    if (apiSettingsValid(legacyApi)) apiSettings = legacyApi;
+    else {
+      memset(&apiSettings, 0, sizeof(apiSettings));
+      apiSettings.magic = API_SETTINGS_MAGIC;
+      apiSettings.version = API_SETTINGS_VERSION;
+      copyText(apiSettings.privatePath, sizeof(apiSettings.privatePath), API_PRIVATE_PATH);
+      copyText(apiSettings.sharedSecret, sizeof(apiSettings.sharedSecret), API_SHARED_SECRET);
+      apiSettings.checksum = apiSettingsChecksum(apiSettings);
+    }
+    networkSettingsStored = networkSettingsValid(networkSettings);
+    apiSettingsStored = apiSettingsValid(apiSettings);
+    if (networkSettingsStored && apiSettingsStored && saveConfigAb()) {
+      legacyStorageMigrated = true;
+      logEvent("success", "Legacy konfiguracio A/B storage-ba migralva");
+    }
+  }
+  deviceKeyFingerprint = apiSettingsStored ? fnv1aText(apiSettings.sharedSecret) : 0;
+  logEvent(networkSettingsStored && apiSettingsStored ? "success" : "error",
+    networkSettingsStored && apiSettingsStored
+      ? "A/B WiFi, OTA es API konfiguracio betoltve"
+      : "Nincs ervenyes konfiguracio");
+}
 
 uint32_t settingsChecksum(const NetworkSettings& s) {
   return fnv1a(reinterpret_cast<const uint8_t*>(&s),
@@ -430,40 +607,67 @@ uint32_t scheduleChecksum(const StoredSchedule* entries, uint8_t count) {
   return fnv1a(reinterpret_cast<const uint8_t*>(entries),
     sizeof(StoredSchedule) * count);
 }
+
 void loadSchedules() {
-  ScheduleHeader header = {};
-  EEPROM.get(SCHEDULE_EEPROM_OFFSET, header);
-  if (header.magic != SCHEDULE_MAGIC || header.version != 1 ||
-      header.count > SCHEDULE_MAX) {
-    logEvent("warn", "Nincs ervenyes 4.1 schedule header");
+  StorageSlotHeader ah = {}, bh = {};
+  bool av = readSlotHeader(SCHEDULE_SLOT_A_OFFSET, SCHEDULE_SLOT_MAGIC_V2,
+    sizeof(StoredSchedule) * SCHEDULE_MAX, ah);
+  bool bv = readSlotHeader(SCHEDULE_SLOT_B_OFFSET, SCHEDULE_SLOT_MAGIC_V2,
+    sizeof(StoredSchedule) * SCHEDULE_MAX, bh);
+  if (av || bv) {
+    bool useB = bv && (!av || bh.generation > ah.generation);
+    StorageSlotHeader selectedHeader = useB ? bh : ah;
+    uint16_t selectedOffset = useB ? SCHEDULE_SLOT_B_OFFSET : SCHEDULE_SLOT_A_OFFSET;
+    memset(schedules, 0, sizeof(schedules));
+    eepromReadBytes(selectedOffset + sizeof(StorageSlotHeader),
+      reinterpret_cast<uint8_t*>(schedules), selectedHeader.payloadLength);
+    scheduleCount = selectedHeader.count;
+    scheduleRevision = selectedHeader.generation;
+    activeScheduleSlotOffset = selectedOffset;
+    schedulesStored = true;
+    logEvent("success", "A/B schedule EEPROM-bol betoltve");
     return;
   }
-  EEPROM.get(SCHEDULE_EEPROM_OFFSET + sizeof(ScheduleHeader), schedules);
-  if (header.checksum != scheduleChecksum(schedules, header.count)) {
-    logEvent("error", "Schedule EEPROM checksum hiba");
-    return;
+  ScheduleHeader legacy = {};
+  EEPROM.get(SCHEDULE_EEPROM_OFFSET, legacy);
+  if (legacy.magic == SCHEDULE_MAGIC && legacy.version == 1 &&
+      legacy.count <= SCHEDULE_MAX) {
+    EEPROM.get(SCHEDULE_EEPROM_OFFSET + sizeof(ScheduleHeader), schedules);
+    if (legacy.checksum == scheduleChecksum(schedules, legacy.count)) {
+      scheduleCount = legacy.count;
+      scheduleRevision = 0;
+      if (saveSchedules(scheduleCount)) {
+        legacyStorageMigrated = true;
+        logEvent("success", "Legacy schedule A/B storage-ba migralva");
+        return;
+      }
+    }
   }
-  scheduleCount = header.count;
-  schedulesStored = true;
-  char message[96];
-  snprintf(message, sizeof(message), "Schedule betoltve: %u rekord | %08lX",
-    scheduleCount, static_cast<unsigned long>(header.checksum));
-  logEvent("success", message);
+  memset(schedules, 0, sizeof(schedules));
+  scheduleCount = 0;
+  scheduleRevision = 0;
+  schedulesStored = false;
+  logEvent("warn", "Nincs ervenyes schedule; ures allapot indul");
 }
 bool saveSchedules(uint8_t count) {
   if (count > SCHEDULE_MAX) return false;
-  ScheduleHeader header = {
-    SCHEDULE_MAGIC, 1, count, scheduleChecksum(schedules, count)
-  };
-  // F14.1 kompatibilis header-first mentés; F14.3-ban A/B + readback lesz.
-  EEPROM.put(SCHEDULE_EEPROM_OFFSET, header);
-  EEPROM.put(SCHEDULE_EEPROM_OFFSET + sizeof(ScheduleHeader), schedules);
+  uint16_t target = inactiveScheduleSlotOffset();
+  uint32_t generation = scheduleRevision + 1;
+  uint16_t payloadLength = sizeof(StoredSchedule) * count;
+  if (!writeSlot(target, SCHEDULE_SLOT_MAGIC_V2, generation, count,
+      reinterpret_cast<const uint8_t*>(schedules), payloadLength)) return false;
+  StorageSlotHeader verify = {};
+  if (!readSlotHeader(target, SCHEDULE_SLOT_MAGIC_V2,
+      sizeof(StoredSchedule) * SCHEDULE_MAX, verify)) return false;
+  if (verify.count != count || verify.generation != generation ||
+      verify.payloadLength != payloadLength) return false;
+  activeScheduleSlotOffset = target;
   scheduleCount = count;
+  scheduleRevision = generation;
   schedulesStored = true;
-  scheduleRevision++;
   refreshManualOverrideDeadlines();
   lastScheduleAudit = 0;
-  logEvent("success", "Schedule mentve; F14.3 A/B es readback meg nyitott");
+  logEvent("success", "Schedule A/B slotba mentve es visszaellenorizve");
   return true;
 }
 int hexValue(char v) {
@@ -941,7 +1145,8 @@ const char* statusText(int code) {
     case 200: return "200 OK"; case 400: return "400 Bad Request";
     case 401: return "401 Unauthorized"; case 404: return "404 Not Found";
     case 405: return "405 Method Not Allowed"; case 408: return "408 Request Timeout";
-    case 409: return "409 Conflict"; case 413: return "413 Payload Too Large";
+    case 409: return "409 Conflict";
+    case 410: return "410 Gone"; case 413: return "413 Payload Too Large";
     case 422: return "422 Unprocessable Content";
     case 503: return "503 Service Unavailable";
     default: return "500 Internal Server Error";
@@ -1572,12 +1777,14 @@ bool unwrapProtectedPath(const String& requested, String& apiPath,
   if (clean.length()) apiPath += "?" + clean;
   return true;
 }
-HttpHeaderReadResult readHttpHeaders(WiFiClient& c, String& key, bool& present) {
+HttpHeaderReadResult readHttpHeaders(WiFiClient& c, String& key, bool& present, size_t& contentLength, bool& jsonType) {
   char line[HTTP_HEADER_LINE_SIZE];
   size_t length = 0;
   unsigned long started = millis();
   key = "";
   present = false;
+  contentLength = 0;
+  jsonType = false;
   while (millis() - started < HTTP_READ_TIMEOUT) {
     if (!c.available()) { delay(1); continue; }
     char value = c.read();
@@ -1597,6 +1804,14 @@ HttpHeaderReadResult readHttpHeaders(WiFiClient& c, String& key, bool& present) 
         if (!key.length() || key.length() >= sizeof(apiSettings.sharedSecret))
           return HTTP_HEADERS_INVALID;
         present = true;
+      } else if (name.equalsIgnoreCase("Content-Length")) {
+        String supplied = header.substring(separator + 1);
+        supplied.trim();
+        contentLength = static_cast<size_t>(supplied.toInt());
+      } else if (name.equalsIgnoreCase("Content-Type")) {
+        String supplied = header.substring(separator + 1);
+        supplied.trim();
+        jsonType = supplied.startsWith("application/json");
       }
       length = 0;
     } else {
@@ -1632,113 +1847,285 @@ bool readRequestLine(WiFiClient& c, char* output, size_t size) {
   }
   return false;
 }
-void updateLedFromLegacyQuery(const String& path) {
-  int queryAt = path.indexOf('?');
-  String base = queryAt < 0 ? path : path.substring(0, queryAt);
-  String query = queryAt < 0 ? "" : path.substring(queryAt + 1);
-  int id = base.substring(strlen("/api/led/")).toInt();
-  if (id < 1 || id > STRIP_COUNT) return;
-  Led& led = leds[id - 1];
-  led.enabled = valueBool(query, "enabled", led.enabled);
-  led.brightness = valueInt(query, "brightness", led.brightness, 0, 255);
-  led.effect = valueInt(query, "effect", led.effect, 0, 4);
-  led.speed = valueInt(query, "speed", led.speed, 1, 100);
-  led.red = valueInt(query, "red", led.red, 0, 255);
-  led.green = valueInt(query, "green", led.green, 0, 255);
-  led.blue = valueInt(query, "blue", led.blue, 0, 255);
-  activateManualOverride(id - 1);
+bool jsonLocateValue(const char* json, const char* key, const char*& value) {
+  char token[48];
+  snprintf(token, sizeof(token), "\"%s\"", key);
+  const char* p = strstr(json, token);
+  if (!p) return false;
+  p = strchr(p + strlen(token), ':');
+  if (!p) return false;
+  p++;
+  while (*p == ' ' || *p == '\t' || *p == '\r' || *p == '\n') p++;
+  value = p;
+  return true;
+}
+bool jsonReadInt(const char* json, const char* key, long& result) {
+  const char* p;
+  if (!jsonLocateValue(json, key, p)) return false;
+  char* end = nullptr;
+  result = strtol(p, &end, 10);
+  return end != p;
+}
+bool jsonReadBool(const char* json, const char* key, bool& result) {
+  const char* p;
+  if (!jsonLocateValue(json, key, p)) return false;
+  if (!strncmp(p, "true", 4)) { result = true; return true; }
+  if (!strncmp(p, "false", 5)) { result = false; return true; }
+  return false;
+}
+bool jsonReadString(const char* json, const char* key, char* output, size_t size) {
+  const char* p;
+  if (!jsonLocateValue(json, key, p) || *p != '\"') return false;
+  p++;
+  size_t n = 0;
+  while (*p && *p != '\"' && n + 1 < size) output[n++] = *p++;
+  output[n] = 0;
+  return *p == '\"';
+}
+bool jsonReadColor(const char* json, uint8_t& r, uint8_t& g, uint8_t& b) {
+  const char* p;
+  if (!jsonLocateValue(json, "color", p) || *p != '[') return false;
+  long values[3];
+  for (uint8_t i = 0; i < 3; i++) {
+    p++;
+    while (*p == ' ') p++;
+    char* end = nullptr;
+    values[i] = strtol(p, &end, 10);
+    if (end == p || values[i] < 0 || values[i] > 255) return false;
+    p = end;
+    while (*p == ' ') p++;
+    if (i < 2 && *p != ',') return false;
+  }
+  while (*p == ' ') p++;
+  if (*p != ']') return false;
+  r = values[0]; g = values[1]; b = values[2];
+  return true;
+}
+bool readHttpBody(WiFiClient& c, size_t length) {
+  if (length >= HTTP_BODY_BUFFER_SIZE) return false;
+  size_t received = 0;
+  unsigned long started = millis();
+  while (received < length && millis() - started < HTTP_READ_TIMEOUT * 4UL) {
+    if (!c.available()) { delay(1); continue; }
+    httpBodyBuffer[received++] = static_cast<char>(c.read());
+  }
+  httpBodyBuffer[received] = 0;
+  return received == length;
+}
+void sendLedJson(WiFiClient& c, uint8_t index, uint32_t requestId) {
+  FixedBuffer b; resetBuffer(b, httpBodyBuffer, sizeof(httpBodyBuffer));
+  Led& led = leds[index];
+  appendFormat(b, "{\"success\":true,\"requestId\":%lu,\"led\":{",
+    static_cast<unsigned long>(requestId));
+  appendFormat(b, "\"id\":%u,\"enabled\":%s,\"brightness\":%u,",
+    index + 1, led.enabled ? "true" : "false", led.brightness);
+  appendFormat(b, "\"effect\":%u,\"speed\":%u,\"color\":[%u,%u,%u],",
+    led.effect, led.speed, led.red, led.green, led.blue);
+  appendFormat(b, "\"manualOverride\":%s}}",
+    manualOverride[index] ? "true" : "false");
+  sendJsonBuffer(c, b.data, b.length, 200, requestId);
+}
+bool applyLedJson(uint8_t index, const char* body) {
+  Led candidate = leds[index];
+  bool booleanValue; long integerValue; uint8_t r,g,b;
+  if (jsonReadBool(body, "enabled", booleanValue)) candidate.enabled = booleanValue;
+  if (jsonReadInt(body, "brightness", integerValue)) {
+    if (integerValue < 0 || integerValue > 255) return false;
+    candidate.brightness = integerValue;
+  }
+  if (jsonReadInt(body, "effect", integerValue)) {
+    if (integerValue < 0 || integerValue > 4) return false;
+    candidate.effect = integerValue;
+  }
+  if (jsonReadInt(body, "speed", integerValue)) {
+    if (integerValue < 1 || integerValue > 100) return false;
+    candidate.speed = integerValue;
+  }
+  if (strstr(body, "\"color\"") && !jsonReadColor(body, r,g,b)) return false;
+  if (jsonReadColor(body, r,g,b)) { candidate.red=r; candidate.green=g; candidate.blue=b; }
+  leds[index] = candidate;
+  activateManualOverride(index);
   renderAll(true);
-  logEvent("info", "Legacy LED kezi beallitas alkalmazva");
+  return true;
+}
+bool beginScheduleTransaction(uint32_t expectedRevision, uint8_t total) {
+  if (scheduleTransactionActive || expectedRevision != scheduleRevision || total > SCHEDULE_MAX)
+    return false;
+  scheduleTransactionActive = true;
+  scheduleTransactionId = (bootId ^ nextHttpRequestId ^ millis()) & 0x7FFFFFFFUL;
+  scheduleTransactionExpectedRevision = expectedRevision;
+  scheduleTransactionGeneration = scheduleRevision + 1;
+  scheduleTransactionTotal = total;
+  scheduleTransactionReceivedMask = 0;
+  scheduleTransactionSlotOffset = inactiveScheduleSlotOffset();
+  StorageSlotHeader h = {SCHEDULE_SLOT_MAGIC_V2, STORAGE_SCHEMA_VERSION,
+    static_cast<uint16_t>(sizeof(StoredSchedule) * total),
+    scheduleTransactionGeneration, 0, SLOT_STATE_WRITING, total, {0}};
+  eepromWriteBytes(scheduleTransactionSlotOffset,
+    reinterpret_cast<const uint8_t*>(&h), sizeof(h));
+  return true;
+}
+bool writeScheduleTransactionRecord(uint8_t index, const StoredSchedule& entry) {
+  if (!scheduleTransactionActive || index >= scheduleTransactionTotal) return false;
+  uint16_t offset = scheduleTransactionSlotOffset + sizeof(StorageSlotHeader) +
+    sizeof(StoredSchedule) * index;
+  eepromWriteBytes(offset, reinterpret_cast<const uint8_t*>(&entry), sizeof(entry));
+  if (!eepromBytesEqual(offset, reinterpret_cast<const uint8_t*>(&entry), sizeof(entry)))
+    return false;
+  scheduleTransactionReceivedMask |= (1ULL << index);
+  return true;
+}
+bool commitScheduleTransaction() {
+  if (!scheduleTransactionActive) return false;
+  uint64_t expectedMask = scheduleTransactionTotal == 64 ? UINT64_MAX :
+    (scheduleTransactionTotal == 0 ? 0 : ((1ULL << scheduleTransactionTotal) - 1ULL));
+  if (scheduleTransactionReceivedMask != expectedMask) return false;
+  uint32_t checksum = 2166136261UL;
+  StoredSchedule entry = {};
+  for (uint8_t i = 0; i < scheduleTransactionTotal; i++) {
+    uint16_t offset = scheduleTransactionSlotOffset + sizeof(StorageSlotHeader) +
+      sizeof(StoredSchedule) * i;
+    eepromReadBytes(offset, reinterpret_cast<uint8_t*>(&entry), sizeof(entry));
+    if (entry.day < 1 || entry.day > 7 || entry.hour > 23 || entry.minute > 59)
+      return false;
+    checksum = fnv1aUpdate(checksum, reinterpret_cast<const uint8_t*>(&entry), sizeof(entry));
+  }
+  StorageSlotHeader h = {SCHEDULE_SLOT_MAGIC_V2, STORAGE_SCHEMA_VERSION,
+    static_cast<uint16_t>(sizeof(StoredSchedule) * scheduleTransactionTotal),
+    scheduleTransactionGeneration, checksum, SLOT_STATE_VALID,
+    scheduleTransactionTotal, {0}};
+  eepromWriteBytes(scheduleTransactionSlotOffset,
+    reinterpret_cast<const uint8_t*>(&h), sizeof(h));
+  StorageSlotHeader verify = {};
+  eepromReadBytes(scheduleTransactionSlotOffset,
+    reinterpret_cast<uint8_t*>(&verify), sizeof(verify));
+  if (!slotHeaderValid(verify, SCHEDULE_SLOT_MAGIC_V2,
+      sizeof(StoredSchedule) * SCHEDULE_MAX) || verify.checksum != checksum) return false;
+  for (uint8_t i = 0; i < scheduleTransactionTotal; i++) {
+    uint16_t offset = scheduleTransactionSlotOffset + sizeof(StorageSlotHeader) +
+      sizeof(StoredSchedule) * i;
+    eepromReadBytes(offset, reinterpret_cast<uint8_t*>(&schedules[i]), sizeof(StoredSchedule));
+  }
+  scheduleCount = scheduleTransactionTotal;
+  scheduleRevision = scheduleTransactionGeneration;
+  activeScheduleSlotOffset = scheduleTransactionSlotOffset;
+  schedulesStored = true;
+  scheduleTransactionActive = false;
+  refreshManualOverrideDeadlines();
+  return true;
+}
+void cancelScheduleTransaction() {
+  scheduleTransactionActive = false;
+  scheduleTransactionReceivedMask = 0;
+  scheduleTransactionTotal = 0;
 }
 
 int routeV1(WiFiClient& c, const String& method, const String& base,
-    const String& query, uint32_t requestId) {
-  bool allowedGet = method == "GET";
-  bool allowedPost = method == "POST" &&
-    (base == "/api/v1/logs/clear" || base == "/api/v1/ota/prepare");
-  if (!allowedGet && !allowedPost) {
-    sendErrorJson(c, 405, "METHOD_NOT_ALLOWED",
-      "Ez a Direct API v1 vegpont nem tamogatja ezt a metodust.", requestId);
-    return 405;
+    const String& query, const char* body, uint32_t requestId) {
+  if (base == "/api/v1/ping" && method == "GET") { sendPingJson(c, requestId); return 200; }
+  if (base == "/api/v1/capabilities" && method == "GET") { sendCapabilitiesJson(c, requestId); return 200; }
+  if (base == "/api/v1/status" && method == "GET") { sendStatusJson(c, requestId, true); return 200; }
+  if (base == "/api/v1/diagnostics" && method == "GET") { sendDiagnosticsJson(c, requestId); return 200; }
+  if (base == "/api/v1/config/status" && method == "GET") { sendConfigStatusJson(c, requestId); return 200; }
+  if (base == "/api/v1/logs" && method == "GET") {
+    sendLogsJson(c, valueInt(query, "afterId", 0, 0, 2147483647), requestId, true); return 200;
   }
-  if (base == "/api/v1/ping") { sendPingJson(c, requestId); return 200; }
-  if (base == "/api/v1/capabilities") {
-    sendCapabilitiesJson(c, requestId); return 200;
+  if (base == "/api/v1/logs/stats" && method == "GET") { sendConsoleStatsJson(c, requestId, true); return 200; }
+  if (base == "/api/v1/logs/clear" && method == "POST") {
+    clearRamLogs(); sendJsonLiteral(c, "{\"success\":true}", 200, requestId); return 200;
   }
-  if (base == "/api/v1/status") { sendStatusJson(c, requestId, true); return 200; }
-  if (base == "/api/v1/diagnostics") {
-    sendDiagnosticsJson(c, requestId); return 200;
-  }
-  if (base == "/api/v1/config/status") {
-    sendConfigStatusJson(c, requestId); return 200;
-  }
-  if (base == "/api/v1/logs") {
-    uint32_t after = valueInt(query, "afterId", 0, 0, 2147483647);
-    sendLogsJson(c, after, requestId, true); return 200;
-  }
-  if (base == "/api/v1/logs/stats") {
-    sendConsoleStatsJson(c, requestId, true); return 200;
-  }
-  if (base == "/api/v1/logs/clear") {
-    clearRamLogs();
-    char response[128];
-    int n = snprintf(response, sizeof(response),
-      "{\"success\":true,\"requestId\":%lu}",
-      static_cast<unsigned long>(requestId));
-    sendJsonBuffer(c, response, max(n, 0), 200, requestId);
-    return 200;
-  }
-  if (base == "/api/v1/ota/status") {
-    sendOtaStatusJson(c, requestId, true); return 200;
-  }
-  if (base == "/api/v1/ota/prepare") {
+  if (base == "/api/v1/ota/status" && method == "GET") { sendOtaStatusJson(c, requestId, true); return 200; }
+  if (base == "/api/v1/ota/prepare" && method == "POST") {
     bool prepared = prepareOtaService();
-    FixedBuffer b;
-    resetBuffer(b, httpBodyBuffer, sizeof(httpBodyBuffer));
-    appendFormat(b,
-      "{\"success\":%s,\"requestId\":%lu,",
-      prepared ? "true" : "false",
-      static_cast<unsigned long>(requestId));
-    appendFormat(b,
-      "\"firmwareVersion\":\"%s\",\"otaEnabled\":%s,\"otaPort\":%u,",
-      FIRMWARE_VERSION, otaReady ? "true" : "false", OTA_UPLOAD_PORT);
-    appendFormat(b,
-      "\"prepareActive\":%s,\"prepareSecondsRemaining\":%lu}",
-      otaPrepareModeActive() ? "true" : "false",
-      otaPrepareSecondsRemaining());
-    if (!b.valid) {
-      sendErrorJson(c, 503, "RESPONSE_BUFFER_EXHAUSTED",
-        "Az OTA prepare valasz nem fert el.", requestId);
-      return 503;
-    }
-    sendJsonBuffer(c, b.data, b.length, prepared ? 200 : 503, requestId);
-    return prepared ? 200 : 503;
+    sendJsonLiteral(c, prepared ? "{\"success\":true}" : "{\"success\":false}",
+      prepared ? 200 : 503, requestId); return prepared ? 200 : 503;
   }
-  if (base == "/api/v1/schedules/status") {
-    FixedBuffer b;
-    resetBuffer(b, httpBodyBuffer, sizeof(httpBodyBuffer));
-    appendFormat(b,
-      "{\"success\":true,\"requestId\":%lu,\"count\":%u,\"max\":%u,",
-      static_cast<unsigned long>(requestId), scheduleCount, SCHEDULE_MAX);
-    appendFormat(b,
-      "\"revision\":%lu,\"checksum\":\"%08lX\",\"stored\":%s,",
+  if (base == "/api/v1/leds" && method == "GET") { sendStatusJson(c, requestId, true); return 200; }
+  if (base.startsWith("/api/v1/leds/") && base != "/api/v1/leds/all") {
+    int id = base.substring(strlen("/api/v1/leds/")).toInt();
+    if (id < 1 || id > STRIP_COUNT) { sendErrorJson(c,404,"LED_NOT_FOUND","Ismeretlen LED.",requestId); return 404; }
+    if (method == "GET") { sendLedJson(c, id-1, requestId); return 200; }
+    if (method == "PUT") {
+      if (!applyLedJson(id-1, body)) { sendErrorJson(c,422,"VALIDATION_FAILED","Ervenytelen LED JSON.",requestId); return 422; }
+      sendLedJson(c, id-1, requestId); return 200;
+    }
+  }
+  if (base == "/api/v1/leds/all" && method == "POST") {
+    for (uint8_t i=0;i<STRIP_COUNT;i++) if (!applyLedJson(i, body)) {
+      sendErrorJson(c,422,"VALIDATION_FAILED","Ervenytelen kozos LED JSON.",requestId); return 422;
+    }
+    sendStatusJson(c, requestId, true); return 200;
+  }
+  if (base == "/api/v1/schedules/status" && method == "GET") {
+    FixedBuffer b; resetBuffer(b,httpBodyBuffer,sizeof(httpBodyBuffer));
+    appendFormat(b,"{\"success\":true,\"requestId\":%lu,\"count\":%u,\"max\":%u,",
+      static_cast<unsigned long>(requestId),scheduleCount,SCHEDULE_MAX);
+    appendFormat(b,"\"revision\":%lu,\"checksum\":\"%08lX\",\"stored\":%s,",
       static_cast<unsigned long>(scheduleRevision),
-      static_cast<unsigned long>(scheduleChecksum(schedules, scheduleCount)),
-      schedulesStored ? "true" : "false");
-    appendRaw(b,
-      "\"storageLayout\":\"legacy-4.1-compatible\",\"abSlots\":false,"
-      "\"readbackAfterWrite\":false}");
-    if (!b.valid) {
-      sendErrorJson(c, 503, "RESPONSE_BUFFER_EXHAUSTED",
-        "A schedule status valasz nem fert el.", requestId);
-      return 503;
-    }
-    sendJsonBuffer(c, b.data, b.length, 200, requestId);
-    return 200;
+      static_cast<unsigned long>(scheduleChecksum(schedules,scheduleCount)),schedulesStored?"true":"false");
+    appendFormat(b,"\"storageLayout\":\"ab-v2\",\"activeSlot\":%u,\"abSlots\":true,",
+      activeScheduleSlotOffset);
+    appendFormat(b,"\"readbackAfterWrite\":true,\"transactionActive\":%s}",
+      scheduleTransactionActive?"true":"false");
+    sendJsonBuffer(c,b.data,b.length,200,requestId); return 200;
   }
-  sendErrorJson(c, 404, "ENDPOINT_NOT_FOUND",
-    "Ismeretlen Arduino Direct API v1 vegpont.", requestId);
-  return 404;
+  if (base == "/api/v1/schedules" && method == "GET") {
+    int index=valueInt(query,"index",0,0,SCHEDULE_MAX-1);
+    int limit=valueInt(query,"limit",8,1,8);
+    FixedBuffer b; resetBuffer(b,httpBodyBuffer,sizeof(httpBodyBuffer));
+    appendFormat(b,"{\"success\":true,\"requestId\":%lu,\"revision\":%lu,\"count\":%u,\"entries\":[",
+      static_cast<unsigned long>(requestId),static_cast<unsigned long>(scheduleRevision),scheduleCount);
+    bool first=true;
+    for(int i=index;i<scheduleCount && i<index+limit;i++) {
+      String payload=encodeScheduleHex(schedules[i]);
+      if(!first) appendChar(b,','); first=false;
+      appendFormat(b,"{\"index\":%d,\"payload\":\"%s\"}",i,payload.c_str());
+    }
+    appendRaw(b,"]}"); sendJsonBuffer(c,b.data,b.length,200,requestId); return 200;
+  }
+  if (base == "/api/v1/schedules" && method == "DELETE") {
+    memset(schedules,0,sizeof(schedules));
+    if(!saveSchedules(0)){sendErrorJson(c,500,"EEPROM_VERIFY_FAILED","Schedule torles sikertelen.",requestId);return 500;}
+    sendJsonLiteral(c,"{\"success\":true,\"count\":0}",200,requestId);return 200;
+  }
+  if (base == "/api/v1/schedules/transactions" && method == "POST") {
+    long revision,total;
+    if(!jsonReadInt(body,"expectedRevision",revision)||!jsonReadInt(body,"total",total)||
+       revision<0||total<0||total>SCHEDULE_MAX) {
+      sendErrorJson(c,422,"VALIDATION_FAILED","expectedRevision es total kotelezo.",requestId);return 422;
+    }
+    if(!beginScheduleTransaction(revision,total)) {
+      sendErrorJson(c,409,"REVISION_CONFLICT","Schedule revision elteres vagy aktiv tranzakcio.",requestId);return 409;
+    }
+    FixedBuffer b;resetBuffer(b,httpBodyBuffer,sizeof(httpBodyBuffer));
+    appendFormat(b,"{\"success\":true,\"requestId\":%lu,\"transactionId\":%lu,\"total\":%u}",
+      static_cast<unsigned long>(requestId),static_cast<unsigned long>(scheduleTransactionId),scheduleTransactionTotal);
+    sendJsonBuffer(c,b.data,b.length,200,requestId);return 200;
+  }
+  String txPrefix="/api/v1/schedules/transactions/";
+  if(base.startsWith(txPrefix)) {
+    String rest=base.substring(txPrefix.length());
+    int slash=rest.indexOf('/');
+    uint32_t txId=static_cast<uint32_t>((slash<0?rest:rest.substring(0,slash)).toInt());
+    String action=slash<0?"":rest.substring(slash+1);
+    if(!scheduleTransactionActive||txId!=scheduleTransactionId){sendErrorJson(c,404,"TRANSACTION_NOT_FOUND","Nincs ilyen schedule tranzakcio.",requestId);return 404;}
+    if(action=="chunks"&&method=="PUT") {
+      long index; char payload[64]; StoredSchedule entry={};
+      if(!jsonReadInt(body,"index",index)||!jsonReadString(body,"payload",payload,sizeof(payload))||
+         index<0||index>=scheduleTransactionTotal||!decodeScheduleHex(String(payload),entry)||
+         !writeScheduleTransactionRecord(index,entry)) {
+        sendErrorJson(c,422,"INVALID_SCHEDULE_CHUNK","Ervenytelen schedule chunk.",requestId);return 422;
+      }
+      sendJsonLiteral(c,"{\"success\":true}",200,requestId);return 200;
+    }
+    if(action=="commit"&&method=="POST") {
+      if(!commitScheduleTransaction()){sendErrorJson(c,500,"EEPROM_VERIFY_FAILED","Schedule commit vagy readback sikertelen.",requestId);return 500;}
+      sendJsonLiteral(c,"{\"success\":true}",200,requestId);return 200;
+    }
+    if(action==""&&method=="DELETE") {cancelScheduleTransaction();sendJsonLiteral(c,"{\"success\":true}",200,requestId);return 200;}
+  }
+  sendErrorJson(c,405,"METHOD_NOT_ALLOWED","Ismeretlen vegpont vagy hibas metodus.",requestId);
+  return 405;
 }
 int routeLegacy(WiFiClient& c, const String& method, const String& path,
     uint32_t requestId) {
@@ -1769,6 +2156,17 @@ int routeLegacy(WiFiClient& c, const String& method, const String& path,
   if (base == "/api/ota/status") {
     sendOtaStatusJson(c, requestId, false); return 200;
   }
+  const bool legacyMutation =
+    base == "/api/all-on" || base == "/api/all-off" ||
+    base.startsWith("/api/led/") ||
+    base == "/api/schedules/upload" ||
+    base == "/api/schedules/chunk" ||
+    base == "/api/schedules/clear";
+  if (legacyMutation) {
+    sendErrorJson(c, 410, "LEGACY_MUTATION_REMOVED",
+      "Hasznald az Arduino Direct API v1 JSON vegpontjait.", requestId);
+    return 410;
+  }
   if (base == "/api/ota/prepare" || base == "/api/ota/restart") {
     bool prepared = prepareOtaService();
     FixedBuffer b;
@@ -1791,20 +2189,6 @@ int routeLegacy(WiFiClient& c, const String& method, const String& path,
     sendJsonBuffer(c, b.data, b.length, prepared ? 200 : 503, requestId);
     return prepared ? 200 : 503;
   }
-  if (base == "/api/all-on" || base == "/api/all-off") {
-    bool state = base == "/api/all-on";
-    for (uint8_t i = 0; i < STRIP_COUNT; i++) leds[i].enabled = state;
-    activateManualOverrideAll();
-    renderAll(true);
-    logEvent("info", state ? "Minden LED bekapcsolva" : "Minden LED kikapcsolva");
-    sendStatusJson(c, requestId, false);
-    return 200;
-  }
-  if (base.startsWith("/api/led/")) {
-    updateLedFromLegacyQuery(path);
-    sendStatusJson(c, requestId, false);
-    return 200;
-  }
   if (base == "/api/schedules/export") {
     int index = valueInt(query, "index", 0, 0, SCHEDULE_MAX - 1);
     if (index >= scheduleCount) {
@@ -1819,65 +2203,17 @@ int routeLegacy(WiFiClient& c, const String& method, const String& path,
     sendJsonBuffer(c, response.c_str(), response.length(), 200, requestId);
     return 200;
   }
-  if (base == "/api/schedules/upload") {
-    String payload;
-    if (!extractQueryValue(query, "payload", payload) ||
-        !importSchedulesHex(payload)) {
-      sendErrorJson(c, 422, "INVALID_SCHEDULE_PAYLOAD",
-        "Ervenytelen schedule hex payload.", requestId);
-      return 422;
-    }
-    char response[160];
-    int n = snprintf(response, sizeof(response),
-      "{\"success\":true,\"count\":%u,\"revision\":%lu}",
-      scheduleCount, static_cast<unsigned long>(scheduleRevision));
-    sendJsonBuffer(c, response, max(n, 0), 200, requestId);
-    return 200;
-  }
-  if (base == "/api/schedules/chunk") {
-    int index = valueInt(query, "index", -1, -1, SCHEDULE_MAX - 1);
-    int total = valueInt(query, "total", -1, -1, SCHEDULE_MAX);
-    String payload;
-    if (index < 0 || total < 0 || index >= total ||
-        !extractQueryValue(query, "payload", payload) ||
-        !decodeScheduleHex(payload, schedules[index])) {
-      sendErrorJson(c, 422, "INVALID_SCHEDULE_CHUNK",
-        "Ervenytelen schedule chunk.", requestId);
-      return 422;
-    }
-    if (index == total - 1 && !saveSchedules(total)) {
-      sendErrorJson(c, 500, "EEPROM_WRITE_FAILED",
-        "Schedule EEPROM mentes sikertelen.", requestId);
-      return 500;
-    }
-    char response[192];
-    int n = snprintf(response, sizeof(response),
-      "{\"success\":true,\"index\":%d,\"total\":%d,\"complete\":%s}",
-      index, total, index == total - 1 ? "true" : "false");
-    sendJsonBuffer(c, response, max(n, 0), 200, requestId);
-    return 200;
-  }
-  if (base == "/api/schedules/clear") {
-    memset(schedules, 0, sizeof(schedules));
-    if (!saveSchedules(0)) {
-      sendErrorJson(c, 500, "EEPROM_WRITE_FAILED",
-        "Schedule torles sikertelen.", requestId);
-      return 500;
-    }
-    sendJsonLiteral(c, "{\"success\":true,\"count\":0}", 200, requestId);
-    return 200;
-  }
   sendErrorJson(c, 404, "ENDPOINT_NOT_FOUND",
     "Ismeretlen legacy Arduino API vegpont.", requestId);
   return 404;
 }
 int routeRequest(WiFiClient& c, const String& method, const String& path,
-    uint32_t requestId) {
+    const char* body, uint32_t requestId) {
   int queryAt = path.indexOf('?');
   String base = queryAt < 0 ? path : path.substring(0, queryAt);
   String query = queryAt < 0 ? "" : path.substring(queryAt + 1);
   return base.startsWith("/api/v1/")
-    ? routeV1(c, method, base, query, requestId)
+    ? routeV1(c, method, base, query, body, requestId)
     : routeLegacy(c, method, path, requestId);
 }
 
@@ -1969,7 +2305,8 @@ void handleHttp() {
     String headerKey;
     bool headerPresent = false;
     c.setTimeout(HTTP_READ_TIMEOUT);
-    HttpHeaderReadResult headerResult = readHttpHeaders(c, headerKey, headerPresent);
+    size_t contentLength = 0; bool jsonType = false;
+    HttpHeaderReadResult headerResult = readHttpHeaders(c, headerKey, headerPresent, contentLength, jsonType);
     if (headerResult != HTTP_HEADERS_OK) {
       request.authResult = HTTP_AUTH_HEADER_INVALID;
       if (headerResult == HTTP_HEADERS_TIMEOUT) {
@@ -1995,8 +2332,7 @@ void handleHttp() {
 
     request.authResult = authenticateDeviceRequest(
       headerKey, headerPresent, queryKey, queryPresent);
-    if (request.authResult != HTTP_AUTH_OK_HEADER &&
-        request.authResult != HTTP_AUTH_OK_QUERY_FALLBACK) {
+    if (request.authResult != HTTP_AUTH_OK_HEADER) {
       httpRejected++;
       request.responseCode = 401;
       sendErrorJson(c, 401,
@@ -2011,13 +2347,25 @@ void handleHttp() {
       continue;
     }
 
-    if (request.authResult == HTTP_AUTH_OK_HEADER) httpHeaderAuthAccepted++;
-    else {
-      httpQueryFallbackAccepted++;
-      logEvent("warn",
-        "Elavult ?k= query hitelesites elfogadva; F14.2-ben megszunik");
+    httpHeaderAuthAccepted++;
+    bool bodyRequired = method == "POST" || method == "PUT";
+    if (contentLength >= HTTP_BODY_BUFFER_SIZE) {
+      request.responseCode = 413;
+      sendErrorJson(c, 413, "PAYLOAD_TOO_LARGE", "A JSON body tul nagy.", request.requestId);
+      finalizeHttpAudit(request); c.stop(); continue;
     }
-    request.responseCode = routeRequest(c, method, path, request.requestId);
+    if (bodyRequired && contentLength > 0 && !jsonType) {
+      request.responseCode = 400;
+      sendErrorJson(c, 400, "CONTENT_TYPE_REQUIRED", "Content-Type: application/json kotelezo.", request.requestId);
+      finalizeHttpAudit(request); c.stop(); continue;
+    }
+    httpBodyBuffer[0] = 0;
+    if (contentLength > 0 && !readHttpBody(c, contentLength)) {
+      request.responseCode = 400;
+      sendErrorJson(c, 400, "INCOMPLETE_BODY", "A JSON body hianyos.", request.requestId);
+      finalizeHttpAudit(request); c.stop(); continue;
+    }
+    request.responseCode = routeRequest(c, method, path, httpBodyBuffer, request.requestId);
     finalizeHttpAudit(request);
     c.stop();
   }
@@ -2305,8 +2653,7 @@ void setup() {
   snprintf(info, sizeof(info), "Build: %s %s | funkcio: %s",
     __DATE__, __TIME__, FIRMWARE_FEATURE);
   logEvent("info", info);
-  loadNetworkSettings();
-  loadApiSettings();
+  loadPersistentConfig();
   loadSchedules();
   connectWifi();
   server.begin();

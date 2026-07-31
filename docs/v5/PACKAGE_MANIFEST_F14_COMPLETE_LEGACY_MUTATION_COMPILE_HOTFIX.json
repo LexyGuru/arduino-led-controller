@@ -1,0 +1,19 @@
+{
+  "package": "f14-complete-legacy-mutation-compile-hotfix",
+  "expectedBaseCommit": "4a6051d8cb6b5ab3a98ef674a155ccc064d653b5",
+  "firmwareVersion": "4.3.0-beta.1",
+  "directApiVersion": "1.0.0",
+  "fix": "Move LEGACY_MUTATION_REMOVED response into routeLegacy where WiFiClient and requestId exist; remove unreachable legacy mutation implementations.",
+  "files": [
+    {
+      "path": "firmware/ArduinoLedController/ArduinoLedController.ino",
+      "bytes": 111064,
+      "sha256": "5a2a2b81171a8acc5245b5e5b78059dc5ec2315fda1ef84fd06a1d5b8a8e1609"
+    },
+    {
+      "path": "scripts/test-f14-complete-legacy-mutation-gate.js",
+      "bytes": 1273,
+      "sha256": "4fdb39e3da7479d42434016e37217b58ac46c6aab190dfacb50afe923524d954"
+    }
+  ]
+}

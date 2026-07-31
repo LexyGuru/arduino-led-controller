@@ -13,7 +13,7 @@
 #define API_PRIVATE_PATH "/CHANGE_THIS_TO_A_LONG_RANDOM_API_PATH"
 
 // F14.1 átmeneti kompatibilitás. Az F14.2-ben kötelezően 0 lesz.
-#define API_ALLOW_QUERY_KEY_FALLBACK 1
+#define API_ALLOW_QUERY_KEY_FALLBACK 0
 
 #define ENABLE_PIR_SENSORS 0
 #define ENABLE_PHYSICAL_BUTTONS 0
