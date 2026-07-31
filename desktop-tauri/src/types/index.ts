@@ -13,23 +13,25 @@ export interface RuntimeCapabilities {
 }
 
 export interface ConnectionConfig {
-  /** Távoli/DDNS HTTP elérés. */
+  profileName: string;
+  protocol: 'http' | 'https';
   arduinoIp: string;
   arduinoPort: number;
-  /** Elsődleges, közvetlen LAN elérés. */
   localArduinoIp: string;
   localArduinoPort: number;
   preferLocal: boolean;
-  /** OTA-cél. Desktopon lehetőleg a helyi Arduino-cím legyen. */
+  otaUseApiHost: boolean;
   otaAddress: string;
   otaPort: number;
-  /** auto | native | terminal */
-  otaUploadMode: string;
+  otaUploadMode: 'auto' | 'system' | 'bundled' | 'custom';
   otaToolPath: string;
-  /** A secrets.h API_PRIVATE_PATH értékével egyező privát előtag. */
+  otaTimeoutSeconds: number;
   arduinoApiPath: string;
-  /** A secrets.h API_SHARED_SECRET értékével egyező X-Device-Key. */
   arduinoApiKey: string;
+  updateChannel: 'stable' | 'beta';
+  autoCheckUpdates: boolean;
+  autoDownloadUpdates: boolean;
+  firmwareUpdateChecks: boolean;
 }
 
 export interface LedStrip {

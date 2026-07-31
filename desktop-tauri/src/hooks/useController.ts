@@ -32,18 +32,26 @@ import type {
 
 const fallbackConfig:
   ConnectionConfig = {
+    profileName: 'Arduino vezérlő',
+    protocol: 'http',
     arduinoIp: '',
     arduinoPort: 25666,
     localArduinoIp: '',
     localArduinoPort: 80,
     preferLocal: true,
+    otaUseApiHost: true,
     otaAddress: '',
     otaPort: 65280,
     otaUploadMode: 'auto',
     otaToolPath:
       '/usr/local/bin/arduinoOTA',
+    otaTimeoutSeconds: 120,
     arduinoApiPath: '',
-    arduinoApiKey: ''
+    arduinoApiKey: '',
+    updateChannel: 'beta',
+    autoCheckUpdates: true,
+    autoDownloadUpdates: false,
+    firmwareUpdateChecks: true
   };
 
 function hostReady(
