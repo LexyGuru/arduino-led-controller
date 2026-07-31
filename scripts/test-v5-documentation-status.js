@@ -40,6 +40,16 @@ function main() {
   const platforms = read('docs/v5/V5_DESKTOP_MOBILE_ROADMAP.md');
   const knownIssues = read('docs/v5/BETA1_KNOWN_ISSUES.md');
   const index = read('docs/v5/README.md');
+  const firmwareExecution =
+    read('docs/v5/FIRMWARE_FIRST_EXECUTION_PLAN.md');
+  const firmwareAudit =
+    read('docs/firmware/F14_0_FIRMWARE_AUDIT.md');
+  const directApiContract =
+    read('docs/firmware/ARDUINO_DIRECT_API_V1_CONTRACT.md');
+  const serialContract =
+    read('docs/firmware/ARDUINO_SERIAL_COMMAND_CONTRACT.md');
+  const firmwareOpenApi =
+    JSON.parse(read('docs/api/arduino-direct-api-v1.json'));
 
   for (const [label, content] of [
     ['README', readme],
@@ -86,6 +96,13 @@ function main() {
   assert.match(knownIssues, /V5 rendszer/i);
   assert.match(knownIssues, /összekever/i);
   assert.match(index, /Tauri \/ mobil -> közvetlen Arduino/);
+  assert.match(index, /Firmware-first dokumentáció/);
+  assert.match(firmwareExecution, /Tauri V15 belépési feltétel/);
+  assert.match(firmwareAudit, /F14-AUD-001/);
+  assert.match(directApiContract, /\/api\/v1/);
+  assert.match(serialContract, /profile export secrets/);
+  assert.strictEqual(firmwareOpenApi.openapi, '3.1.0');
+  assert.ok(firmwareOpenApi.paths['/api/v1/status']);
 
   for (const content of [
     readme,
@@ -117,6 +134,8 @@ function main() {
 
   const evolvedAfterV14 = new Set([
     'docs/v5/BETA1_KNOWN_ISSUES.md',
+    'docs/v5/README.md',
+    'docs/v5/V5_IMPLEMENTATION_STATUS.md',
     'docs/v5/V5_REARCHITECTURE_CHECKLIST.md',
     'scripts/test-v5-documentation-status.js'
   ]);
@@ -150,6 +169,9 @@ function main() {
   assert.strictEqual(evolvedChecks, evolvedAfterV14.size);
   assert.match(checklist, /V14\.1/);
   assert.match(knownIssues, /V14\.1 forrásjavítás/);
+  assert.match(knownIssues, /Firmware-kapcsolati diagnosztika hiányos/);
+  assert.match(checklist, /F14\.0 teljes `4\.1\.21` firmware-audit/);
+  assert.match(status, /Firmware-first döntés/);
 
   console.log('OK: V5 közvetlen Arduino-első dokumentáció');
   console.log('OK: Node/LXC nem kötelező');
@@ -158,6 +180,7 @@ function main() {
   console.log('OK: mobil OTA tiltott');
   console.log('OK: V14.0 történeti manifest és változatlan SHA-256 fájlok');
   console.log('OK: V14.1-ben fejlődő aktív dokumentumok engedélyezve');
+  console.log('OK: F14.0 firmware-first dokumentáció és OpenAPI');
 }
 
 try {

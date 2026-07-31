@@ -99,3 +99,41 @@ A V14.1 csomag a `next/v5-rearchitecture` ágon:
 A kiadott `v5.0.0-beta.1` telepítők ettől nem változnak meg. A javítás a következő Beta buildbe kerül.
 
 A V14.1 még a korábbi Rust konfigurációs tárolást használja. Az API-útvonal és eszközkulcs natív kulcstárba költöztetése a közvetlenül következő V14.2 csomag feladata.
+
+
+## 8. Firmware-kapcsolati diagnosztika hiányos
+
+A `4.1.21` firmware a bootkonzolon privát útvonal nélküli API-címet ír:
+
+```text
+http://<IP>:80/api/status
+```
+
+A valódi cím a privát útvonalat is tartalmazza. Hibás útvonal vagy metódus
+esetén a firmware jelenleg JSON-válasz nélkül lezárhatja a TCP-kapcsolatot.
+
+Hatás:
+
+- a kliens csak általános kapcsolati hibát lát;
+- nem derül ki, hogy cím-, útvonal- vagy hitelesítési hiba történt;
+- a Tauri kapcsolat tesztelése nem bizonyítható egyértelműen.
+
+Tervezett javítás: F14.1.
+
+## 9. Firmware API és schedule még nem stabil kliensszerződés
+
+A `4.1.21`:
+
+- nem használ `/api/v1` verziót;
+- több módosítást query stringből végez;
+- még elfogadhat `?k=` query-kulcsot;
+- a schedule mentése nem A/B slotos;
+- mentés után nincs EEPROM readback;
+- a chunk upload közvetlenül az aktív RAM-ba ír.
+
+Tervezett javítás: F14.2 és F14.3.
+
+## Firmware-first stop
+
+A V14.1 Tauri forrásjavítás megmarad, de új Tauri funkció nem készül addig,
+amíg az F14.1–F14.4 firmware-kapuk hardveren nem sikeresek.

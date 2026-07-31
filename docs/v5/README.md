@@ -9,6 +9,19 @@
 - `V5_IMPLEMENTATION_STATUS.md` – részletes aktuális állapot
 - `BETA1_KNOWN_ISSUES.md` – a kiadott Beta.1 ismert problémái
 
+
+## Firmware-first dokumentáció
+
+- `FIRMWARE_FIRST_EXECUTION_PLAN.md` – kötelező végrehajtási sorrend
+- `../firmware/F14_0_FIRMWARE_AUDIT.md` – a `4.1.21` teljes auditja
+- `../firmware/ARDUINO_DIRECT_API_V1_CONTRACT.md` – cél API-szerződés
+- `../firmware/ARDUINO_EEPROM_LAYOUT_4_1_21.md` – jelenlegi és cél EEPROM-layout
+- `../firmware/ARDUINO_SERIAL_COMMAND_CONTRACT.md` – USB Serial parancsok
+- `../firmware/ARDUINO_HARDWARE_ACCEPTANCE_MATRIX.md` – hardveres kapu
+- `../api/arduino-direct-api-v1.json` – OpenAPI 3.1 terv
+
+A Tauri funkciófejlesztés az F14.4 hardveres firmware-kapuig szünetel.
+
 ## Release-dokumentáció
 
 - `BETA1_RELEASE_NOTES.md`

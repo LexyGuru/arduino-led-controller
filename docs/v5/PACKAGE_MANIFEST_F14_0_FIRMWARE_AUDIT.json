@@ -1,0 +1,87 @@
+{
+  "schemaVersion": 1,
+  "package": "f14.0-firmware-audit-contract",
+  "createdAt": "2026-07-31T04:53:00+02:00",
+  "sourceBranch": "next/v5-rearchitecture",
+  "expectedBaseCommit": "a70a84e335fe9c3199082269a2ce35502f15a6cc",
+  "applicationVersion": "5.0.0-beta.1",
+  "auditedFirmwareVersion": "4.1.21",
+  "targetFirmwareVersion": "4.2.0-beta.1",
+  "firmwareSourceModified": false,
+  "tauriSourceModified": false,
+  "tauriFeatureDevelopmentPaused": true,
+  "nodeLxcRequired": false,
+  "directApiVersion": "1.0.0-draft",
+  "queryKeyFallbackTarget": false,
+  "scheduleAuthority": "arduino-eeprom",
+  "eepromTarget": "versioned-a-b-slots",
+  "hardwareGateRequiredBeforeTauriV15": true,
+  "fileCountExcludingManifest": 13,
+  "files": [
+    {
+      "path": "docs/api/arduino-direct-api-v1.json",
+      "bytes": 22697,
+      "sha256": "16067de969a311b3cdb1fec5560998bd9f3c1ed410d6aaa1d77f28123ba4e8f0"
+    },
+    {
+      "path": "docs/firmware/ARDUINO_DIRECT_API_V1_CONTRACT.md",
+      "bytes": 5281,
+      "sha256": "2190009e56241d8c847bcf4779285223176cf4641d01c3bb92511b4704837f73"
+    },
+    {
+      "path": "docs/firmware/ARDUINO_EEPROM_LAYOUT_4_1_21.md",
+      "bytes": 3574,
+      "sha256": "ce3dc76354daebadc29928a4d270379741a79e67845a70e13c7ceb645405c012"
+    },
+    {
+      "path": "docs/firmware/ARDUINO_HARDWARE_ACCEPTANCE_MATRIX.md",
+      "bytes": 4033,
+      "sha256": "f8e4b37e61c951c935b89cf6b4d8aabcd19166b4dd57e9a43829604582877c00"
+    },
+    {
+      "path": "docs/firmware/ARDUINO_SERIAL_COMMAND_CONTRACT.md",
+      "bytes": 4681,
+      "sha256": "4b28fc7376deefba8e0c2e51d28fea3d5e3cea9caf9cf1e72c4c2fb502ec21f5"
+    },
+    {
+      "path": "docs/firmware/F14_0_FIRMWARE_AUDIT.md",
+      "bytes": 9247,
+      "sha256": "393949f02aaf9dafb25e6f5bb88e9968e6dd070ba4775536dd3a1ad3070d66ec"
+    },
+    {
+      "path": "docs/v5/BETA1_KNOWN_ISSUES.md",
+      "bytes": 4764,
+      "sha256": "69a4e24f25f18b5ef064ac598ae8f1f0821590f19cbfb2fd62070de3cc9083ed"
+    },
+    {
+      "path": "docs/v5/FIRMWARE_FIRST_EXECUTION_PLAN.md",
+      "bytes": 2594,
+      "sha256": "cd572946a4da0dfe72089be45672996135c5979d99654dc920635a1415300205"
+    },
+    {
+      "path": "docs/v5/README.md",
+      "bytes": 1774,
+      "sha256": "7cec5b742a41b7c0e002d8ab3c647fb1f98610dbadd2a1b8564d40b708f1e408"
+    },
+    {
+      "path": "docs/v5/V5_IMPLEMENTATION_STATUS.md",
+      "bytes": 6820,
+      "sha256": "e5322664fb1c3c6afc03690e30e5445023a966e4ba39d7d1fb34d46a8d96d467"
+    },
+    {
+      "path": "docs/v5/V5_REARCHITECTURE_CHECKLIST.md",
+      "bytes": 6891,
+      "sha256": "102d3f005f380d82b7df9690374b5f929ce5e473fd875118d0f90390350289d5"
+    },
+    {
+      "path": "scripts/test-f14-firmware-audit-contract.js",
+      "bytes": 6830,
+      "sha256": "c1bb916d3ee1476a0aace5d899b10d732308892109f48440501f74e18ba14d40"
+    },
+    {
+      "path": "scripts/test-v5-documentation-status.js",
+      "bytes": 6576,
+      "sha256": "a3b75fa078fb7ec9c21be5176194311d19300d03a7bd227f01a0c24257eb9e33"
+    }
+  ]
+}

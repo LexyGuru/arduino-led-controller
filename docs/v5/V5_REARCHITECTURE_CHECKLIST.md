@@ -1,6 +1,6 @@
 # V5 rearchitecture checklist
 
-**Frissítve:** 2026-07-30
+**Frissítve:** 2026-07-31
 **Aktuális verzió:** `5.0.0-beta.1`
 **Firmware:** `4.1.21`
 **Integrációs ág:** `next/v5-rearchitecture`
@@ -73,7 +73,24 @@ Alpha.3 feature:
 - [ ] helyi és távoli végpont külön-külön kényszerített tesztje
 - [ ] optionalServer mód külön kísérleti beállítás mögött
 
-## V14.2 – titkos profilimport
+
+## Firmware-first kapu
+
+- [x] Tauri funkciófejlesztés szüneteltetve az Arduino stabilitási kapuig
+- [x] F14.0 teljes `4.1.21` firmware-audit
+- [x] jelenlegi Arduino endpointleltár
+- [x] jelenlegi EEPROM-layout és kockázatok
+- [x] Arduino Direct API v1 OpenAPI terv
+- [x] USB Serial parancsszerződés
+- [x] hardveres acceptance matrix
+- [x] F14.0 regresszióteszt és manifest
+- [ ] F14.1 diagnosztika, hibaválaszok és Serial profil-export
+- [ ] F14.2 `/api/v1`, JSON body és query fallback eltávolítása
+- [ ] F14.3 A/B EEPROM és atomikus schedule
+- [ ] F14.4 hardveres stabilitási gate
+- [ ] Tauri V15 folytatás csak F14.4 után
+
+## V14.2 – titkos profilimport – SZÜNETEL F14.4-IG
 
 - [ ] `controller-profile.secret.json` JSON séma
 - [ ] fájlimport desktopon
@@ -88,7 +105,7 @@ Alpha.3 feature:
 - [ ] hibás/hiányos secret fájl elutasítása
 - [ ] secret scanner regresszió
 
-## V14.3 – schedule
+## V14.3 – Tauri schedule – SZÜNETEL F14.4-IG
 
 - [ ] Arduino schedule export
 - [ ] Arduino schedule import/upload
@@ -102,7 +119,7 @@ Alpha.3 feature:
 - [ ] nincs Node/LXC schedule-függés
 - [ ] nincs háttérben késleltetett automatikus írás
 
-## V14.4 – napló és diagnosztika
+## V14.4 – Tauri napló és diagnosztika – SZÜNETEL F14.4-IG
 
 - [ ] helyi SQLite vagy JSONL
 - [ ] profilazonosító
@@ -115,7 +132,7 @@ Alpha.3 feature:
 - [ ] naplórotáció
 - [ ] felhasználói törlés
 
-## V14.5 – OTA és rollback
+## V14.5 – Tauri OTA és rollback – SZÜNETEL F14.4-IG
 
 - [ ] macOS Terminal/`arduinoOTA`
 - [ ] Windows támogatás
@@ -129,7 +146,7 @@ Alpha.3 feature:
 - [ ] Android OTA rejtve
 - [ ] iOS/iPadOS OTA rejtve
 
-## V14.6 – mobil
+## V14.6 – mobil – SZÜNETEL F14.4-IG
 
 - [ ] Android local network
 - [ ] iOS local network permission
@@ -144,7 +161,7 @@ Alpha.3 feature:
 - [ ] valós Android teszt
 - [ ] valós iPhone/iPad teszt
 
-## V14.7 – opcionális szervermód
+## V14.7 – opcionális szervermód – SZÜNETEL F14.4-IG
 
 - [ ] külön „Kísérleti szerver” kapcsoló
 - [ ] külön szervercím és port
