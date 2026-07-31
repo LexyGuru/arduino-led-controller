@@ -23,7 +23,7 @@ function main() {
   const secrets = read('firmware/ArduinoLedController/secrets.example.h');
 
   assert.match(firmware, /#define FIRMWARE_VERSION "4\.2\.0-beta\.1"/);
-  assert.match(firmware, /#define FIRMWARE_FEATURE "f14\.1-diagnostics-direct-api-v1"/);
+  assert.match(firmware, /#define FIRMWARE_FEATURE "f14\.1\.3-wifis3-response-transport"/);
   assert.match(firmware, /#define DIRECT_API_VERSION "1\.0\.0-beta\.1"/);
   assert.match(firmware, /#define API_DEVICE_KEY_HEADER "X-Device-Key"/);
 
@@ -79,7 +79,7 @@ function main() {
   assert.strictEqual(manifest.package, 'f14.1-firmware-diagnostics');
   assert.strictEqual(
     manifest.expectedBaseCommit,
-    '4893a2df1d6901d85a62e62f29d06d7071206709'
+    'e31fa0e1f1123b6d2810c330c43fdb581e26b496'
   );
   assert.strictEqual(manifest.previousFirmwareVersion, '4.1.21');
   assert.strictEqual(manifest.firmwareVersion, '4.2.0-beta.1');

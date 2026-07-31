@@ -86,8 +86,11 @@ Alpha.3 feature:
 - [x] F14.0 regresszióteszt és manifest
 - [x] F14.1 diagnosztika, hibaválaszok és Serial profil-export – forrás
 - [x] F14.1.1 SRAM-hotfix – linker heap/stack átfedés javítva a forrásban
-- [ ] F14.1 Arduino CLI fordítás
-- [ ] F14.1 USB feltöltés és hardveres auth/diagnosztikai mátrix
+- [x] F14.1 Arduino CLI fordítás
+- [x] F14.1 USB feltöltés, boot, Wi-Fi, OTA, 401 és 404 alapmátrix
+- [x] F14.1 hitelesített `/api/v1/ping` hardverteszt
+- [x] F14.1.3 nagy HTTP-válasz transport hotfix forrás
+- [ ] F14.1.3 teljes read-only Direct API hardveres újrateszt
 - [ ] F14.2 `/api/v1`, JSON body és query fallback eltávolítása
 - [ ] F14.3 A/B EEPROM és atomikus schedule
 - [ ] F14.4 hardveres stabilitási gate

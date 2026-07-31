@@ -1,6 +1,6 @@
 /*
  * Arduino LED Controller – 4.2.0-beta.1
- * F14.1: diagnosztika, mérhető HTTP kapcsolatok, Serial profil-export.
+ * F14.1.3: WiFiS3-biztos, kis darabos HTTP választransport.
  * Az F14.2 hozza a teljes JSON body API-t; az F14.3 az A/B EEPROM-ot.
  */
 #include <WiFiS3.h>
@@ -14,7 +14,7 @@
 #include "secrets.h"
 
 #define FIRMWARE_VERSION "4.2.0-beta.1"
-#define FIRMWARE_FEATURE "f14.1-diagnostics-direct-api-v1"
+#define FIRMWARE_FEATURE "f14.1.3-wifis3-response-transport"
 #define DIRECT_API_VERSION "1.0.0-beta.1"
 #define DEVICE_NAME "arduino-led-controller"
 #define API_DEVICE_KEY_HEADER "X-Device-Key"
@@ -57,8 +57,9 @@ constexpr uint8_t HTTP_CLIENTS_PER_LOOP = 1;
 constexpr uint8_t LOG_CAPACITY = 32;
 constexpr uint8_t CONSOLE_LOGS_PER_RESPONSE = 8;
 constexpr size_t HTTP_BODY_BUFFER_SIZE = 2560;
-constexpr size_t HTTP_RESPONSE_HEADER_SIZE = 224;
-constexpr size_t HTTP_WRITE_CHUNK_SIZE = 512;
+constexpr size_t HTTP_RESPONSE_HEADER_SIZE = 192;
+constexpr size_t HTTP_WRITE_CHUNK_SIZE = 128;
+constexpr unsigned long HTTP_WRITE_INTER_CHUNK_DELAY_MS = 2UL;
 constexpr size_t HTTP_REQUEST_LINE_SIZE = 256;
 constexpr size_t HTTP_HEADER_LINE_SIZE = 192;
 constexpr size_t SERIAL_COMMAND_SIZE = 160;
@@ -127,6 +128,7 @@ static_assert(sizeof(StoredSchedule) == 27, "StoredSchedule EEPROM layout change
 static_assert(sizeof(ScheduleHeader) == 10, "ScheduleHeader EEPROM layout changed");
 static_assert(LOG_CAPACITY <= 32, "F14.1 RAM log capacity is too large");
 static_assert(HTTP_BODY_BUFFER_SIZE <= 2560, "F14.1 HTTP buffer is too large");
+static_assert(HTTP_WRITE_CHUNK_SIZE <= 128, "UNO R4 WiFi response chunk is too large");
 struct FixedBuffer {
   char* data;
   size_t capacity, length;
@@ -226,6 +228,7 @@ char lastHttpPath[96] = "-", lastHttpMethod[8] = "-", lastHttpAuth[24] = "-";
 int lastHttpResponseCode = 0;
 unsigned long lastHttpDurationMs = 0, lastHttpClientAt = 0;
 char httpBodyBuffer[HTTP_BODY_BUFFER_SIZE] = {};
+char httpHeaderBuffer[HTTP_RESPONSE_HEADER_SIZE] = {};
 char serialCommandBuffer[SERIAL_COMMAND_SIZE] = {};
 size_t serialCommandLength = 0;
 
@@ -947,29 +950,51 @@ const char* statusText(int code) {
 bool writeClientChunk(WiFiClient& c, const uint8_t* data, size_t length) {
   if (!length) return true;
   size_t written = c.write(data, length);
-  if (written != length) { httpWriteFailures++; return false; }
+  if (written != length) {
+    httpWriteFailures++;
+    return false;
+  }
+  return true;
+}
+bool writeClientBuffer(WiFiClient& c, const uint8_t* data, size_t length) {
+  size_t offset = 0;
+  while (offset < length) {
+    size_t remaining = length - offset;
+    size_t chunk = remaining < HTTP_WRITE_CHUNK_SIZE
+      ? remaining
+      : HTTP_WRITE_CHUNK_SIZE;
+    if (!writeClientChunk(c, data + offset, chunk)) return false;
+    offset += chunk;
+    if (offset < length) delay(HTTP_WRITE_INTER_CHUNK_DELAY_MS);
+  }
   return true;
 }
 bool sendJsonBuffer(WiFiClient& c, const char* body, size_t length, int code,
     uint32_t requestId) {
-  char header[HTTP_RESPONSE_HEADER_SIZE];
-  int headerLength = snprintf(header, sizeof(header),
+  int headerLength = snprintf(httpHeaderBuffer, sizeof(httpHeaderBuffer),
     "HTTP/1.1 %s\r\nContent-Type: application/json; charset=utf-8\r\n"
     "Connection: close\r\nCache-Control: no-store\r\n"
     "X-Request-Id: %lu\r\nContent-Length: %lu\r\n\r\n",
     statusText(code), static_cast<unsigned long>(requestId),
     static_cast<unsigned long>(length));
-  if (headerLength <= 0 || static_cast<size_t>(headerLength) >= sizeof(header)) {
-    httpWriteFailures++; return false;
-  }
-  if (!writeClientChunk(c, reinterpret_cast<uint8_t*>(header), headerLength))
+  if (headerLength <= 0 ||
+      static_cast<size_t>(headerLength) >= sizeof(httpHeaderBuffer)) {
+    httpWriteFailures++;
     return false;
-  for (size_t offset = 0; offset < length;) {
-    size_t chunk = min(static_cast<size_t>(HTTP_WRITE_CHUNK_SIZE), length - offset);
-    if (!writeClientChunk(c, reinterpret_cast<const uint8_t*>(body + offset),
-        chunk)) return false;
-    offset += chunk;
   }
+  if (!writeClientBuffer(
+      c,
+      reinterpret_cast<const uint8_t*>(httpHeaderBuffer),
+      static_cast<size_t>(headerLength))) {
+    return false;
+  }
+  if (!writeClientBuffer(
+      c,
+      reinterpret_cast<const uint8_t*>(body),
+      length)) {
+    return false;
+  }
+  c.flush();
   delay(HTTP_RESPONSE_SETTLE_DELAY_MS);
   return true;
 }
@@ -1013,7 +1038,7 @@ bool pollingPath(const char* path) {
     !strcmp(path, "/api/v1/config/status");
 }
 void printHttpAudit(const HttpRequestContext& r, unsigned long duration) {
-  char message[256];
+  char message[192];
   snprintf(message, sizeof(message), "#%lu %s %s %s AUTH=%s %d %lums",
     static_cast<unsigned long>(r.requestId), r.clientIp, r.method, r.path,
     authResultText(r.authResult), r.responseCode, duration);
@@ -1069,77 +1094,127 @@ bool buildStatusJson(size_t& bodyLength, uint32_t requestId, bool v1) {
   resetBuffer(b, httpBodyBuffer, sizeof(httpBodyBuffer));
   char fingerprint[16];
   fingerprintText(deviceKeyFingerprint, fingerprint, sizeof(fingerprint));
-  if (v1) appendFormat(b, "{\"success\":true,\"requestId\":%lu,",
-    static_cast<unsigned long>(requestId));
-  else appendRaw(b, "{");
+
+  if (v1) {
+    appendFormat(b,
+      "{\"success\":true,\"requestId\":%lu,",
+      static_cast<unsigned long>(requestId));
+  } else {
+    appendRaw(b, "{");
+  }
+
   appendFormat(b,
-    "\"connected\":%s,\"timesynced\":%s,\"deviceId\":\"%s\","
-    "\"bootId\":\"%08lX\",\"deviceName\":\"%s\","
-    "\"hostname\":\"\",\"localHostname\":\"\","
-    "\"ipAddress\":\"%u.%u.%u.%u\",\"mdnsEnabled\":false,"
-    "\"networkConfigStored\":%s,\"apiConfigStored\":%s,"
-    "\"deviceKeyFingerprint\":\"%s\",\"scheduler\":\"arduino-eeprom\","
-    "\"scheduleCount\":%u,\"scheduleRevision\":%lu,"
-    "\"scheduleChecksum\":\"%08lX\",\"consoleLogCount\":%u,"
-    "\"consoleLastId\":%lu,\"firmwareVersion\":\"%s\","
-    "\"firmwareFeature\":\"%s\",\"directApiVersion\":\"%s\","
-    "\"buildDate\":\"%s\",\"buildTime\":\"%s\",",
-    wifiHasAddress() ? "true" : "false", timeSynced ? "true" : "false",
-    deviceId, static_cast<unsigned long>(bootId), DEVICE_NAME,
-    cachedWifiIp[0], cachedWifiIp[1], cachedWifiIp[2], cachedWifiIp[3],
+    "\"connected\":%s,\"timesynced\":%s,",
+    wifiHasAddress() ? "true" : "false",
+    timeSynced ? "true" : "false");
+  appendFormat(b,
+    "\"deviceId\":\"%s\",\"bootId\":\"%08lX\",",
+    deviceId, static_cast<unsigned long>(bootId));
+  appendFormat(b,
+    "\"deviceName\":\"%s\",\"hostname\":\"\",\"localHostname\":\"\",",
+    DEVICE_NAME);
+  appendFormat(b,
+    "\"ipAddress\":\"%u.%u.%u.%u\",\"mdnsEnabled\":false,",
+    cachedWifiIp[0], cachedWifiIp[1], cachedWifiIp[2], cachedWifiIp[3]);
+  appendFormat(b,
+    "\"networkConfigStored\":%s,\"apiConfigStored\":%s,",
     networkSettingsStored ? "true" : "false",
-    apiSettingsStored ? "true" : "false",
-    apiSettingsStored ? fingerprint : "", scheduleCount,
-    static_cast<unsigned long>(scheduleRevision),
+    apiSettingsStored ? "true" : "false");
+  appendFormat(b,
+    "\"deviceKeyFingerprint\":\"%s\",\"scheduler\":\"arduino-eeprom\",",
+    apiSettingsStored ? fingerprint : "");
+  appendFormat(b,
+    "\"scheduleCount\":%u,\"scheduleRevision\":%lu,",
+    scheduleCount, static_cast<unsigned long>(scheduleRevision));
+  appendFormat(b,
+    "\"scheduleChecksum\":\"%08lX\",\"consoleLogCount\":%u,",
     static_cast<unsigned long>(scheduleChecksum(schedules, scheduleCount)),
-    logSize, static_cast<unsigned long>(nextLogId ? nextLogId - 1 : 0),
-    FIRMWARE_VERSION, FIRMWARE_FEATURE, DIRECT_API_VERSION, __DATE__, __TIME__);
+    logSize);
   appendFormat(b,
-    "\"httpPort\":%u,\"otaPort\":%u,\"mdnsPort\":%u,"
-    "\"otaEnabled\":%s,\"otaPasswordConfigured\":%s,"
-    "\"otaPrepareActive\":%s,\"otaPrepareSecondsRemaining\":%lu,"
-    "\"otaTransferActive\":%s,\"otaLastErrorCode\":%d,"
-    "\"apiProtected\":%s,\"queryKeyFallbackEnabled\":%s,"
-    "\"matrixEnabled\":true,\"pirSensorsEnabled\":%s,"
-    "\"physicalButtonsEnabled\":%s,\"uptime\":%lu,\"rssi\":%ld,",
-    HTTP_API_PORT, OTA_UPLOAD_PORT, MDNS_PORT, otaReady ? "true" : "false",
-    networkSettings.otaPassword[0] ? "true" : "false",
-    otaPrepareModeActive() ? "true" : "false", otaPrepareSecondsRemaining(),
-    otaTransferActive ? "true" : "false", otaLastErrorCode,
+    "\"consoleLastId\":%lu,\"firmwareVersion\":\"%s\",",
+    static_cast<unsigned long>(nextLogId ? nextLogId - 1 : 0),
+    FIRMWARE_VERSION);
+  appendFormat(b,
+    "\"firmwareFeature\":\"%s\",\"directApiVersion\":\"%s\",",
+    FIRMWARE_FEATURE, DIRECT_API_VERSION);
+  appendFormat(b,
+    "\"buildDate\":\"%s\",\"buildTime\":\"%s\",",
+    __DATE__, __TIME__);
+
+  appendFormat(b,
+    "\"httpPort\":%u,\"otaPort\":%u,\"mdnsPort\":%u,",
+    HTTP_API_PORT, OTA_UPLOAD_PORT, MDNS_PORT);
+  appendFormat(b,
+    "\"otaEnabled\":%s,\"otaPasswordConfigured\":%s,",
+    otaReady ? "true" : "false",
+    networkSettings.otaPassword[0] ? "true" : "false");
+  appendFormat(b,
+    "\"otaPrepareActive\":%s,\"otaPrepareSecondsRemaining\":%lu,",
+    otaPrepareModeActive() ? "true" : "false",
+    otaPrepareSecondsRemaining());
+  appendFormat(b,
+    "\"otaTransferActive\":%s,\"otaLastErrorCode\":%d,",
+    otaTransferActive ? "true" : "false", otaLastErrorCode);
+  appendFormat(b,
+    "\"apiProtected\":%s,\"queryKeyFallbackEnabled\":%s,",
     apiSettingsStored ? "true" : "false",
-    API_ALLOW_QUERY_KEY_FALLBACK ? "true" : "false",
-    ENABLE_PIR_SENSORS ? "true" : "false",
-    ENABLE_PHYSICAL_BUTTONS ? "true" : "false",
-    millis() / 1000UL, cachedWifiConnected ? cachedWifiRssi : 0);
+    API_ALLOW_QUERY_KEY_FALLBACK ? "true" : "false");
   appendFormat(b,
-    "\"http\":{\"requests\":%lu,\"timeouts\":%lu,\"rejected\":%lu,"
-    "\"writeFailures\":%lu,\"successResponses\":%lu,"
-    "\"clientErrorResponses\":%lu,\"serverErrorResponses\":%lu,"
-    "\"deviceKeyHeaderAccepted\":%lu,\"queryKeyFallbackAccepted\":%lu,"
+    "\"matrixEnabled\":true,\"pirSensorsEnabled\":%s,"
+    "\"physicalButtonsEnabled\":%s,",
+    ENABLE_PIR_SENSORS ? "true" : "false",
+    ENABLE_PHYSICAL_BUTTONS ? "true" : "false");
+  appendFormat(b,
+    "\"uptime\":%lu,\"rssi\":%ld,",
+    millis() / 1000UL,
+    cachedWifiConnected ? cachedWifiRssi : 0);
+
+  appendFormat(b,
+    "\"http\":{\"requests\":%lu,\"timeouts\":%lu,\"rejected\":%lu,",
+    httpRequests, httpTimeouts, httpRejected);
+  appendFormat(b, "\"writeChunkBytes\":%u,",
+    static_cast<unsigned int>(HTTP_WRITE_CHUNK_SIZE));
+  appendFormat(b,
+    "\"writeFailures\":%lu,\"successResponses\":%lu,",
+    httpWriteFailures, httpSuccessResponses);
+  appendFormat(b,
+    "\"clientErrorResponses\":%lu,\"serverErrorResponses\":%lu,",
+    httpClientErrorResponses, httpServerErrorResponses);
+  appendFormat(b,
+    "\"deviceKeyHeaderAccepted\":%lu,\"queryKeyFallbackAccepted\":%lu,",
+    httpHeaderAuthAccepted, httpQueryFallbackAccepted);
+  appendFormat(b,
     "\"traceEnabled\":%s,\"lastClientIp\":\"",
-    httpRequests, httpTimeouts, httpRejected, httpWriteFailures,
-    httpSuccessResponses, httpClientErrorResponses, httpServerErrorResponses,
-    httpHeaderAuthAccepted, httpQueryFallbackAccepted,
     httpTraceEnabled ? "true" : "false");
   appendJsonEscaped(b, lastHttpClientIp);
-  appendRaw(b, "\",\"lastMethod\":\""); appendJsonEscaped(b, lastHttpMethod);
-  appendRaw(b, "\",\"lastPath\":\""); appendJsonEscaped(b, lastHttpPath);
-  appendRaw(b, "\",\"lastAuth\":\""); appendJsonEscaped(b, lastHttpAuth);
+  appendRaw(b, "\",\"lastMethod\":\"");
+  appendJsonEscaped(b, lastHttpMethod);
+  appendRaw(b, "\",\"lastPath\":\"");
+  appendJsonEscaped(b, lastHttpPath);
+  appendRaw(b, "\",\"lastAuth\":\"");
+  appendJsonEscaped(b, lastHttpAuth);
   appendFormat(b,
-    "\",\"lastStatus\":%d,\"lastDurationMs\":%lu,\"lastClientAge\":%lu},"
-    "\"strips\":[", lastHttpResponseCode, lastHttpDurationMs,
+    "\",\"lastStatus\":%d,\"lastDurationMs\":%lu,",
+    lastHttpResponseCode, lastHttpDurationMs);
+  appendFormat(b,
+    "\"lastClientAge\":%lu},\"strips\":[",
     lastHttpClientAt ? (millis() - lastHttpClientAt) / 1000UL : 0);
+
   for (uint8_t i = 0; i < STRIP_COUNT; i++) {
     if (i) appendChar(b, ',');
     appendFormat(b,
-      "{\"id\":%u,\"enabled\":%s,\"brightness\":%u,\"effect\":%u,"
-      "\"speed\":%u,\"color\":[%u,%u,%u],\"manualOverride\":%s,"
-      "\"manualOverrideMinutesRemaining\":%ld}",
-      i + 1, leds[i].enabled ? "true" : "false", leds[i].brightness,
-      leds[i].effect, leds[i].speed, leds[i].red, leds[i].green, leds[i].blue,
+      "{\"id\":%u,\"enabled\":%s,\"brightness\":%u,",
+      i + 1, leds[i].enabled ? "true" : "false", leds[i].brightness);
+    appendFormat(b,
+      "\"effect\":%u,\"speed\":%u,\"color\":[%u,%u,%u],",
+      leds[i].effect, leds[i].speed,
+      leds[i].red, leds[i].green, leds[i].blue);
+    appendFormat(b,
+      "\"manualOverride\":%s,\"manualOverrideMinutesRemaining\":%ld}",
       manualOverride[i] ? "true" : "false",
       static_cast<long>(manualOverrideMinutesRemaining(i)));
   }
+
   appendRaw(b, "]}");
   bodyLength = b.length;
   return b.valid;
@@ -1154,93 +1229,156 @@ void sendStatusJson(WiFiClient& c, uint32_t requestId, bool v1) {
   sendJsonBuffer(c, httpBodyBuffer, length, 200, requestId);
 }
 void sendPingJson(WiFiClient& c, uint32_t requestId) {
-  char response[256];
-  int length = snprintf(response, sizeof(response),
-    "{\"success\":true,\"requestId\":%lu,\"deviceId\":\"%s\","
-    "\"bootId\":\"%08lX\",\"firmwareVersion\":\"%s\","
+  FixedBuffer b;
+  resetBuffer(b, httpBodyBuffer, sizeof(httpBodyBuffer));
+  appendFormat(b,
+    "{\"success\":true,\"requestId\":%lu,\"deviceId\":\"%s\",",
+    static_cast<unsigned long>(requestId), deviceId);
+  appendFormat(b,
+    "\"bootId\":\"%08lX\",\"firmwareVersion\":\"%s\",",
+    static_cast<unsigned long>(bootId), FIRMWARE_VERSION);
+  appendFormat(b,
     "\"directApiVersion\":\"%s\",\"uptime\":%lu}",
-    static_cast<unsigned long>(requestId), deviceId,
-    static_cast<unsigned long>(bootId), FIRMWARE_VERSION,
     DIRECT_API_VERSION, millis() / 1000UL);
-  sendJsonBuffer(c, response, max(length, 0), 200, requestId);
+  if (!b.valid) {
+    sendErrorJson(c, 503, "RESPONSE_BUFFER_EXHAUSTED",
+      "A ping valasz nem fert el.", requestId);
+    return;
+  }
+  sendJsonBuffer(c, b.data, b.length, 200, requestId);
 }
 void sendCapabilitiesJson(WiFiClient& c, uint32_t requestId) {
-  char response[1024];
-  int length = snprintf(response, sizeof(response),
-    "{\"success\":true,\"requestId\":%lu,\"deviceId\":\"%s\","
-    "\"firmwareVersion\":\"%s\",\"directApiVersion\":\"%s\","
+  FixedBuffer b;
+  resetBuffer(b, httpBodyBuffer, sizeof(httpBodyBuffer));
+  appendFormat(b,
+    "{\"success\":true,\"requestId\":%lu,\"deviceId\":\"%s\",",
+    static_cast<unsigned long>(requestId), deviceId);
+  appendFormat(b,
+    "\"firmwareVersion\":\"%s\",\"directApiVersion\":\"%s\",",
+    FIRMWARE_VERSION, DIRECT_API_VERSION);
+  appendFormat(b,
     "\"hardware\":\"Arduino UNO R4 WiFi\",\"ledStrips\":%u,"
-    "\"pixelsPerStrip\":%u,\"scheduleMax\":%u,"
-    "\"scheduler\":\"arduino-eeprom\","
+    "\"pixelsPerStrip\":%u,\"scheduleMax\":%u,",
+    STRIP_COUNT, PIXELS, SCHEDULE_MAX);
+  appendRaw(b, "\"scheduler\":\"arduino-eeprom\",");
+  appendFormat(b, "\"httpResponseChunkBytes\":%u,",
+    static_cast<unsigned int>(HTTP_WRITE_CHUNK_SIZE));
+  appendFormat(b,
     "\"authentication\":{\"privatePath\":true,\"header\":\"%s\","
-    "\"queryFallback\":%s},\"features\":{\"diagnostics\":true,"
-    "\"serialCommands\":true,\"secretProfileExport\":true,\"ota\":true,"
-    "\"legacyApi\":true,\"jsonBodyApi\":false,\"eepromAbSlots\":false}}",
-    static_cast<unsigned long>(requestId), deviceId, FIRMWARE_VERSION,
-    DIRECT_API_VERSION, STRIP_COUNT, PIXELS, SCHEDULE_MAX,
-    API_DEVICE_KEY_HEADER, API_ALLOW_QUERY_KEY_FALLBACK ? "true" : "false");
-  sendJsonBuffer(c, response, max(length, 0), 200, requestId);
+    "\"queryFallback\":%s},",
+    API_DEVICE_KEY_HEADER,
+    API_ALLOW_QUERY_KEY_FALLBACK ? "true" : "false");
+  appendRaw(b,
+    "\"features\":{\"diagnostics\":true,\"serialCommands\":true,"
+    "\"secretProfileExport\":true,\"ota\":true,\"legacyApi\":true,"
+    "\"jsonBodyApi\":false,\"eepromAbSlots\":false}}");
+  if (!b.valid) {
+    sendErrorJson(c, 503, "RESPONSE_BUFFER_EXHAUSTED",
+      "A capabilities valasz nem fert el.", requestId);
+    return;
+  }
+  sendJsonBuffer(c, b.data, b.length, 200, requestId);
 }
 void sendConfigStatusJson(WiFiClient& c, uint32_t requestId) {
-  char fingerprint[16], response[640];
+  char fingerprint[16];
   fingerprintText(deviceKeyFingerprint, fingerprint, sizeof(fingerprint));
-  int length = snprintf(response, sizeof(response),
-    "{\"success\":true,\"requestId\":%lu,\"networkConfigured\":%s,"
-    "\"apiConfigured\":%s,\"privatePathConfigured\":%s,"
-    "\"deviceKeyConfigured\":%s,\"deviceKeyFingerprint\":\"%s\","
-    "\"otaPasswordConfigured\":%s,\"scheduleStored\":%s,"
-    "\"queryKeyFallbackEnabled\":%s,\"secretsReadableOverNetwork\":false}",
-    static_cast<unsigned long>(requestId),
+  FixedBuffer b;
+  resetBuffer(b, httpBodyBuffer, sizeof(httpBodyBuffer));
+  appendFormat(b,
+    "{\"success\":true,\"requestId\":%lu,",
+    static_cast<unsigned long>(requestId));
+  appendFormat(b,
+    "\"networkConfigured\":%s,\"apiConfigured\":%s,",
     networkSettingsStored ? "true" : "false",
-    apiSettingsStored ? "true" : "false",
+    apiSettingsStored ? "true" : "false");
+  appendFormat(b,
+    "\"privatePathConfigured\":%s,\"deviceKeyConfigured\":%s,",
     apiSettingsStored && apiSettings.privatePath[0] ? "true" : "false",
-    apiSettingsStored && apiSettings.sharedSecret[0] ? "true" : "false",
+    apiSettingsStored && apiSettings.sharedSecret[0] ? "true" : "false");
+  appendFormat(b,
+    "\"deviceKeyFingerprint\":\"%s\","
+    "\"otaPasswordConfigured\":%s,",
     apiSettingsStored ? fingerprint : "",
-    networkSettings.otaPassword[0] ? "true" : "false",
+    networkSettings.otaPassword[0] ? "true" : "false");
+  appendFormat(b,
+    "\"scheduleStored\":%s,\"queryKeyFallbackEnabled\":%s,"
+    "\"secretsReadableOverNetwork\":false}",
     schedulesStored ? "true" : "false",
     API_ALLOW_QUERY_KEY_FALLBACK ? "true" : "false");
-  sendJsonBuffer(c, response, max(length, 0), 200, requestId);
+  if (!b.valid) {
+    sendErrorJson(c, 503, "RESPONSE_BUFFER_EXHAUSTED",
+      "A config status valasz nem fert el.", requestId);
+    return;
+  }
+  sendJsonBuffer(c, b.data, b.length, 200, requestId);
 }
 void sendDiagnosticsJson(WiFiClient& c, uint32_t requestId) {
   FixedBuffer b;
   resetBuffer(b, httpBodyBuffer, sizeof(httpBodyBuffer));
+
   appendFormat(b,
-    "{\"success\":true,\"requestId\":%lu,\"deviceId\":\"%s\","
-    "\"bootId\":\"%08lX\",\"uptime\":%lu,"
-    "\"wifi\":{\"connected\":%s,\"ip\":\"%u.%u.%u.%u\",\"rssi\":%ld},"
-    "\"http\":{\"requests\":%lu,\"timeouts\":%lu,\"rejected\":%lu,"
-    "\"writeFailures\":%lu,\"successResponses\":%lu,"
-    "\"clientErrorResponses\":%lu,\"serverErrorResponses\":%lu,"
-    "\"headerAuthAccepted\":%lu,\"queryFallbackAccepted\":%lu,"
-    "\"traceEnabled\":%s,\"nextRequestId\":%lu},"
-    "\"storage\":{\"layout\":\"legacy-4.1-compatible\","
-    "\"networkOffset\":0,\"scheduleOffset\":%u,\"apiOffset\":%u,"
-    "\"networkChecksumValid\":%s,\"apiChecksumValid\":%s,"
-    "\"scheduleStored\":%s,\"scheduleCount\":%u,\"scheduleRevision\":%lu,"
-    "\"scheduleChecksum\":\"%08lX\",\"abSlots\":false,"
-    "\"readbackAfterWrite\":false},"
-    "\"ota\":{\"ready\":%s,\"transferActive\":%s,"
-    "\"prepareActive\":%s,\"lastErrorCode\":%d}}",
-    static_cast<unsigned long>(requestId), deviceId,
-    static_cast<unsigned long>(bootId), millis() / 1000UL,
+    "{\"success\":true,\"requestId\":%lu,\"deviceId\":\"%s\",",
+    static_cast<unsigned long>(requestId), deviceId);
+  appendFormat(b,
+    "\"bootId\":\"%08lX\",\"uptime\":%lu,",
+    static_cast<unsigned long>(bootId), millis() / 1000UL);
+  appendFormat(b,
+    "\"wifi\":{\"connected\":%s,\"ip\":\"%u.%u.%u.%u\",",
     wifiHasAddress() ? "true" : "false",
-    cachedWifiIp[0], cachedWifiIp[1], cachedWifiIp[2], cachedWifiIp[3],
-    cachedWifiRssi, httpRequests, httpTimeouts, httpRejected,
-    httpWriteFailures, httpSuccessResponses, httpClientErrorResponses,
-    httpServerErrorResponses, httpHeaderAuthAccepted,
-    httpQueryFallbackAccepted, httpTraceEnabled ? "true" : "false",
-    static_cast<unsigned long>(nextHttpRequestId), SCHEDULE_EEPROM_OFFSET,
-    API_SETTINGS_EEPROM_OFFSET,
+    cachedWifiIp[0], cachedWifiIp[1], cachedWifiIp[2], cachedWifiIp[3]);
+  appendFormat(b, "\"rssi\":%ld},", cachedWifiRssi);
+
+  appendFormat(b,
+    "\"http\":{\"requests\":%lu,\"timeouts\":%lu,\"rejected\":%lu,",
+    httpRequests, httpTimeouts, httpRejected);
+  appendFormat(b, "\"writeChunkBytes\":%u,",
+    static_cast<unsigned int>(HTTP_WRITE_CHUNK_SIZE));
+  appendFormat(b,
+    "\"writeFailures\":%lu,\"successResponses\":%lu,",
+    httpWriteFailures, httpSuccessResponses);
+  appendFormat(b,
+    "\"clientErrorResponses\":%lu,\"serverErrorResponses\":%lu,",
+    httpClientErrorResponses, httpServerErrorResponses);
+  appendFormat(b,
+    "\"headerAuthAccepted\":%lu,\"queryFallbackAccepted\":%lu,",
+    httpHeaderAuthAccepted, httpQueryFallbackAccepted);
+  appendFormat(b,
+    "\"traceEnabled\":%s,\"nextRequestId\":%lu},",
+    httpTraceEnabled ? "true" : "false",
+    static_cast<unsigned long>(nextHttpRequestId));
+
+  appendRaw(b, "\"storage\":{\"layout\":\"legacy-4.1-compatible\",");
+  appendFormat(b,
+    "\"networkOffset\":0,\"scheduleOffset\":%u,\"apiOffset\":%u,",
+    SCHEDULE_EEPROM_OFFSET, API_SETTINGS_EEPROM_OFFSET);
+  appendFormat(b,
+    "\"networkChecksumValid\":%s,\"apiChecksumValid\":%s,",
     networkSettingsValid(networkSettings) ? "true" : "false",
-    apiSettingsValid(apiSettings) ? "true" : "false",
-    schedulesStored ? "true" : "false", scheduleCount,
+    apiSettingsValid(apiSettings) ? "true" : "false");
+  appendFormat(b,
+    "\"scheduleStored\":%s,\"scheduleCount\":%u,",
+    schedulesStored ? "true" : "false", scheduleCount);
+  appendFormat(b,
+    "\"scheduleRevision\":%lu,\"scheduleChecksum\":\"%08lX\",",
     static_cast<unsigned long>(scheduleRevision),
-    static_cast<unsigned long>(scheduleChecksum(schedules, scheduleCount)),
-    otaReady ? "true" : "false", otaTransferActive ? "true" : "false",
-    otaPrepareModeActive() ? "true" : "false", otaLastErrorCode);
-  if (!b.valid) sendErrorJson(c, 503, "RESPONSE_BUFFER_EXHAUSTED",
-    "A diagnostics valasz nem fert el.", requestId);
-  else sendJsonBuffer(c, b.data, b.length, 200, requestId);
+    static_cast<unsigned long>(scheduleChecksum(schedules, scheduleCount)));
+  appendRaw(b, "\"abSlots\":false,\"readbackAfterWrite\":false},");
+
+  appendFormat(b,
+    "\"ota\":{\"ready\":%s,\"transferActive\":%s,",
+    otaReady ? "true" : "false",
+    otaTransferActive ? "true" : "false");
+  appendFormat(b,
+    "\"prepareActive\":%s,\"lastErrorCode\":%d}}",
+    otaPrepareModeActive() ? "true" : "false",
+    otaLastErrorCode);
+
+  if (!b.valid) {
+    sendErrorJson(c, 503, "RESPONSE_BUFFER_EXHAUSTED",
+      "A diagnostics valasz nem fert el.", requestId);
+    return;
+  }
+  sendJsonBuffer(c, b.data, b.length, 200, requestId);
 }
 void sendLogsJson(WiFiClient& c, uint32_t afterId, uint32_t requestId, bool v1) {
   uint8_t selected[CONSOLE_LOGS_PER_RESPONSE] = {}, count = 0;
@@ -1276,77 +1414,85 @@ void sendLogsJson(WiFiClient& c, uint32_t afterId, uint32_t requestId, bool v1) 
   else sendJsonBuffer(c, b.data, b.length, 200, requestId);
 }
 void sendConsoleStatsJson(WiFiClient& c, uint32_t requestId, bool v1) {
-  char response[896];
-  int length;
+  FixedBuffer b;
+  resetBuffer(b, httpBodyBuffer, sizeof(httpBodyBuffer));
   if (v1) {
-    length = snprintf(response, sizeof(response),
-      "{\"success\":true,\"requestId\":%lu,\"logCount\":%u,"
-      "\"uptime\":%lu,\"wifiSignal\":%ld,\"http\":{\"requests\":%lu,"
-      "\"timeouts\":%lu,\"rejected\":%lu,\"writeFailures\":%lu,"
-      "\"successResponses\":%lu,\"clientErrorResponses\":%lu,"
-      "\"serverErrorResponses\":%lu,\"deviceKeyHeaderAccepted\":%lu,"
-      "\"queryKeyFallbackAccepted\":%lu,\"queryKeyFallbackEnabled\":%s,"
-      "\"traceEnabled\":%s},\"system\":{\"wifiConnected\":%s,"
-      "\"consoleActive\":true}}",
-      static_cast<unsigned long>(requestId), logSize, millis() / 1000UL,
-      cachedWifiRssi, httpRequests, httpTimeouts, httpRejected,
-      httpWriteFailures, httpSuccessResponses, httpClientErrorResponses,
-      httpServerErrorResponses, httpHeaderAuthAccepted,
-      httpQueryFallbackAccepted,
-      API_ALLOW_QUERY_KEY_FALLBACK ? "true" : "false",
-      httpTraceEnabled ? "true" : "false",
-      cachedWifiConnected ? "true" : "false");
+    appendFormat(b,
+      "{\"success\":true,\"requestId\":%lu,",
+      static_cast<unsigned long>(requestId));
   } else {
-    length = snprintf(response, sizeof(response),
-      "{\"logCount\":%u,\"uptime\":%lu,\"wifiSignal\":%ld,"
-      "\"http\":{\"requests\":%lu,\"timeouts\":%lu,\"rejected\":%lu,"
-      "\"writeFailures\":%lu,\"deviceKeyHeaderAccepted\":%lu,"
-      "\"queryKeyFallbackAccepted\":%lu,\"queryKeyFallbackEnabled\":%s},"
-      "\"system\":{\"wifiConnected\":%s,\"consoleActive\":true}}",
-      logSize, millis() / 1000UL, cachedWifiRssi, httpRequests, httpTimeouts,
-      httpRejected, httpWriteFailures, httpHeaderAuthAccepted,
-      httpQueryFallbackAccepted,
-      API_ALLOW_QUERY_KEY_FALLBACK ? "true" : "false",
-      cachedWifiConnected ? "true" : "false");
+    appendRaw(b, "{");
   }
-  sendJsonBuffer(c, response, max(length, 0), 200, requestId);
+  appendFormat(b,
+    "\"logCount\":%u,\"uptime\":%lu,\"wifiSignal\":%ld,",
+    logSize, millis() / 1000UL, cachedWifiRssi);
+  appendFormat(b,
+    "\"http\":{\"requests\":%lu,\"timeouts\":%lu,\"rejected\":%lu,",
+    httpRequests, httpTimeouts, httpRejected);
+  appendFormat(b,
+    "\"writeFailures\":%lu,\"successResponses\":%lu,"
+    "\"clientErrorResponses\":%lu,",
+    httpWriteFailures, httpSuccessResponses, httpClientErrorResponses);
+  appendFormat(b,
+    "\"serverErrorResponses\":%lu,\"deviceKeyHeaderAccepted\":%lu,"
+    "\"queryKeyFallbackAccepted\":%lu,",
+    httpServerErrorResponses, httpHeaderAuthAccepted,
+    httpQueryFallbackAccepted);
+  appendFormat(b,
+    "\"queryKeyFallbackEnabled\":%s,\"traceEnabled\":%s},",
+    API_ALLOW_QUERY_KEY_FALLBACK ? "true" : "false",
+    httpTraceEnabled ? "true" : "false");
+  appendFormat(b,
+    "\"system\":{\"wifiConnected\":%s,\"consoleActive\":true}}",
+    cachedWifiConnected ? "true" : "false");
+  if (!b.valid) {
+    sendErrorJson(c, 503, "RESPONSE_BUFFER_EXHAUSTED",
+      "A console stats valasz nem fert el.", requestId);
+    return;
+  }
+  sendJsonBuffer(c, b.data, b.length, 200, requestId);
 }
 void sendOtaStatusJson(WiFiClient& c, uint32_t requestId, bool v1) {
-  char response[768];
-  int length;
+  FixedBuffer b;
+  resetBuffer(b, httpBodyBuffer, sizeof(httpBodyBuffer));
   if (v1) {
-    length = snprintf(response, sizeof(response),
-      "{\"success\":true,\"requestId\":%lu,\"firmwareVersion\":\"%s\","
-      "\"firmwareFeature\":\"%s\",\"directApiVersion\":\"%s\","
-      "\"buildDate\":\"%s\",\"buildTime\":\"%s\","
-      "\"ipAddress\":\"%u.%u.%u.%u\",\"otaPort\":%u,"
-      "\"otaEnabled\":%s,\"otaPrepareActive\":%s,"
-      "\"otaPrepareSecondsRemaining\":%lu,\"otaTransferActive\":%s,"
-      "\"restartCount\":%lu,\"lastErrorCode\":%d,\"uptime\":%lu}",
-      static_cast<unsigned long>(requestId), FIRMWARE_VERSION, FIRMWARE_FEATURE,
-      DIRECT_API_VERSION, __DATE__, __TIME__, cachedWifiIp[0], cachedWifiIp[1],
-      cachedWifiIp[2], cachedWifiIp[3], OTA_UPLOAD_PORT,
-      otaReady ? "true" : "false", otaPrepareModeActive() ? "true" : "false",
-      otaPrepareSecondsRemaining(), otaTransferActive ? "true" : "false",
-      otaRestartCount, otaLastErrorCode, millis() / 1000UL);
+    appendFormat(b,
+      "{\"success\":true,\"requestId\":%lu,",
+      static_cast<unsigned long>(requestId));
   } else {
-    length = snprintf(response, sizeof(response),
-      "{\"success\":true,\"firmwareVersion\":\"%s\","
-      "\"firmwareFeature\":\"%s\",\"buildDate\":\"%s\",\"buildTime\":\"%s\","
-      "\"ipAddress\":\"%u.%u.%u.%u\",\"otaPort\":%u,\"otaEnabled\":%s,"
-      "\"otaPrepareActive\":%s,\"otaPrepareSecondsRemaining\":%lu,"
-      "\"otaTransferActive\":%s,\"restartCount\":%lu,"
-      "\"lastErrorCode\":%d,\"uptime\":%lu}",
-      FIRMWARE_VERSION, FIRMWARE_FEATURE, __DATE__, __TIME__,
-      cachedWifiIp[0], cachedWifiIp[1], cachedWifiIp[2], cachedWifiIp[3],
-      OTA_UPLOAD_PORT, otaReady ? "true" : "false",
-      otaPrepareModeActive() ? "true" : "false", otaPrepareSecondsRemaining(),
-      otaTransferActive ? "true" : "false", otaRestartCount, otaLastErrorCode,
-      millis() / 1000UL);
+    appendRaw(b, "{\"success\":true,");
   }
-  sendJsonBuffer(c, response, max(length, 0), 200, requestId);
+  appendFormat(b,
+    "\"firmwareVersion\":\"%s\",\"firmwareFeature\":\"%s\",",
+    FIRMWARE_VERSION, FIRMWARE_FEATURE);
+  if (v1) {
+    appendFormat(b, "\"directApiVersion\":\"%s\",", DIRECT_API_VERSION);
+  }
+  appendFormat(b,
+    "\"buildDate\":\"%s\",\"buildTime\":\"%s\",",
+    __DATE__, __TIME__);
+  appendFormat(b,
+    "\"ipAddress\":\"%u.%u.%u.%u\",\"otaPort\":%u,",
+    cachedWifiIp[0], cachedWifiIp[1], cachedWifiIp[2], cachedWifiIp[3],
+    OTA_UPLOAD_PORT);
+  appendFormat(b,
+    "\"otaEnabled\":%s,\"otaPrepareActive\":%s,",
+    otaReady ? "true" : "false",
+    otaPrepareModeActive() ? "true" : "false");
+  appendFormat(b,
+    "\"otaPrepareSecondsRemaining\":%lu,\"otaTransferActive\":%s,",
+    otaPrepareSecondsRemaining(),
+    otaTransferActive ? "true" : "false");
+  appendFormat(b,
+    "\"restartCount\":%lu,\"lastErrorCode\":%d,\"uptime\":%lu}",
+    otaRestartCount, otaLastErrorCode, millis() / 1000UL);
+  if (!b.valid) {
+    sendErrorJson(c, 503, "RESPONSE_BUFFER_EXHAUSTED",
+      "Az OTA status valasz nem fert el.", requestId);
+    return;
+  }
+  sendJsonBuffer(c, b.data, b.length, 200, requestId);
 }
-
 int valueInt(const String& query, const char* name, int fallback,
     int low, int high) {
   int from = query.indexOf(String(name) + '=');
@@ -1547,29 +1693,47 @@ int routeV1(WiFiClient& c, const String& method, const String& base,
   }
   if (base == "/api/v1/ota/prepare") {
     bool prepared = prepareOtaService();
-    char response[384];
-    int n = snprintf(response, sizeof(response),
-      "{\"success\":%s,\"requestId\":%lu,\"firmwareVersion\":\"%s\","
-      "\"otaEnabled\":%s,\"otaPort\":%u,\"prepareActive\":%s,"
-      "\"prepareSecondsRemaining\":%lu}",
-      prepared ? "true" : "false", static_cast<unsigned long>(requestId),
-      FIRMWARE_VERSION, otaReady ? "true" : "false", OTA_UPLOAD_PORT,
-      otaPrepareModeActive() ? "true" : "false", otaPrepareSecondsRemaining());
-    sendJsonBuffer(c, response, max(n, 0), prepared ? 200 : 503, requestId);
+    FixedBuffer b;
+    resetBuffer(b, httpBodyBuffer, sizeof(httpBodyBuffer));
+    appendFormat(b,
+      "{\"success\":%s,\"requestId\":%lu,",
+      prepared ? "true" : "false",
+      static_cast<unsigned long>(requestId));
+    appendFormat(b,
+      "\"firmwareVersion\":\"%s\",\"otaEnabled\":%s,\"otaPort\":%u,",
+      FIRMWARE_VERSION, otaReady ? "true" : "false", OTA_UPLOAD_PORT);
+    appendFormat(b,
+      "\"prepareActive\":%s,\"prepareSecondsRemaining\":%lu}",
+      otaPrepareModeActive() ? "true" : "false",
+      otaPrepareSecondsRemaining());
+    if (!b.valid) {
+      sendErrorJson(c, 503, "RESPONSE_BUFFER_EXHAUSTED",
+        "Az OTA prepare valasz nem fert el.", requestId);
+      return 503;
+    }
+    sendJsonBuffer(c, b.data, b.length, prepared ? 200 : 503, requestId);
     return prepared ? 200 : 503;
   }
   if (base == "/api/v1/schedules/status") {
-    char response[512];
-    int n = snprintf(response, sizeof(response),
-      "{\"success\":true,\"requestId\":%lu,\"count\":%u,\"max\":%u,"
-      "\"revision\":%lu,\"checksum\":\"%08lX\",\"stored\":%s,"
-      "\"storageLayout\":\"legacy-4.1-compatible\",\"abSlots\":false,"
-      "\"readbackAfterWrite\":false}",
-      static_cast<unsigned long>(requestId), scheduleCount, SCHEDULE_MAX,
+    FixedBuffer b;
+    resetBuffer(b, httpBodyBuffer, sizeof(httpBodyBuffer));
+    appendFormat(b,
+      "{\"success\":true,\"requestId\":%lu,\"count\":%u,\"max\":%u,",
+      static_cast<unsigned long>(requestId), scheduleCount, SCHEDULE_MAX);
+    appendFormat(b,
+      "\"revision\":%lu,\"checksum\":\"%08lX\",\"stored\":%s,",
       static_cast<unsigned long>(scheduleRevision),
       static_cast<unsigned long>(scheduleChecksum(schedules, scheduleCount)),
       schedulesStored ? "true" : "false");
-    sendJsonBuffer(c, response, max(n, 0), 200, requestId);
+    appendRaw(b,
+      "\"storageLayout\":\"legacy-4.1-compatible\",\"abSlots\":false,"
+      "\"readbackAfterWrite\":false}");
+    if (!b.valid) {
+      sendErrorJson(c, 503, "RESPONSE_BUFFER_EXHAUSTED",
+        "A schedule status valasz nem fert el.", requestId);
+      return 503;
+    }
+    sendJsonBuffer(c, b.data, b.length, 200, requestId);
     return 200;
   }
   sendErrorJson(c, 404, "ENDPOINT_NOT_FOUND",
@@ -1607,15 +1771,24 @@ int routeLegacy(WiFiClient& c, const String& method, const String& path,
   }
   if (base == "/api/ota/prepare" || base == "/api/ota/restart") {
     bool prepared = prepareOtaService();
-    char response[320];
-    int n = snprintf(response, sizeof(response),
-      "{\"success\":%s,\"firmwareVersion\":\"%s\",\"otaEnabled\":%s,"
-      "\"otaPort\":%u,\"restartCount\":%lu,\"prepareActive\":%s,"
-      "\"prepareSecondsRemaining\":%lu}",
-      prepared ? "true" : "false", FIRMWARE_VERSION,
-      otaReady ? "true" : "false", OTA_UPLOAD_PORT, otaRestartCount,
-      otaPrepareModeActive() ? "true" : "false", otaPrepareSecondsRemaining());
-    sendJsonBuffer(c, response, max(n, 0), prepared ? 200 : 503, requestId);
+    FixedBuffer b;
+    resetBuffer(b, httpBodyBuffer, sizeof(httpBodyBuffer));
+    appendFormat(b,
+      "{\"success\":%s,\"firmwareVersion\":\"%s\",",
+      prepared ? "true" : "false", FIRMWARE_VERSION);
+    appendFormat(b,
+      "\"otaEnabled\":%s,\"otaPort\":%u,\"restartCount\":%lu,",
+      otaReady ? "true" : "false", OTA_UPLOAD_PORT, otaRestartCount);
+    appendFormat(b,
+      "\"prepareActive\":%s,\"prepareSecondsRemaining\":%lu}",
+      otaPrepareModeActive() ? "true" : "false",
+      otaPrepareSecondsRemaining());
+    if (!b.valid) {
+      sendErrorJson(c, 503, "RESPONSE_BUFFER_EXHAUSTED",
+        "A legacy OTA prepare valasz nem fert el.", requestId);
+      return 503;
+    }
+    sendJsonBuffer(c, b.data, b.length, prepared ? 200 : 503, requestId);
     return prepared ? 200 : 503;
   }
   if (base == "/api/all-on" || base == "/api/all-off") {

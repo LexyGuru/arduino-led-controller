@@ -3,11 +3,11 @@
   "package": "f14.1-firmware-diagnostics",
   "createdAt": "2026-07-31T05:10:00+02:00",
   "sourceBranch": "next/v5-rearchitecture",
-  "expectedBaseCommit": "4893a2df1d6901d85a62e62f29d06d7071206709",
+  "expectedBaseCommit": "e31fa0e1f1123b6d2810c330c43fdb581e26b496",
   "applicationVersion": "5.0.0-beta.1",
   "previousFirmwareVersion": "4.1.21",
   "firmwareVersion": "4.2.0-beta.1",
-  "firmwareFeature": "f14.1-diagnostics-direct-api-v1",
+  "firmwareFeature": "f14.1.3-wifis3-response-transport",
   "directApiVersion": "1.0.0-beta.1",
   "firmwareSourceModified": true,
   "tauriSourceModified": false,
@@ -25,12 +25,12 @@
   "scheduleReadbackImplemented": false,
   "hardwareValidationCompleted": false,
   "tauriFeatureDevelopmentPaused": true,
-  "fileCountExcludingManifest": 15,
+  "fileCountExcludingManifest": 17,
   "files": [
     {
       "path": "docs/firmware/ARDUINO_HARDWARE_ACCEPTANCE_MATRIX.md",
-      "bytes": 4133,
-      "sha256": "829e801c41fcf067f3438677802be61b9af96077fdb0ce529b5261196e379488"
+      "bytes": 4240,
+      "sha256": "143bdd51c9803e41ff9b80328df21483963366545812d48b26d98e4375f7bd6a"
     },
     {
       "path": "docs/firmware/ARDUINO_SERIAL_COMMAND_CONTRACT.md",
@@ -38,14 +38,19 @@
       "sha256": "5952e3f22c2e430d43045f05ed55aa0d9d20eed12847a87ae47f1a3e0df829e1"
     },
     {
+      "path": "docs/firmware/F14_1_3_HTTP_RESPONSE_TRANSPORT.md",
+      "bytes": 1694,
+      "sha256": "75e63d566bba4e72c2857585c5c31873781d4b1f75110dfe2516c60b59ecf25f"
+    },
+    {
       "path": "docs/firmware/F14_1_FIRMWARE_DIAGNOSTICS.md",
-      "bytes": 4809,
-      "sha256": "e634251406254f95dbd065ae8bc7b63ee3bd8017f0be075972621a5113b91b85"
+      "bytes": 6165,
+      "sha256": "25e6f7937573f184262b5c94db6c355100e94408279210f4f14ee8b495b69456"
     },
     {
       "path": "docs/v5/BETA1_KNOWN_ISSUES.md",
-      "bytes": 5152,
-      "sha256": "a6bd1f8dd19c48ecfb130664aba60ea0e5fe12704dbd39cff7946e397f43a3eb"
+      "bytes": 5581,
+      "sha256": "ae0c7c359c10585045ddb4123bd2c3f43d0c9a8c288c9945c2fffc8d550dbf69"
     },
     {
       "path": "docs/v5/FIRMWARE_FIRST_EXECUTION_PLAN.md",
@@ -59,13 +64,13 @@
     },
     {
       "path": "docs/v5/V5_REARCHITECTURE_CHECKLIST.md",
-      "bytes": 7087,
-      "sha256": "ec1f8d631ab5e875a562970a26d10e836ee401890721c3a01d3400a039684ff6"
+      "bytes": 7263,
+      "sha256": "ee65fba6e6de5ca84bd39dd7265573b237c94b2227204b567460796d29b831f7"
     },
     {
       "path": "firmware/ArduinoLedController/ArduinoLedController.ino",
-      "bytes": 90193,
-      "sha256": "4628e7d98f51902141b060c6d46a24405f971769ce1b72a6dcff191831f5385b"
+      "bytes": 92541,
+      "sha256": "25f0749a2acf92244b90fa8fc73f2c8ff892b2e4c8dfd31129d5c7e637d8e019"
     },
     {
       "path": "firmware/ArduinoLedController/secrets.example.h",
@@ -84,8 +89,13 @@
     },
     {
       "path": "scripts/test-f14-1-firmware-diagnostics.js",
-      "bytes": 4236,
-      "sha256": "46d8f0c864fd41c1e733a568ebdcaa978a335f7b21782b4b7c8731fd33fc67a6"
+      "bytes": 4239,
+      "sha256": "987df62c1401c99028494ce5940cbdb2ceb92c094ab4c94e038fc5f5659f6d84"
+    },
+    {
+      "path": "scripts/test-f14-1-http-response-transport.js",
+      "bytes": 1727,
+      "sha256": "0c2290704e88dc4f9c746a379996ef40eb4ca6bcf37552693f338ef3db8cbe6b"
     },
     {
       "path": "scripts/test-f14-1-memory-budget.js",
@@ -117,5 +127,14 @@
   "globalMemoryLimitBytes": 21500,
   "minimumLocalMemoryRemainingBytes": 10000,
   "rawElfBssUsedAsGlobalMemory": false,
-  "firmwareSourceChangedByMemoryMeasurementHotfix": false
+  "firmwareSourceChangedByMemoryMeasurementHotfix": false,
+  "httpResponseTransportHotfix": "F14.1.3",
+  "httpWriteChunkBytes": 128,
+  "httpWriteInterChunkDelayMs": 2,
+  "globalHttpHeaderBuffer": true,
+  "largeLocalResponseBuffersRemoved": true,
+  "pingHardwareTestCompleted": true,
+  "missingHeaderHardwareTestCompleted": true,
+  "privatePath404HardwareTestCompleted": true,
+  "largeResponseHardwareRetestCompleted": false
 }

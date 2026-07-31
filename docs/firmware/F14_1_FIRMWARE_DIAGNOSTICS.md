@@ -146,3 +146,40 @@ szabad lokális memória: 13128 bájt – MEGFELEL
 
 Ez a javítás nem növeli a firmware memóriahasználatát és nem módosítja az
 Arduino firmware-forrását.
+
+## F14.1.3 – WiFiS3 HTTP választransport
+
+A valós hardvertesztben:
+
+- a 154 bájtos `/api/v1/ping` válasz `200 OK` lett;
+- a nagyobb `/api/v1/status` és `/api/v1/capabilities` válasz
+  kliensoldali timeouttal állt meg;
+- a request ID nem nullázódott, tehát nem történt Arduino reboot;
+- a következő kis `ping` kérés ismét sikeres lett.
+
+Ez elkülöníti a hibát az auth-, routing-, Wi-Fi- és rebootproblémáktól. A hiba a
+WiFiS3 response transport nagy adatküldési darabjánál jelentkezett.
+
+Javítás:
+
+```text
+HTTP body write chunk:       512 -> 128 bájt
+HTTP header buffer:          stack -> globális fix buffer
+inter-chunk delay:           2 ms
+response flush:              explicit WiFiClient.flush()
+```
+
+A nagy lokális JSON-választömbök megszűntek:
+
+```text
+capabilities: 1024 bájt lokális tömb -> közös fix buffer
+console stats: 896 bájt lokális tömb -> közös fix buffer
+OTA status: 768 bájt lokális tömb -> közös fix buffer
+config status: 640 bájt lokális tömb -> közös fix buffer
+schedule status: 512 bájt lokális tömb -> közös fix buffer
+```
+
+A status és diagnostics JSON több kisebb `appendFormat()` hívásból épül, hogy a
+Renesas 1 kB-os stackkeretét ne terhelje egyetlen nagy variadikus hívás.
+
+Hardveres újrateszt szükséges az összes read-only Direct API v1 végponton.

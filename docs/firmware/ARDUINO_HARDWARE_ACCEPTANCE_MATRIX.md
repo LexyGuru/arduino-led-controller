@@ -15,12 +15,12 @@ a dokumentumba vagy GitHub evidence-be.
 - [ ] Arduino CLI fordítás UNO R4 WiFi targetre
 - [ ] firmware verzió `4.2.0-beta.1`
 - [ ] query fallback fordításkor kikapcsolva
-- [ ] USB feltöltés
+- [x] USB feltöltés – `4.2.0-beta.1`, 2026-07-31
 - [ ] bootmátrix
-- [ ] Wi-Fi EEPROM-ból
-- [ ] API EEPROM-ból
+- [x] Wi-Fi EEPROM-ból
+- [x] API EEPROM-ból
 - [ ] schedule EEPROM-ból
-- [ ] helyes teljes API URL a Serial Monitorban
+- [x] helyes teljes API URL a Serial Monitorban
 - [ ] kulcs csak fingerprintként automatikusan
 - [ ] `profile export secrets` explicit működik
 
@@ -28,11 +28,11 @@ a dokumentumba vagy GitHub evidence-be.
 
 | # | Útvonal | Fejléc | Elvárt |
 |---:|---|---|---:|
-| 1 | helyes | helyes | 200 |
-| 2 | helyes | hiányzik | 401 |
+| 1 | helyes | helyes | 200 – ping igazolt, nagy válaszok F14.1.3 újrateszt |
+| 2 | helyes | hiányzik | 401 – igazolt |
 | 3 | helyes | hibás | 401 |
 | 4 | helyes | duplikált | 400 |
-| 5 | hibás privát útvonal | helyes | 404 |
+| 5 | hibás privát útvonal | helyes | 404 – igazolt |
 | 6 | ismeretlen `/api/v1` endpoint | helyes | 404 |
 | 7 | hibás metódus | helyes | 405 |
 | 8 | query `?k=` helyes | nincs fejléc | 401 |

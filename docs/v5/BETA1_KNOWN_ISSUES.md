@@ -146,3 +146,14 @@ a Serial parancskezelő, a secret profil-export és a read-only Direct API v1.
 
 A nyilvános Beta.1 firmware asset továbbra is `4.1.21`; az új forrást előbb
 Arduino CLI-vel és valódi hardveren kell validálni.
+
+## F14.1.3 nagy HTTP-válasz timeout
+
+A `4.2.0-beta.1` első hardvertesztjén a kis `ping` válasz működött, de a
+`status` és `capabilities` válasz 8 másodperces timeoutot okozott. Az Arduino
+nem rebootolt, a következő `ping` ismét sikeres volt.
+
+Gyökérok: túl nagy WiFiS3 write darab és nagy lokális válaszpufferek.
+
+Javítás: F14.1.3, 128 bájtos darabolt response transport. Hardveres újrateszt
+szükséges.
