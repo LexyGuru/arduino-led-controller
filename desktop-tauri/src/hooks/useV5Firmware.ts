@@ -33,7 +33,8 @@ export function useV5Firmware({
   legacyProgress,
   legacyStage,
   directRefresh,
-  directUpdate
+  directUpdate,
+  directCancel
 }: {
   legacyFirmware:
     (FirmwareStatus & {
@@ -51,6 +52,8 @@ export function useV5Firmware({
   directRefresh:
     () => void;
   directUpdate:
+    () => void;
+  directCancel:
     () => void;
 }) {
   const {
@@ -406,16 +409,7 @@ export function useV5Firmware({
     useCallback(
       async () => {
         if (directFallback) {
-          setError({
-            code:
-              'API_V2_REQUIRED',
-            message:
-              'A megszakítás csak a V5 firmware-szolgáltatáson érhető el.',
-            status:
-              null,
-            details:
-              null
-          });
+          directCancel();
           return;
         }
 
@@ -429,6 +423,7 @@ export function useV5Firmware({
       [
         api,
         directFallback,
+        directCancel,
         run
       ]
     );

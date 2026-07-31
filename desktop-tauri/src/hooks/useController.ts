@@ -1418,6 +1418,28 @@ export function useController(
       );
     };
 
+  const cancelFirmware =
+    async () => {
+      try {
+        const accepted =
+          await tauriApi.firmwareCancel();
+        setOtaStage(
+          accepted
+            ? 'Megszakítás'
+            : 'Nincs aktív művelet'
+        );
+        setMessage(
+          accepted
+            ? 'A közvetlen OTA megszakítását elküldtük.'
+            : 'Nincs megszakítható közvetlen OTA-folyamat.'
+        );
+      } catch (error) {
+        setMessage(
+          `OTA-megszakítási hiba: ${String(error)}`
+        );
+      }
+    };
+
   return {
     capabilities,
     config,
@@ -1444,6 +1466,7 @@ export function useController(
     stopLedTest,
     saveSchedules,
     syncSchedulesFromArduino,
-    updateFirmware
+    updateFirmware,
+    cancelFirmware
   };
 }

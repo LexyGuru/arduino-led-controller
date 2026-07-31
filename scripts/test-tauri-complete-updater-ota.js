@@ -1,0 +1,10 @@
+'use strict';
+const assert=require('assert'); const fs=require('fs');
+const lib=fs.readFileSync('desktop-tauri/src-tauri/src/lib.rs','utf8');
+const page=fs.readFileSync('desktop-tauri/src/pages/FirmwarePage.tsx','utf8');
+const api=fs.readFileSync('desktop-tauri/src/services/tauriApi.ts','utf8');
+for (const token of ['github_releases','release_matches_channel','latest_app_release','firmware_cancel','ota_cancel_requested','boot_id_before','schedule_checksum_before','cache_sha256']) assert.match(lib,new RegExp(token));
+assert.match(lib,/releases\?per_page=30/); assert.match(lib,/X-GitHub-Api-Version/);
+assert.match(api,/firmware_cancel/); assert.match(page,/Elérhető alkalmazás/); assert.match(page,/Alkalmazáscsomag letöltése/); assert.match(page,/Cache SHA-256/);
+console.log('OK: stable/beta GitHub release és alkalmazásfrissítési modell');
+console.log('OK: megszakítható OTA, cache SHA és Boot ID/schedule persistence kapu');

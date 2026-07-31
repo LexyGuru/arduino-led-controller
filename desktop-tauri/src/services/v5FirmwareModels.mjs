@@ -111,6 +111,7 @@ export function isFirmwareBusy(status) {
     'downloading',
     'uploading',
     'restarting',
+    'cancelling',
     'rollback-loading',
     'rollback-uploading',
     'rollback-restarting'

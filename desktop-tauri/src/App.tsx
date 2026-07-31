@@ -238,6 +238,11 @@ export default function App() {
                   void controller
                     .updateFirmware()
               }
+              onCancel={
+                () =>
+                  void controller
+                    .cancelFirmware()
+              }
             />
           )}
 

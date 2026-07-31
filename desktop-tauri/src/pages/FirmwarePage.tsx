@@ -39,6 +39,7 @@ interface FirmwarePageProps {
   otaStage: string;
   onRefresh: () => void;
   onUpdate: () => void;
+  onCancel: () => void;
 }
 
 function logTime(timestamp: number) {
@@ -68,7 +69,9 @@ export function FirmwarePage({
   onRefresh:
     directRefresh,
   onUpdate:
-    directUpdate
+    directUpdate,
+  onCancel:
+    directCancel
 }: FirmwarePageProps) {
   const state =
     useV5Firmware({
@@ -78,7 +81,8 @@ export function FirmwarePage({
       legacyProgress,
       legacyStage,
       directRefresh,
-      directUpdate
+      directUpdate,
+      directCancel
     });
 
   const firmware =
@@ -232,6 +236,26 @@ export function FirmwarePage({
             {otaTarget}
           </strong>
         </article>
+
+        <article className="stat-card">
+          <small>
+            Alkalmazáscsatorna
+          </small>
+          <strong>
+            {firmware?.updateChannel ?? 'ismeretlen'}
+            {' · '}
+            {firmware?.appCurrentVersion ?? 'ismeretlen'}
+          </strong>
+        </article>
+
+        <article className="stat-card">
+          <small>
+            Elérhető alkalmazás
+          </small>
+          <strong>
+            {firmware?.availableApp?.tag ?? 'Nincs adat'}
+          </strong>
+        </article>
       </section>
 
       <section className="panel firmware-panel">
@@ -275,6 +299,13 @@ export function FirmwarePage({
                   ?.firmwareLookupError ??
                 'A firmware-kiadás még nincs lekérve.'}
           </p>
+
+          <p>
+            {firmware?.compatibilityStatus ?? 'A kompatibilitási kapu még nem futott le.'}
+          </p>
+          {firmware?.cacheSha256 && (
+            <p>Cache SHA-256: <code>{firmware.cacheSha256}</code></p>
+          )}
         </div>
 
         <div className="v5-firmware-actions">
@@ -299,6 +330,18 @@ export function FirmwarePage({
             Firmware telepítése
           </button>
 
+          {firmware?.availableApp?.downloadUrl && (
+            <a
+              className="secondary-button"
+              href={firmware.availableApp.downloadUrl}
+              target="_blank"
+              rel="noreferrer"
+            >
+              <DownloadCloud size={17} />
+              Alkalmazáscsomag letöltése
+            </a>
+          )}
+
           <button
             className="danger"
             onClick={
@@ -307,8 +350,7 @@ export function FirmwarePage({
                   .cancel()
             }
             disabled={
-              !state.busy ||
-              state.directFallback
+              !state.busy
             }
           >
             <Ban size={17} />

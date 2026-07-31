@@ -179,6 +179,18 @@ struct FirmwareArtifact {
     created_at: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+struct AppUpdateArtifact {
+    version: String,
+    tag: String,
+    release_url: Option<String>,
+    asset_name: Option<String>,
+    download_url: Option<String>,
+    created_at: Option<String>,
+    channel: String,
+}
+
 #[derive(Debug, Clone, Serialize, Default)]
 #[serde(rename_all = "camelCase")]
 struct FirmwareStatus {
@@ -197,6 +209,20 @@ struct FirmwareStatus {
     update_available: bool,
     progress: Option<u8>,
     phase: Option<String>,
+    update_channel: String,
+    app_current_version: String,
+    available_app: Option<AppUpdateArtifact>,
+    app_update_available: bool,
+    compatibility_status: Option<String>,
+    cache_path: Option<String>,
+    cache_sha256: Option<String>,
+    boot_id_before: Option<String>,
+    boot_id_after: Option<String>,
+    schedule_revision_before: Option<u64>,
+    schedule_revision_after: Option<u64>,
+    schedule_checksum_before: Option<String>,
+    schedule_checksum_after: Option<String>,
+    cancelled: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -225,6 +251,7 @@ struct AppState {
     // Minden Arduino-kérést egyetlen sorba állítunk.
     arduino_request_lock: Arc<Mutex<()>>,
     ota_in_progress: Arc<AtomicBool>,
+    ota_cancel_requested: Arc<AtomicBool>,
     // A státuszválaszból megtanult belső IP-cím, csak az aktuális futásra.
     last_known_local_ip: Mutex<Option<String>>,
 }
@@ -854,6 +881,11 @@ struct GitHubRelease {
     tag_name: String,
     published_at: Option<String>,
     body: Option<String>,
+    html_url: Option<String>,
+    #[serde(default)]
+    prerelease: bool,
+    #[serde(default)]
+    draft: bool,
     assets: Vec<GitHubAsset>,
 }
 #[derive(Debug, Deserialize)]
@@ -863,22 +895,21 @@ struct GitHubAsset {
 }
 
 const FIRMWARE_REPOSITORY: &str = "LexyGuru/arduino-led-controller";
-const FIRMWARE_RELEASE_TAG: &str = "firmware-latest";
 const OTA_UPLOAD_PORT: u16 = 65280;
 
-async fn latest_firmware(_config: &Config) -> Result<FirmwareArtifact, String> {
+async fn github_releases() -> Result<Vec<GitHubRelease>, String> {
     let url = format!(
-        "https://api.github.com/repos/{}/releases/tags/{}",
-        FIRMWARE_REPOSITORY, FIRMWARE_RELEASE_TAG
+        "https://api.github.com/repos/{}/releases?per_page=30",
+        FIRMWARE_REPOSITORY
     );
-    let client = reqwest::Client::builder()
+    reqwest::Client::builder()
         .timeout(Duration::from_secs(25))
         .build()
-        .map_err(|e| e.to_string())?;
-    let release: GitHubRelease = client
+        .map_err(|e| e.to_string())?
         .get(url)
         .header("User-Agent", "arduino-led-controller-tauri")
         .header("Accept", "application/vnd.github+json")
+        .header("X-GitHub-Api-Version", "2022-11-28")
         .send()
         .await
         .map_err(|e| format!("GitHub kapcsolati hiba: {e}"))?
@@ -886,17 +917,46 @@ async fn latest_firmware(_config: &Config) -> Result<FirmwareArtifact, String> {
         .map_err(|e| format!("GitHub válaszhiba: {e}"))?
         .json()
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| format!("A GitHub release-lista nem értelmezhető: {e}"))
+}
+
+fn release_matches_channel(release: &GitHubRelease, channel: &str) -> bool {
+    !release.draft
+        && if channel == "stable" {
+            !release.prerelease
+        } else {
+            release.prerelease
+        }
+}
+
+async fn latest_firmware(config: &Config) -> Result<FirmwareArtifact, String> {
+    let releases = github_releases().await?;
+    let release = releases
+        .iter()
+        .find(|release| {
+            release_matches_channel(release, config.update_channel.trim())
+                && release.assets.iter().any(|a| a.name.ends_with(".ino.bin"))
+                && release
+                    .assets
+                    .iter()
+                    .any(|a| a.name.ends_with(".ino.bin.sha256"))
+        })
+        .ok_or_else(|| {
+            format!(
+                "A(z) {} csatornán nem található teljes firmware release.",
+                config.update_channel
+            )
+        })?;
     let binary = release
         .assets
         .iter()
         .find(|a| a.name.ends_with(".ino.bin"))
-        .ok_or("A kiadás nem tartalmaz .ino.bin firmware-t.")?;
+        .unwrap();
     let checksum = release
         .assets
         .iter()
         .find(|a| a.name.ends_with(".ino.bin.sha256"))
-        .ok_or("A kiadás nem tartalmaz SHA-256 fájlt.")?;
+        .unwrap();
     let version = release.body.as_deref().and_then(|b| {
         b.lines().find_map(|line| {
             line.strip_prefix("Firmware verzió:")
@@ -908,9 +968,59 @@ async fn latest_firmware(_config: &Config) -> Result<FirmwareArtifact, String> {
         download_url: binary.browser_download_url.clone(),
         checksum_url: checksum.browser_download_url.clone(),
         firmware_version: version,
-        tag: release.tag_name,
-        created_at: release.published_at,
+        tag: release.tag_name.clone(),
+        created_at: release.published_at.clone(),
     })
+}
+
+fn app_asset_for_platform(release: &GitHubRelease) -> Option<&GitHubAsset> {
+    let names: &[&str] = if cfg!(target_os = "macos") {
+        &[".dmg", ".app.tar.gz"]
+    } else if cfg!(target_os = "windows") {
+        &["setup.exe", ".msi", ".exe"]
+    } else if cfg!(target_os = "linux") {
+        &[".appimage", ".deb", ".rpm"]
+    } else {
+        &[]
+    };
+    release.assets.iter().find(|asset| {
+        let lower = asset.name.to_ascii_lowercase();
+        names.iter().any(|suffix| lower.ends_with(suffix)) && !lower.contains("firmware")
+    })
+}
+
+async fn latest_app_release(config: &Config) -> Result<AppUpdateArtifact, String> {
+    let releases = github_releases().await?;
+    let release = releases
+        .iter()
+        .find(|release| {
+            release_matches_channel(release, config.update_channel.trim())
+                && app_asset_for_platform(release).is_some()
+        })
+        .ok_or_else(|| {
+            format!(
+                "A(z) {} csatornán nincs ehhez a platformhoz alkalmazáscsomag.",
+                config.update_channel
+            )
+        })?;
+    let asset = app_asset_for_platform(release);
+    Ok(AppUpdateArtifact {
+        version: normalize_version(&release.tag_name),
+        tag: release.tag_name.clone(),
+        release_url: release.html_url.clone(),
+        asset_name: asset.map(|a| a.name.clone()),
+        download_url: asset.map(|a| a.browser_download_url.clone()),
+        created_at: release.published_at.clone(),
+        channel: config.update_channel.clone(),
+    })
+}
+
+fn ensure_not_cancelled(state: &AppState) -> Result<(), String> {
+    if state.ota_cancel_requested.load(Ordering::SeqCst) {
+        Err("OTA_CANCELLED: a firmware-frissítést a felhasználó megszakította.".into())
+    } else {
+        Ok(())
+    }
 }
 
 fn normalize_version(value: &str) -> String {
@@ -978,17 +1088,6 @@ async fn read_profile_ota_password(config: &Config) -> Result<String, String> {
             .unwrap_or_default(),
     )
 }
-fn write_ota_password(app: &AppHandle, password: &str) -> Result<(), String> {
-    let path = secret_path(app)?;
-    fs::write(&path, password.as_bytes()).map_err(|e| e.to_string())?;
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        fs::set_permissions(path, fs::Permissions::from_mode(0o600)).map_err(|e| e.to_string())?;
-    }
-    Ok(())
-}
-
 fn status_ota_target(status: &Value) -> Result<(String, u16), String> {
     if status.get("otaEnabled").and_then(Value::as_bool) == Some(false) {
         return Err("Az Arduino OTA szolgáltatása nem aktív.".into());
@@ -1969,6 +2068,8 @@ async fn firmware_status(
     let mut status = FirmwareStatus {
         state: "idle".into(),
         message: "Nincs folyamatban firmware-frissítés.".into(),
+        update_channel: config.update_channel.clone(),
+        app_current_version: env!("CARGO_PKG_VERSION").into(),
         ..Default::default()
     };
 
@@ -2046,6 +2147,34 @@ async fn firmware_status(
         Err(error) => status.firmware_lookup_error = Some(error),
     }
 
+    match latest_app_release(&config).await {
+        Ok(app_release) => {
+            status.app_update_available = normalize_version(env!("CARGO_PKG_VERSION"))
+                != normalize_version(&app_release.version);
+            status.available_app = Some(app_release);
+        }
+        Err(error) => {
+            status.compatibility_status =
+                Some(format!("Alkalmazás-release ellenőrzési hiba: {error}"));
+        }
+    }
+    if status.compatibility_status.is_none() {
+        status.compatibility_status = Some(format!(
+            "{} csatorna: alkalmazás {}, firmware {}",
+            config.update_channel,
+            if status.app_update_available {
+                "frissíthető"
+            } else {
+                "naprakész"
+            },
+            if status.update_available {
+                "frissíthető"
+            } else {
+                "naprakész"
+            }
+        ));
+    }
+
     *state
         .firmware_status
         .lock()
@@ -2057,6 +2186,9 @@ async fn firmware_update_inner(
     app: &AppHandle,
     state: &AppState,
 ) -> Result<FirmwareStatus, String> {
+    state.ota_in_progress.store(true, Ordering::SeqCst);
+    state.ota_cancel_requested.store(false, Ordering::SeqCst);
+    ensure_not_cancelled(state)?;
     emit_ota_progress(
         app,
         "Indítás",
@@ -2104,6 +2236,7 @@ async fn firmware_update_inner(
         "Legfrissebb firmware-kiadás lekérdezése…",
         Some(7),
     );
+    ensure_not_cancelled(state)?;
     let artifact = latest_firmware(&config).await?;
     let available = artifact
         .firmware_version
@@ -2125,9 +2258,19 @@ async fn firmware_update_inner(
         "Arduino státuszának és OTA-céljának ellenőrzése…",
         Some(12),
     );
+    ensure_not_cancelled(state)?;
     let status_json = get_json(state, "/api/status")
         .await
         .map_err(|error| format!("OTA indítás előtt nem olvasható az Arduino státusza: {error}"))?;
+    let boot_id_before = status_json
+        .get("bootId")
+        .and_then(Value::as_str)
+        .map(str::to_string);
+    let schedule_revision_before = status_json.get("scheduleRevision").and_then(Value::as_u64);
+    let schedule_checksum_before = status_json
+        .get("scheduleChecksum")
+        .and_then(Value::as_str)
+        .map(str::to_string);
     let installed = status_json
         .get("firmwareVersion")
         .and_then(Value::as_str)
@@ -2181,6 +2324,7 @@ async fn firmware_update_inner(
         format!("Firmware letöltése: {}", artifact.download_url),
         Some(18),
     );
+    ensure_not_cancelled(state)?;
     let firmware = download_client
         .get(&artifact.download_url)
         .header("User-Agent", "arduino-led-controller-tauri/3.0.19")
@@ -2210,6 +2354,7 @@ async fn firmware_update_inner(
         "SHA-256 ellenőrzőösszeg letöltése…",
         Some(33),
     );
+    ensure_not_cancelled(state)?;
     let checksum_text = download_client
         .get(&artifact.checksum_url)
         .header("User-Agent", "arduino-led-controller-tauri/3.0.19")
@@ -2252,6 +2397,13 @@ async fn firmware_update_inner(
             "A helyben mentett firmware eltér a letöltött GitHub-fájltól. Letöltött: {} bájt / {}, helyi: {} bájt / {}.",
             firmware.len(), actual, persisted_firmware.len(), persisted_hash
         ));
+    }
+    if let Ok(mut current) = state.firmware_status.lock() {
+        current.cache_path = Some(binary_path.to_string_lossy().to_string());
+        current.cache_sha256 = Some(actual.clone());
+        current.boot_id_before = boot_id_before.clone();
+        current.schedule_revision_before = schedule_revision_before;
+        current.schedule_checksum_before = schedule_checksum_before.clone();
     }
     emit_ota_progress(
         app,
@@ -2364,6 +2516,7 @@ async fn firmware_update_inner(
         Some(52),
     );
 
+    ensure_not_cancelled(state)?;
     state.ota_in_progress.store(true, Ordering::SeqCst);
     let upload_result = if terminal_mode {
         upload_firmware_in_terminal(
@@ -2407,8 +2560,40 @@ async fn firmware_update_inner(
         Some(92),
     );
 
+    ensure_not_cancelled(state)?;
     let installed_after_restart =
         confirm_restart(app, state, artifact.firmware_version.clone()).await?;
+    ensure_not_cancelled(state)?;
+    let after_status = get_json(state, "/api/status")
+        .await
+        .map_err(|error| format!("Az OTA utáni persistence ellenőrzés sikertelen: {error}"))?;
+    let boot_id_after = after_status
+        .get("bootId")
+        .and_then(Value::as_str)
+        .map(str::to_string);
+    let schedule_revision_after = after_status.get("scheduleRevision").and_then(Value::as_u64);
+    let schedule_checksum_after = after_status
+        .get("scheduleChecksum")
+        .and_then(Value::as_str)
+        .map(str::to_string);
+    if boot_id_before.is_some() && boot_id_before == boot_id_after {
+        return Err("Az Arduino válaszol, de a Boot ID nem változott az OTA után.".into());
+    }
+    if schedule_revision_before != schedule_revision_after
+        || schedule_checksum_before != schedule_checksum_after
+    {
+        return Err(format!(
+            "Az időzítések persistence ellenőrzése eltérést talált. Revision: {:?} -> {:?}, checksum: {:?} -> {:?}.",
+            schedule_revision_before, schedule_revision_after, schedule_checksum_before, schedule_checksum_after
+        ));
+    }
+    emit_ota_progress(
+        app,
+        "Persistence",
+        "success",
+        "Boot ID megváltozott, a schedule revision és checksum megmaradt.",
+        Some(98),
+    );
     state.ota_in_progress.store(false, Ordering::SeqCst);
     let final_status = FirmwareStatus {
         state: "success".into(),
@@ -2432,6 +2617,20 @@ async fn firmware_update_inner(
         update_available: false,
         progress: Some(100),
         phase: Some("Kész".into()),
+        update_channel: config.update_channel.clone(),
+        app_current_version: env!("CARGO_PKG_VERSION").into(),
+        available_app: latest_app_release(&config).await.ok(),
+        app_update_available: false,
+        compatibility_status: Some("Firmware és Direct API kompatibilitási kapu sikeres.".into()),
+        cache_path: Some(binary_path.to_string_lossy().to_string()),
+        cache_sha256: Some(actual),
+        boot_id_before,
+        boot_id_after,
+        schedule_revision_before,
+        schedule_revision_after,
+        schedule_checksum_before,
+        schedule_checksum_after,
+        cancelled: false,
     };
     *state
         .firmware_status
@@ -2457,10 +2656,25 @@ async fn firmware_update(
                 current.state = "error".into();
                 current.phase = Some("Hiba".into());
                 current.message = error.clone();
+                current.cancelled = error.starts_with("OTA_CANCELLED:");
             }
             Err(error)
         }
     }
+}
+
+#[tauri::command]
+fn firmware_cancel(state: State<'_, AppState>) -> Result<bool, String> {
+    if !state.ota_in_progress.load(Ordering::SeqCst) {
+        return Ok(false);
+    }
+    state.ota_cancel_requested.store(true, Ordering::SeqCst);
+    if let Ok(mut current) = state.firmware_status.lock() {
+        current.state = "cancelling".into();
+        current.phase = Some("Megszakítás".into());
+        current.message = "A firmware-frissítés megszakítása folyamatban…".into();
+    }
+    Ok(true)
 }
 
 #[cfg(test)]
@@ -2570,6 +2784,7 @@ pub fn run() {
                 firmware_status: Mutex::new(FirmwareStatus::default()),
                 arduino_request_lock: Arc::new(Mutex::new(())),
                 ota_in_progress: Arc::new(AtomicBool::new(false)),
+                ota_cancel_requested: Arc::new(AtomicBool::new(false)),
                 last_known_local_ip: Mutex::new(None),
             });
             Ok(())
@@ -2591,6 +2806,7 @@ pub fn run() {
             save_and_sync_schedules,
             firmware_status,
             firmware_update,
+            firmware_cancel,
             credential_bridge::credential_status,
             credential_bridge::credential_get,
             credential_bridge::credential_set,

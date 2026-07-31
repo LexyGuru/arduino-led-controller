@@ -111,6 +111,16 @@ export interface FirmwareArtifact {
   createdAt?: string;
 }
 
+export interface AppUpdateArtifact {
+  version: string;
+  tag: string;
+  releaseUrl?: string;
+  assetName?: string;
+  downloadUrl?: string;
+  createdAt?: string;
+  channel: 'stable' | 'beta' | string;
+}
+
 export interface FirmwareStatus {
   state: string;
   message: string;
@@ -127,6 +137,20 @@ export interface FirmwareStatus {
   updateAvailable: boolean;
   progress?: number;
   phase?: string;
+  updateChannel?: string;
+  appCurrentVersion?: string;
+  availableApp?: AppUpdateArtifact;
+  appUpdateAvailable?: boolean;
+  compatibilityStatus?: string;
+  cachePath?: string;
+  cacheSha256?: string;
+  bootIdBefore?: string;
+  bootIdAfter?: string;
+  scheduleRevisionBefore?: number;
+  scheduleRevisionAfter?: number;
+  scheduleChecksumBefore?: string;
+  scheduleChecksumAfter?: string;
+  cancelled?: boolean;
 }
 
 export interface OtaProgressEvent {

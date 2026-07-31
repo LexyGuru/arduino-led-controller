@@ -17,5 +17,6 @@ export const tauriApi = {
   loadSchedulesFromArduino: () => invoke<LedSchedule[]>('load_schedules_from_arduino'),
   saveSchedules: (schedules: LedSchedule[]) => invoke<{ success: boolean; count: number; verifiedCount: number }>('save_and_sync_schedules', { schedules }),
   firmwareStatus: () => invoke<FirmwareStatus>('firmware_status'),
-  firmwareUpdate: () => invoke<FirmwareStatus>('firmware_update')
+  firmwareUpdate: () => invoke<FirmwareStatus>('firmware_update'),
+  firmwareCancel: () => invoke<boolean>('firmware_cancel')
 };
