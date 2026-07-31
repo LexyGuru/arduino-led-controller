@@ -92,6 +92,7 @@ constexpr unsigned long WIFI_RSSI_REFRESH_INTERVAL_MS = 30000UL;
 constexpr unsigned long NTP_UNSYNCED_RETRY_INTERVAL_MS = 5000UL;
 constexpr unsigned long OTA_PREPARE_WINDOW = 30000UL;
 constexpr unsigned long OTA_ERROR_INDICATOR_TIME = 5000UL;
+constexpr unsigned long REMOTE_REBOOT_DELAY_MS = 750UL;
 
 enum Effect : uint8_t { STATIC = 0, BLINK, BREATHE, RAINBOW, CHASE };
 enum HttpHeaderReadResult : uint8_t {
@@ -184,6 +185,8 @@ bool appendJsonEscaped(FixedBuffer&, const char*);
 void renderAll(bool force = false);
 void refreshManualOverrideDeadlines();
 void printConnectionBlock();
+void rebootDevice();
+void processPendingRemoteReboot();
 
 Adafruit_NeoPixel strip[STRIP_COUNT] = {
   Adafruit_NeoPixel(PIXELS, LED_PINS[0], NEO_GRB + NEO_KHZ800),
@@ -248,6 +251,8 @@ uint32_t scheduleTransactionExpectedRevision = 0;
 uint16_t scheduleTransactionSlotOffset = 0;
 uint8_t scheduleTransactionTotal = 0;
 uint64_t scheduleTransactionReceivedMask = 0;
+bool remoteRebootPending = false;
+unsigned long remoteRebootAt = 0;
 unsigned long httpRequests = 0, httpTimeouts = 0, httpRejected = 0;
 unsigned long httpWriteFailures = 0, httpHeaderAuthAccepted = 0;
 unsigned long httpQueryFallbackAccepted = 0, httpSuccessResponses = 0;
@@ -1476,7 +1481,8 @@ void sendCapabilitiesJson(WiFiClient& c, uint32_t requestId) {
   appendRaw(b,
     "\"features\":{\"diagnostics\":true,\"serialCommands\":true,"
     "\"secretProfileExport\":true,\"ota\":true,\"legacyApi\":true,"
-    "\"jsonBodyApi\":false,\"eepromAbSlots\":false}}");
+    "\"jsonBodyApi\":true,\"eepromAbSlots\":true,"
+    "\"remoteReboot\":true}}");
   if (!b.valid) {
     sendErrorJson(c, 503, "RESPONSE_BUFFER_EXHAUSTED",
       "A capabilities valasz nem fert el.", requestId);
@@ -2040,6 +2046,19 @@ int routeV1(WiFiClient& c, const String& method, const String& base,
     sendJsonLiteral(c, prepared ? "{\"success\":true}" : "{\"success\":false}",
       prepared ? 200 : 503, requestId); return prepared ? 200 : 503;
   }
+  if (base == "/api/v1/system/reboot" && method == "POST") {
+    if (remoteRebootPending) {
+      sendErrorJson(c, 409, "REBOOT_ALREADY_PENDING",
+        "Az eszkoz ujrainditasa mar folyamatban van.", requestId);
+      return 409;
+    }
+    remoteRebootPending = true;
+    remoteRebootAt = millis() + REMOTE_REBOOT_DELAY_MS;
+    sendJsonLiteral(c,
+      "{\"success\":true,\"accepted\":true,\"rebooting\":true,"
+      "\"delayMs\":750}", 202, requestId);
+    return 202;
+  }
   if (base == "/api/v1/leds" && method == "GET") { sendStatusJson(c, requestId, true); return 200; }
   if (base.startsWith("/api/v1/leds/") && base != "/api/v1/leds/all") {
     int id = base.substring(strlen("/api/v1/leds/")).toInt();
@@ -2563,6 +2582,13 @@ void printOtaStatus() {
   Serial.println(otaTransferActive ? "YES" : "NO");
   Serial.print("Last error: "); Serial.println(otaLastErrorCode);
 }
+void processPendingRemoteReboot() {
+  if (!remoteRebootPending) return;
+  if (static_cast<long>(millis() - remoteRebootAt) < 0) return;
+  remoteRebootPending = false;
+  logEvent("cmd", "Tavoli API ujrainditas vegrehajtasa");
+  rebootDevice();
+}
 void rebootDevice() {
   Serial.println("[cmd] Ujrainditas...");
   Serial.flush();
@@ -2671,6 +2697,7 @@ void loop() {
     if (otaReady) ArduinoOTA.poll();
   }
   if (!otaTransferActive) handleHttp();
+  processPendingRemoteReboot();
   if (wifiHasAddress() && !otaTransferActive) {
     unsigned long retry = timeSynced ? 60000UL : NTP_UNSYNCED_RETRY_INTERVAL_MS;
     if (millis() - lastTimeCheck >= retry) {

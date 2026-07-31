@@ -1,0 +1,34 @@
+{
+  "package": "f14-final-firmware-closeout",
+  "expectedBaseCommit": "a3b8f1f620b86737200db3171d1706ea2e627079",
+  "firmwareVersion": "4.3.0-beta.1",
+  "directApiVersion": "1.0.0",
+  "changes": [
+    "protected remote reboot API",
+    "delayed reset after HTTP 202",
+    "capabilities metadata correction",
+    "final hardware gate documentation"
+  ],
+  "files": [
+    {
+      "path": "firmware/ArduinoLedController/ArduinoLedController.ino",
+      "bytes": 111995,
+      "sha256": "6dd33de9cc7c933816122f522fbad4619df7e1d305812436685f9b3716c2bb6c"
+    },
+    {
+      "path": "scripts/test-f14-final-reboot-api.js",
+      "bytes": 1849,
+      "sha256": "234d9c7c77995291be08447e69befd4e9e0168d61ec669737f55b3e14630758e"
+    },
+    {
+      "path": "docs/firmware/F14_FINAL_FIRMWARE_CLOSEOUT.md",
+      "bytes": 1656,
+      "sha256": "1788a82c6462804e62efbd19d9faf7fcd6378230c4313a74404661e7352250f1"
+    },
+    {
+      "path": "docs/v5/F14_FINAL_HARDWARE_GATE.md",
+      "bytes": 778,
+      "sha256": "9809bb2b4b72e0f0057124b0bffeef387cbc267222699b41d391320d2278a587"
+    }
+  ]
+}
