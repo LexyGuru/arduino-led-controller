@@ -8,13 +8,11 @@ A desktop API v2 Bearer tokenje natív operációsrendszer-kulcstárban tárolha
 - Windows: Credential Manager;
 - Linux: Secret Service.
 
-A böngészős vagy nem támogatott környezet automatikusan folyamatmemóriára
-esik vissza.
+A böngészős vagy nem támogatott környezet automatikusan folyamatmemóriára esik vissza.
 
 ## Szűkített jogosultsági felület
 
-A Rust bridge nem általános jelszókezelő API. Kizárólag ezt az egy bejegyzést
-engedi elérni:
+A Rust bridge kizárólag ezt az egy bejegyzést engedi elérni:
 
 ```text
 service: arduino-led-controller
@@ -32,8 +30,18 @@ credential_set
 credential_delete
 ```
 
-A `credential_delete` idempotens: hiányzó bejegyzésnél `false` értéket ad
-vissza, nem állítja le az alkalmazást.
+A `credential_delete` idempotens: hiányzó bejegyzésnél `false` értéket ad vissza.
+
+## Aktív implementáció
+
+A bridge már közvetlenül a Tauri forrás része:
+
+```text
+desktop-tauri/src-tauri/src/credential_bridge.rs
+desktop-tauri/src-tauri/src/lib.rs
+```
+
+Nincs alkalmazandó patch-fájl. A `lib.rs` tartalmazza a modult és a négy parancsot az aktív `generate_handler!` listában.
 
 ## Titokkezelés
 
@@ -41,30 +49,15 @@ vissza, nem állítja le az alkalmazást.
 - vezető vagy záró whitespace tiltott;
 - a beállításkor kapott Rust `String` `Zeroizing<String>` burkolatban él;
 - a natív kulcstárműveletek `spawn_blocking` feladaton futnak;
-- hibaüzenet nem tartalmazza a tokent;
+- a hibaüzenetek nem tartalmazzák a tokent;
 - natív kulcstárhiba esetén a frontend memóriás fallbacket használ.
 
-## lib.rs alkalmazása
-
-A repository jelenlegi `lib.rs` fájlja nagy monolit. A csomag ezért szabványos
-Git patchként adja át a két biztonságos módosítást:
-
-1. `mod credential_bridge;`
-2. a négy parancs hozzáadása az egyetlen `generate_handler!` listához.
+## Ellenőrzés
 
 ```bash
-git apply --unidiff-zero --check docs/v5/NATIVE_CREDENTIAL_BRIDGE_LIB_RS.patch
-git apply --unidiff-zero docs/v5/NATIVE_CREDENTIAL_BRIDGE_LIB_RS.patch
+node scripts/test-native-credential-bridge-contract.js
+node scripts/test-native-credential-vault.js
+node scripts/test-native-credential-fallback.js
+cargo check --locked --manifest-path desktop-tauri/src-tauri/Cargo.toml
+cargo test --locked --manifest-path desktop-tauri/src-tauri/Cargo.toml
 ```
-
-## Cargo.lock
-
-Az új Rust függőségek miatt a lockfájlt a fejlesztőgépen kell frissíteni:
-
-```bash
-cd desktop-tauri/src-tauri
-cargo check
-cargo test credential_bridge
-```
-
-A repository-validátor csak ezután fusson.

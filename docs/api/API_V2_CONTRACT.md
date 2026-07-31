@@ -310,7 +310,7 @@ X-Device-Key: <ARDUINO_API_KEY>
 ```
 
 A kulcs nem kerülhet URL-be, request logba, auditba vagy a macOS `curl`
-folyamat argumentumai közé. A firmware `4.1.21` átmenetileg elfogadhatja a
+folyamat argumentumai közé. A firmware `4.3.0-beta.1` átmenetileg elfogadhatja a
 régi `?k=` formátumot, ha `API_ALLOW_QUERY_KEY_FALLBACK=1`, de a query
 fallback csak fejléc hiányában használható. Hibás vagy duplikált fejléc nem
 kerülhető meg helyes query-kulccsal. A fallback kikapcsolása külön

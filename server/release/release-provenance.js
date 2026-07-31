@@ -11,7 +11,7 @@ function buildReleaseProvenance({
     new Date()
       .toISOString(),
   builderId =
-    'https://github.com/LexyGuru/arduino-led-controller/deploy/build-alpha2-release-bundle.sh',
+    'https://github.com/LexyGuru/arduino-led-controller/deploy/build-versioned-release.sh',
   phase =
     'staging',
   sourceUri =

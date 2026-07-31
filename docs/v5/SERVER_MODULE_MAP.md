@@ -90,5 +90,4 @@ Leállítási sorrend:
 | `server/api/v2/token-routes.js` | Token-admin API v2 |
 | `server/firmware/firmware-backup-store.js` | Ellenőrzött bináris backup és last-known-good index |
 | `scripts/generate-openapi-typescript.js` | Determinisztikus TypeScript kliensgenerátor |
-| `deploy/test-alpha2-lxc.sh` | Valódi LXC release-gate és gépi jelentés |
 | `deploy/build-versioned-release.sh` | Git commitból verziózott tar.gz release bundle |

@@ -1,38 +1,39 @@
 'use strict';
 
-const assert =
-  require('assert');
+const assert = require('assert');
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
 
-const fs =
-  require('fs');
+const {
+  scanReleaseTree
+} = require('../server/release/release-secret-scanner');
 
-const path =
-  require('path');
+const root = fs.mkdtempSync(
+  path.join(os.tmpdir(), 'release-secret-diagnostics-')
+);
 
-const source =
-  fs.readFileSync(
-    path.join(
-      __dirname,
-      'build-alpha2-release-evidence.js'
-    ),
+try {
+  const rawSecret = `ghp_${'Z'.repeat(36)}`;
+
+  fs.writeFileSync(
+    path.join(root, 'unsafe.txt'),
+    `token=${rawSecret}\n`,
     'utf8'
   );
 
-assert.match(
-  source,
-  /Titokszivárgás-gyanús találatok/
-);
+  const result = scanReleaseTree({ root });
+  const serialized = JSON.stringify(result);
 
-assert.match(
-  source,
-  /secretScan\.findings/
-);
+  assert.strictEqual(result.passed, false);
+  assert.ok(Array.isArray(result.findings));
+  assert.ok(result.findings.length >= 1);
+  assert.strictEqual(result.findings[0].code, 'GITHUB_TOKEN');
+  assert.strictEqual(serialized.includes(rawSecret), false);
+  assert.match(serialized, /GITHUB_TOKEN/);
 
-assert.doesNotMatch(
-  source,
-  /console\.(?:error|log)\([^)]*rawSecret/
-);
-
-console.log(
-  'OK: sikertelen release scan redaktált diagnosztikát ír'
-);
+  console.log('OK: sikertelen release scan strukturált diagnosztikát ad');
+  console.log('OK: a diagnosztika nem tartalmazza a nyers titkot');
+} finally {
+  fs.rmSync(root, { recursive: true, force: true });
+}

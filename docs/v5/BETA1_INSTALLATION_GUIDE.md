@@ -109,6 +109,6 @@ sudo bash /opt/arduino-led-controller-staging/current/deploy/rollback-versioned-
 
 ## Arduino UNO R4 WiFi firmware
 
-A kiadás tartalmazza az `Arduino_LED_Controller_Firmware_4.1.21_UNO_R4_WiFi.bin` fájlt. Első telepítéshez USB-s, saját `secrets.h` konfigurációval fordított firmware ajánlott. A publikus bináris nem tartalmaz valódi Wi-Fi-, API- vagy OTA-titkot.
+A kiadás tartalmazza az `Arduino_LED_Controller_Firmware_4.3.0-beta.1_UNO_R4_WiFi.bin` fájlt. Első telepítéshez USB-s, saját `secrets.h` konfigurációval fordított firmware ajánlott. A publikus bináris nem tartalmaz valódi Wi-Fi-, API- vagy OTA-titkot.
 
 A produkciós Arduino firmware-jét csak külön, dokumentált telepítési kapu után frissítsd.

@@ -21,7 +21,7 @@ bash deploy/verify-versioned-release.sh \
 ## Staging aktiválása
 
 ```bash
-sudo bash deploy/stage-alpha2-bundle.sh \
+sudo bash deploy/install-versioned-release.sh \
   dist/releases/arduino-led-controller-*.tar.gz
 ```
 
