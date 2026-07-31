@@ -2089,7 +2089,8 @@ int routeV1(WiFiClient& c, const String& method, const String& base,
     sendJsonBuffer(c,b.data,b.length,200,requestId); return 200;
   }
   if (base == "/api/v1/schedules" && method == "GET") {
-    int index=valueInt(query,"index",0,0,SCHEDULE_MAX-1);
+    int legacyIndex=valueInt(query,"index",0,0,SCHEDULE_MAX);
+    int index=valueInt(query,"offset",legacyIndex,0,SCHEDULE_MAX);
     int limit=valueInt(query,"limit",8,1,8);
     FixedBuffer b; resetBuffer(b,httpBodyBuffer,sizeof(httpBodyBuffer));
     appendFormat(b,"{\"success\":true,\"requestId\":%lu,\"revision\":%lu,\"count\":%u,\"entries\":[",
