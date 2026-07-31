@@ -1147,7 +1147,8 @@ void handleButtons() {
 
 const char* statusText(int code) {
   switch (code) {
-    case 200: return "200 OK"; case 400: return "400 Bad Request";
+    case 200: return "200 OK"; case 202: return "202 Accepted";
+    case 400: return "400 Bad Request";
     case 401: return "401 Unauthorized"; case 404: return "404 Not Found";
     case 405: return "405 Method Not Allowed"; case 408: return "408 Request Timeout";
     case 409: return "409 Conflict";
