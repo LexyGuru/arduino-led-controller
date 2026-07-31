@@ -31,6 +31,8 @@ struct Config {
     local_arduino_ip: String,
     local_arduino_port: u16,
     prefer_local: bool,
+    #[serde(default)]
+    macos_local_api_enabled: bool,
     ota_use_api_host: bool,
     ota_address: String,
     ota_port: u16,
@@ -55,7 +57,8 @@ impl Default for Config {
             arduino_port: 25666,
             local_arduino_ip: String::new(),
             local_arduino_port: 80,
-            prefer_local: true,
+            prefer_local: false,
+            macos_local_api_enabled: false,
             ota_use_api_host: true,
             ota_address: String::new(),
             ota_port: 65280,
@@ -449,6 +452,7 @@ fn push_target(targets: &mut Vec<HttpTarget>, host: &str, port: u16, label: &'st
 }
 
 fn connection_targets(config: &Config, learned_local_ip: Option<&str>) -> Vec<HttpTarget> {
+    let macos_ddns_only = cfg!(target_os = "macos") && !config.macos_local_api_enabled;
     let mut local = Vec::new();
     push_target(
         &mut local,
@@ -473,6 +477,9 @@ fn connection_targets(config: &Config, learned_local_ip: Option<&str>) -> Vec<Ht
         "távoli/DDNS",
     );
 
+    if macos_ddns_only {
+        return remote;
+    }
     if config.prefer_local {
         local.extend(remote);
         local
@@ -490,125 +497,51 @@ fn raw_get_once(
 ) -> Result<Value, String> {
     validate_config(c)?;
     let host = c.arduino_ip.trim();
-    let addresses = (host, c.arduino_port)
-        .to_socket_addrs()
-        .map_err(|e| format!("DNS-feloldási hiba: {e}"))?;
-
-    let mut connected = None;
-    let mut last_error = String::new();
-    for addr in addresses {
-        match TcpStream::connect_timeout(&addr, connect_timeout) {
-            Ok(stream) => {
-                connected = Some(stream);
-                break;
-            }
-            Err(e) => last_error = format!("{addr}: {e}"),
-        }
-    }
-
-    let mut stream = connected.ok_or_else(|| {
-        format!(
-            "Nem sikerült kapcsolódni a(z) {host}:{} címhez. {last_error}",
-            c.arduino_port
-        )
-    })?;
-    stream.set_nodelay(true).ok();
-    stream
-        .set_read_timeout(Some(response_timeout))
-        .map_err(|e| e.to_string())?;
-    stream
-        .set_write_timeout(Some(response_timeout))
-        .map_err(|e| e.to_string())?;
-
     let request_path = protected_path(c, path)?;
     let device_key = device_key_header_value(c)?;
-    let request = format!(
-        "GET {request_path} HTTP/1.1\r\nHost: {host}:{}\r\nUser-Agent: Arduino-LED-Controller-Tauri/3.0.19\r\nAccept: application/json\r\nX-Device-Key: {device_key}\r\nConnection: close\r\n\r\n",
-        c.arduino_port
-    );
-    stream
-        .write_all(request.as_bytes())
-        .map_err(|e| format!("Arduino kérés küldési hiba: {e}"))?;
-    stream
-        .flush()
-        .map_err(|e| format!("Arduino kérés flush hiba: {e}"))?;
-
-    let mut response = Vec::with_capacity(4096);
-    let mut buffer = [0u8; 2048];
-    loop {
-        match stream.read(&mut buffer) {
-            Ok(0) => break,
-            Ok(read) => {
-                response.extend_from_slice(&buffer[..read]);
-                if response.len() > HTTP_MAX_RESPONSE_BYTES {
-                    return Err(format!(
-                        "Az Arduino HTTP-válasza túl nagy (>{HTTP_MAX_RESPONSE_BYTES} bájt)."
-                    ));
-                }
-            }
-            Err(error) if error.kind() == ErrorKind::Interrupted => continue,
-            Err(error)
-                if error.kind() == ErrorKind::TimedOut
-                    || error.kind() == ErrorKind::WouldBlock
-                    || error.kind() == ErrorKind::ConnectionReset
-                    || error.kind() == ErrorKind::ConnectionAborted
-                    || error.kind() == ErrorKind::UnexpectedEof =>
-            {
-                if response.is_empty() {
-                    return Err(format!(
-                        "Az Arduino nem küldött teljes HTTP-választ: {error}"
-                    ));
-                }
-                break;
-            }
-            Err(error) => return Err(format!("Arduino válaszolvasási hiba: {error}")),
-        }
-    }
-
-    if response.is_empty() {
-        return Err("Az Arduino üres választ adott.".into());
-    }
-
-    let split = response
-        .windows(4)
-        .position(|part| part == b"\r\n\r\n")
-        .ok_or_else(|| {
-            "Az Arduino csonka HTTP-választ adott: hiányzik a fejléc vége.".to_string()
+    let protocol = if c.protocol.eq_ignore_ascii_case("https") {
+        "https"
+    } else {
+        "http"
+    };
+    let url = format!("{protocol}://{host}:{}{request_path}", c.arduino_port);
+    let client = reqwest::blocking::Client::builder()
+        .connect_timeout(connect_timeout)
+        .timeout(response_timeout)
+        .redirect(reqwest::redirect::Policy::none())
+        .build()
+        .map_err(|e| format!("Arduino HTTP-kliens hiba: {e}"))?;
+    let response = client
+        .get(&url)
+        .header("Accept", "application/json")
+        .header("X-Device-Key", device_key)
+        .header("Connection", "close")
+        .send()
+        .map_err(|e| {
+            format!(
+                "Nem sikerült kapcsolódni a(z) {host}:{} címhez. {e}",
+                c.arduino_port
+            )
         })?;
-    let headers = String::from_utf8_lossy(&response[..split]);
-    let status_line = headers.lines().next().unwrap_or_default();
-    let status_code = status_line
-        .split_whitespace()
-        .nth(1)
-        .and_then(|value| value.parse::<u16>().ok())
-        .ok_or_else(|| format!("Érvénytelen Arduino HTTP-státusz: {status_line}"))?;
-    if status_code != 200 {
-        return Err(format!("Arduino HTTP-válasz: {status_line}"));
+    let status = response.status();
+    let bytes = response
+        .bytes()
+        .map_err(|e| format!("Arduino válaszolvasási hiba: {e}"))?;
+    if !status.is_success() {
+        let preview = String::from_utf8_lossy(&bytes)
+            .chars()
+            .take(160)
+            .collect::<String>();
+        return Err(format!(
+            "Arduino HTTP-válasz: {}. Részlet: {preview}",
+            status.as_u16()
+        ));
     }
-
-    let mut body = &response[split + 4..];
-    if let Some(expected) = parse_content_length(&headers) {
-        if body.len() < expected {
-            return Err(format!(
-                "Az Arduino csonka HTTP-választ adott: {} / {} bájt érkezett.",
-                body.len(),
-                expected
-            ));
-        }
-        body = &body[..expected];
+    if bytes.is_empty() {
+        return Err("Az Arduino üres HTTP-választ adott a DDNS/proxy kapcsolaton.".into());
     }
-
-    let body = body
-        .iter()
-        .copied()
-        .skip_while(|byte| byte.is_ascii_whitespace())
-        .collect::<Vec<_>>();
-    if body.is_empty() {
-        return Err("Az Arduino HTTP-válaszának törzse üres volt.".into());
-    }
-
-    serde_json::from_slice(&body).map_err(|error| {
-        let preview = String::from_utf8_lossy(&body)
+    serde_json::from_slice(&bytes).map_err(|error| {
+        let preview = String::from_utf8_lossy(&bytes)
             .chars()
             .take(160)
             .collect::<String>();
@@ -1837,11 +1770,16 @@ fn runtime_capabilities() -> RuntimeCapabilities {
 
 #[tauri::command]
 fn load_config(state: State<AppState>) -> Result<Config, String> {
-    Ok(state
+    let mut config = state
         .config
         .lock()
         .map_err(|_| "Beállítás zárolva".to_string())?
-        .clone())
+        .clone();
+    if cfg!(target_os = "macos") {
+        config.prefer_local = false;
+        config.ota_use_api_host = false;
+    }
+    Ok(config)
 }
 
 #[tauri::command]
@@ -1894,6 +1832,10 @@ async fn save_config(
     state: State<'_, AppState>,
     mut config: Config,
 ) -> Result<(), String> {
+    if cfg!(target_os = "macos") {
+        config.prefer_local = false;
+        config.ota_use_api_host = false;
+    }
     validate_config(&config)?;
     if !config.arduino_api_key.trim().is_empty() {
         credential_bridge::set_profile_secret(

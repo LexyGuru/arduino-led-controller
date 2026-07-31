@@ -121,7 +121,8 @@
     "test:tauri-native-credential-ota": "node scripts/test-tauri-native-credential-ota.js",
     "test:tauri-complete-updater-ota": "node scripts/test-tauri-complete-updater-ota.js",
     "test:beta2-release-package": "node scripts/test-beta2-release-package.js",
-    "test:beta-installation-assets": "node scripts/test-beta-installation-assets.js"
+    "test:beta-installation-assets": "node scripts/test-beta-installation-assets.js",
+    "test:tauri-macos-ddns-first": "node scripts/test-tauri-macos-ddns-first.js"
   },
   "engines": {
     "node": ">=20"

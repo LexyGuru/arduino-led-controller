@@ -38,7 +38,8 @@ const fallbackConfig:
     arduinoPort: 25666,
     localArduinoIp: '',
     localArduinoPort: 80,
-    preferLocal: true,
+    preferLocal: false,
+    macosLocalApiEnabled: false,
     otaUseApiHost: true,
     otaAddress: '',
     otaPort: 65280,
@@ -115,12 +116,19 @@ function connectionReady(
 }
 
 function migrateLegacyPlaceholder(
-  saved: ConnectionConfig
+  saved: ConnectionConfig,
+  platform = 'unknown'
 ): ConnectionConfig {
   const merged = {
     ...fallbackConfig,
     ...saved
   };
+
+  if (platform === 'macos') {
+    merged.preferLocal = false;
+    merged.macosLocalApiEnabled = saved.macosLocalApiEnabled === true;
+    merged.otaUseApiHost = false;
+  }
 
   const noAuthentication =
     !merged.arduinoApiPath
@@ -753,7 +761,8 @@ export function useController(
 
           const merged =
             migrateLegacyPlaceholder(
-              saved
+              saved,
+              runtime.platform
             );
 
           const localSchedules =

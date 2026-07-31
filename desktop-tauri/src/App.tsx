@@ -264,6 +264,7 @@ export default function App() {
           {page ===
             'settings' && (
             <SettingsPage
+              platform={controller.capabilities.platform}
               otaSupported={
                 controller.capabilities
                   .otaSupported

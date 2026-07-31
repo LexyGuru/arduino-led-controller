@@ -20,6 +20,7 @@ export interface ConnectionConfig {
   localArduinoIp: string;
   localArduinoPort: number;
   preferLocal: boolean;
+  macosLocalApiEnabled: boolean;
   otaUseApiHost: boolean;
   otaAddress: string;
   otaPort: number;
