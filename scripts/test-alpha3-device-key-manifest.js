@@ -151,7 +151,13 @@ function main() {
     'scripts/test-alpha2-version-finalization-manifest.js',
     'scripts/verify-alpha2-next-integration-readiness.js',
     'scripts/test-alpha2-next-integration-readiness.js',
+    'firmware/ArduinoLedController/ArduinoLedController.ino',
+    'firmware/ArduinoLedController/secrets.example.h',
+    'docs/v5/V5_IMPLEMENTATION_STATUS.md',
+    'docs/v5/V5_REARCHITECTURE_CHECKLIST.md',
+    'scripts/test-alpha3-device-key-header.js',
     'scripts/test-alpha3-device-key-manifest.js',
+    'scripts/test-f14-firmware-audit-contract.js',
     'scripts/test-v5-documentation-status.js'
   ]);
 
@@ -226,7 +232,7 @@ function main() {
     `OK: ${historicalEvolvedChecks} később fejlődött fájl történeti bejegyzése megőrizve`
   );
   console.log('OK: minden aktuális projektverzió 5.0.0-beta.1');
-  console.log('OK: aktív dokumentáció direct-Arduino irányban fejlődhet');
+  console.log('OK: aktív dokumentáció és firmware F14 irányban fejlődhet');
 }
 
 try {

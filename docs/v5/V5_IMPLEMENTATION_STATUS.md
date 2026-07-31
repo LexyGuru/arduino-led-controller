@@ -54,6 +54,17 @@ Az F14.0 audit kritikus megállapításai:
 A célfirmware `4.2.0-beta.1`. A Tauri V15 csak az F14.4 hardveres kapu után
 folytatódhat.
 
+
+## F14.1 forrásimplementáció
+
+A `4.2.0-beta.1` firmware-forrás elkészült request ID-val, egységes HTTP/JSON
+hibákkal, kliens-IP audittal, polling összesítéssel, Serial parancskezelővel,
+secret profil-exporttal és read-only `/api/v1` diagnosztikával. A legacy
+Tauri-kompatibilitás megmaradt.
+
+A fázis csak Arduino CLI fordítás és valós hardveres teszt után zárható le.
+Az F14.2 JSON body API és az F14.3 A/B EEPROM továbbra is nyitott.
+
 ## Beta.1 release
 
 - sikertelen első workflow: `30560448751`;

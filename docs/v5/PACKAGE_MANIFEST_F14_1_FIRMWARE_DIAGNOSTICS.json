@@ -1,0 +1,121 @@
+{
+  "schemaVersion": 1,
+  "package": "f14.1-firmware-diagnostics",
+  "createdAt": "2026-07-31T05:10:00+02:00",
+  "sourceBranch": "next/v5-rearchitecture",
+  "expectedBaseCommit": "4893a2df1d6901d85a62e62f29d06d7071206709",
+  "applicationVersion": "5.0.0-beta.1",
+  "previousFirmwareVersion": "4.1.21",
+  "firmwareVersion": "4.2.0-beta.1",
+  "firmwareFeature": "f14.1-diagnostics-direct-api-v1",
+  "directApiVersion": "1.0.0-beta.1",
+  "firmwareSourceModified": true,
+  "tauriSourceModified": false,
+  "directApiDiagnosticsImplemented": true,
+  "uniformHttpErrorsImplemented": true,
+  "requestIdImplemented": true,
+  "clientConnectionAuditImplemented": true,
+  "pollingSummaryImplemented": true,
+  "serialCommandParserImplemented": true,
+  "serialSecretProfileExportImplemented": true,
+  "legacyApiCompatibilityPreserved": true,
+  "queryKeyFallbackDisabled": false,
+  "jsonBodyApiImplemented": false,
+  "eepromAbSlotsImplemented": false,
+  "scheduleReadbackImplemented": false,
+  "hardwareValidationCompleted": false,
+  "tauriFeatureDevelopmentPaused": true,
+  "fileCountExcludingManifest": 15,
+  "files": [
+    {
+      "path": "docs/firmware/ARDUINO_HARDWARE_ACCEPTANCE_MATRIX.md",
+      "bytes": 4133,
+      "sha256": "829e801c41fcf067f3438677802be61b9af96077fdb0ce529b5261196e379488"
+    },
+    {
+      "path": "docs/firmware/ARDUINO_SERIAL_COMMAND_CONTRACT.md",
+      "bytes": 4737,
+      "sha256": "5952e3f22c2e430d43045f05ed55aa0d9d20eed12847a87ae47f1a3e0df829e1"
+    },
+    {
+      "path": "docs/firmware/F14_1_FIRMWARE_DIAGNOSTICS.md",
+      "bytes": 4809,
+      "sha256": "e634251406254f95dbd065ae8bc7b63ee3bd8017f0be075972621a5113b91b85"
+    },
+    {
+      "path": "docs/v5/BETA1_KNOWN_ISSUES.md",
+      "bytes": 5152,
+      "sha256": "a6bd1f8dd19c48ecfb130664aba60ea0e5fe12704dbd39cff7946e397f43a3eb"
+    },
+    {
+      "path": "docs/v5/FIRMWARE_FIRST_EXECUTION_PLAN.md",
+      "bytes": 2689,
+      "sha256": "0de7cb9fe13c9b2bdd76ace5020cbfaeaa10dc906b42fd00f93f48d29cc4dcd7"
+    },
+    {
+      "path": "docs/v5/V5_IMPLEMENTATION_STATUS.md",
+      "bytes": 7282,
+      "sha256": "08d1e71846ceefdcb5d30ea48d3550e01fdb7d3fac24c6251d9d7a4ace8598fd"
+    },
+    {
+      "path": "docs/v5/V5_REARCHITECTURE_CHECKLIST.md",
+      "bytes": 7087,
+      "sha256": "ec1f8d631ab5e875a562970a26d10e836ee401890721c3a01d3400a039684ff6"
+    },
+    {
+      "path": "firmware/ArduinoLedController/ArduinoLedController.ino",
+      "bytes": 90193,
+      "sha256": "4628e7d98f51902141b060c6d46a24405f971769ce1b72a6dcff191831f5385b"
+    },
+    {
+      "path": "firmware/ArduinoLedController/secrets.example.h",
+      "bytes": 725,
+      "sha256": "f526774a114ad6155ee54b439a7d3bd92ec69ec8b8a0dbe43adbac6b7b784b4d"
+    },
+    {
+      "path": "scripts/test-alpha3-device-key-header.js",
+      "bytes": 1693,
+      "sha256": "b71325069fa2f3ee0d6336c057c8e209d9f2ef47b68e113e1e3dbeb83cd4338b"
+    },
+    {
+      "path": "scripts/test-alpha3-device-key-manifest.js",
+      "bytes": 8657,
+      "sha256": "6d16b6e9b85baa8a067b8a6b5bfecd46f8c8d66fb56e51ce3bcb8b9b28ea70d8"
+    },
+    {
+      "path": "scripts/test-f14-1-firmware-diagnostics.js",
+      "bytes": 4236,
+      "sha256": "46d8f0c864fd41c1e733a568ebdcaa978a335f7b21782b4b7c8731fd33fc67a6"
+    },
+    {
+      "path": "scripts/test-f14-1-memory-budget.js",
+      "bytes": 2416,
+      "sha256": "995486dc0ad889f249ce6a736f32352379f86e1f97ac46e012aef643d535b282"
+    },
+    {
+      "path": "scripts/test-f14-firmware-audit-contract.js",
+      "bytes": 2149,
+      "sha256": "ebbb95b14cfe05bb4592a9ce0be597271ccf2e753dd8cb0fe92de616d1db9a80"
+    },
+    {
+      "path": "scripts/test-v5-documentation-status.js",
+      "bytes": 2494,
+      "sha256": "a198df200b03d96f9e2860017974d16cbcafb4230dd8056f5efb7e6ffd8d587a"
+    }
+  ],
+  "memoryHotfixVersion": "F14.1.1",
+  "linkerHeapStackOverlapFixed": true,
+  "logCapacity": 32,
+  "httpBodyBufferBytes": 2560,
+  "serialCommandBufferBytes": 160,
+  "largeLocalScheduleStagingRemoved": true,
+  "memoryMeasurementHotfixVersion": "F14.1.2",
+  "arduinoCliCompileSucceeded": true,
+  "measuredProgramBytes": 107812,
+  "measuredGlobalMemoryBytes": 19640,
+  "measuredLocalMemoryRemainingBytes": 13128,
+  "globalMemoryLimitBytes": 21500,
+  "minimumLocalMemoryRemainingBytes": 10000,
+  "rawElfBssUsedAsGlobalMemory": false,
+  "firmwareSourceChangedByMemoryMeasurementHotfix": false
+}

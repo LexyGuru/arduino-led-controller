@@ -1,6 +1,7 @@
 # Arduino firmware hardveres acceptance matrix
 
 **Célfirmware:** `4.2.0-beta.1`
+**F14.1 forrásállapot:** implementálva; a jelölőnégyzetek hardveres mérésig nyitva maradnak
 **Teszt Arduino:** Beta UNO R4 WiFi
 **Helyi cím:** `10.0.0.117:80`
 **Távoli HTTP:** `beta-lexyguruhome.ddns.net:25666`

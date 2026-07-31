@@ -84,7 +84,10 @@ Alpha.3 feature:
 - [x] USB Serial parancsszerződés
 - [x] hardveres acceptance matrix
 - [x] F14.0 regresszióteszt és manifest
-- [ ] F14.1 diagnosztika, hibaválaszok és Serial profil-export
+- [x] F14.1 diagnosztika, hibaválaszok és Serial profil-export – forrás
+- [x] F14.1.1 SRAM-hotfix – linker heap/stack átfedés javítva a forrásban
+- [ ] F14.1 Arduino CLI fordítás
+- [ ] F14.1 USB feltöltés és hardveres auth/diagnosztikai mátrix
 - [ ] F14.2 `/api/v1`, JSON body és query fallback eltávolítása
 - [ ] F14.3 A/B EEPROM és atomikus schedule
 - [ ] F14.4 hardveres stabilitási gate

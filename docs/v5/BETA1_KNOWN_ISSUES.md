@@ -137,3 +137,12 @@ Tervezett javítás: F14.2 és F14.3.
 
 A V14.1 Tauri forrásjavítás megmarad, de új Tauri funkció nem készül addig,
 amíg az F14.1–F14.4 firmware-kapuk hardveren nem sikeresek.
+
+## F14.1 javítási állapot
+
+A `4.2.0-beta.1` forrásban elkészült a helyes teljes API URL, a
+`404/405/408/401/400` JSON hibakezelés, a request ID, a kliens-IP audit,
+a Serial parancskezelő, a secret profil-export és a read-only Direct API v1.
+
+A nyilvános Beta.1 firmware asset továbbra is `4.1.21`; az új forrást előbb
+Arduino CLI-vel és valódi hardveren kell validálni.

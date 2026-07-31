@@ -35,7 +35,9 @@ Firmware-kód nem módosul.
 
 ## F14.1 – diagnosztika és kapcsolat
 
-Tervezett nagy firmware-csomag:
+Állapot: **forrás implementálva; Arduino CLI és hardveres validáció szükséges**
+
+Megvalósított nagy firmware-csomag:
 
 - verzió `4.2.0-beta.1`;
 - helyes privát API URL a bootkonzolon;

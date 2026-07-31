@@ -2,7 +2,7 @@
 
 **Tervezett firmware:** `4.2.0-beta.1`
 **Baud:** `115200`
-**Állapot:** F14.0 terv
+**Állapot:** F14.1 forrásban implementálva; hardveres validáció következik
 
 A Serial parancskezelő célja, hogy a firmware Tauri nélkül is teljesen
 diagnosztizálható és beállítható legyen.
