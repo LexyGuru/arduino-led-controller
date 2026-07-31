@@ -1,185 +1,187 @@
-# V5 újraarchitektúra – állapot-checklist
+# V5 rearchitecture checklist
 
-Utolsó frissítés: 2026-07-30
-Integrációs ág: `next/v5-rearchitecture`
-Aktuális ág: `next/v5-rearchitecture`
-Aktuális verzió: `5.0.0-alpha.3`
-Alpha.3 feature commit: `e2dc8ac41edf39717b4e2708e6b03aba0b6431bb`
-Alpha.3 `next` merge commit: `295713798b1487ec2c788b170be2fce32fccea2a`
+**Frissítve:** 2026-07-30
+**Aktuális verzió:** `5.0.0-beta.1`
+**Firmware:** `4.1.21`
+**Integrációs ág:** `next/v5-rearchitecture`
+**Beta commit:** `ef42c233ebd99a42ec68a5b422b9787b0c4cda44`
+**Sikeres workflow:** `30564106374`
 
-## Repository és LXC
+## Történeti állapot
 
-- [x] Stabil `main`, külön `next` és feature ág
-- [x] Repository-validátor, titokellenőrzés és rollback
-- [x] Alpha.2 izolált worktree release-gate
-- [x] Alpha.2 gate valódi LXC-n
-- [x] Verziózott release bundle készítés és ellenőrzés
-- [x] Izolált staging service és loopback-only hálózati kötés
-- [x] Staging Arduino-cél leválasztva a produkciós hardverről
-
-## Hitelesítés, API és megfigyelhetőség
-
-- [x] Bearer és session hitelesítés
-- [x] Szerepkörök, permissions, CSRF és user admin
-- [x] OpenAPI 3.1, audit, metrics, Prometheus és diagnostics
-- [x] Tartós EventStore és Socket.IO gateway
-- [x] Tokenrotációs admin API és hash-elt token repository
-
-## LED és Arduino
-
-- [x] Közös sorba állított Arduino kliens
-- [x] Közös LED szolgáltatás és legacy adapterek
-- [x] Közös Arduino státuszmonitor
-- [x] Legacy 30 másodperces státuszcron letiltása
-- [x] Lapozott, TTL-alapú Arduino konzolcache
-- [x] API v2 és legacy konzolvégpontok
-- [x] Arduino query API-kulcs lecserélése `X-Device-Key` fejlécre
-  - [x] moduláris Node kliens
-  - [x] legacy Node és macOS curl transport
-  - [x] Tauri közvetlen Arduino kliens
-  - [x] firmware header-first auth és kikapcsolható query fallback
-  - [x] valódi UNO R4 WiFi hardverteszt és fallback-off bizonyítás
-
-## Schedule
-
-- [x] Arduino schedule service és EEPROM sync
-- [x] Atomikus helyi schedule repository
-- [x] Helyi schedule create/update/delete/import/export
-- [x] Legacy helyi schedule adapter aktiválva
-- [x] V5 schedule runner alapból aktív
-- [x] Legacy percenkénti cron célzott letiltása
-- [x] Percenkénti duplikációvédelem
-- [x] Validált, atomikus schedule fájlkezelés
-- [x] Legacy fájlfeltöltési hiba kiváltása közös szolgáltatással
-- [ ] Arduino schedule upload endpoint hardveres igazolása
-- [ ] `server2_legacy.js` helyi schedule kódjának fizikai törlése
-
-## Firmware és OTA
-
-- [x] Release, SHA-256, OTA és újraindulás-ellenőrzés
-- [x] Legacy firmware adapter
-- [x] OTA megszakítás
-- [x] Utolsó működő firmware backup és rollback
-- [x] Firmware `4.1.21` `X-Device-Key` migráció automatizált tesztekkel
-- [x] Firmware `4.1.21` valódi hardverteszt és rollback-próba
-
-## Web és szerver modularizáció
-
-- [x] `public/` statikus fájlok külön Express installerben
-- [x] Explicit HTTP és Socket.IO shutdown
-- [x] Legacy signal handlerek elnyomása
-- [x] Cron-cutover állapot API
-- [-] Inline legacy dashboard kiváltása külön fájlokkal
-- [ ] `server2_legacy.js` megszüntetése
-
-## Desktop és mobil
-
-- [-] Tauri képernyők fokozatos átállítása API v2-re
-- [x] OpenAPI-alapú TypeScript típus- és kliensgenerálás
-- [x] Session-cookie elsődleges hitelesítés
-- [x] Bearer token alapból csak folyamatmemóriában
-- [x] Natív Tauri credential bridge és memóriás fallback
-- [x] Szerverprofil és URL-biztonsági validáció
-- [x] Online/offline/reconnecting állapotgép
-- [x] Offline olvasási cache és veszélyes írások tiltása
-- [x] Socket.IO factory és polling realtime fallback
-- [x] LED, schedule, firmware és system domain adapterek
-- [x] React provider és állapothook
-- [x] Rust credential parancsok macOS, Windows és Linux kulcstárhoz
-- [-] Meglévő Tauri képernyők domain adapterekre állítása
-  - [x] V5 rendszer- és kiadási központ
-  - [x] Session/Bearer kapcsolatkezelő felület
-  - [x] Release és konfigurációs preflight
-  - [x] Maintenance, snapshot és migráció kezelése
-  - [x] Dashboard API v2 státusz, cache és közvetlen fallback
-  - [x] LED API v2 vezérlés, realtime és biztonságos fallback
-  - [x] Schedule API v2 szerkesztés, konfliktuskezelés és Arduino-szinkron
-  - [x] Firmware API v2 update, cancel, backup és rollback képernyő
-
-## Rendszerüzemeltetés
-
-- [x] Tartós karbantartási mód
-- [x] Módosító API-k maintenance blokkolása
-- [x] Konfigurációs és könyvtár-preflight
-- [x] Verziózott rendszer-snapshot
-- [x] Fájlonkénti snapshot SHA-256 ellenőrzés
-- [x] Maintenance-köteles snapshot restore
-- [x] Idempotens migrációs futtató és dry-run
-- [x] Release metadata és OpenAPI hash API
-- [x] Staging preflight/snapshot/health telepítő
-
-## Kiadás
-
-- [x] Teljes izolált LXC integrációs és rollback teszt
-- [x] Staging telepítés és readiness
-- [x] Promotion és teljes execution receipt-lánc
-- [x] `FINALIZE_ALPHA2_VERSION_SYNC` jóváhagyás
+- [x] Alpha.2 moduláris Node/LXC és release infrastruktúra
 - [x] `5.0.0-alpha.2` verziólépés
-- [x] Release notes és migrációs dokumentáció
-- [x] Beolvasztás `next/v5-rearchitecture` ágba (`PR #1`, `bd5cb67`)
-- [x] Új integrációs ellenőrzés a `next` ágon
-- [ ] Beolvasztás `main` ágba
-- [ ] Produkciós telepítés külön jóváhagyással
-
-## Alpha.2 release-gate és staging
-
-- [x] Candidate commitot ellenőrző gépi gate jelentés
-- [x] Gate kor- és commitvalidáció
-- [x] Preflight, migration és maintenance promóciós readiness
-- [x] Atomikus promóciós jóváhagyás és visszavonás
-- [x] V5 desktop release-gate panel
-- [x] Izolált candidate worktree runner
-- [x] Verziózott staging telepítő
-- [x] Health-alapú automatikus rollback
-- [x] Külön kézi rollback eszköz
-- [x] Hardened staging systemd unit
-- [x] Valódi LXC gate futtatása
-- [x] Staging deployment receipt
-- [x] Rollback rehearsal receipt
-- [x] Promotion deployment receipt
-- [x] Receipt SHA-256 előzménylánc
-- [x] Artifact index és execution archive
-- [x] Közvetlen `5.0.0-alpha.2` verziószinkron
-
-## Dokumentáció és integrációs előkészítés
-
-- [x] A master roadmap aktuális státuszszekcióval kiegészítve
-- [x] Részletes V5 implementációs állapotjelentés
-- [x] Biztonságos feature → `next` integrációs runbook
-- [x] Alpha.2 integrációs readiness ellenőrző
-- [x] Dokumentációs és package-manifest tesztek
-- [x] A finalizáló/integrációs csomag commitja és push-a
-- [x] Pull Request a `next/v5-rearchitecture` ágba (`#1`)
-- [x] PR #1 whitespace- és státuszgate lezárása
-- [x] Teljes integrációs teszt a `next` ágon
-
-## Alpha.3 eszközkulcs-fejléc munkacsomag
-
-- [x] `X-Device-Key` szerződés a moduláris Node kliensben
-- [x] case-insensitive kliensoldali fejléc-felülírás elleni védelem
-- [x] legacy Node és macOS curl fejlécmigráció
-- [x] macOS curl secret átadása stdinről, process-argumentum nélkül
-- [x] Tauri közvetlen Arduino kliens fejlécmigráció
-- [x] firmware `4.1.21` header-first auth
-- [x] duplikált és hibás fejléc tiltási logika
-- [x] mérhető, compile-time kikapcsolható query fallback
-- [x] Alpha.3 automatizált szerződés- és manifestteszt
-- [x] rollout-, rollback- és hardverteszt-dokumentáció
-- [x] Arduino CLI firmware build GitHub Actionsben
-- [x] valódi UNO R4 WiFi fejléc- és negatív teszt
-- [x] staging gateway és Tauri hardverteszt
-- [x] fallback-off firmware-próba
-- [x] új Alpha.3 gate–staging–rollback evidence
+- [x] Alpha.3 `X-Device-Key`
 - [x] `5.0.0-alpha.3` finalization
-- [x] Artifact-only Tauri desktop CI macOS, Windows és Linux staging buildhez
+- [x] Artifact-only Tauri CI előkészítés
+- [x] Beta.1 prerelease
+- [x] macOS Bash 3.2 hotfix
+- [x] Linux Tauri Rust gate hotfix
+- [x] GitHub prerelease `v5.0.0-beta.1`
 
-## Következő munkacsomag
+Alpha.2 `next` merge commit: `bd5cb67d3a40d1fa5d8e39f53615a7f50e5c1d3b`
 
-1. Teljes Alpha.3 alkalmazási staging a tartalék Arduino ellen.
-2. LED-, schedule-, offline-, reconnect-, restart- és hibáskulcs-szcenáriók.
-3. Artifact-only Tauri CI futás és a három desktop artifact ellenőrzése.
-4. `next` LXC staging és rollback rehearsal változatlan produkciós `main` mellett.
-5. Alpha.2 történeti snapshot-tesztek verziófüggetlenítése és teljes regresszió.
-6. Firmware schedule/EEPROM, DST/watchdog és 3 × 300 LED terhelési kapuk.
-7. Query fallback kivezetési döntés és `5.0.0-beta.1` readiness.
-8. A `main` ág és a produkció változatlan marad külön release-jóváhagyásig.
+Alpha.3 integrációs merge:
+`295713798b1487ec2c788b170be2fce32fccea2a`
+
+Alpha.3 feature:
+`e2dc8ac41edf39717b4e2708e6b03aba0b6431bb`
+
+## Új architektúra-döntés
+
+- [x] Közvetlen Arduino mód az alapértelmezett
+- [x] Arduino az aktuális eszközállapot hiteles forrása
+- [x] Arduino EEPROM az időzítések elsődleges tárolója
+- [x] Arduino hajtja végre az időzítéseket kliens nélkül
+- [x] `X-Device-Key` a közvetlen kapcsolat hitelesítése
+- [x] Node/LXC opcionális és elkülönített
+- [x] Bearer/session nem része az alap Arduino módnak
+- [x] Mobil OTA tiltott
+- [x] Desktop OTA külön platformfolyamat
+
+## V14.0 – dokumentáció
+
+- [x] README direct-first architektúrára állítása
+- [x] master roadmap frissítése
+- [x] implementációs státusz frissítése
+- [x] közvetlen Arduino architektúradokumentum
+- [x] titokkezelési dokumentum
+- [x] desktop/mobil roadmap
+- [x] Beta.1 ismert hibák
+- [x] dokumentációs regresszióteszt
+- [x] csomagmanifest
+
+## V14.1 – kapcsolat és eszközprofilok
+
+- [ ] `ConnectionMode = directArduino | optionalServer`
+- [ ] `directArduino` legyen alapérték
+- [ ] több eszközprofil
+- [ ] profilnév
+- [ ] helyi host
+- [ ] helyi port
+- [ ] távoli DDNS/IP
+- [ ] távoli port
+- [ ] privát API-útvonal
+- [ ] Arduino eszközkulcs
+- [ ] helyi kapcsolat teszt
+- [ ] távoli kapcsolat teszt
+- [ ] DDNS host validáció
+- [ ] port validáció
+- [ ] aktív profil váltása
+- [ ] „V5 rendszer” szerverpanel alapból rejtve
+- [ ] régi szerverprofil biztonságos migrációja
+
+## V14.2 – titkos profilimport
+
+- [ ] `controller-profile.secret.json` JSON séma
+- [ ] fájlimport desktopon
+- [ ] kézi bevitel
+- [ ] natív credential store
+- [ ] eszközprofilonként külön kulcstárkulcs
+- [ ] API-kulcs nem kerül normál config store-ba
+- [ ] OTA-jelszó nem kerül normál config store-ba
+- [ ] titkos fájl nem kerül Gitbe
+- [ ] import után törlési figyelmeztetés
+- [ ] redaktált profil-export
+- [ ] hibás/hiányos secret fájl elutasítása
+- [ ] secret scanner regresszió
+
+## V14.3 – schedule
+
+- [ ] Arduino schedule export
+- [ ] Arduino schedule import/upload
+- [ ] EEPROM visszaolvasási ellenőrzés
+- [ ] 60 eseményes határteszt
+- [ ] heti napmaszk teszt
+- [ ] éjfélen átnyúló esemény
+- [ ] manuális felülbírálás
+- [ ] időzóna és DST
+- [ ] Tauri cache csak másodlagos
+- [ ] nincs Node/LXC schedule-függés
+- [ ] nincs háttérben késleltetett automatikus írás
+
+## V14.4 – napló és diagnosztika
+
+- [ ] helyi SQLite vagy JSONL
+- [ ] profilazonosító
+- [ ] kapcsolatváltási esemény
+- [ ] HTTP válaszkód
+- [ ] Arduino konzol
+- [ ] OTA konzol
+- [ ] redaktált diagnosztikai export
+- [ ] kulcs/jelszó/header tiltása naplóban
+- [ ] naplórotáció
+- [ ] felhasználói törlés
+
+## V14.5 – OTA és rollback
+
+- [ ] macOS Terminal/`arduinoOTA`
+- [ ] Windows támogatás
+- [ ] Linux támogatás
+- [ ] firmware SHA-256
+- [ ] last-known-good
+- [ ] verzióellenőrzés újraindulás után
+- [ ] timeout és cancel
+- [ ] rollback
+- [ ] OTA csak helyi IP/VPN
+- [ ] Android OTA rejtve
+- [ ] iOS/iPadOS OTA rejtve
+
+## V14.6 – mobil
+
+- [ ] Android local network
+- [ ] iOS local network permission
+- [ ] manuális host/DDNS
+- [ ] secret profilimport vagy biztonságos párosítás
+- [ ] mobil secure storage
+- [ ] foreground/background reconnect
+- [ ] kapcsolatprofil-váltás
+- [ ] schedule kezelés
+- [ ] naplómegtekintés
+- [ ] OTA menü nincs
+- [ ] valós Android teszt
+- [ ] valós iPhone/iPad teszt
+
+## V14.7 – opcionális szervermód
+
+- [ ] külön „Kísérleti szerver” kapcsoló
+- [ ] külön szervercím és port
+- [ ] külön szerver Bearer token
+- [ ] első token/admin bootstrap
+- [ ] szerver telepítő token-generálás
+- [ ] nincs függés a direct módban
+- [ ] külön szerver dokumentáció
+- [ ] külön szerver E2E teszt
+- [ ] LXC nélkül teljes Tauri működés
+
+## Biztonsági kapuk
+
+- [ ] `secrets.h` nincs stagingben
+- [ ] `*.secret.json` nincs stagingben
+- [ ] API-kulcs nincs URL-ben
+- [ ] API-kulcs nincs logban
+- [ ] OTA-jelszó nincs logban
+- [ ] közvetlen API csak privát útvonal + `X-Device-Key`
+- [ ] meglévő kulcs nem olvasható vissza
+- [ ] kulcscsere hitelesített
+- [ ] credential vault platformteszt
+- [ ] release secret scan
+
+## Integrációs kapuk
+
+- [ ] Beolvasztás `main` ágba
+- [ ] Produkciós LXC átváltása V5-re
+- [ ] Produkciós Arduino V5 migráció
+
+## Beta.2 readiness
+
+- [ ] V14.1–V14.5 desktopon kész
+- [ ] legalább macOS hardveres E2E
+- [ ] Windows/Linux build és alapteszt
+- [ ] Android/iOS direct mód alapteszt
+- [ ] Beta.1 ismert kapcsolati hibák megszűntek
+- [ ] szerverpanel nem zavarja az alapfelhasználót
+- [ ] README és telepítési útmutató egységes
+- [ ] teljes repository-validáció
+- [ ] többplatformos release workflow
+- [ ] `main` továbbra is változatlan a külön merge-döntésig

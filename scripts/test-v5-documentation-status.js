@@ -1,94 +1,141 @@
 'use strict';
 
 const assert = require('assert');
+const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..');
 const CURRENT_VERSION = '5.0.0-beta.1';
+const BETA_COMMIT = 'ef42c233ebd99a42ec68a5b422b9787b0c4cda44';
+const BETA_RUN = '30564106374';
+const ALPHA3_MERGE = '295713798b1487ec2c788b170be2fce32fccea2a';
+const MANIFEST_PATH =
+  'docs/v5/PACKAGE_MANIFEST_V5_DIRECT_ARDUINO_DOCUMENTATION.json';
 
 function read(relativePath) {
   return fs.readFileSync(path.join(ROOT, relativePath), 'utf8');
 }
 
+function sha256(relativePath) {
+  return crypto
+    .createHash('sha256')
+    .update(fs.readFileSync(path.join(ROOT, relativePath)))
+    .digest('hex');
+}
+
+function assertIncludes(content, value, label) {
+  assert.ok(content.includes(value), `${label}: hiányzó szöveg: ${value}`);
+}
+
 function main() {
-  const version = read('VERSION').trim();
+  assert.strictEqual(read('VERSION').trim(), CURRENT_VERSION);
+
+  const readme = read('README.md');
   const roadmap = read('fejlesztes_readme.md');
-  const status = read('docs/v5/V5_IMPLEMENTATION_STATUS.md');
   const checklist = read('docs/v5/V5_REARCHITECTURE_CHECKLIST.md');
-  const runbook = read('docs/v5/NEXT_V5_INTEGRATION_RUNBOOK.md');
-  const alpha3Notes = read('docs/v5/ALPHA3_RELEASE_NOTES_DRAFT.md');
-  const betaNotes = read('docs/v5/BETA1_RELEASE_NOTES.md');
-  const betaChecklist = read('docs/v5/BETA1_RELEASE_CHECKLIST.md');
-  const betaGuide = read('docs/v5/BETA1_INSTALLATION_GUIDE.md');
-  const betaManifest = JSON.parse(
-    read('docs/v5/PACKAGE_MANIFEST_BETA1_DISTRIBUTION.json')
-  );
+  const status = read('docs/v5/V5_IMPLEMENTATION_STATUS.md');
+  const architecture = read('docs/v5/V5_DIRECT_ARDUINO_ARCHITECTURE.md');
+  const security = read('docs/v5/V5_DIRECT_ARDUINO_SECURITY.md');
+  const platforms = read('docs/v5/V5_DESKTOP_MOBILE_ROADMAP.md');
+  const knownIssues = read('docs/v5/BETA1_KNOWN_ISSUES.md');
+  const index = read('docs/v5/README.md');
 
-  const mergeCommit = '295713798b1487ec2c788b170be2fce32fccea2a';
-  const featureCommit = 'e2dc8ac41edf39717b4e2708e6b03aba0b6431bb';
-  const mainBaseline = '58e01b40e4568f5cd2648d370614077ef08aa1ba';
-
-  assert.strictEqual(version, CURRENT_VERSION);
-
-  for (const [name, content] of [
+  for (const [label, content] of [
+    ['README', readme],
     ['roadmap', roadmap],
-    ['implementation status', status],
     ['checklist', checklist],
-    ['integration runbook', runbook],
-    ['Alpha.3 release notes', alpha3Notes]
+    ['status', status]
   ]) {
-    assert.ok(content.includes(mergeCommit), `${name}: hiányzó Alpha.3 merge commit`);
+    assertIncludes(content, CURRENT_VERSION, label);
+    assertIncludes(content, BETA_COMMIT, label);
   }
 
-  assert.ok(roadmap.includes('**Alkalmazásverzió:** `5.0.0-alpha.3`'));
-  assert.ok(roadmap.includes('teljes Alpha.3 alkalmazási staging'));
-  assert.ok(roadmap.includes('artifact-only Tauri desktop CI'));
-  assert.ok(roadmap.includes(mainBaseline));
+  assertIncludes(readme, BETA_RUN, 'README');
+  assertIncludes(roadmap, BETA_RUN, 'roadmap');
+  assertIncludes(checklist, BETA_RUN, 'checklist');
 
-  assert.ok(status.includes('aktuális alkalmazásverzió: `5.0.0-alpha.3`'));
-  assert.ok(status.includes('Kész – hardveren igazolt'));
-  assert.ok(status.includes('query fallback átmenetileg engedélyezett'));
-  assert.ok(checklist.includes('Aktuális verzió: `5.0.0-alpha.3`'));
-  assert.ok(checklist.includes('- [x] `5.0.0-alpha.3` finalization'));
-  assert.ok(checklist.includes('Artifact-only Tauri CI'));
+  for (const [label, content] of [
+    ['roadmap', roadmap],
+    ['checklist', checklist],
+    ['status', status]
+  ]) {
+    assertIncludes(content, ALPHA3_MERGE, label);
+  }
 
-  assert.ok(runbook.includes('## Alpha.3 integrációs frissítés – 2026-07-30'));
-  assert.ok(runbook.includes(featureCommit));
-  assert.ok(runbook.includes('30536184636'));
-  assert.ok(alpha3Notes.includes('Az alkalmazásverzió `5.0.0-alpha.3`'));
-  assert.ok(
-    alpha3Notes.includes(
-      '`main` merge és produkciós telepítés továbbra is tiltott'
-    )
-  );
+  for (const [label, content] of [
+    ['README', readme],
+    ['architecture', architecture],
+    ['roadmap', roadmap]
+  ]) {
+    assert.match(content, /közvetlen Arduino/i, `${label}: direct-first hiányzik`);
+    assert.match(content, /opcionális/i, `${label}: opcionális mód hiányzik`);
+  }
 
-  assert.ok(betaNotes.includes(CURRENT_VERSION));
-  assert.match(betaNotes, /első nyilvános béta-prerelease/i);
-  assert.match(betaNotes, /main.*nem módosul/is);
-  assert.ok(betaChecklist.includes(CURRENT_VERSION));
-  assert.ok(betaChecklist.includes('Teljes alkalmazási staging'));
-  assert.ok(betaGuide.includes(CURRENT_VERSION));
-  assert.ok(betaGuide.includes('Windows x86_64'));
-  assert.ok(betaGuide.includes('Debian 12 / Proxmox LXC'));
-  assert.strictEqual(betaManifest.applicationVersionAfter, CURRENT_VERSION);
-  assert.strictEqual(betaManifest.githubPrerelease, true);
-  assert.strictEqual(betaManifest.mainMergeIncluded, false);
-  assert.strictEqual(betaManifest.productionDeploymentIncluded, false);
+  assert.match(readme, /Node\.js.*LXC/is);
+  assert.match(roadmap, /Node\.js\/LXC/i);
+  assert.match(architecture, /opcionális szerver/i);
 
-  for (const content of [roadmap, status, checklist, runbook, alpha3Notes]) {
-    assert.ok(!content.includes('PR merge: még nem történt meg'));
+  assert.match(readme, /EEPROM.*időzítés/is);
+  assert.match(architecture, /Arduino.*hiteles/is);
+  assert.match(architecture, /X-Device-Key/);
+  assert.match(security, /controller-profile\.secret\.json/);
+  assert.match(security, /nem olvashatja ki/i);
+  assert.match(platforms, /mobileSupportsOta = false/);
+  assert.match(knownIssues, /Bearer token nincs létrehozva/i);
+  assert.match(knownIssues, /V5 rendszer/i);
+  assert.match(knownIssues, /összekever/i);
+  assert.match(index, /Tauri \/ mobil -> közvetlen Arduino/);
+
+  for (const content of [
+    readme,
+    roadmap,
+    checklist,
+    status,
+    architecture,
+    security,
+    platforms,
+    knownIssues
+  ]) {
     assert.ok(
-      !content.includes(
-        'hardver-, staging- és fallback-off bizonyítás még nyitott'
-      )
+      !/Node\/LXC szerver kötelező/i.test(content),
+      'A dokumentáció nem állíthat kötelező LXC-függést'
+    );
+    assert.ok(
+      !/session-cookie a közvetlen Arduino hitelesítése/i.test(content),
+      'Session-cookie nem lehet direct Arduino auth'
     );
   }
 
-  console.log('OK: Alpha.3 történeti integrációs dokumentáció megmaradt');
-  console.log('OK: Beta.1 release notes, checklist és telepítési útmutató egységes');
-  console.log('OK: 5.0.0-beta.1 prerelease és terjesztési manifest rögzítve');
-  console.log('OK: main merge és produkciós deploy továbbra is tiltott');
+  const manifest = JSON.parse(read(MANIFEST_PATH));
+  assert.strictEqual(manifest.package, 'v5-direct-arduino-v14.0-documentation');
+  assert.strictEqual(manifest.applicationVersion, CURRENT_VERSION);
+  assert.strictEqual(manifest.architecture, 'direct-arduino-first');
+  assert.strictEqual(manifest.nodeLxcRequired, false);
+  assert.strictEqual(manifest.mobileOtaSupported, false);
+  assert.strictEqual(manifest.files.length, manifest.fileCountExcludingManifest);
+
+  for (const entry of manifest.files) {
+    const absolute = path.join(ROOT, entry.path);
+    assert.ok(fs.existsSync(absolute), `Hiányzó manifestfájl: ${entry.path}`);
+    assert.strictEqual(
+      fs.statSync(absolute).size,
+      entry.bytes,
+      `${entry.path}: hibás fájlméret`
+    );
+    assert.strictEqual(
+      sha256(entry.path),
+      entry.sha256,
+      `${entry.path}: hibás SHA-256`
+    );
+  }
+
+  console.log('OK: V5 közvetlen Arduino-első dokumentáció');
+  console.log('OK: Node/LXC nem kötelező');
+  console.log('OK: Arduino EEPROM a schedule elsődleges tárolója');
+  console.log('OK: X-Device-Key a közvetlen hitelesítés');
+  console.log('OK: mobil OTA tiltott');
+  console.log('OK: V14.0 dokumentációs manifest és SHA-256');
 }
 
 try {
