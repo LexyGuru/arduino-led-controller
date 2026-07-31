@@ -25,9 +25,10 @@
 #ifndef API_PRIVATE_PATH
 #define API_PRIVATE_PATH "/CHANGE_THIS_TO_A_LONG_RANDOM_API_PATH"
 #endif
-#ifndef API_ALLOW_QUERY_KEY_FALLBACK
-#define API_ALLOW_QUERY_KEY_FALLBACK 0
+#ifdef API_ALLOW_QUERY_KEY_FALLBACK
+#undef API_ALLOW_QUERY_KEY_FALLBACK
 #endif
+#define API_ALLOW_QUERY_KEY_FALLBACK 0
 #ifndef ENABLE_PIR_SENSORS
 #define ENABLE_PIR_SENSORS 0
 #endif
@@ -923,8 +924,7 @@ void printConnectionBlock() {
   snprintf(line, sizeof(line), "Schedule checksum:    %08lX",
     static_cast<unsigned long>(scheduleChecksum(schedules, scheduleCount)));
   consoleLine(line);
-  snprintf(line, sizeof(line), "Query fallback:       %s (F14.2-ben megszunik)",
-    API_ALLOW_QUERY_KEY_FALLBACK ? "ATMENETILEG AKTIV" : "INAKTIV");
+  snprintf(line, sizeof(line), "Query fallback:       INAKTIV (FORRASKODBAN ZAROLT)");
   consoleLine(line);
   consoleLine("------------------------------------------");
   if (apiSettingsStored) {

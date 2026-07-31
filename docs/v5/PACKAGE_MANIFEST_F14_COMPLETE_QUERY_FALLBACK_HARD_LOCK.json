@@ -1,0 +1,21 @@
+{
+  "package": "f14-complete-query-fallback-hard-lock",
+  "expectedBaseCommit": "590710e4c69b06b19648e87ba97ec3fa032f4f7d",
+  "firmwareVersion": "4.3.0-beta.1",
+  "directApiVersion": "1.0.0",
+  "purpose": "Prevent private secrets.h from overriding the final disabled query-key fallback and align Serial/JSON diagnostics with the compiled security state.",
+  "firmwareSourceModified": true,
+  "queryFallbackHardLocked": true,
+  "files": [
+    {
+      "path": "firmware/ArduinoLedController/ArduinoLedController.ino",
+      "bytes": 111036,
+      "sha256": "9f8da9ab78e692e6926569b75b7fffa9ea055bbed82f4eaa07056119c0d8b3c3"
+    },
+    {
+      "path": "scripts/test-f14-complete-query-fallback-lock.js",
+      "bytes": 956,
+      "sha256": "dd5b260151439bc4fc9eeb428b80da8fbf830f5be9763950e36722cee660003a"
+    }
+  ]
+}
