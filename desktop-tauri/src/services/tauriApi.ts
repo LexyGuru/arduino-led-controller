@@ -1,5 +1,16 @@
 import { invoke } from '@tauri-apps/api/core';
-import type { ArduinoConsoleResponse, ArduinoStatus, ConnectionConfig, FirmwareStatus, LedSchedule, LedStrip, NetworkLog, RuntimeCapabilities } from '../types';
+import type {
+  ArduinoConsoleResponse,
+  ArduinoStatus,
+  ConnectionConfig,
+  FirmwareStatus,
+  LedSchedule,
+  LedStrip,
+  NetworkLog,
+  RuntimeCapabilities,
+  ScheduleSaveResult,
+  ScheduleSyncSnapshot
+} from '../types';
 
 export const tauriApi = {
   runtimeCapabilities: () => invoke<RuntimeCapabilities>('runtime_capabilities'),
@@ -10,12 +21,27 @@ export const tauriApi = {
   status: () => invoke<ArduinoStatus>('arduino_status'),
   logs: (afterId = 0) => invoke<ArduinoConsoleResponse>('arduino_logs', { afterId }),
   networkLogs: () => invoke<NetworkLog[]>('network_logs'),
-  setLed: (strip: LedStrip) => invoke('set_led', { id: strip.id, enabled: strip.enabled, brightness: strip.brightness, effect: strip.effect, speed: strip.speed, color: strip.color }),
+  setLed: (strip: LedStrip) => invoke('set_led', {
+    id: strip.id,
+    enabled: strip.enabled,
+    brightness: strip.brightness,
+    effect: strip.effect,
+    speed: strip.speed,
+    color: strip.color
+  }),
   loadSchedules: () => invoke<LedSchedule[]>('load_schedules'),
   importSchedulesFile: (path: string) => invoke<LedSchedule[]>('import_schedules_file', { path }),
   exportSchedulesFile: (path: string, schedules: LedSchedule[]) => invoke<void>('export_schedules_file', { path, schedules }),
-  loadSchedulesFromArduino: () => invoke<LedSchedule[]>('load_schedules_from_arduino'),
-  saveSchedules: (schedules: LedSchedule[]) => invoke<{ success: boolean; count: number; verifiedCount: number }>('save_and_sync_schedules', { schedules }),
+  loadSchedulesFromArduino: () => invoke<ScheduleSyncSnapshot>('load_schedules_from_arduino'),
+  saveSchedules: (
+    schedules: LedSchedule[],
+    expectedRevision: number | null,
+    force = false
+  ) => invoke<ScheduleSaveResult>('save_and_sync_schedules', {
+    schedules,
+    expectedRevision,
+    force
+  }),
   firmwareStatus: () => invoke<FirmwareStatus>('firmware_status'),
   firmwareUpdate: () => invoke<FirmwareStatus>('firmware_update'),
   firmwareCancel: () => invoke<boolean>('firmware_cancel')

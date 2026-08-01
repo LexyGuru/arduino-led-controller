@@ -104,6 +104,36 @@ export interface LedSchedule {
   leds: ScheduleLed[];
 }
 
+export interface ScheduleSyncSnapshot {
+  schedules: LedSchedule[];
+  count: number;
+  revision: number;
+  checksum: string;
+  emptyActionCount: number;
+}
+
+export interface ScheduleSaveResult extends ScheduleSyncSnapshot {
+  success: boolean;
+  verifiedCount: number;
+  revisionBefore: number;
+  revisionAfter: number;
+  checksumBefore: string;
+  checksumAfter: string;
+}
+
+export interface ScheduleSyncState {
+  status:
+    | 'local-cache'
+    | 'syncing'
+    | 'verified'
+    | 'error';
+  count: number;
+  revision: number | null;
+  checksum: string;
+  emptyActionCount: number;
+  lastError: string | null;
+}
+
 export interface FirmwareArtifact {
   name: string;
   downloadUrl: string;

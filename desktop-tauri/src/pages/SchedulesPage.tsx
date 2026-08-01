@@ -5,25 +5,20 @@ import {
 } from 'react';
 
 import {
+  AlertTriangle,
+  CheckCircle2,
+  Database,
   Download,
+  RefreshCw,
   Save,
   Trash2,
-  Upload,
-  Wifi
+  Upload
 } from 'lucide-react';
 
 import {
   open,
   save
 } from '@tauri-apps/plugin-dialog';
-
-import {
-  V5ScheduleConflict
-} from '../components/v5/V5ScheduleConflict';
-
-import {
-  V5ScheduleState
-} from '../components/v5/V5ScheduleState';
 
 import {
   useV5Schedules
@@ -39,7 +34,10 @@ import {
 
 import type {
   LedSchedule,
-  ScheduleLed
+  ScheduleLed,
+  ScheduleSaveResult,
+  ScheduleSyncSnapshot,
+  ScheduleSyncState
 } from '../types';
 
 const DAYS = [
@@ -146,6 +144,7 @@ const hexToRgb = (
 export function SchedulesPage({
   schedules:
     legacySchedules,
+  scheduleSync,
   busy:
     legacyBusy,
   onSave:
@@ -155,20 +154,28 @@ export function SchedulesPage({
 }: {
   schedules:
     LedSchedule[];
+  scheduleSync:
+    ScheduleSyncState;
   busy:
     boolean;
   onSave:
     (
       schedules:
-        LedSchedule[]
-    ) => void;
+        LedSchedule[],
+      expectedRevision:
+        number |
+        null,
+      force?: boolean
+    ) => Promise<ScheduleSaveResult>;
   onSync:
-    () => void;
+    () => Promise<ScheduleSyncSnapshot>;
 }) {
   const state =
     useV5Schedules({
       legacySchedules,
       legacyBusy,
+      syncState:
+        scheduleSync,
       directSave,
       directSync
     });
@@ -189,6 +196,14 @@ export function SchedulesPage({
   ] =
     useState(
       state.remoteFingerprint
+    );
+
+  const [
+    baseRevision,
+    setBaseRevision
+  ] =
+    useState<number | null>(
+      state.remoteRevision
     );
 
   const [
@@ -249,18 +264,25 @@ export function SchedulesPage({
         setBaseFingerprint(
           state.remoteFingerprint
         );
+        setBaseRevision(
+          state.remoteRevision
+        );
         setConflict(false);
       } else if (
         state.remoteFingerprint !==
-        baseFingerprint
+          baseFingerprint ||
+        state.remoteRevision !==
+          baseRevision
       ) {
         setConflict(true);
       }
     },
     [
       baseFingerprint,
+      baseRevision,
       dirty,
       state.remoteFingerprint,
+      state.remoteRevision,
       state.schedules
     ]
   );
@@ -330,19 +352,26 @@ export function SchedulesPage({
       force = false
     ) => {
       try {
-        await state.save(
-          draft,
-          {
-            expectedFingerprint:
-              baseFingerprint,
-            force
-          }
-        );
+        const result =
+          await state.save(
+            draft,
+            {
+              expectedRevision:
+                baseRevision,
+              force
+            }
+          );
 
+        setDraft(
+          result.schedules
+        );
         setBaseFingerprint(
           scheduleFingerprint(
-            draft
+            result.schedules
           )
+        );
+        setBaseRevision(
+          result.revision
         );
         setConflict(false);
       } catch (
@@ -367,11 +396,16 @@ export function SchedulesPage({
         await state.refresh();
 
       if (result) {
-        setDraft(result);
+        setDraft(
+          result.schedules
+        );
         setBaseFingerprint(
           scheduleFingerprint(
-            result
+            result.schedules
           )
+        );
+        setBaseRevision(
+          result.revision
         );
         setConflict(false);
       }
@@ -622,14 +656,14 @@ export function SchedulesPage({
       <div className="page-heading">
         <div>
           <p className="eyebrow">
-            V5 ÉS ARDUINO IDŐZÍTÉSEK
+            ARDUINO DIRECT API V1
           </p>
           <h2>
             Heti időzítés
           </h2>
           <p className="muted">
-            A V5 szerverlista az elsődleges; mentés előtt automatikus
-            konfliktusellenőrzés fut.
+            Az Arduino teljes, lapozott schedule-listája az elsődleges.
+            Mentés csak ellenőrzött revision és teljes readback után engedélyezett.
           </p>
         </div>
 
@@ -641,26 +675,26 @@ export function SchedulesPage({
             }
             disabled={
               state.busy ||
-              !dirty
+              !dirty ||
+              !state.canWrite
             }
           >
             <Save size={17} />
-            Mentés
+            Mentés Arduino-ra
           </button>
 
           <button
             className="secondary"
             onClick={
               () =>
-                void state
-                  .syncArduino()
+                void reloadRemote()
             }
             disabled={
               state.busy
             }
           >
-            <Wifi size={17} />
-            Szinkron Arduino-ra
+            <RefreshCw size={17} />
+            Arduino lista betöltése
           </button>
 
           <button
@@ -693,45 +727,113 @@ export function SchedulesPage({
         </div>
       </div>
 
-      <V5ScheduleState
-        source={
-          state.source
-        }
-        dirty={dirty}
-        conflict={conflict}
-        runner={
-          state.runner
-        }
-        busy={
-          state.busy
-        }
-        onRefresh={
-          () =>
-            void reloadRemote()
-        }
-        onTick={
-          () =>
-            void state
-              .forceTick()
-        }
-      />
+      <section className="panel">
+        <div className="panel-title">
+          <div>
+            <p className="eyebrow">
+              ELLENŐRZÖTT ARDUINO-ÁLLAPOT
+            </p>
+            <h2>
+              Schedule szinkron
+            </h2>
+          </div>
 
-      <V5ScheduleConflict
-        visible={conflict}
-        busy={
-          state.busy
-        }
-        onReload={
-          () =>
-            void reloadRemote()
-        }
-        onForceSave={
-          () =>
-            void saveDraft(
-              true
-            )
-        }
-      />
+          {state.canWrite
+            ? <CheckCircle2 className="ok" />
+            : <Database />}
+        </div>
+
+        <div className="details-grid compact">
+          <div>
+            <span>
+              Arduino rekordok
+            </span>
+            <strong>
+              {state.syncState.count}
+            </strong>
+          </div>
+
+          <div>
+            <span>
+              Szerkesztési lista
+            </span>
+            <strong>
+              {draft.length}
+            </strong>
+          </div>
+
+          <div>
+            <span>
+              Revision
+            </span>
+            <strong>
+              {state.syncState.revision ?? '—'}
+            </strong>
+          </div>
+
+          <div>
+            <span>
+              Checksum
+            </span>
+            <strong>
+              {state.syncState.checksum || '—'}
+            </strong>
+          </div>
+        </div>
+
+        {!state.canWrite && (
+          <div className="notice">
+            <AlertTriangle size={18} />
+            <p>
+              A mentés és a törlés le van tiltva, amíg az Arduino teljes
+              schedule-listája nem töltődött le sikeresen, azonos counttal,
+              revisionnel és checksummal. A helyi cache önmagában nem írható
+              vissza az Arduino-ra.
+            </p>
+          </div>
+        )}
+
+        {state.syncState.emptyActionCount > 0 && (
+          <div className="notice">
+            <AlertTriangle size={18} />
+            <p>
+              Az Arduino {state.syncState.emptyActionCount} olyan rekordot
+              tartalmaz, amelyben nincs LED-művelet. Ezek most már láthatók,
+              külön törölhetők, és nem vesznek el a letöltés során.
+            </p>
+          </div>
+        )}
+      </section>
+
+      {conflict && (
+        <section className="v5-schedule-conflict">
+          <AlertTriangle size={22} />
+
+          <div>
+            <strong>
+              Az Arduino schedule revision közben megváltozott.
+            </strong>
+            <span>
+              Töltsd újra a teljes Arduino-listát. A régi revisionre épülő
+              szerkesztést nem írjuk vissza automatikusan.
+            </span>
+          </div>
+
+          <div className="v5-actions">
+            <button
+              className="secondary"
+              disabled={state.busy}
+              onClick={
+                () =>
+                  void reloadRemote()
+              }
+            >
+              <RefreshCw size={16} />
+              Arduino lista újratöltése
+            </button>
+          </div>
+        </section>
+      )}
 
       {(fileMessage ||
         state.notice ||
@@ -1023,6 +1125,7 @@ export function SchedulesPage({
             className="schedule-add"
             disabled={
               state.busy ||
+              !state.canWrite ||
               !selectedDays
                 .length ||
               formLeds.every(
@@ -1082,6 +1185,7 @@ export function SchedulesPage({
                     >
                       <button
                         className="summary-main"
+                        disabled={!state.canWrite}
                         onClick={
                           () =>
                             edit(
@@ -1094,20 +1198,23 @@ export function SchedulesPage({
                         </strong>
 
                         <span>
-                          {schedule.leds
-                            .map(
-                              (led) =>
-                                `LED ${led.id} ${led.enabled ? 'be' : 'ki'} · ${led.brightness} · RGB(${led.color.join(',')})`
-                            )
-                            .join(
-                              ' | '
-                            )}
+                          {schedule.leds.length
+                            ? schedule.leds
+                                .map(
+                                  (led) =>
+                                    `LED ${led.id} ${led.enabled ? 'be' : 'ki'} · ${led.brightness} · RGB(${led.color.join(',')})`
+                                )
+                                .join(
+                                  ' | '
+                                )
+                            : 'Nincs LED-művelet · üres Arduino rekord'}
                         </span>
                       </button>
 
                       <button
                         className="icon-button danger"
                         title="Törlés"
+                        disabled={!state.canWrite}
                         onClick={
                           () =>
                             setDraft(

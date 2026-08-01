@@ -31,9 +31,6 @@ const logs = read(
 const scheduleHook = read(
   'desktop-tauri/src/hooks/useV5Schedules.ts'
 );
-const scheduleConflict = read(
-  'desktop-tauri/src/components/v5/V5ScheduleConflict.tsx'
-);
 const firmwareHook = read(
   'desktop-tauri/src/hooks/useV5Firmware.ts'
 );
@@ -44,9 +41,11 @@ const firmwareBackups = read(
 for (
   const marker
   of [
-    'V5ScheduleState',
-    'V5ScheduleConflict',
-    'expectedFingerprint'
+    'ARDUINO DIRECT API V1',
+    'Arduino lista betöltése',
+    'Mentés Arduino-ra',
+    'expectedRevision',
+    'state.canWrite'
   ]
 ) {
   assert.match(
@@ -54,6 +53,16 @@ for (
     new RegExp(marker)
   );
 }
+
+assert.doesNotMatch(
+  schedules,
+  /A V5 szerverlista az elsődleges/
+);
+
+assert.doesNotMatch(
+  schedules,
+  /Runner kézi futtatása/
+);
 
 for (
   const marker
@@ -93,18 +102,23 @@ for (
 }
 
 assert.match(
-  scheduleConflict,
-  /Tudatos felülírás/
-);
-
-assert.match(
   scheduleHook,
   /SCHEDULE_CONFLICT/
 );
 
 assert.match(
   scheduleHook,
-  /currentFingerprint !==/
+  /await directSync\(\)/
+);
+
+assert.match(
+  scheduleHook,
+  /await directSave\(/
+);
+
+assert.doesNotMatch(
+  scheduleHook,
+  /api\.schedules/
 );
 
 const updateBlock =
@@ -119,7 +133,7 @@ assert.doesNotMatch(
 );
 
 console.log(
-  'OK: schedule konfliktuskezelő és tudatos felülírás UI'
+  'OK: Direct Arduino schedule revision-konfliktus és írásvédelmi UI'
 );
 console.log(
   'OK: firmware backup, rollback és cancel UI'

@@ -148,6 +148,9 @@ export default function App() {
               schedules={
                 controller.schedules
               }
+              scheduleSync={
+                controller.scheduleSync
+              }
             />
           )}
 
@@ -190,19 +193,27 @@ export default function App() {
               schedules={
                 controller.schedules
               }
+              scheduleSync={
+                controller.scheduleSync
+              }
               busy={
                 controller.busy
               }
               onSave={
-                (schedules) =>
-                  void controller
-                    .saveSchedules(
-                      schedules
-                    )
+                (
+                  schedules,
+                  expectedRevision,
+                  force
+                ) =>
+                  controller.saveSchedules(
+                    schedules,
+                    expectedRevision,
+                    force
+                  )
               }
               onSync={
                 () =>
-                  void controller
+                  controller
                     .syncSchedulesFromArduino()
               }
             />

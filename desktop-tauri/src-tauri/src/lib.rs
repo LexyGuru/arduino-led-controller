@@ -111,6 +111,16 @@ struct ScheduleFile {
     schedules: Vec<Schedule>,
 }
 
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ScheduleSyncSnapshot {
+    schedules: Vec<Schedule>,
+    count: u8,
+    revision: u64,
+    checksum: String,
+    empty_action_count: usize,
+}
+
 fn normalize_schedules(mut schedules: Vec<Schedule>) -> Result<Vec<Schedule>, String> {
     for (index, schedule) in schedules.iter_mut().enumerate() {
         if schedule.id.trim().is_empty() {
@@ -162,6 +172,25 @@ fn schedule_file_bytes(schedules: Vec<Schedule>) -> Result<Vec<u8>, String> {
         schedules,
     };
     serde_json::to_vec_pretty(&wrapper).map_err(|e| e.to_string())
+}
+
+fn write_schedule_cache(app: &AppHandle, schedules: Vec<Schedule>) -> Result<(), String> {
+    let path = schedules_path(app)?;
+    let temporary = path.with_extension("json.new");
+    let bytes = schedule_file_bytes(schedules)?;
+
+    fs::write(&temporary, bytes)
+        .map_err(|e| format!("Az ellenőrzött időzítés-cache nem írható: {e}"))?;
+
+    if cfg!(windows) && path.exists() {
+        fs::remove_file(&path)
+            .map_err(|e| format!("A régi időzítés-cache nem cserélhető le: {e}"))?;
+    }
+
+    fs::rename(&temporary, &path).map_err(|e| {
+        let _ = fs::remove_file(&temporary);
+        format!("Az ellenőrzött időzítés-cache nem aktiválható: {e}")
+    })
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -769,10 +798,16 @@ struct ArduinoScheduleTransaction {
 }
 
 fn decode_schedule_payload(payload: &str, index: u8) -> Result<Schedule, String> {
-    let bytes = hex::decode(payload).map_err(|e| format!("Hibás időzítési HEX-adat: {e}"))?;
+    let bytes = hex::decode(payload).map_err(|error| {
+        format!(
+            "A(z) {}. Arduino schedule rekord hibás HEX-adatot tartalmaz: {error}",
+            index + 1
+        )
+    })?;
     if bytes.len() != 27 {
         return Err(format!(
-            "Hibás időzítési rekordméret: {} bájt, 27 helyett.",
+            "A(z) {}. Arduino schedule rekord mérete {} bájt, 27 helyett.",
+            index + 1,
             bytes.len()
         ));
     }
@@ -781,7 +816,11 @@ fn decode_schedule_payload(payload: &str, index: u8) -> Result<Schedule, String>
     let hour = bytes[1];
     let minute = bytes[2];
     if !(1..=7).contains(&day) || hour > 23 || minute > 59 {
-        return Err("Az Arduino érvénytelen napot vagy időpontot adott vissza.".into());
+        return Err(format!(
+            "A(z) {}. Arduino schedule rekord érvénytelen napot vagy időpontot tartalmaz: nap={}, idő={hour:02}:{minute:02}.",
+            index + 1,
+            day
+        ));
     }
 
     let mut leds = Vec::new();
@@ -813,26 +852,30 @@ async fn schedule_status(state: &AppState) -> Result<ArduinoScheduleStatus, Stri
         .map_err(|e| format!("Az Arduino schedule státuszválasza hibás: {e}"))
 }
 
-async fn fetch_schedules(state: &AppState) -> Result<Vec<Schedule>, String> {
+async fn fetch_schedule_snapshot(state: &AppState) -> Result<ScheduleSyncSnapshot, String> {
     let status = schedule_status(state).await?;
     let mut all = Vec::with_capacity(status.count as usize);
     let mut offset = 0u8;
+
     while offset < status.count {
         let page: ArduinoSchedulePage = serde_json::from_value(
             get_json(state, &format!("/api/v1/schedules?offset={offset}&limit=8")).await?,
         )
         .map_err(|e| format!("A schedule oldal válasza hibás (offset={offset}): {e}"))?;
+
         if page.revision != status.revision || page.count != status.count {
             return Err(format!(
-                "A lapozott schedule-letöltés közben megváltozott az állapot: revision {}/{}; count {}/{}.",
+                "A lapozott schedule-letöltés közben megváltozott az Arduino állapota: revision {}/{}; count {}/{}.",
                 status.revision, page.revision, status.count, page.count
             ));
         }
         if page.entries.is_empty() {
             return Err(format!(
-                "Üres schedule oldal érkezett a(z) {offset}. offsetnél."
+                "Üres schedule oldal érkezett a(z) {offset}. offsetnél, miközben az Arduino {} rekordot jelent.",
+                status.count
             ));
         }
+
         for entry in page.entries {
             let expected = all.len() as u8;
             if entry.index != expected {
@@ -843,8 +886,16 @@ async fn fetch_schedules(state: &AppState) -> Result<Vec<Schedule>, String> {
             }
             all.push(decode_schedule_payload(&entry.payload, entry.index)?);
         }
-        offset = all.len() as u8;
+
+        let next_offset = all.len() as u8;
+        if next_offset <= offset {
+            return Err(format!(
+                "A schedule-lapozás nem haladt előre a(z) {offset}. offset után."
+            ));
+        }
+        offset = next_offset;
     }
+
     if all.len() != status.count as usize {
         return Err(format!(
             "Hiányos schedule-letöltés: várt {}, kapott {}.",
@@ -852,37 +903,91 @@ async fn fetch_schedules(state: &AppState) -> Result<Vec<Schedule>, String> {
             all.len()
         ));
     }
+
     all.sort_by(|a, b| a.day.cmp(&b.day).then(a.time.cmp(&b.time)));
-    Ok(all)
+    let empty_action_count = all
+        .iter()
+        .filter(|schedule| schedule.leds.is_empty())
+        .count();
+
+    Ok(ScheduleSyncSnapshot {
+        schedules: all,
+        count: status.count,
+        revision: status.revision,
+        checksum: status.checksum,
+        empty_action_count,
+    })
 }
 
 fn validate_schedules(items: &[Schedule]) -> Result<(), String> {
     if items.len() > 60 {
         return Err("Az Arduino legfeljebb 60 időzítést tárolhat.".into());
     }
-    for s in items {
-        if !(1..=7).contains(&s.day) || s.time.len() != 5 || s.leds.is_empty() {
-            return Err("Érvénytelen időzítés.".into());
+    for (schedule_index, schedule) in items.iter().enumerate() {
+        if !(1..=7).contains(&schedule.day) || schedule.time.len() != 5 {
+            return Err(format!(
+                "A(z) {}. időzítés napja vagy időformátuma érvénytelen.",
+                schedule_index + 1
+            ));
         }
-        let mut parts = s.time.split(':');
-        let h: u8 = parts
+        let mut parts = schedule.time.split(':');
+        let hour: u8 = parts
             .next()
-            .and_then(|v| v.parse().ok())
-            .ok_or("Hibás idő")?;
-        let m: u8 = parts
+            .and_then(|value| value.parse().ok())
+            .ok_or_else(|| format!("A(z) {}. időzítés órája hibás.", schedule_index + 1))?;
+        let minute: u8 = parts
             .next()
-            .and_then(|v| v.parse().ok())
-            .ok_or("Hibás idő")?;
-        if h > 23 || m > 59 {
-            return Err("Hibás időérték.".into());
+            .and_then(|value| value.parse().ok())
+            .ok_or_else(|| format!("A(z) {}. időzítés perce hibás.", schedule_index + 1))?;
+        if parts.next().is_some() || hour > 23 || minute > 59 {
+            return Err(format!(
+                "A(z) {}. időzítés időértéke érvénytelen: {}.",
+                schedule_index + 1,
+                schedule.time
+            ));
         }
-        for l in &s.leds {
-            if !(1..=3).contains(&l.id)
-                || l.effect > 4
-                || !(1..=100).contains(&l.speed)
-                || l.color.len() != 3
-            {
-                return Err("Érvénytelen LED-időzítés.".into());
+
+        let mut seen_leds = 0u8;
+        for led in &schedule.leds {
+            if !(1..=3).contains(&led.id) {
+                return Err(format!(
+                    "A(z) {}. időzítés ismeretlen LED-azonosítót tartalmaz: {}.",
+                    schedule_index + 1,
+                    led.id
+                ));
+            }
+            let mask = 1u8 << (led.id - 1);
+            if seen_leds & mask != 0 {
+                return Err(format!(
+                    "A(z) {}. időzítésben a LED {} többször szerepel.",
+                    schedule_index + 1,
+                    led.id
+                ));
+            }
+            seen_leds |= mask;
+
+            if led.effect > 4 {
+                return Err(format!(
+                    "A(z) {}. időzítés LED {} effektje érvénytelen: {}.",
+                    schedule_index + 1,
+                    led.id,
+                    led.effect
+                ));
+            }
+            if !(1..=100).contains(&led.speed) {
+                return Err(format!(
+                    "A(z) {}. időzítés LED {} sebessége érvénytelen: {}.",
+                    schedule_index + 1,
+                    led.id,
+                    led.speed
+                ));
+            }
+            if led.color.len() != 3 {
+                return Err(format!(
+                    "A(z) {}. időzítés LED {} színadata nem RGB-hármas.",
+                    schedule_index + 1,
+                    led.id
+                ));
             }
         }
     }
@@ -2067,41 +2172,62 @@ fn export_schedules_file(path: String, schedules: Vec<Schedule>) -> Result<(), S
 async fn load_schedules_from_arduino(
     app: AppHandle,
     state: State<'_, AppState>,
-) -> Result<Vec<Schedule>, String> {
-    let schedules = fetch_schedules(&state).await?;
-    fs::write(
-        schedules_path(&app)?,
-        schedule_file_bytes(schedules.clone())?,
-    )
-    .map_err(|e| e.to_string())?;
-    Ok(schedules)
+) -> Result<ScheduleSyncSnapshot, String> {
+    let snapshot = fetch_schedule_snapshot(&state).await?;
+    write_schedule_cache(&app, snapshot.schedules.clone())?;
+    Ok(snapshot)
 }
+
 #[tauri::command]
 async fn save_and_sync_schedules(
     app: AppHandle,
     state: State<'_, AppState>,
     schedules: Vec<Schedule>,
+    expected_revision: Option<u64>,
+    force: Option<bool>,
 ) -> Result<Value, String> {
     let schedules = normalize_schedules(schedules)?;
-    fs::write(
-        schedules_path(&app)?,
-        schedule_file_bytes(schedules.clone())?,
-    )
-    .map_err(|e| e.to_string())?;
+    let before = schedule_status(&state).await?;
+    let force = force.unwrap_or(false);
+
+    if !force {
+        let expected = expected_revision.ok_or_else(|| {
+            "SCHEDULE_SYNC_REQUIRED: Mentés előtt töltsd le és ellenőrizd az Arduino teljes schedule-listáját."
+                .to_string()
+        })?;
+        if before.revision != expected {
+            return Err(format!(
+                "SCHEDULE_CONFLICT: Az Arduino schedule revision közben megváltozott: várt {expected}, aktuális {}.",
+                before.revision
+            ));
+        }
+    }
 
     if schedules.is_empty() {
         delete_json(&state, "/api/v1/schedules").await?;
-        let verified = fetch_schedules(&state).await?;
-        if !verified.is_empty() {
+        let verified = fetch_schedule_snapshot(&state).await?;
+        if verified.count != 0 || !verified.schedules.is_empty() {
             return Err(format!(
                 "Az Arduino törlés után még {} időzítést jelent.",
-                verified.len()
+                verified.count
             ));
         }
-        return Ok(serde_json::json!({"success":true,"count":0,"verifiedCount":0}));
+        write_schedule_cache(&app, verified.schedules.clone())?;
+        return Ok(serde_json::json!({
+            "success": true,
+            "schedules": verified.schedules.clone(),
+            "count": verified.count,
+            "verifiedCount": verified.count,
+            "revision": verified.revision,
+            "revisionBefore": before.revision,
+            "revisionAfter": verified.revision,
+            "checksum": verified.checksum.clone(),
+            "checksumBefore": before.checksum,
+            "checksumAfter": verified.checksum,
+            "emptyActionCount": verified.empty_action_count
+        }));
     }
 
-    let before = schedule_status(&state).await?;
     let transaction: ArduinoScheduleTransaction = serde_json::from_value(
         post_json(
             &state,
@@ -2158,12 +2284,14 @@ async fn save_and_sync_schedules(
             before.count, after.count, before.revision, after.revision
         ));
     }
-    let verified = fetch_schedules(&state).await?;
+
+    let verified = fetch_schedule_snapshot(&state).await?;
     let expected_payloads: Vec<String> = schedules
         .iter()
         .map(encode_schedule)
         .collect::<Result<_, _>>()?;
     let verified_payloads: Vec<String> = verified
+        .schedules
         .iter()
         .map(encode_schedule)
         .collect::<Result<_, _>>()?;
@@ -2172,15 +2300,30 @@ async fn save_and_sync_schedules(
             "A schedule commit utáni teljes readback eltér a feltöltött tartalomtól.".into(),
         );
     }
+    if verified.revision != after.revision
+        || verified.count != after.count
+        || verified.checksum != after.checksum
+    {
+        return Err(
+            "A schedule commit utáni státusz és teljes readback revision/checksum értéke eltér."
+                .into(),
+        );
+    }
+
+    write_schedule_cache(&app, verified.schedules.clone())?;
 
     Ok(serde_json::json!({
         "success": true,
-        "count": after.count,
-        "verifiedCount": verified.len(),
+        "schedules": verified.schedules.clone(),
+        "count": verified.count,
+        "verifiedCount": verified.count,
+        "revision": verified.revision,
         "revisionBefore": before.revision,
-        "revisionAfter": after.revision,
+        "revisionAfter": verified.revision,
+        "checksum": verified.checksum.clone(),
         "checksumBefore": before.checksum,
-        "checksumAfter": after.checksum
+        "checksumAfter": verified.checksum,
+        "emptyActionCount": verified.empty_action_count
     }))
 }
 
@@ -2835,6 +2978,29 @@ mod tests {
         ]);
         let output = normalize_console_response(input).expect("normalizálható konzoltömb");
         assert_eq!(output.get("lastId").and_then(Value::as_u64), Some(9));
+    }
+
+    #[test]
+    fn empty_action_schedule_roundtrips_without_being_dropped() {
+        let mut bytes = vec![6, 19, 30];
+        bytes.extend_from_slice(&[0; 24]);
+        let payload = hex::encode(bytes);
+
+        let schedule = decode_schedule_payload(&payload, 32)
+            .expect("az üres LED-műveletű Arduino rekord olvasható");
+        assert_eq!(schedule.id, "arduino-32");
+        assert_eq!(schedule.day, 6);
+        assert_eq!(schedule.time, "19:30");
+        assert!(schedule.leds.is_empty());
+
+        let encoded = encode_schedule(&schedule).expect("az üres rekord visszakódolható");
+        assert_eq!(encoded, payload);
+
+        let file = schedule_file_bytes(vec![schedule])
+            .expect("az üres LED-műveletű rekord a cache-ben is megőrizhető");
+        let parsed = parse_schedules_json(&file).expect("a cache visszaolvasható");
+        assert_eq!(parsed.len(), 1);
+        assert!(parsed[0].leds.is_empty());
     }
 
     #[test]

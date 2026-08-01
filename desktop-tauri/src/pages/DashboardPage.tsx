@@ -23,7 +23,8 @@ import {
 
 import type {
   ArduinoStatus,
-  LedSchedule
+  LedSchedule,
+  ScheduleSyncState
 } from '../types';
 
 const dayNames = [
@@ -142,13 +143,16 @@ export function DashboardPage({
   status:
     legacyStatus,
   schedules:
-    legacySchedules
+    legacySchedules,
+  scheduleSync
 }: {
   status:
     ArduinoStatus |
     null;
   schedules:
     LedSchedule[];
+  scheduleSync:
+    ScheduleSyncState;
 }) {
   const {
     status,
@@ -323,9 +327,17 @@ export function DashboardPage({
           <div className="details-grid compact">
             <div>
               <span>
-                Mentett esemény
+                Betöltött lista
               </span>
-              <strong>
+              <strong
+                className={
+                  status?.scheduleCount != null &&
+                  status.scheduleCount !==
+                    schedules.length
+                    ? 'bad'
+                    : ''
+                }
+              >
                 {schedules.length}
               </strong>
             </div>
@@ -365,6 +377,29 @@ export function DashboardPage({
               </strong>
             </div>
           </div>
+
+          {(status?.scheduleCount != null &&
+            status.scheduleCount !==
+              schedules.length) && (
+            <div className="notice">
+              <CalendarClock size={18} />
+              <p>
+                Az Arduino {status.scheduleCount} rekordot jelent, a Tauri
+                jelenleg {schedules.length} rekordot tart. A lista csak sikeres
+                teljes letöltés után írható vissza.
+              </p>
+            </div>
+          )}
+
+          {scheduleSync.status === 'error' &&
+            scheduleSync.lastError && (
+            <div className="notice">
+              <CalendarClock size={18} />
+              <p>
+                Schedule-letöltési hiba: {scheduleSync.lastError}
+              </p>
+            </div>
+          )}
         </article>
 
         <article className="panel">

@@ -23,7 +23,10 @@ import type {
   NetworkLog,
   OtaProgressEvent,
   PageId,
-  RuntimeCapabilities
+  RuntimeCapabilities,
+  ScheduleSaveResult,
+  ScheduleSyncSnapshot,
+  ScheduleSyncState
 } from '../types';
 
 import type {
@@ -221,6 +224,19 @@ export function useController(
     );
 
   const [
+    scheduleSync,
+    setScheduleSync
+  ] =
+    useState<ScheduleSyncState>({
+      status: 'local-cache',
+      count: 0,
+      revision: null,
+      checksum: '',
+      emptyActionCount: 0,
+      lastError: null
+    });
+
+  const [
     firmware,
     setFirmware
   ] =
@@ -292,6 +308,9 @@ export function useController(
 
   const statusHealthy =
     useRef(false);
+
+  const scheduleAutoSyncKey =
+    useRef('');
 
   const consecutiveStatusFailures =
     useRef(0);
@@ -791,6 +810,19 @@ export function useController(
             localSchedules
           );
 
+          setScheduleSync({
+            status: 'local-cache',
+            count: localSchedules.length,
+            revision: null,
+            checksum: '',
+            emptyActionCount:
+              localSchedules.filter(
+                (schedule) =>
+                  schedule.leds.length === 0
+              ).length,
+            lastError: null
+          });
+
           if (
             connectionReady(
               merged
@@ -1071,68 +1103,183 @@ export function useController(
     };
 
   const syncSchedulesFromArduino =
-    async () => {
-      setBusy(
-        true
-      );
-
-      try {
-        const remote =
-          await tauriApi.loadSchedulesFromArduino();
-
-        setSchedules(
-          remote
+    useCallback(
+      async ():
+        Promise<ScheduleSyncSnapshot> => {
+        setBusy(true);
+        setScheduleSync(
+          (current) => ({
+            ...current,
+            status: 'syncing',
+            lastError: null
+          })
         );
 
-        setMessage(
-          `${remote.length} időzítés beolvasva az Arduino memóriájából.`
-        );
-      } catch (
-        error
-      ) {
-        setMessage(
-          `Beolvasási hiba: ${String(error)}`
-        );
-      } finally {
-        setBusy(
-          false
-        );
-      }
-    };
+        try {
+          const snapshot =
+            await tauriApi
+              .loadSchedulesFromArduino();
 
-  const saveSchedules =
-    async (
-      next: LedSchedule[]
-    ) => {
-      setBusy(
-        true
-      );
-
-      try {
-        const result =
-          await tauriApi.saveSchedules(
-            next
+          setSchedules(
+            snapshot.schedules
           );
 
-        setSchedules(
-          next
+          setScheduleSync({
+            status: 'verified',
+            count: snapshot.count,
+            revision: snapshot.revision,
+            checksum: snapshot.checksum,
+            emptyActionCount:
+              snapshot.emptyActionCount,
+            lastError: null
+          });
+
+          setMessage(
+            `${snapshot.count} időzítés beolvasva és teljesen ellenőrizve az Arduino memóriájából.`
+          );
+
+          return snapshot;
+        } catch (
+          error
+        ) {
+          const message =
+            String(error);
+
+          setScheduleSync(
+            (current) => ({
+              ...current,
+              status: 'error',
+              lastError: message
+            })
+          );
+
+          setMessage(
+            `Beolvasási hiba: ${message}`
+          );
+
+          throw error;
+        } finally {
+          setBusy(false);
+        }
+      },
+      []
+    );
+
+  const saveSchedules =
+    useCallback(
+      async (
+        next: LedSchedule[],
+        expectedRevision:
+          number |
+          null,
+        force = false
+      ):
+        Promise<ScheduleSaveResult> => {
+        setBusy(true);
+        setScheduleSync(
+          (current) => ({
+            ...current,
+            status: 'syncing',
+            lastError: null
+          })
         );
 
-        setMessage(
-          `${result.count} időzítés feltöltve; visszaellenőrizve: ${result.verifiedCount}.`
-        );
-      } catch (
-        error
+        try {
+          const result =
+            await tauriApi
+              .saveSchedules(
+                next,
+                expectedRevision,
+                force
+              );
+
+          setSchedules(
+            result.schedules
+          );
+
+          setScheduleSync({
+            status: 'verified',
+            count: result.count,
+            revision: result.revision,
+            checksum: result.checksum,
+            emptyActionCount:
+              result.emptyActionCount,
+            lastError: null
+          });
+
+          setMessage(
+            `${result.count} időzítés feltöltve; teljes readback és checksum ellenőrzés sikeres.`
+          );
+
+          return result;
+        } catch (
+          error
+        ) {
+          const message =
+            String(error);
+
+          setScheduleSync(
+            (current) => ({
+              ...current,
+              status: 'error',
+              lastError: message
+            })
+          );
+
+          setMessage(
+            `Időzítés-szinkron hiba: ${message}`
+          );
+
+          throw error;
+        } finally {
+          setBusy(false);
+        }
+      },
+      []
+    );
+
+  useEffect(
+    () => {
+      if (
+        !initialized ||
+        busy ||
+        !status?.connected ||
+        !connectionReady(
+          config
+        )
       ) {
-        setMessage(
-          `Időzítés-szinkron hiba: ${String(error)}`
-        );
-      } finally {
-        setBusy(
-          false
-        );
+        return;
       }
-    };
+
+      const targetKey =
+        [
+          config.protocol,
+          config.arduinoIp,
+          config.arduinoPort,
+          config.arduinoApiPath
+        ].join('|');
+
+      if (
+        scheduleAutoSyncKey.current ===
+        targetKey
+      ) {
+        return;
+      }
+
+      scheduleAutoSyncKey.current =
+        targetKey;
+
+      void syncSchedulesFromArduino()
+        .catch(() => undefined);
+    },
+    [
+      busy,
+      config,
+      initialized,
+      status?.connected,
+      syncSchedulesFromArduino
+    ]
+  );
 
   const runLedTest =
     async (
@@ -1459,6 +1606,7 @@ export function useController(
     consoleError,
     networkLogs,
     schedules,
+    scheduleSync,
     firmware,
     otaLogs,
     otaProgress,

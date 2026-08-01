@@ -7,46 +7,94 @@ import {
 } from 'react';
 
 import {
-  useDesktopApi
-} from '../api';
-
-import {
-  readApiError
-} from '../api/ui/api-payload.mjs';
-
-import {
-  isScheduleEvent,
-  normalizeRunnerStatus,
   normalizeScheduleList,
   scheduleFingerprint
 } from '../services/v5ScheduleModels.mjs';
 
 import type {
-  LedSchedule
+  LedSchedule,
+  ScheduleSaveResult,
+  ScheduleSyncSnapshot,
+  ScheduleSyncState
 } from '../types';
+
+type ScheduleUiError = {
+  code: string;
+  message: string;
+  status: number | null;
+  details: unknown;
+};
+
+function scheduleError(
+  error: unknown
+): ScheduleUiError {
+  const message =
+    String(error);
+
+  if (
+    message.includes(
+      'SCHEDULE_CONFLICT:'
+    )
+  ) {
+    return {
+      code: 'SCHEDULE_CONFLICT',
+      message: message.replace(
+        /^.*SCHEDULE_CONFLICT:\s*/,
+        ''
+      ),
+      status: 409,
+      details: null
+    };
+  }
+
+  if (
+    message.includes(
+      'SCHEDULE_SYNC_REQUIRED:'
+    )
+  ) {
+    return {
+      code: 'SCHEDULE_SYNC_REQUIRED',
+      message: message.replace(
+        /^.*SCHEDULE_SYNC_REQUIRED:\s*/,
+        ''
+      ),
+      status: 409,
+      details: null
+    };
+  }
+
+  return {
+    code: 'DIRECT_SCHEDULE_ERROR',
+    message,
+    status: null,
+    details: null
+  };
+}
 
 export function useV5Schedules({
   legacySchedules,
   legacyBusy,
+  syncState,
   directSave,
   directSync
 }: {
   legacySchedules: LedSchedule[];
   legacyBusy: boolean;
-  directSave: (schedules: LedSchedule[]) => void;
-  directSync: () => void;
+  syncState: ScheduleSyncState;
+  directSave: (
+    schedules: LedSchedule[],
+    expectedRevision: number | null,
+    force?: boolean
+  ) => Promise<ScheduleSaveResult>;
+  directSync: () => Promise<ScheduleSyncSnapshot>;
 }) {
-  const {
-    api,
-    connectivity,
-    auth
-  } = useDesktopApi();
-
   const [
     remoteSchedules,
     setRemoteSchedules
   ] = useState<LedSchedule[]>(
-    legacySchedules
+    normalizeScheduleList(
+      legacySchedules
+    )
   );
 
   const [
@@ -59,21 +107,11 @@ export function useV5Schedules({
   );
 
   const [
-    runner,
-    setRunner
-  ] = useState(
-    normalizeRunnerStatus(null)
+    remoteRevision,
+    setRemoteRevision
+  ] = useState<number | null>(
+    syncState.revision
   );
-
-  const [
-    source,
-    setSource
-  ] = useState<
-    'api-v2' |
-    'api-v2-cache' |
-    'legacy-direct' |
-    'legacy-fallback'
-  >('legacy-direct');
 
   const [
     busy,
@@ -83,10 +121,9 @@ export function useV5Schedules({
   const [
     error,
     setError
-  ] = useState<
-    ReturnType<typeof readApiError> |
+  ] = useState<ScheduleUiError | null>(
     null
-  >(null);
+  );
 
   const [
     notice,
@@ -96,15 +133,30 @@ export function useV5Schedules({
   const refreshInFlight =
     useRef(false);
 
-  const authenticated =
-    auth.authenticated === true;
+  useEffect(
+    () => {
+      const normalized =
+        normalizeScheduleList(
+          legacySchedules
+        );
 
-  const online =
-    connectivity.online === true;
-
-  const directFallback =
-    !authenticated ||
-    !online;
+      setRemoteSchedules(
+        normalized
+      );
+      setRemoteFingerprint(
+        scheduleFingerprint(
+          normalized
+        )
+      );
+      setRemoteRevision(
+        syncState.revision
+      );
+    },
+    [
+      legacySchedules,
+      syncState.revision
+    ]
+  );
 
   const refresh =
     useCallback(
@@ -115,45 +167,19 @@ export function useV5Schedules({
           return null;
         }
 
-        if (directFallback) {
-          const normalized =
-            normalizeScheduleList(
-              legacySchedules
-            );
-
-          setRemoteSchedules(
-            normalized
-          );
-          setRemoteFingerprint(
-            scheduleFingerprint(
-              normalized
-            )
-          );
-          setSource(
-            'legacy-direct'
-          );
-
-          return normalized;
-        }
-
         refreshInFlight.current =
           true;
+        setBusy(true);
+        setError(null);
+        setNotice('');
 
         try {
-          const [
-            schedulesResult,
-            runnerResult
-          ] =
-            await Promise.all([
-              api.schedules
-                .listLocal(),
-              api.schedules
-                .runnerStatus()
-            ]);
+          const snapshot =
+            await directSync();
 
           const normalized =
             normalizeScheduleList(
-              schedulesResult
+              snapshot.schedules
             );
 
           setRemoteSchedules(
@@ -164,316 +190,144 @@ export function useV5Schedules({
               normalized
             )
           );
-          setRunner(
-            normalizeRunnerStatus(
-              runnerResult
-            )
+          setRemoteRevision(
+            snapshot.revision
           );
-          setSource(
-            (
-              schedulesResult as {
-                source?: string;
-              }
-            )?.source === 'cache'
-              ? 'api-v2-cache'
-              : 'api-v2'
+          setNotice(
+            `${snapshot.count} Arduino-rekord letöltve; revision ${snapshot.revision}, checksum ${snapshot.checksum}.`
           );
-          setError(null);
 
-          return normalized;
+          return snapshot;
         } catch (
           requestError
         ) {
           setError(
-            readApiError(
+            scheduleError(
               requestError
             )
           );
-          setSource(
-            'legacy-fallback'
-          );
-
-          const normalized =
-            normalizeScheduleList(
-              legacySchedules
-            );
-
-          setRemoteSchedules(
-            normalized
-          );
-
           return null;
         } finally {
           refreshInFlight.current =
             false;
+          setBusy(false);
         }
       },
-      [
-        api,
-        directFallback,
-        legacySchedules
-      ]
+      [directSync]
     );
-
-  useEffect(
-    () => {
-      void refresh();
-    },
-    [refresh]
-  );
-
-  useEffect(
-    () =>
-      api.eventStream
-        .subscribe(
-          (event) => {
-            if (
-              isScheduleEvent(
-                event
-              )
-            ) {
-              void refresh();
-            }
-          }
-        ),
-    [
-      api,
-      refresh
-    ]
-  );
 
   const save =
     useCallback(
       async (
         schedules: LedSchedule[],
         {
-          expectedFingerprint,
+          expectedRevision,
           force = false
         }: {
-          expectedFingerprint: string;
+          expectedRevision: number | null;
           force?: boolean;
         }
       ) => {
-        if (directFallback) {
-          directSave(
-            schedules
-          );
-          setNotice(
-            'A schedule közvetlen Tauri útvonalon lett mentve.'
-          );
-          return {
-            source:
-              'legacy-direct'
-          };
-        }
-
         setBusy(true);
         setError(null);
         setNotice('');
 
         try {
-          const currentResult =
-            await api.schedules
-              .listLocal({
-                allowStaleOnError:
-                  false
-              });
+          const result =
+            await directSave(
+              schedules,
+              expectedRevision,
+              force
+            );
 
-          const current =
+          const normalized =
             normalizeScheduleList(
-              currentResult
+              result.schedules
             );
 
-          const currentFingerprint =
+          setRemoteSchedules(
+            normalized
+          );
+          setRemoteFingerprint(
             scheduleFingerprint(
-              current
+              normalized
+            )
+          );
+          setRemoteRevision(
+            result.revision
+          );
+          setNotice(
+            `${result.count} időzítés mentve az Arduino-ra; a teljes readback és checksum ellenőrzés sikeres.`
+          );
+
+          return result;
+        } catch (
+          requestError
+        ) {
+          const normalizedError =
+            scheduleError(
+              requestError
             );
 
-          if (
-            !force &&
-            currentFingerprint !==
-              expectedFingerprint
-          ) {
-            const conflict =
-              new Error(
-                'A V5 szerveren közben megváltozott az időzítéslista.'
-              ) as Error & {
-                code?: string;
-                details?: unknown;
-              };
+          setError(
+            normalizedError
+          );
 
-            conflict.code =
-              'SCHEDULE_CONFLICT';
-
-            conflict.details = {
-              expectedFingerprint,
-              actualFingerprint:
-                currentFingerprint,
-              current
+          const wrapped =
+            new Error(
+              normalizedError.message
+            ) as Error & {
+              code?: string;
             };
 
-            throw conflict;
-          }
+          wrapped.code =
+            normalizedError.code;
 
-          await api.schedules
-            .replaceAll(
-              schedules
-            );
-
-          const refreshed =
-            await refresh();
-
-          setNotice(
-            `${schedules.length} időzítés elmentve a V5 szerverre.`
-          );
-
-          return {
-            source:
-              'api-v2',
-            schedules:
-              refreshed
-          };
-        } catch (
-          requestError
-        ) {
-          setError(
-            readApiError(
-              requestError
-            )
-          );
-          throw requestError;
+          throw wrapped;
         } finally {
           setBusy(false);
         }
       },
-      [
-        api,
-        directFallback,
-        directSave,
-        refresh
-      ]
+      [directSave]
     );
 
-  const syncArduino =
-    useCallback(
-      async () => {
-        if (directFallback) {
-          directSync();
-          setNotice(
-            'Az Arduino-beolvasás közvetlen Tauri útvonalon indult.'
-          );
-          return;
-        }
-
-        setBusy(true);
-        setError(null);
-
-        try {
-          await api.schedules
-            .syncArduino();
-
-          setNotice(
-            'A V5 szerver időzítései szinkronizálva lettek az Arduino felé.'
-          );
-
-          await refresh();
-        } catch (
-          requestError
-        ) {
-          setError(
-            readApiError(
-              requestError
-            )
-          );
-        } finally {
-          setBusy(false);
-        }
-      },
-      [
-        api,
-        directFallback,
-        directSync,
-        refresh
-      ]
-    );
-
-  const forceTick =
-    useCallback(
-      async () => {
-        if (directFallback) {
-          setError({
-            code:
-              'API_V2_REQUIRED',
-            message:
-              'A runner kézi futtatásához hitelesített V5 kapcsolat szükséges.',
-            status:
-              null,
-            details:
-              null
-          });
-          return;
-        }
-
-        setBusy(true);
-
-        try {
-          await api.schedules
-            .forceTick();
-          setNotice(
-            'A helyi schedule runner kézi futása befejeződött.'
-          );
-          await refresh();
-        } catch (
-          requestError
-        ) {
-          setError(
-            readApiError(
-              requestError
-            )
-          );
-        } finally {
-          setBusy(false);
-        }
-      },
-      [
-        api,
-        directFallback,
-        refresh
-      ]
-    );
+  const canWrite =
+    syncState.status ===
+      'verified' &&
+    remoteRevision != null &&
+    syncState.count ===
+      remoteSchedules.length;
 
   return useMemo(
     () => ({
       schedules:
         remoteSchedules,
       remoteFingerprint,
-      runner,
-      source,
+      remoteRevision,
+      source:
+        'legacy-direct' as const,
       busy:
         busy ||
         legacyBusy,
       error,
       notice,
-      directFallback,
+      syncState,
+      canWrite,
       refresh,
-      save,
-      syncArduino,
-      forceTick
+      save
     }),
     [
       remoteSchedules,
       remoteFingerprint,
-      runner,
-      source,
+      remoteRevision,
       busy,
       legacyBusy,
       error,
       notice,
-      directFallback,
+      syncState,
+      canWrite,
       refresh,
-      save,
-      syncArduino,
-      forceTick
+      save
     ]
   );
 }
