@@ -9,7 +9,7 @@ Többplatformos LED-vezérlő rendszer Arduino UNO R4 WiFi és három WS2812B LE
 
 | Elem | Verzió / állapot |
 |---|---|
-| Alkalmazás | `5.0.0-beta.2` |
+| Alkalmazás | `5.0.0-beta.3` |
 | Firmware | `4.3.0-beta.1` |
 | Direct API | `1.0.0` |
 | Firmware feature | `f14-complete-direct-api-storage` |
@@ -35,7 +35,7 @@ Arduino UNO R4 WiFi
         └─ távoli reboot
 ```
 
-A Node.js/LXC réteg opcionális kompatibilitási és üzemeltetési komponens. A következő fejlesztési fázis a Tauri felület és kliensarchitektúra egyszerűsítése; az Arduino közvetlen API-ja az elsődleges adatforrás.
+A Node.js/LXC réteg opcionális kompatibilitási és üzemeltetési komponens. A következő fejlesztési fázis a Tauri felület és kliensarchitektúra egyszerűsítése; az Arduino közvetlen API-ja az elsődleges adatforrás. A Beta.3-ban a heti időzítés teljes, lapozott Arduino-snapshotot használ, revision-konfliktusvédelemmel és readback után frissülő helyi cache-sel.
 
 ## Gyors kezdés
 
