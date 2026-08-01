@@ -15,6 +15,7 @@ export interface RuntimeCapabilities {
 export interface ConnectionConfig {
   profileName: string;
   protocol: 'http' | 'https';
+  localProtocol: 'http' | 'https';
   arduinoIp: string;
   arduinoPort: number;
   localArduinoIp: string;

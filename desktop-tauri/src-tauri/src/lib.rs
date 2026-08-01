@@ -28,6 +28,7 @@ struct Config {
     protocol: String,
     arduino_ip: String,
     arduino_port: u16,
+    local_protocol: String,
     local_arduino_ip: String,
     local_arduino_port: u16,
     prefer_local: bool,
@@ -52,9 +53,10 @@ impl Default for Config {
     fn default() -> Self {
         Self {
             profile_name: "Arduino vezérlő".into(),
-            protocol: "http".into(),
+            protocol: "https".into(),
             arduino_ip: String::new(),
-            arduino_port: 25666,
+            arduino_port: 443,
+            local_protocol: "http".into(),
             local_arduino_ip: String::new(),
             local_arduino_port: 80,
             prefer_local: false,
@@ -315,7 +317,19 @@ fn validate_host(host: &str, label: &str) -> Result<(), String> {
     Ok(())
 }
 
+fn validate_protocol(value: &str, label: &str) -> Result<(), String> {
+    if matches!(value.trim().to_ascii_lowercase().as_str(), "http" | "https") {
+        Ok(())
+    } else {
+        Err(format!(
+            "Érvénytelen {label}: csak http vagy https használható."
+        ))
+    }
+}
+
 fn validate_config(c: &Config) -> Result<(), String> {
+    validate_protocol(&c.protocol, "távoli protokoll")?;
+    validate_protocol(&c.local_protocol, "helyi protokoll")?;
     let remote = c.arduino_ip.trim();
     let local = c.local_arduino_ip.trim();
     if remote.is_empty() && local.is_empty() {
@@ -406,19 +420,6 @@ fn add_log(state: &AppState, endpoint: &str, ok: bool, message: String) {
     }
 }
 
-const HTTP_MAX_RESPONSE_BYTES: usize = 128 * 1024;
-
-fn parse_content_length(headers: &str) -> Option<usize> {
-    headers.lines().find_map(|line| {
-        let (name, value) = line.split_once(':')?;
-        if name.trim().eq_ignore_ascii_case("content-length") {
-            value.trim().parse::<usize>().ok()
-        } else {
-            None
-        }
-    })
-}
-
 fn is_private_or_local_ipv4(value: &str) -> bool {
     value
         .parse::<Ipv4Addr>()
@@ -428,23 +429,33 @@ fn is_private_or_local_ipv4(value: &str) -> bool {
 
 #[derive(Debug, Clone)]
 struct HttpTarget {
+    protocol: String,
     host: String,
     port: u16,
     label: &'static str,
 }
 
-fn push_target(targets: &mut Vec<HttpTarget>, host: &str, port: u16, label: &'static str) {
+fn push_target(
+    targets: &mut Vec<HttpTarget>,
+    protocol: &str,
+    host: &str,
+    port: u16,
+    label: &'static str,
+) {
     let host = host.trim();
+    let protocol = protocol.trim().to_ascii_lowercase();
     if host.is_empty() || port == 0 {
         return;
     }
-    if targets
-        .iter()
-        .any(|item| item.host.eq_ignore_ascii_case(host) && item.port == port)
-    {
+    if targets.iter().any(|item| {
+        item.protocol.eq_ignore_ascii_case(&protocol)
+            && item.host.eq_ignore_ascii_case(host)
+            && item.port == port
+    }) {
         return;
     }
     targets.push(HttpTarget {
+        protocol,
         host: host.to_string(),
         port,
         label,
@@ -456,6 +467,7 @@ fn connection_targets(config: &Config, learned_local_ip: Option<&str>) -> Vec<Ht
     let mut local = Vec::new();
     push_target(
         &mut local,
+        &config.local_protocol,
         &config.local_arduino_ip,
         config.local_arduino_port,
         "helyi",
@@ -463,6 +475,7 @@ fn connection_targets(config: &Config, learned_local_ip: Option<&str>) -> Vec<Ht
     if let Some(ip) = learned_local_ip {
         push_target(
             &mut local,
+            &config.local_protocol,
             ip,
             config.local_arduino_port.max(1),
             "felismert helyi",
@@ -472,6 +485,7 @@ fn connection_targets(config: &Config, learned_local_ip: Option<&str>) -> Vec<Ht
     let mut remote = Vec::new();
     push_target(
         &mut remote,
+        &config.protocol,
         &config.arduino_ip,
         config.arduino_port,
         "távoli/DDNS",
@@ -489,9 +503,11 @@ fn connection_targets(config: &Config, learned_local_ip: Option<&str>) -> Vec<Ht
     }
 }
 
-fn raw_get_once(
+fn raw_json_once(
     c: &Config,
+    method: &str,
     path: &str,
+    body: Option<&Value>,
     connect_timeout: Duration,
     response_timeout: Duration,
 ) -> Result<Value, String> {
@@ -499,11 +515,7 @@ fn raw_get_once(
     let host = c.arduino_ip.trim();
     let request_path = protected_path(c, path)?;
     let device_key = device_key_header_value(c)?;
-    let protocol = if c.protocol.eq_ignore_ascii_case("https") {
-        "https"
-    } else {
-        "http"
-    };
+    let protocol = c.protocol.trim().to_ascii_lowercase();
     let url = format!("{protocol}://{host}:{}{request_path}", c.arduino_port);
     let client = reqwest::blocking::Client::builder()
         .connect_timeout(connect_timeout)
@@ -511,48 +523,72 @@ fn raw_get_once(
         .redirect(reqwest::redirect::Policy::none())
         .build()
         .map_err(|e| format!("Arduino HTTP-kliens hiba: {e}"))?;
-    let response = client
-        .get(&url)
+    let method = reqwest::Method::from_bytes(method.as_bytes())
+        .map_err(|e| format!("Érvénytelen HTTP-metódus: {e}"))?;
+    let mut request = client
+        .request(method, &url)
         .header("Accept", "application/json")
         .header("X-Device-Key", device_key)
-        .header("Connection", "close")
+        .header("Connection", "close");
+    if let Some(payload) = body {
+        request = request
+            .header("Content-Type", "application/json")
+            .json(payload);
+    }
+    let response = request
         .send()
-        .map_err(|e| {
-            format!(
-                "Nem sikerült kapcsolódni a(z) {host}:{} címhez. {e}",
-                c.arduino_port
-            )
-        })?;
+        .map_err(|e| format!("Nem sikerült kapcsolódni a(z) {url} címhez. {e}"))?;
     let status = response.status();
     let bytes = response
         .bytes()
-        .map_err(|e| format!("Arduino válaszolvasási hiba: {e}"))?;
+        .map_err(|e| format!("Arduino válaszolvasási hiba ({url}): {e}"))?;
     if !status.is_success() {
         let preview = String::from_utf8_lossy(&bytes)
             .chars()
-            .take(160)
+            .take(240)
             .collect::<String>();
         return Err(format!(
-            "Arduino HTTP-válasz: {}. Részlet: {preview}",
-            status.as_u16()
+            "Arduino HTTP-válasz: {} {}. Végpont: {url}. Részlet: {preview}",
+            status.as_u16(),
+            status.canonical_reason().unwrap_or("HIBA")
         ));
     }
     if bytes.is_empty() {
-        return Err("Az Arduino üres HTTP-választ adott a DDNS/proxy kapcsolaton.".into());
+        return Err(format!(
+            "Az Arduino üres HTTP-választ adott. Végpont: {url}"
+        ));
     }
     serde_json::from_slice(&bytes).map_err(|error| {
         let preview = String::from_utf8_lossy(&bytes)
             .chars()
-            .take(160)
+            .take(240)
             .collect::<String>();
-        format!("Hibás vagy csonka Arduino JSON-válasz: {error}. Részlet: {preview}")
+        format!(
+            "Hibás vagy csonka Arduino JSON-válasz: {error}. Végpont: {url}. Részlet: {preview}"
+        )
     })
 }
 
-async fn get_json(state: &AppState, path: &str) -> Result<Value, String> {
-    if state.ota_in_progress.load(Ordering::SeqCst) {
+fn ota_request_allowed_while_busy(method: &str, path: &str) -> bool {
+    method.eq_ignore_ascii_case("GET")
+        && matches!(
+            path.split('?').next().unwrap_or(path),
+            "/api/v1/status" | "/api/v1/ota/status"
+        )
+}
+
+async fn request_json(
+    state: &AppState,
+    method: &str,
+    path: &str,
+    body: Option<Value>,
+) -> Result<Value, String> {
+    if state.ota_in_progress.load(Ordering::SeqCst)
+        && !ota_request_allowed_while_busy(method, path)
+        && !(method.eq_ignore_ascii_case("POST") && path == "/api/v1/ota/prepare")
+    {
         return Err(
-            "OTA-frissítés folyamatban; az automatikus Arduino-lekérések szünetelnek.".into(),
+            "OTA-frissítés folyamatban; ez az Arduino-kérés átmenetileg zárolva van.".into(),
         );
     }
     let config = state
@@ -571,6 +607,9 @@ async fn get_json(state: &AppState, path: &str) -> Result<Value, String> {
     }
 
     let request_path = path.to_string();
+    let request_method = method.to_ascii_uppercase();
+    let request_method_for_worker = request_method.clone();
+    let request_body = body.clone();
     let request_lock = Arc::clone(&state.arduino_request_lock);
     let base_config = config.clone();
 
@@ -581,24 +620,27 @@ async fn get_json(state: &AppState, path: &str) -> Result<Value, String> {
         let mut errors = Vec::new();
         for target in targets {
             let mut target_config = base_config.clone();
+            target_config.protocol = target.protocol.clone();
             target_config.arduino_ip = target.host.clone();
             target_config.arduino_port = target.port;
-            // A kapcsolatfelépítés külön, rövid kaput kap, a már elindult
-            // Arduino API-válasz viszont 30 másodpercig befejezhető.
-            match raw_get_once(
+            match raw_json_once(
                 &target_config,
+                &request_method_for_worker,
                 &request_path,
+                request_body.as_ref(),
                 ARDUINO_CONNECT_TIMEOUT,
                 ARDUINO_RESPONSE_TIMEOUT,
             ) {
                 Ok(value) => {
-                    let endpoint =
-                        format!("http://{}:{}{}", target.host, target.port, request_path);
+                    let endpoint = format!(
+                        "{}://{}:{}{}",
+                        target.protocol, target.host, target.port, request_path
+                    );
                     return Ok((value, endpoint, target.label));
                 }
                 Err(error) => errors.push(format!(
-                    "{} {}:{}: {}",
-                    target.label, target.host, target.port, error
+                    "{} {}://{}:{}: {}",
+                    target.label, target.protocol, target.host, target.port, error
                 )),
             }
         }
@@ -611,7 +653,7 @@ async fn get_json(state: &AppState, path: &str) -> Result<Value, String> {
 
     match result {
         Ok(Ok((value, endpoint, label))) => {
-            if path.starts_with("/api/status") {
+            if path.starts_with("/api/v1/status") {
                 if let Some(ip) = value
                     .get("ipAddress")
                     .and_then(Value::as_str)
@@ -622,25 +664,50 @@ async fn get_json(state: &AppState, path: &str) -> Result<Value, String> {
                     }
                 }
             }
-            add_log(state, &endpoint, true, format!("Sikeres kérés ({label})"));
+            add_log(
+                state,
+                &endpoint,
+                true,
+                format!("{} sikeres ({label})", request_method),
+            );
             Ok(value)
         }
         Ok(Err(error)) => {
-            let endpoint = format!("Arduino API: {path}");
-            add_log(state, &endpoint, false, error.clone());
+            add_log(
+                state,
+                &format!("Arduino API: {} {}", request_method, path),
+                false,
+                error.clone(),
+            );
             Err(error)
         }
         Err(error) => {
             let message = format!("Arduino háttérfeladat hiba: {error}");
             add_log(
                 state,
-                &format!("Arduino API: {path}"),
+                &format!("Arduino API: {} {}", request_method, path),
                 false,
                 message.clone(),
             );
             Err(message)
         }
     }
+}
+
+async fn get_json(state: &AppState, path: &str) -> Result<Value, String> {
+    request_json(state, "GET", path, None).await
+}
+
+async fn post_json(state: &AppState, path: &str, body: Option<Value>) -> Result<Value, String> {
+    request_json(state, "POST", path, body).await
+}
+
+async fn put_json(state: &AppState, path: &str, body: Value) -> Result<Value, String> {
+    request_json(state, "PUT", path, Some(body)).await
+}
+
+async fn delete_json(state: &AppState, path: &str) -> Result<Value, String> {
+    request_json(state, "DELETE", path, None).await
 }
 
 fn normalize_console_response(value: Value) -> Result<Value, String> {
@@ -670,15 +737,35 @@ fn normalize_console_response(value: Value) -> Result<Value, String> {
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct ArduinoScheduleStatus {
+    #[serde(default, alias = "scheduleCount")]
+    count: u8,
     #[serde(default)]
-    schedule_count: u8,
+    revision: u64,
+    #[serde(default)]
+    checksum: String,
 }
 
 #[derive(Debug, Deserialize)]
-struct ArduinoScheduleExport {
-    index: u8,
+struct ArduinoSchedulePage {
+    #[serde(default)]
+    revision: u64,
+    #[serde(default)]
     count: u8,
+    #[serde(default)]
+    entries: Vec<ArduinoScheduleEntry>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ArduinoScheduleEntry {
+    index: u8,
     payload: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ArduinoScheduleTransaction {
+    transaction_id: u64,
+    total: u8,
 }
 
 fn decode_schedule_payload(payload: &str, index: u8) -> Result<Schedule, String> {
@@ -721,27 +808,50 @@ fn decode_schedule_payload(payload: &str, index: u8) -> Result<Schedule, String>
     })
 }
 
+async fn schedule_status(state: &AppState) -> Result<ArduinoScheduleStatus, String> {
+    serde_json::from_value(get_json(state, "/api/v1/schedules/status").await?)
+        .map_err(|e| format!("Az Arduino schedule státuszválasza hibás: {e}"))
+}
+
 async fn fetch_schedules(state: &AppState) -> Result<Vec<Schedule>, String> {
-    let status: ArduinoScheduleStatus =
-        serde_json::from_value(get_json(state, "/api/status").await?)
-            .map_err(|e| format!("Az Arduino státuszválasza hibás: {e}"))?;
-
-    let mut all = Vec::with_capacity(status.schedule_count as usize);
-    for index in 0..status.schedule_count {
-        let exported: ArduinoScheduleExport = serde_json::from_value(
-            get_json(state, &format!("/api/schedules/export?index={index}")).await?,
+    let status = schedule_status(state).await?;
+    let mut all = Vec::with_capacity(status.count as usize);
+    let mut offset = 0u8;
+    while offset < status.count {
+        let page: ArduinoSchedulePage = serde_json::from_value(
+            get_json(state, &format!("/api/v1/schedules?offset={offset}&limit=8")).await?,
         )
-        .map_err(|e| format!("A(z) {index}. időzítés exportválasza hibás: {e}"))?;
-
-        if exported.index != index || exported.count != status.schedule_count {
+        .map_err(|e| format!("A schedule oldal válasza hibás (offset={offset}): {e}"))?;
+        if page.revision != status.revision || page.count != status.count {
             return Err(format!(
-                "Az Arduino időzítés-export sorszáma eltér: várt {index}/{}, kapott {}/{}.",
-                status.schedule_count, exported.index, exported.count
+                "A lapozott schedule-letöltés közben megváltozott az állapot: revision {}/{}; count {}/{}.",
+                status.revision, page.revision, status.count, page.count
             ));
         }
-        all.push(decode_schedule_payload(&exported.payload, index)?);
+        if page.entries.is_empty() {
+            return Err(format!(
+                "Üres schedule oldal érkezett a(z) {offset}. offsetnél."
+            ));
+        }
+        for entry in page.entries {
+            let expected = all.len() as u8;
+            if entry.index != expected {
+                return Err(format!(
+                    "A schedule oldal sorszáma eltér: várt {expected}, kapott {}.",
+                    entry.index
+                ));
+            }
+            all.push(decode_schedule_payload(&entry.payload, entry.index)?);
+        }
+        offset = all.len() as u8;
     }
-
+    if all.len() != status.count as usize {
+        return Err(format!(
+            "Hiányos schedule-letöltés: várt {}, kapott {}.",
+            status.count,
+            all.len()
+        ));
+    }
     all.sort_by(|a, b| a.day.cmp(&b.day).then(a.time.cmp(&b.time)));
     Ok(all)
 }
@@ -1051,7 +1161,7 @@ fn ota_target_from_status(
 ) -> Result<(String, u16), String> {
     // A macOS Terminal külön folyamatként fut, ezért ott mindig az Arduino
     // saját, aktuális LAN-címét használjuk. Ezt minden OTA előtt frissen az
-    // /api/status ipAddress és otaPort mezőiből olvassuk ki; nincs beégetett IP.
+    // /api/v1/status ipAddress és otaPort mezőiből olvassuk ki; nincs beégetett IP.
     if terminal_mode {
         return status_ota_target(status);
     }
@@ -1302,7 +1412,7 @@ exit "$STATUS"
     }
 
     let connection_hint = format!(
-        "\n\nA Terminal az Arduino /api/status válaszából kiolvasott aktuális LAN-címet használta: {address}:{port}. Ha a portteszt zárt portot jelez, az nem DNS- vagy firmware-fájlnév-hiba: az Arduino OTA-listenere nem hallgat."
+        "\n\nA Terminal az Arduino /api/v1/status válaszából kiolvasott aktuális LAN-címet használta: {address}:{port}. Ha a portteszt zárt portot jelez, az nem DNS- vagy firmware-fájlnév-hiba: az Arduino OTA-listenere nem hallgat."
     );
 
     let event_app = app.clone();
@@ -1355,7 +1465,7 @@ exit "$STATUS"
                 // a nem nulla kilépési kód önmagában nem bizonyít sikertelen OTA-t.
                 // UNO R4 WiFi esetén a flash alkalmazása és az újraindulás tovább
                 // tarthat, mint a feltöltő visszaigazolási időkorlátja. A döntést
-                // ezért a következő, legfeljebb 3 perces /api/status ellenőrzés hozza meg.
+                // ezért a következő, legfeljebb 3 perces /api/v1/status ellenőrzés hozza meg.
                 if upload_completed {
                     emit_ota_progress(
                         &event_app,
@@ -1665,7 +1775,7 @@ async fn confirm_restart(
             Some(progress),
         );
 
-        match get_json(state, "/api/status").await {
+        match get_json(state, "/api/v1/status").await {
             Ok(status) => {
                 last_error = None;
                 let installed = status
@@ -1881,12 +1991,12 @@ async fn save_ota_password(state: State<'_, AppState>, password: String) -> Resu
 }
 #[tauri::command]
 async fn arduino_status(state: State<'_, AppState>) -> Result<Value, String> {
-    get_json(&state, "/api/status").await
+    get_json(&state, "/api/v1/status").await
 }
 
 #[tauri::command]
 async fn arduino_logs(state: State<'_, AppState>, after_id: u32) -> Result<Value, String> {
-    let value = get_json(&state, &format!("/api/console/logs?after={after_id}")).await?;
+    let value = get_json(&state, &format!("/api/v1/logs?afterId={after_id}")).await?;
     normalize_console_response(value)
 }
 #[tauri::command]
@@ -1910,7 +2020,18 @@ async fn set_led(
     if !(1..=3).contains(&id) || color.len() != 3 || effect > 4 || speed == 0 {
         return Err("Érvénytelen LED-beállítás.".into());
     }
-    get_json(&state, &format!("/api/led/{id}?enabled={}&brightness={brightness}&effect={effect}&speed={speed}&color={},{},{}", enabled as u8, color[0], color[1], color[2])).await
+    put_json(
+        &state,
+        &format!("/api/v1/leds/{id}"),
+        serde_json::json!({
+            "enabled": enabled,
+            "brightness": brightness,
+            "effect": effect,
+            "speed": speed,
+            "color": color
+        }),
+    )
+    .await
 }
 #[tauri::command]
 fn load_schedules(app: AppHandle) -> Result<Vec<Schedule>, String> {
@@ -1961,14 +2082,15 @@ async fn save_and_sync_schedules(
     state: State<'_, AppState>,
     schedules: Vec<Schedule>,
 ) -> Result<Value, String> {
-    validate_schedules(&schedules)?;
+    let schedules = normalize_schedules(schedules)?;
     fs::write(
         schedules_path(&app)?,
         schedule_file_bytes(schedules.clone())?,
     )
     .map_err(|e| e.to_string())?;
+
     if schedules.is_empty() {
-        get_json(&state, "/api/schedules/clear").await?;
+        delete_json(&state, "/api/v1/schedules").await?;
         let verified = fetch_schedules(&state).await?;
         if !verified.is_empty() {
             return Err(format!(
@@ -1978,25 +2100,90 @@ async fn save_and_sync_schedules(
         }
         return Ok(serde_json::json!({"success":true,"count":0,"verifiedCount":0}));
     }
-    let total = schedules.len();
-    let mut last = Value::Null;
-    for (index, schedule) in schedules.iter().enumerate() {
-        let payload = encode_schedule(schedule)?;
-        last = get_json(
+
+    let before = schedule_status(&state).await?;
+    let transaction: ArduinoScheduleTransaction = serde_json::from_value(
+        post_json(
             &state,
-            &format!("/api/schedules/chunk?index={index}&total={total}&payload={payload}"),
+            "/api/v1/schedules/transactions",
+            Some(serde_json::json!({
+                "expectedRevision": before.revision,
+                "total": schedules.len()
+            })),
         )
-        .await?;
-    }
-    let count = last.get("count").and_then(Value::as_u64).unwrap_or(0) as usize;
-    if count != total {
+        .await?,
+    )
+    .map_err(|e| format!("A schedule tranzakció indítóválasza hibás: {e}"))?;
+
+    if transaction.total as usize != schedules.len() {
         return Err(format!(
-            "Az Arduino csak {count}/{total} időzítést mentett el."
+            "A schedule tranzakció elemszáma eltér: várt {}, kapott {}.",
+            schedules.len(),
+            transaction.total
+        ));
+    }
+
+    let tx_base = format!(
+        "/api/v1/schedules/transactions/{}",
+        transaction.transaction_id
+    );
+    let upload_result: Result<(), String> = async {
+        for (index, schedule) in schedules.iter().enumerate() {
+            put_json(
+                &state,
+                &format!("{tx_base}/chunks"),
+                serde_json::json!({
+                    "index": index,
+                    "payload": encode_schedule(schedule)?
+                }),
+            )
+            .await?;
+        }
+        post_json(&state, &format!("{tx_base}/commit"), None).await?;
+        Ok(())
+    }
+    .await;
+
+    if let Err(error) = upload_result {
+        let _ = delete_json(&state, &tx_base).await;
+        return Err(format!(
+            "A schedule tranzakció megszakadt és vissza lett vonva: {error}"
+        ));
+    }
+
+    let after = schedule_status(&state).await?;
+    if after.count as usize != schedules.len() || after.revision <= before.revision {
+        return Err(format!(
+            "A schedule commit visszaellenőrzése sikertelen. Count: {} -> {}, revision: {} -> {}.",
+            before.count, after.count, before.revision, after.revision
         ));
     }
     let verified = fetch_schedules(&state).await?;
-    Ok(serde_json::json!({"success":true,"count":count,"verifiedCount":verified.len()}))
+    let expected_payloads: Vec<String> = schedules
+        .iter()
+        .map(encode_schedule)
+        .collect::<Result<_, _>>()?;
+    let verified_payloads: Vec<String> = verified
+        .iter()
+        .map(encode_schedule)
+        .collect::<Result<_, _>>()?;
+    if expected_payloads != verified_payloads {
+        return Err(
+            "A schedule commit utáni teljes readback eltér a feltöltött tartalomtól.".into(),
+        );
+    }
+
+    Ok(serde_json::json!({
+        "success": true,
+        "count": after.count,
+        "verifiedCount": verified.len(),
+        "revisionBefore": before.revision,
+        "revisionAfter": after.revision,
+        "checksumBefore": before.checksum,
+        "checksumAfter": after.checksum
+    }))
 }
+
 #[tauri::command]
 async fn firmware_status(
     app: AppHandle,
@@ -2025,7 +2212,7 @@ async fn firmware_status(
 
     let terminal_mode = use_terminal_ota(&app, &config).unwrap_or(false);
 
-    if let Ok(value) = get_json(&state, "/api/status").await {
+    if let Ok(value) = get_json(&state, "/api/v1/status").await {
         status.arduino_online = true;
         status.installed_version = value
             .get("firmwareVersion")
@@ -2201,7 +2388,7 @@ async fn firmware_update_inner(
         Some(12),
     );
     ensure_not_cancelled(state)?;
-    let status_json = get_json(state, "/api/status")
+    let status_json = get_json(state, "/api/v1/status")
         .await
         .map_err(|error| format!("OTA indítás előtt nem olvasható az Arduino státusza: {error}"))?;
     let boot_id_before = status_json
@@ -2388,8 +2575,8 @@ async fn firmware_update_inner(
         );
     } else {
         let mut prepared = false;
-        for endpoint in ["/api/ota/prepare", "/api/ota/restart"] {
-            match get_json(state, endpoint).await {
+        for endpoint in ["/api/v1/ota/prepare"] {
+            match post_json(state, endpoint, None).await {
                 Ok(value) if value.get("success").and_then(Value::as_bool) == Some(true) => {
                     emit_ota_progress(
                         app,
@@ -2506,7 +2693,7 @@ async fn firmware_update_inner(
     let installed_after_restart =
         confirm_restart(app, state, artifact.firmware_version.clone()).await?;
     ensure_not_cancelled(state)?;
-    let after_status = get_json(state, "/api/status")
+    let after_status = get_json(state, "/api/v1/status")
         .await
         .map_err(|error| format!("Az OTA utáni persistence ellenőrzés sikertelen: {error}"))?;
     let boot_id_after = after_status
@@ -2622,12 +2809,6 @@ fn firmware_cancel(state: State<'_, AppState>) -> Result<bool, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn content_length_is_case_insensitive() {
-        let headers = "HTTP/1.1 200 OK\r\ncontent-length: 42\r\nConnection: close";
-        assert_eq!(parse_content_length(headers), Some(42));
-    }
 
     #[test]
     fn console_object_is_normalized() {

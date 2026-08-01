@@ -7,7 +7,7 @@ const settings=fs.readFileSync('desktop-tauri/src/pages/SettingsPage.tsx','utf8'
 const controller=fs.readFileSync('desktop-tauri/src/hooks/useController.ts','utf8');
 const rust=fs.readFileSync('desktop-tauri/src-tauri/src/lib.rs','utf8');
 const cargo=fs.readFileSync('desktop-tauri/src-tauri/Cargo.toml','utf8');
-for(const token of ['macosLocalApiEnabled','macOS-en a DDNS mindig elsődleges','Haladó: közvetlen helyi API engedélyezése macOS-en']) assert.ok(settings.includes(token),token);
+for(const token of ['macosLocalApiEnabled','macOS-en a távoli HTTPS/DDNS mindig elsődleges','Haladó: közvetlen helyi API engedélyezése macOS-en']) assert.ok(settings.includes(token),token);
 assert.ok(types.includes('macosLocalApiEnabled: boolean'));
 assert.ok(controller.includes("platform === 'macos'"));
 assert.ok(controller.includes('merged.preferLocal = false'));

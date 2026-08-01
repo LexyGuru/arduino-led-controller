@@ -33,9 +33,10 @@ import type {
 const fallbackConfig:
   ConnectionConfig = {
     profileName: 'Arduino vezérlő',
-    protocol: 'http',
+    protocol: 'https',
+    localProtocol: 'http',
     arduinoIp: '',
-    arduinoPort: 25666,
+    arduinoPort: 443,
     localArduinoIp: '',
     localArduinoPort: 80,
     preferLocal: false,

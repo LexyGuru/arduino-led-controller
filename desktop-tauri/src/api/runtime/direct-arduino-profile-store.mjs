@@ -1,6 +1,6 @@
 const DEFAULTS = Object.freeze({
-  id: 'default', name: 'Arduino vezérlő', protocol: 'http', localHost: '', localPort: 80,
-  remoteHost: '', remotePort: 25666, preferLocal: true, macosLocalApiEnabled: false, privateApiPath: '',
+  id: 'default', name: 'Arduino vezérlő', protocol: 'https', localProtocol: 'http', localHost: '', localPort: 80,
+  remoteHost: '', remotePort: 443, preferLocal: true, macosLocalApiEnabled: false, privateApiPath: '',
   otaUseApiHost: true, otaHost: '', otaPort: 65280, otaToolMode: 'auto', otaToolPath: '',
   otaTimeoutSeconds: 120, updateChannel: 'beta', autoCheckUpdates: true,
   autoDownloadUpdates: false, firmwareUpdateChecks: true,
@@ -11,13 +11,14 @@ const port = (value, fallback) => { const parsed = Number(value); return Number.
 const seconds = (value, fallback) => { const parsed = Number(value); return Number.isInteger(parsed) && parsed >= 30 && parsed <= 600 ? parsed : fallback; };
 const slug = (value) => text(value).toLowerCase().replace(/[^a-z0-9._-]+/g, '-').replace(/^-+|-+$/g, '') || 'default';
 export function normalizeDirectArduinoProfile(input = {}) {
-  const protocol = text(input.protocol).toLowerCase() === 'https' ? 'https' : 'http';
+  const protocol = text(input.protocol).toLowerCase() === 'http' ? 'http' : 'https';
+  const localProtocol = text(input.localProtocol).toLowerCase() === 'https' ? 'https' : 'http';
   const path = text(input.privateApiPath || input.arduinoApiPath).replace(/\/+$/, '');
   const name = text(input.name || input.profileName) || DEFAULTS.name;
   const requestedMode = text(input.otaToolMode || input.otaUploadMode).toLowerCase();
-  return { ...DEFAULTS, id: slug(input.id || name), name, protocol,
+  return { ...DEFAULTS, id: slug(input.id || name), name, protocol, localProtocol,
     localHost: text(input.localHost || input.localArduinoIp), localPort: port(input.localPort ?? input.localArduinoPort, 80),
-    remoteHost: text(input.remoteHost || input.arduinoIp), remotePort: port(input.remotePort ?? input.arduinoPort, 25666),
+    remoteHost: text(input.remoteHost || input.arduinoIp), remotePort: port(input.remotePort ?? input.arduinoPort, 443),
     preferLocal: input.preferLocal !== false, macosLocalApiEnabled: input.macosLocalApiEnabled === true, privateApiPath: path, otaUseApiHost: input.otaUseApiHost !== false,
     otaHost: text(input.otaHost || input.otaAddress), otaPort: port(input.otaPort, 65280),
     otaToolMode: ['auto','system','bundled','custom'].includes(requestedMode) ? requestedMode : 'auto',
@@ -35,7 +36,7 @@ export function validateDirectArduinoProfile(input) { const profile = normalizeD
   if (!profile.otaUseApiHost && !validDirectHost(profile.otaHost)) errors.push('Külön OTA-cím használatakor érvényes host kötelező.');
   if (profile.otaToolMode === 'custom' && !profile.otaToolPath) errors.push('Egyedi uploader módban útvonal kötelező.');
   return { valid: errors.length === 0, errors, profile }; }
-export function directArduinoTargets(input, platform='unknown') { const profile = normalizeDirectArduinoProfile(input); const targets=[]; const push=(host,port,kind)=>{if(!host)return; const key=`${host.toLowerCase()}:${port}`; if(!targets.some(i=>i.key===key))targets.push({key,kind,host,port,protocol:profile.protocol});}; const local=()=>push(profile.localHost,profile.localPort,'local'); const remote=()=>push(profile.remoteHost,profile.remotePort,'remote'); if(platform==='macos'&&!profile.macosLocalApiEnabled){remote();}else{profile.preferLocal?(local(),remote()):(remote(),local());} return targets; }
+export function directArduinoTargets(input, platform='unknown') { const profile = normalizeDirectArduinoProfile(input); const targets=[]; const push=(protocol,host,port,kind)=>{if(!host)return; const key=`${protocol}://${host.toLowerCase()}:${port}`; if(!targets.some(i=>i.key===key))targets.push({key,kind,host,port,protocol});}; const local=()=>push(profile.localProtocol,profile.localHost,profile.localPort,'local'); const remote=()=>push(profile.protocol,profile.remoteHost,profile.remotePort,'remote'); if(platform==='macos'&&!profile.macosLocalApiEnabled){remote();}else{profile.preferLocal?(local(),remote()):(remote(),local());} return targets; }
 export function directArduinoUrl(input,target,endpoint) { const profile=normalizeDirectArduinoProfile(input); const suffix=String(endpoint||'').startsWith('/')?String(endpoint):`/${String(endpoint||'')}`; return `${target.protocol}://${target.host}:${target.port}${profile.privateApiPath}${suffix}`; }
 export function directOtaTarget(input, activeApiTarget=null) { const p=normalizeDirectArduinoProfile(input); return { host: p.otaUseApiHost ? text(activeApiTarget?.host || p.remoteHost || p.localHost) : p.otaHost, port:p.otaPort }; }
 export const DIRECT_ARDUINO_PROFILE_DEFAULTS = DEFAULTS;

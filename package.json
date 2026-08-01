@@ -117,12 +117,13 @@
     "test:tauri-direct-auth": "node scripts/test-tauri-direct-auth.js",
     "test:tauri-direct-connectivity": "node scripts/test-tauri-direct-connectivity.js",
     "test:tauri-direct-foundation": "npm run test:tauri-direct-profile && npm run test:tauri-direct-auth && npm run test:tauri-direct-connectivity",
-    "test:tauri-config-update": "node scripts/test-tauri-direct-profile.js && node scripts/test-tauri-direct-auth.js && node scripts/test-tauri-direct-connectivity.js && node scripts/test-tauri-update-channel.js && node scripts/test-tauri-ota-tool-config.js && node scripts/test-tauri-settings-update-contract.js",
+    "test:tauri-config-update": "node scripts/test-tauri-direct-profile.js && node scripts/test-tauri-direct-auth.js && node scripts/test-tauri-direct-connectivity.js && node scripts/test-tauri-update-channel.js && node scripts/test-tauri-ota-tool-config.js && node scripts/test-tauri-settings-update-contract.js && node scripts/test-tauri-direct-api-v1-transport.js",
     "test:tauri-native-credential-ota": "node scripts/test-tauri-native-credential-ota.js",
     "test:tauri-complete-updater-ota": "node scripts/test-tauri-complete-updater-ota.js",
     "test:beta2-release-package": "node scripts/test-beta2-release-package.js",
     "test:beta-installation-assets": "node scripts/test-beta-installation-assets.js",
-    "test:tauri-macos-ddns-first": "node scripts/test-tauri-macos-ddns-first.js"
+    "test:tauri-macos-ddns-first": "node scripts/test-tauri-macos-ddns-first.js",
+    "test:tauri-direct-api-v1-transport": "node scripts/test-tauri-direct-api-v1-transport.js"
   },
   "engines": {
     "node": ">=20"

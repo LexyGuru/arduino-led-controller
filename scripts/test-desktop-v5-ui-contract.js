@@ -105,7 +105,7 @@ assert.match(
 
 assert.match(
   settings,
-  /Helyi IP vagy DDNS/
+  /Helyi IP/
 );
 
 assert.match(
