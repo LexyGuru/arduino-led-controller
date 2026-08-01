@@ -793,13 +793,26 @@ export function SchedulesPage({
           </div>
         )}
 
+        {state.syncState.recoveredLegacyActionCount > 0 && (
+          <div className="notice">
+            <AlertTriangle size={18} />
+            <p>
+              A Tauri {state.syncState.recoveredLegacyActionCount} LED-műveletet
+              helyreállított olyan örökölt Arduino rekordokból, amelyekben az
+              apply jelző hiányzott, de a LED-beállítások megmaradtak. A következő
+              sikeres mentés explicit apply jelzővel normalizálja ezeket.
+            </p>
+          </div>
+        )}
+
         {state.syncState.emptyActionCount > 0 && (
           <div className="notice">
             <AlertTriangle size={18} />
             <p>
-              Az Arduino {state.syncState.emptyActionCount} olyan rekordot
-              tartalmaz, amelyben nincs LED-művelet. Ezek most már láthatók,
-              külön törölhetők, és nem vesznek el a letöltés során.
+              Az Arduino {state.syncState.emptyActionCount} valóban üres
+              rekordot tartalmaz: egyik LED-blokkban sincs apply jelző vagy
+              megőrzött LED-adat. Ezek láthatók, külön törölhetők, és nem vesznek
+              el a letöltés során.
             </p>
           </div>
         )}

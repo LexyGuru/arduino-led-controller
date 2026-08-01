@@ -233,6 +233,7 @@ export function useController(
       revision: null,
       checksum: '',
       emptyActionCount: 0,
+      recoveredLegacyActionCount: 0,
       lastError: null
     });
 
@@ -820,6 +821,7 @@ export function useController(
                 (schedule) =>
                   schedule.leds.length === 0
               ).length,
+            recoveredLegacyActionCount: 0,
             lastError: null
           });
 
@@ -1131,6 +1133,8 @@ export function useController(
             checksum: snapshot.checksum,
             emptyActionCount:
               snapshot.emptyActionCount,
+            recoveredLegacyActionCount:
+              snapshot.recoveredLegacyActionCount,
             lastError: null
           });
 
@@ -1204,6 +1208,8 @@ export function useController(
             checksum: result.checksum,
             emptyActionCount:
               result.emptyActionCount,
+            recoveredLegacyActionCount:
+              result.recoveredLegacyActionCount,
             lastError: null
           });
 

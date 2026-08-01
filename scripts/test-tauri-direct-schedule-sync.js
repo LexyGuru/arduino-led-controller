@@ -20,12 +20,14 @@ const docs = read('docs/architecture/TAURI_DIRECT_API_V1_SCHEDULE_SYNC.md');
 for (const token of [
   'struct ScheduleSyncSnapshot',
   'empty_action_count: usize',
+  'recovered_legacy_action_count: usize',
   'async fn fetch_schedule_snapshot',
   'SCHEDULE_SYNC_REQUIRED:',
   'SCHEDULE_CONFLICT:',
   'expected_revision: Option<u64>',
   'write_schedule_cache(&app, verified.schedules.clone())?',
-  'empty_action_schedule_roundtrips_without_being_dropped'
+  'empty_action_schedule_roundtrips_without_being_dropped',
+  'missing_apply_flag_is_recovered_from_preserved_led_payload'
 ]) {
   assert.ok(rust.includes(token), `Hiányzó Rust schedule-védelem: ${token}`);
 }
@@ -90,6 +92,7 @@ for (const token of [
   'Mentés Arduino-ra',
   'state.canWrite',
   'emptyActionCount',
+  'recoveredLegacyActionCount',
   'Nincs LED-művelet · üres Arduino rekord'
 ]) {
   assert.ok(page.includes(token), `Hiányzó Direct schedule UI: ${token}`);
@@ -118,7 +121,8 @@ for (const token of [
   'Arduino az elsődleges adatforrás',
   'cache csak a sikeres teljes readback után',
   'V5 szerver nélkül',
-  'üres LED-műveletű rekord'
+  'üres LED-műveletű rekord',
+  'Örökölt vagy hiányzó `apply` jelző helyreállítása'
 ]) {
   assert.ok(docs.includes(token), `Hiányzó schedule dokumentáció: ${token}`);
 }
@@ -128,3 +132,4 @@ console.log('OK: a Direct mentés és letöltés Promise-ként meg van várva');
 console.log('OK: revision-konfliktus és írásvédelmi kapu aktív');
 console.log('OK: a cache csak sikeres commit/readback után frissül');
 console.log('OK: az üres LED-műveletű rekordok megmaradnak és láthatók');
+console.log('OK: a hiányzó apply jelző megmaradt LED-adatból helyreállítható');

@@ -119,6 +119,13 @@ struct ScheduleSyncSnapshot {
     revision: u64,
     checksum: String,
     empty_action_count: usize,
+    recovered_legacy_action_count: usize,
+}
+
+#[derive(Debug)]
+struct DecodedSchedulePayload {
+    schedule: Schedule,
+    recovered_legacy_action_count: usize,
 }
 
 fn normalize_schedules(mut schedules: Vec<Schedule>) -> Result<Vec<Schedule>, String> {
@@ -797,7 +804,7 @@ struct ArduinoScheduleTransaction {
     total: u8,
 }
 
-fn decode_schedule_payload(payload: &str, index: u8) -> Result<Schedule, String> {
+fn decode_schedule_payload(payload: &str, index: u8) -> Result<DecodedSchedulePayload, String> {
     let bytes = hex::decode(payload).map_err(|error| {
         format!(
             "A(z) {}. Arduino schedule rekord hibás HEX-adatot tartalmaz: {error}",
@@ -824,11 +831,19 @@ fn decode_schedule_payload(payload: &str, index: u8) -> Result<Schedule, String>
     }
 
     let mut leds = Vec::new();
+    let mut recovered_legacy_action_count = 0usize;
     for led_index in 0..3usize {
         let at = 3 + led_index * 8;
-        if bytes[at] == 0 {
+        let explicit_apply = bytes[at] != 0;
+        let has_preserved_payload = bytes[(at + 1)..(at + 8)].iter().any(|value| *value != 0);
+
+        if !explicit_apply && !has_preserved_payload {
             continue;
         }
+        if !explicit_apply {
+            recovered_legacy_action_count += 1;
+        }
+
         leds.push(ScheduleLed {
             id: (led_index + 1) as u8,
             enabled: bytes[at + 1] != 0,
@@ -839,11 +854,14 @@ fn decode_schedule_payload(payload: &str, index: u8) -> Result<Schedule, String>
         });
     }
 
-    Ok(Schedule {
-        id: format!("arduino-{index}"),
-        day,
-        time: format!("{hour:02}:{minute:02}"),
-        leds,
+    Ok(DecodedSchedulePayload {
+        schedule: Schedule {
+            id: format!("arduino-{index}"),
+            day,
+            time: format!("{hour:02}:{minute:02}"),
+            leds,
+        },
+        recovered_legacy_action_count,
     })
 }
 
@@ -855,6 +873,7 @@ async fn schedule_status(state: &AppState) -> Result<ArduinoScheduleStatus, Stri
 async fn fetch_schedule_snapshot(state: &AppState) -> Result<ScheduleSyncSnapshot, String> {
     let status = schedule_status(state).await?;
     let mut all = Vec::with_capacity(status.count as usize);
+    let mut recovered_legacy_action_count = 0usize;
     let mut offset = 0u8;
 
     while offset < status.count {
@@ -884,7 +903,9 @@ async fn fetch_schedule_snapshot(state: &AppState) -> Result<ScheduleSyncSnapsho
                     entry.index
                 ));
             }
-            all.push(decode_schedule_payload(&entry.payload, entry.index)?);
+            let decoded = decode_schedule_payload(&entry.payload, entry.index)?;
+            recovered_legacy_action_count += decoded.recovered_legacy_action_count;
+            all.push(decoded.schedule);
         }
 
         let next_offset = all.len() as u8;
@@ -916,6 +937,7 @@ async fn fetch_schedule_snapshot(state: &AppState) -> Result<ScheduleSyncSnapsho
         revision: status.revision,
         checksum: status.checksum,
         empty_action_count,
+        recovered_legacy_action_count,
     })
 }
 
@@ -2224,7 +2246,8 @@ async fn save_and_sync_schedules(
             "checksum": verified.checksum.clone(),
             "checksumBefore": before.checksum,
             "checksumAfter": verified.checksum,
-            "emptyActionCount": verified.empty_action_count
+            "emptyActionCount": verified.empty_action_count,
+            "recoveredLegacyActionCount": verified.recovered_legacy_action_count
         }));
     }
 
@@ -2323,7 +2346,8 @@ async fn save_and_sync_schedules(
         "checksum": verified.checksum.clone(),
         "checksumBefore": before.checksum,
         "checksumAfter": verified.checksum,
-        "emptyActionCount": verified.empty_action_count
+        "emptyActionCount": verified.empty_action_count,
+        "recoveredLegacyActionCount": verified.recovered_legacy_action_count
     }))
 }
 
@@ -2986,12 +3010,14 @@ mod tests {
         bytes.extend_from_slice(&[0; 24]);
         let payload = hex::encode(bytes);
 
-        let schedule = decode_schedule_payload(&payload, 32)
+        let decoded = decode_schedule_payload(&payload, 32)
             .expect("az üres LED-műveletű Arduino rekord olvasható");
+        let schedule = decoded.schedule;
         assert_eq!(schedule.id, "arduino-32");
         assert_eq!(schedule.day, 6);
         assert_eq!(schedule.time, "19:30");
         assert!(schedule.leds.is_empty());
+        assert_eq!(decoded.recovered_legacy_action_count, 0);
 
         let encoded = encode_schedule(&schedule).expect("az üres rekord visszakódolható");
         assert_eq!(encoded, payload);
@@ -3001,6 +3027,29 @@ mod tests {
         let parsed = parse_schedules_json(&file).expect("a cache visszaolvasható");
         assert_eq!(parsed.len(), 1);
         assert!(parsed[0].leds.is_empty());
+    }
+
+    #[test]
+    fn missing_apply_flag_is_recovered_from_preserved_led_payload() {
+        let mut bytes = vec![6, 19, 30];
+        bytes.extend_from_slice(&[0, 1, 60, 0, 50, 0, 0, 255]);
+        bytes.extend_from_slice(&[0; 16]);
+        let legacy_payload = hex::encode(bytes);
+
+        let decoded = decode_schedule_payload(&legacy_payload, 0)
+            .expect("a megmaradt LED-adatból az örökölt művelet helyreállítható");
+        assert_eq!(decoded.recovered_legacy_action_count, 1);
+        assert_eq!(decoded.schedule.leds.len(), 1);
+        assert_eq!(decoded.schedule.leds[0].id, 1);
+        assert!(decoded.schedule.leds[0].enabled);
+        assert_eq!(decoded.schedule.leds[0].brightness, 60);
+        assert_eq!(decoded.schedule.leds[0].speed, 50);
+        assert_eq!(decoded.schedule.leds[0].color, vec![0, 0, 255]);
+
+        let normalized = encode_schedule(&decoded.schedule)
+            .expect("a helyreállított rekord explicit apply jelzővel visszakódolható");
+        assert_eq!(&normalized[6..8], "01");
+        assert_ne!(normalized, legacy_payload);
     }
 
     #[test]

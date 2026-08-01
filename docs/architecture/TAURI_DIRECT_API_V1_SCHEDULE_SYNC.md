@@ -42,6 +42,17 @@ Ezeket a desktop korábban érvénytelennek tekinthette, ezért a teljes Arduino
 - törölhetők;
 - veszteség nélkül visszakódolhatók.
 
+## Örökölt vagy hiányzó `apply` jelző helyreállítása
+
+A 27 bájtos Arduino rekord minden LED-hez nyolc bájtot tárol: `apply`, állapot, fényerő, effekt, sebesség és RGB. Régebbi vagy félbeszakadt átmeneti feltöltésből előfordulhat, hogy az `apply` bájt nulla, miközben a mögötte lévő hét LED-adat megmaradt.
+
+A desktop ezért két állapotot különböztet meg:
+
+- mind a nyolc bájt nulla: valóban üres, nem alkalmazott LED-blokk;
+- `apply == 0`, de a további hét bájt közül legalább egy nem nulla: helyreállítható örökölt LED-művelet.
+
+A helyreállított művelet megjelenik a szerkesztési listában, és a következő sikeres tranzakciós mentés már explicit `apply = 1` jelzővel írja vissza. Így a meglévő fényerő-, effekt-, sebesség- és RGB-adatok nem vesznek el, de a valóban teljesen nulla blokkok továbbra sem válnak véletlenül aktív műveletté.
+
 ## Írásvédelmi kapu
 
 Mentés és törlés csak akkor engedélyezett, ha a Tauri rendelkezik sikeres, teljes Arduino-readbackből származó állapottal:
@@ -94,6 +105,7 @@ A schedule oldal V5 szerver nélkül működik. A felület külön mutatja:
 - revision;
 - checksum;
 - üres LED-műveletű rekordok száma;
+- megőrzött adatokból helyreállított örökölt apply műveletek száma;
 - letöltési vagy ellenőrzési hiba.
 
 A „Mentés Arduino-ra” és a rekordtörlés addig le van tiltva, amíg nincs ellenőrzött teljes Arduino-lista.

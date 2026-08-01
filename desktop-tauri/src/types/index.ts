@@ -110,6 +110,7 @@ export interface ScheduleSyncSnapshot {
   revision: number;
   checksum: string;
   emptyActionCount: number;
+  recoveredLegacyActionCount: number;
 }
 
 export interface ScheduleSaveResult extends ScheduleSyncSnapshot {
@@ -131,6 +132,7 @@ export interface ScheduleSyncState {
   revision: number | null;
   checksum: string;
   emptyActionCount: number;
+  recoveredLegacyActionCount: number;
   lastError: string | null;
 }
 
