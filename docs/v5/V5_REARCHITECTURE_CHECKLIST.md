@@ -2,7 +2,7 @@
 
 ## Firmware — kész
 
-- [x] Firmware `4.3.0-beta.1`.
+- [x] Firmware `4.3.0-beta.2`.
 - [x] Direct API `1.0.0`.
 - [x] Header-only `X-Device-Key` auth.
 - [x] Query fallback kikapcsolva.

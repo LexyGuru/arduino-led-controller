@@ -1,5 +1,5 @@
 /*
- * Arduino LED Controller – 4.3.0-beta.1
+ * Arduino LED Controller – 4.3.0-beta.2
  * F14 Complete: Direct API v1, JSON body, header-only auth, A/B EEPROM és
  * tranzakciós schedule. A Tauri újratervezésének stabil firmware-alapja.
  */
@@ -13,7 +13,7 @@
 #include <stdarg.h>
 #include "secrets.h"
 
-#define FIRMWARE_VERSION "4.3.0-beta.1"
+#define FIRMWARE_VERSION "4.3.0-beta.2"
 #define FIRMWARE_FEATURE "f14-complete-direct-api-storage"
 #define DIRECT_API_VERSION "1.0.0"
 #define DEVICE_NAME "arduino-led-controller"
@@ -72,8 +72,8 @@ constexpr uint8_t LOG_CAPACITY = 32;
 constexpr uint8_t CONSOLE_LOGS_PER_RESPONSE = 8;
 constexpr size_t HTTP_BODY_BUFFER_SIZE = 2048;
 constexpr size_t HTTP_RESPONSE_HEADER_SIZE = 192;
-constexpr size_t HTTP_WRITE_CHUNK_SIZE = 128;
-constexpr unsigned long HTTP_WRITE_INTER_CHUNK_DELAY_MS = 2UL;
+constexpr size_t HTTP_WRITE_CHUNK_SIZE = 512;
+constexpr unsigned long HTTP_WRITE_INTER_CHUNK_DELAY_MS = 1UL;
 constexpr size_t HTTP_REQUEST_LINE_SIZE = 256;
 constexpr size_t HTTP_HEADER_LINE_SIZE = 192;
 constexpr size_t SERIAL_COMMAND_SIZE = 160;
@@ -82,9 +82,9 @@ constexpr unsigned long PIR_DEBOUNCE = 200UL;
 constexpr unsigned long WIFI_RETRY = 15000UL;
 constexpr unsigned long EFFECT_FRAME = 50UL;
 constexpr unsigned long SCHEDULE_AUDIT_INTERVAL = 30000UL;
-constexpr unsigned long HTTP_FIRST_BYTE_TIMEOUT = 300UL;
-constexpr unsigned long HTTP_READ_TIMEOUT = 800UL;
-constexpr unsigned long HTTP_RESPONSE_SETTLE_DELAY_MS = 80UL;
+constexpr unsigned long HTTP_FIRST_BYTE_TIMEOUT = 200UL;
+constexpr unsigned long HTTP_READ_TIMEOUT = 350UL;
+constexpr unsigned long HTTP_RESPONSE_SETTLE_DELAY_MS = 8UL;
 constexpr unsigned long HTTP_POLLING_SUMMARY_INTERVAL = 30000UL;
 constexpr unsigned long HTTP_TRACE_MAX_TIME = 600000UL;
 constexpr unsigned long WIFI_LINK_PROBE_INTERVAL_MS = 15000UL;
@@ -162,7 +162,7 @@ static_assert(sizeof(StoredSchedule) == 27, "StoredSchedule EEPROM layout change
 static_assert(sizeof(ScheduleHeader) == 10, "ScheduleHeader EEPROM layout changed");
 static_assert(LOG_CAPACITY <= 32, "F14.1 RAM log capacity is too large");
 static_assert(HTTP_BODY_BUFFER_SIZE <= 2560, "F14.1 HTTP buffer is too large");
-static_assert(HTTP_WRITE_CHUNK_SIZE <= 128, "UNO R4 WiFi response chunk is too large");
+static_assert(HTTP_WRITE_CHUNK_SIZE <= 512, "UNO R4 WiFi response chunk is too large");
 struct FixedBuffer {
   char* data;
   size_t capacity, length;

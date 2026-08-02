@@ -3,7 +3,7 @@
 ## Verziók és párosítás
 
 - [x] Alkalmazás `5.0.0-beta.3`.
-- [x] Firmware `4.3.0-beta.1`.
+- [x] Firmware `4.3.0-beta.2`.
 - [x] Direct API `1.0.0`.
 - [x] Board: Arduino UNO R4 WiFi.
 - [x] `VERSION`, npm lockfile-ok, Cargo, Tauri config, OpenAPI és generált API-kommentek egyeznek.
@@ -39,7 +39,7 @@
 - [x] Platform-specifikus alkalmazásartifact felismerés.
 - [x] Firmware cache és SHA-256 ellenőrzés.
 - [x] OTA utáni Boot ID és schedule persistence ellenőrzés.
-- [x] Firmware verzió változatlan: `4.3.0-beta.1`.
+- [x] Firmware verzió változatlan: `4.3.0-beta.2`.
 
 ## Biztonság
 

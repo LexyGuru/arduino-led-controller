@@ -26,7 +26,7 @@ env:
   NODE_VERSION: "24"
   EXPECTED_BRANCH: next/v5-rearchitecture
   EXPECTED_VERSION: 5.0.0-beta.3
-  EXPECTED_FIRMWARE_VERSION: 4.3.0-beta.1
+  EXPECTED_FIRMWARE_VERSION: 4.3.0-beta.2
 
 jobs:
   validate:
@@ -620,7 +620,7 @@ jobs:
 
           version = os.environ["VERSION"]
           tag = os.environ["TAG"]
-          firmware_version = "4.3.0-beta.1"
+          firmware_version = "4.3.0-beta.2"
           firmware_name = f"Arduino_LED_Controller_Firmware_{firmware_version}_UNO_R4_WiFi.bin"
           firmware = next(item for item in files if item["name"] == firmware_name)
 

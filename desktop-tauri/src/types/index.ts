@@ -136,6 +136,16 @@ export interface ScheduleSyncState {
   lastError: string | null;
 }
 
+
+export interface ScheduleBackup {
+  id: string;
+  createdAt: number;
+  count: number;
+  revision?: number;
+  checksum: string;
+  schedules: LedSchedule[];
+}
+
 export interface FirmwareArtifact {
   name: string;
   downloadUrl: string;
@@ -143,6 +153,8 @@ export interface FirmwareArtifact {
   firmwareVersion?: string;
   tag: string;
   createdAt?: string;
+  summary?: string;
+  channel?: 'stable' | 'beta' | string;
 }
 
 export interface AppUpdateArtifact {

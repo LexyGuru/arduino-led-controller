@@ -34,6 +34,7 @@ import {
 
 import type {
   LedSchedule,
+  ScheduleBackup,
   ScheduleLed,
   ScheduleSaveResult,
   ScheduleSyncSnapshot,
@@ -244,6 +245,11 @@ export function SchedulesPage({
     useState('');
 
   const [
+    backups,
+    setBackups
+  ] = useState<ScheduleBackup[]>([]);
+
+  const [
     conflict,
     setConflict
   ] =
@@ -286,6 +292,51 @@ export function SchedulesPage({
       state.schedules
     ]
   );
+
+  useEffect(() => {
+    void tauriApi.listScheduleBackups().then(setBackups).catch(() => undefined);
+  }, []);
+
+  const deleteAllSchedules = async () => {
+    if (!state.canWrite || draft.length === 0) return;
+    const confirmation = globalThis.prompt(
+      `A művelet ${draft.length} Arduino-időzítést töröl. A folytatáshoz írd be: TÖRLÉS`
+    );
+    if (confirmation !== 'TÖRLÉS') return;
+    try {
+      const backup = await tauriApi.createScheduleBackup(
+        draft,
+        baseRevision,
+        state.syncState.checksum
+      );
+      const result = await state.save([], { expectedRevision: baseRevision, force: false });
+      setDraft(result.schedules);
+      setBaseFingerprint(scheduleFingerprint(result.schedules));
+      setBaseRevision(result.revision);
+      setBackups(await tauriApi.listScheduleBackups());
+      setFileMessage(`Mind a ${backup.count} időzítés törölve. Automatikus backup: ${backup.id}`);
+      setConflict(false);
+    } catch (error) {
+      setFileMessage(`Teljes törlési hiba: ${String(error)}`);
+    }
+  };
+
+  const restoreScheduleBackup = async (backup: ScheduleBackup) => {
+    if (!state.canWrite) return;
+    if (!globalThis.confirm(`Visszaállítod a ${backup.count} rekordos backupot?`)) return;
+    try {
+      await tauriApi.createScheduleBackup(draft, baseRevision, state.syncState.checksum);
+      const result = await state.save(backup.schedules, { expectedRevision: baseRevision, force: false });
+      setDraft(result.schedules);
+      setBaseFingerprint(scheduleFingerprint(result.schedules));
+      setBaseRevision(result.revision);
+      setBackups(await tauriApi.listScheduleBackups());
+      setFileMessage(`Backup visszaállítva: ${backup.id}`);
+      setConflict(false);
+    } catch (error) {
+      setFileMessage(`Backup visszaállítási hiba: ${String(error)}`);
+    }
+  };
 
   const grouped =
     useMemo(
@@ -724,6 +775,15 @@ export function SchedulesPage({
             <Upload size={17} />
             JSON betöltés
           </button>
+
+          <button
+            className="danger"
+            onClick={() => void deleteAllSchedules()}
+            disabled={state.busy || !state.canWrite || draft.length === 0}
+          >
+            <Trash2 size={17} />
+            Összes időzítés törlése
+          </button>
         </div>
       </div>
 
@@ -873,6 +933,34 @@ export function SchedulesPage({
           )}
         </section>
       )}
+
+      <section className="panel">
+        <div className="panel-title">
+          <div>
+            <p className="eyebrow">AUTOMATIKUS BACKUPOK</p>
+            <h2>Schedule visszaállítás</h2>
+          </div>
+          <Database />
+        </div>
+        {backups.length === 0 ? (
+          <p className="muted">Még nincs automatikus schedule backup.</p>
+        ) : (
+          <div className="v5-backup-list">
+            {backups.slice(0, 10).map((backup) => (
+              <article key={backup.id}>
+                <div>
+                  <strong>{backup.count} rekord</strong>
+                  <small>{new Date(backup.createdAt).toLocaleString('hu-HU')} · revision {backup.revision ?? '—'}</small>
+                  <code>{backup.checksum || backup.id}</code>
+                </div>
+                <button className="secondary" disabled={state.busy || !state.canWrite} onClick={() => void restoreScheduleBackup(backup)}>
+                  Visszaállítás
+                </button>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
 
       <section className="panel schedule-editor">
         <div className="schedule-top-row">

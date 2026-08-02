@@ -13,7 +13,7 @@ const firmwarePath = path.join(
 );
 const source = fs.readFileSync(firmwarePath, 'utf8');
 
-assert.match(source, /#define FIRMWARE_VERSION "4\.3\.0-beta\.1"/);
+assert.match(source, /#define FIRMWARE_VERSION "4\.3\.0-beta\.2"/);
 assert.match(source, /#define DIRECT_API_VERSION "1\.0\.0"/);
 assert.match(source, /#define API_ALLOW_QUERY_KEY_FALLBACK 0/);
 assert.match(source, /constexpr unsigned long REMOTE_REBOOT_DELAY_MS = 750UL;/);

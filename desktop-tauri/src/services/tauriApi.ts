@@ -4,10 +4,12 @@ import type {
   ArduinoStatus,
   ConnectionConfig,
   FirmwareStatus,
+  FirmwareArtifact,
   LedSchedule,
   LedStrip,
   NetworkLog,
   RuntimeCapabilities,
+  ScheduleBackup,
   ScheduleSaveResult,
   ScheduleSyncSnapshot
 } from '../types';
@@ -33,6 +35,9 @@ export const tauriApi = {
   importSchedulesFile: (path: string) => invoke<LedSchedule[]>('import_schedules_file', { path }),
   exportSchedulesFile: (path: string, schedules: LedSchedule[]) => invoke<void>('export_schedules_file', { path, schedules }),
   loadSchedulesFromArduino: () => invoke<ScheduleSyncSnapshot>('load_schedules_from_arduino'),
+  createScheduleBackup: (schedules: LedSchedule[], revision: number | null, checksum: string) =>
+    invoke<ScheduleBackup>('create_schedule_backup', { schedules, revision, checksum }),
+  listScheduleBackups: () => invoke<ScheduleBackup[]>('list_schedule_backups'),
   saveSchedules: (
     schedules: LedSchedule[],
     expectedRevision: number | null,
@@ -42,6 +47,8 @@ export const tauriApi = {
     expectedRevision,
     force
   }),
+  firmwareReleases: () => invoke<FirmwareArtifact[]>('firmware_releases'),
+  firmwareInstallRelease: (tag: string) => invoke<FirmwareStatus>('firmware_install_release', { tag }),
   firmwareStatus: () => invoke<FirmwareStatus>('firmware_status'),
   firmwareUpdate: () => invoke<FirmwareStatus>('firmware_update'),
   firmwareCancel: () => invoke<boolean>('firmware_cancel')

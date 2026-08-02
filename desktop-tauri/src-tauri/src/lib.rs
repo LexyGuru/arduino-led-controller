@@ -218,6 +218,10 @@ struct FirmwareArtifact {
     firmware_version: Option<String>,
     tag: String,
     created_at: Option<String>,
+    #[serde(default)]
+    summary: Option<String>,
+    #[serde(default)]
+    channel: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -1099,6 +1103,64 @@ fn release_matches_channel(release: &GitHubRelease, channel: &str) -> bool {
         }
 }
 
+fn release_summary(body: &str) -> String {
+    body.lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty() && !line.starts_with('#'))
+        .take(4)
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+fn firmware_artifact_from_release(release: &GitHubRelease) -> Option<FirmwareArtifact> {
+    let binary = release
+        .assets
+        .iter()
+        .find(|a| a.name.ends_with(".ino.bin"))?;
+    let checksum = release
+        .assets
+        .iter()
+        .find(|a| a.name.ends_with(".ino.bin.sha256"))?;
+    let version = release.body.as_deref().and_then(|body| {
+        body.lines().find_map(|line| {
+            line.strip_prefix("Firmware verzió:")
+                .map(|v| v.trim().to_string())
+        })
+    });
+    Some(FirmwareArtifact {
+        name: binary.name.clone(),
+        download_url: binary.browser_download_url.clone(),
+        checksum_url: checksum.browser_download_url.clone(),
+        firmware_version: version,
+        tag: release.tag_name.clone(),
+        created_at: release.published_at.clone(),
+        summary: release.body.as_deref().map(release_summary),
+        channel: if release.prerelease {
+            "beta".into()
+        } else {
+            "stable".into()
+        },
+    })
+}
+
+#[tauri::command]
+async fn firmware_releases(state: State<'_, AppState>) -> Result<Vec<FirmwareArtifact>, String> {
+    let channel = state
+        .config
+        .lock()
+        .map_err(|_| "Beállítás zárolva".to_string())?
+        .update_channel
+        .clone();
+    let mut artifacts = github_releases()
+        .await?
+        .iter()
+        .filter(|release| release_matches_channel(release, channel.trim()))
+        .filter_map(firmware_artifact_from_release)
+        .collect::<Vec<_>>();
+    artifacts.truncate(20);
+    Ok(artifacts)
+}
+
 async fn latest_firmware(config: &Config) -> Result<FirmwareArtifact, String> {
     let releases = github_releases().await?;
     let release = releases
@@ -1140,6 +1202,12 @@ async fn latest_firmware(config: &Config) -> Result<FirmwareArtifact, String> {
         firmware_version: version,
         tag: release.tag_name.clone(),
         created_at: release.published_at.clone(),
+        summary: release.body.as_deref().map(release_summary),
+        channel: if release.prerelease {
+            "beta".into()
+        } else {
+            "stable".into()
+        },
     })
 }
 
@@ -2351,6 +2419,67 @@ async fn save_and_sync_schedules(
     }))
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ScheduleBackup {
+    id: String,
+    created_at: u64,
+    count: usize,
+    revision: Option<u64>,
+    checksum: String,
+    schedules: Vec<Schedule>,
+}
+
+fn schedule_backups_dir(app: &AppHandle) -> Result<PathBuf, String> {
+    let path = app_dir(app)?.join("schedule-backups");
+    fs::create_dir_all(&path)
+        .map_err(|e| format!("A schedule backup könyvtár nem hozható létre: {e}"))?;
+    Ok(path)
+}
+
+#[tauri::command]
+fn create_schedule_backup(
+    app: AppHandle,
+    schedules: Vec<Schedule>,
+    revision: Option<u64>,
+    checksum: String,
+) -> Result<ScheduleBackup, String> {
+    let created_at = unix_millis();
+    let backup = ScheduleBackup {
+        id: format!("schedule-{created_at}"),
+        created_at,
+        count: schedules.len(),
+        revision,
+        checksum,
+        schedules,
+    };
+    let path = schedule_backups_dir(&app)?.join(format!("{}.json", backup.id));
+    fs::write(
+        &path,
+        serde_json::to_vec_pretty(&backup).map_err(|e| e.to_string())?,
+    )
+    .map_err(|e| format!("A schedule backup nem írható: {e}"))?;
+    Ok(backup)
+}
+
+#[tauri::command]
+fn list_schedule_backups(app: AppHandle) -> Result<Vec<ScheduleBackup>, String> {
+    let mut result = Vec::new();
+    for entry in fs::read_dir(schedule_backups_dir(&app)?).map_err(|e| e.to_string())? {
+        let path = entry.map_err(|e| e.to_string())?.path();
+        if path.extension().and_then(|v| v.to_str()) != Some("json") {
+            continue;
+        }
+        if let Ok(bytes) = fs::read(&path) {
+            if let Ok(item) = serde_json::from_slice::<ScheduleBackup>(&bytes) {
+                result.push(item);
+            }
+        }
+    }
+    result.sort_by(|a, b| b.created_at.cmp(&a.created_at));
+    Ok(result)
+}
+
 #[tauri::command]
 async fn firmware_status(
     app: AppHandle,
@@ -2481,6 +2610,7 @@ async fn firmware_status(
 async fn firmware_update_inner(
     app: &AppHandle,
     state: &AppState,
+    requested_tag: Option<&str>,
 ) -> Result<FirmwareStatus, String> {
     state.ota_in_progress.store(true, Ordering::SeqCst);
     state.ota_cancel_requested.store(false, Ordering::SeqCst);
@@ -2533,7 +2663,26 @@ async fn firmware_update_inner(
         Some(7),
     );
     ensure_not_cancelled(state)?;
-    let artifact = latest_firmware(&config).await?;
+    let artifact = if let Some(tag) = requested_tag {
+        let releases = github_releases().await?;
+        let release = releases
+            .iter()
+            .find(|release| {
+                release.tag_name == tag
+                    && release_matches_channel(release, config.update_channel.trim())
+            })
+            .ok_or_else(|| {
+                format!(
+                    "A(z) {tag} release nem található a kiválasztott {} csatornán.",
+                    config.update_channel
+                )
+            })?;
+        firmware_artifact_from_release(release).ok_or_else(|| {
+            format!("A(z) {tag} release nem tartalmaz ellenőrzött firmware binárist és checksumot.")
+        })?
+    } else {
+        latest_firmware(&config).await?
+    };
     let available = artifact
         .firmware_version
         .as_deref()
@@ -2571,7 +2720,9 @@ async fn firmware_update_inner(
         .get("firmwareVersion")
         .and_then(Value::as_str)
         .map(str::to_string);
-    if installed.as_deref().map(normalize_version) == Some(normalize_version(&available)) {
+    if requested_tag.is_none()
+        && installed.as_deref().map(normalize_version) == Some(normalize_version(&available))
+    {
         return Err(format!(
             "Nincs szükség frissítésre. A telepített és az elérhető firmware-verzió egyaránt {}.",
             installed.unwrap_or(available)
@@ -2943,7 +3094,32 @@ async fn firmware_update(
     if cfg!(any(target_os = "android", target_os = "ios")) {
         return Err("Mobilalkalmazásból firmware-frissítés nem indítható. Használj Windows, macOS vagy Linux gépet.".into());
     }
-    match firmware_update_inner(&app, &state).await {
+    match firmware_update_inner(&app, &state, None).await {
+        Ok(status) => Ok(status),
+        Err(error) => {
+            state.ota_in_progress.store(false, Ordering::SeqCst);
+            emit_ota_progress(&app, "Hiba", "error", error.clone(), None);
+            if let Ok(mut current) = state.firmware_status.lock() {
+                current.state = "error".into();
+                current.phase = Some("Hiba".into());
+                current.message = error.clone();
+                current.cancelled = error.starts_with("OTA_CANCELLED:");
+            }
+            Err(error)
+        }
+    }
+}
+
+#[tauri::command]
+async fn firmware_install_release(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    tag: String,
+) -> Result<FirmwareStatus, String> {
+    if cfg!(any(target_os = "android", target_os = "ios")) {
+        return Err("Mobilalkalmazásból firmware-frissítés nem indítható.".into());
+    }
+    match firmware_update_inner(&app, &state, Some(tag.trim())).await {
         Ok(status) => Ok(status),
         Err(error) => {
             state.ota_in_progress.store(false, Ordering::SeqCst);
@@ -3142,6 +3318,10 @@ pub fn run() {
             export_schedules_file,
             load_schedules_from_arduino,
             save_and_sync_schedules,
+            create_schedule_backup,
+            list_schedule_backups,
+            firmware_releases,
+            firmware_install_release,
             firmware_status,
             firmware_update,
             firmware_cancel,

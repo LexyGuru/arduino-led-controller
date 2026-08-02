@@ -4,7 +4,7 @@ const DEFAULTS = Object.freeze({
   otaUseApiHost: true, otaHost: '', otaPort: 65280, otaToolMode: 'auto', otaToolPath: '',
   otaTimeoutSeconds: 120, updateChannel: 'beta', autoCheckUpdates: true,
   autoDownloadUpdates: false, firmwareUpdateChecks: true,
-  expectedFirmwareVersion: '4.3.0-beta.1', expectedDirectApiVersion: '1.0.0'
+  expectedFirmwareVersion: '4.3.0-beta.2', expectedDirectApiVersion: '1.0.0'
 });
 const text = (value) => String(value ?? '').trim();
 const port = (value, fallback) => { const parsed = Number(value); return Number.isInteger(parsed) && parsed >= 1 && parsed <= 65535 ? parsed : fallback; };

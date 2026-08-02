@@ -28,7 +28,7 @@ for (const path of docs) {
 const all = docs.map(read).join('\n');
 for (const marker of [
   '5.0.0-beta.3',
-  '4.3.0-beta.1',
+  '4.3.0-beta.2',
   'Direct API',
   '1.0.0',
   'HTTP 202',

@@ -1,6 +1,7 @@
 import {
   useEffect,
-  useRef
+  useRef,
+  useState
 } from 'react';
 
 import {
@@ -19,14 +20,11 @@ import {
 } from '../components/v5/V5DataSourceBadge';
 
 import {
-  V5FirmwareBackups
-} from '../components/v5/V5FirmwareBackups';
-
-import {
   useV5Firmware
 } from '../hooks/useV5Firmware';
 
 import type {
+  FirmwareArtifact,
   FirmwareStatus,
   OtaProgressEvent
 } from '../types';
@@ -87,6 +85,20 @@ export function FirmwarePage({
 
   const firmware =
     state.status;
+
+  const [releaseCatalog, setReleaseCatalog] = useState<FirmwareArtifact[]>([]);
+  const [catalogError, setCatalogError] = useState('');
+
+  const refreshCatalog = async () => {
+    try {
+      setReleaseCatalog(await (await import('../services/tauriApi')).tauriApi.firmwareReleases());
+      setCatalogError('');
+    } catch (error) {
+      setCatalogError(String(error));
+    }
+  };
+
+  useEffect(() => { void refreshCatalog(); }, [firmware?.updateChannel]);
 
   const available =
     firmware
@@ -503,35 +515,48 @@ export function FirmwarePage({
         </div>
       </section>
 
-      <V5FirmwareBackups
-        backups={
-          state.backups
-        }
-        busy={
-          state.busy
-        }
-        apiAvailable={
-          !state.directFallback
-        }
-        onRollback={
-          (id) =>
-            void state
-              .rollback(id)
-        }
-        onDelete={
-          (id) =>
-            void state
-              .deleteBackup(id)
-        }
-      />
+      <section className="panel v5-firmware-backups">
+        <div className="panel-title">
+          <div>
+            <p className="eyebrow">GITHUB FIRMWARE-KATALÓGUS</p>
+            <h2>{firmware?.updateChannel === 'stable' ? 'Stable / main' : 'Beta'} visszaállítási verziók</h2>
+          </div>
+          <ShieldCheck />
+        </div>
+        <p className="muted">Csak a Beállításokban kiválasztott csatorna nem draft, ellenőrzött .ino.bin + SHA-256 release-ei jelennek meg.</p>
+        {catalogError && <p className="console-warning">{catalogError}</p>}
+        <div className="v5-backup-list">
+          {releaseCatalog.length === 0 ? <p className="muted">Nem található ellenőrzött firmware ezen a csatornán.</p> : releaseCatalog.map((item) => (
+            <article key={item.tag}>
+              <div>
+                <strong>{item.firmwareVersion ?? item.tag}</strong>
+                <small>{item.channel} · {item.tag} · {item.createdAt ? new Date(item.createdAt).toLocaleDateString('hu-HU') : 'ismeretlen dátum'}</small>
+                <p>{item.summary || 'Ehhez a firmware-verzióhoz nincs részletes változásleírás.'}</p>
+                <code>{item.name}</code>
+              </div>
+              <button
+                className="secondary"
+                disabled={state.busy}
+                onClick={() => {
+                  if (globalThis.confirm(`Telepíted vagy visszaállítod ezt a firmware-t: ${item.firmwareVersion ?? item.tag}?`)) {
+                    void (async () => {
+                      const { tauriApi } = await import('../services/tauriApi');
+                      await tauriApi.firmwareInstallRelease(item.tag);
+                      await state.refresh({ forceCheck: true });
+                    })();
+                  }
+                }}
+              >
+                {item.firmwareVersion === firmware?.installedVersion ? 'Újratelepítés' : 'Telepítés / visszaállítás'}
+              </button>
+            </article>
+          ))}
+        </div>
+      </section>
 
       <div className="notice">
-        <DownloadCloud
-          size={18}
-        />
-        API v2 módban a frissítés, megszakítás, backup és rollback
-        központilag a V5 szerveren fut. Elindult műveletet hálózati
-        hiba után nem ismétlünk meg automatikusan közvetlenül.
+        <DownloadCloud size={18} />
+        A firmware-lista közvetlenül a GitHub Releases kiadásaiból érkezik. A Tauri csak a kiválasztott Stable vagy Beta csatorna ellenőrzött binárisát tölti le, majd SHA-256 ellenőrzés után indítja az OTA-t.
       </div>
     </div>
   );

@@ -10,7 +10,7 @@ Többplatformos LED-vezérlő rendszer Arduino UNO R4 WiFi és három WS2812B LE
 | Elem | Verzió / állapot |
 |---|---|
 | Alkalmazás | `5.0.0-beta.3` |
-| Firmware | `4.3.0-beta.1` |
+| Firmware | `4.3.0-beta.2` |
 | Direct API | `1.0.0` |
 | Firmware feature | `f14-complete-direct-api-storage` |
 | Firmware hardverkapu | sikeres |
@@ -72,7 +72,7 @@ cargo test --locked --manifest-path src-tauri/Cargo.toml
 ## Dokumentáció
 
 - [Firmware áttekintés](firmware/README.md)
-- [Firmware 4.3.0-beta.1](docs/firmware/FIRMWARE_4_3_0_BETA_1.md)
+- [Firmware 4.3.0-beta.2](docs/firmware/FIRMWARE_4_3_0_BETA_2.md)
 - [Direct API v1](docs/firmware/DIRECT_API_V1.md)
 - [EEPROM tárolás](docs/firmware/EEPROM_STORAGE.md)
 - [OTA frissítés](docs/firmware/OTA_UPDATE.md)
