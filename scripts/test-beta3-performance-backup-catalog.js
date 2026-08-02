@@ -17,3 +17,13 @@ for (const token of ['GITHUB FIRMWARE-KATALÓGUS','Stable / main','firmwareInsta
 console.log('OK: firmware teljesítményprofil 4.3.0-beta.2');
 console.log('OK: teljes schedule törlés, automatikus backup és visszaállítás');
 console.log('OK: Stable/Beta GitHub firmware-katalógus és kiválasztott release OTA');
+for (const token of [
+  'firmware_version_from_release',
+  'firmware_version_is_prerelease',
+  'firmware_release_channel',
+  'Stabil firmware-re nincs fallback',
+  'CSATORNA_ELTÉRÉS'
+]) assert.ok(rust.includes(token), token);
+assert.match(rust, /filter_map\(firmware_artifact_from_release\)[\s\S]*artifact\.channel == channel\.trim\(\)/);
+assert.doesNotMatch(rust, /release_matches_channel\(release, channel\.trim\(\)\)[\s\S]*filter_map\(firmware_artifact_from_release\)/);
+console.log('OK: firmware csatorna a firmware-verzió és a GitHub prerelease jelölés együttes ellenőrzésével védett');

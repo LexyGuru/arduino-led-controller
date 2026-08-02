@@ -1112,6 +1112,35 @@ fn release_summary(body: &str) -> String {
         .join(" ")
 }
 
+fn firmware_version_from_release(release: &GitHubRelease) -> Option<String> {
+    release.body.as_deref().and_then(|body| {
+        body.lines().find_map(|line| {
+            line.strip_prefix("Firmware verzió:")
+                .map(|value| value.trim().to_string())
+        })
+    })
+}
+
+fn firmware_version_is_prerelease(version: &str) -> bool {
+    let value = normalize_version(version);
+    ["-alpha", "-beta", "-rc", "-pre", "-preview"]
+        .iter()
+        .any(|marker| value.contains(marker))
+}
+
+fn firmware_release_channel(release: &GitHubRelease) -> Option<&'static str> {
+    if release.draft {
+        return None;
+    }
+    let version = firmware_version_from_release(release)?;
+    let version_is_prerelease = firmware_version_is_prerelease(&version);
+    match (release.prerelease, version_is_prerelease) {
+        (true, true) => Some("beta"),
+        (false, false) => Some("stable"),
+        _ => None,
+    }
+}
+
 fn firmware_artifact_from_release(release: &GitHubRelease) -> Option<FirmwareArtifact> {
     let binary = release
         .assets
@@ -1121,25 +1150,17 @@ fn firmware_artifact_from_release(release: &GitHubRelease) -> Option<FirmwareArt
         .assets
         .iter()
         .find(|a| a.name.ends_with(".ino.bin.sha256"))?;
-    let version = release.body.as_deref().and_then(|body| {
-        body.lines().find_map(|line| {
-            line.strip_prefix("Firmware verzió:")
-                .map(|v| v.trim().to_string())
-        })
-    });
+    let version = firmware_version_from_release(release)?;
+    let channel = firmware_release_channel(release)?;
     Some(FirmwareArtifact {
         name: binary.name.clone(),
         download_url: binary.browser_download_url.clone(),
         checksum_url: checksum.browser_download_url.clone(),
-        firmware_version: version,
+        firmware_version: Some(version),
         tag: release.tag_name.clone(),
         created_at: release.published_at.clone(),
         summary: release.body.as_deref().map(release_summary),
-        channel: if release.prerelease {
-            "beta".into()
-        } else {
-            "stable".into()
-        },
+        channel: channel.into(),
     })
 }
 
@@ -1154,63 +1175,26 @@ async fn firmware_releases(state: State<'_, AppState>) -> Result<Vec<FirmwareArt
     let mut artifacts = github_releases()
         .await?
         .iter()
-        .filter(|release| release_matches_channel(release, channel.trim()))
         .filter_map(firmware_artifact_from_release)
+        .filter(|artifact| artifact.channel == channel.trim())
         .collect::<Vec<_>>();
     artifacts.truncate(20);
     Ok(artifacts)
 }
 
 async fn latest_firmware(config: &Config) -> Result<FirmwareArtifact, String> {
-    let releases = github_releases().await?;
-    let release = releases
+    github_releases()
+        .await?
         .iter()
-        .find(|release| {
-            release_matches_channel(release, config.update_channel.trim())
-                && release.assets.iter().any(|a| a.name.ends_with(".ino.bin"))
-                && release
-                    .assets
-                    .iter()
-                    .any(|a| a.name.ends_with(".ino.bin.sha256"))
-        })
+        .filter_map(firmware_artifact_from_release)
+        .find(|artifact| artifact.channel == config.update_channel.trim())
         .ok_or_else(|| {
             format!(
-                "A(z) {} csatornán nem található teljes firmware release.",
+                "A(z) {} csatornán nem található csatornahelyes, teljes firmware release. Stabil firmware-re nincs fallback.",
                 config.update_channel
             )
-        })?;
-    let binary = release
-        .assets
-        .iter()
-        .find(|a| a.name.ends_with(".ino.bin"))
-        .unwrap();
-    let checksum = release
-        .assets
-        .iter()
-        .find(|a| a.name.ends_with(".ino.bin.sha256"))
-        .unwrap();
-    let version = release.body.as_deref().and_then(|b| {
-        b.lines().find_map(|line| {
-            line.strip_prefix("Firmware verzió:")
-                .map(|v| v.trim().to_string())
         })
-    });
-    Ok(FirmwareArtifact {
-        name: binary.name.clone(),
-        download_url: binary.browser_download_url.clone(),
-        checksum_url: checksum.browser_download_url.clone(),
-        firmware_version: version,
-        tag: release.tag_name.clone(),
-        created_at: release.published_at.clone(),
-        summary: release.body.as_deref().map(release_summary),
-        channel: if release.prerelease {
-            "beta".into()
-        } else {
-            "stable".into()
-        },
-    })
 }
-
 fn app_asset_for_platform(release: &GitHubRelease) -> Option<&GitHubAsset> {
     let names: &[&str] = if cfg!(target_os = "macos") {
         &[".dmg", ".app.tar.gz"]
@@ -2667,19 +2651,20 @@ async fn firmware_update_inner(
         let releases = github_releases().await?;
         let release = releases
             .iter()
-            .find(|release| {
-                release.tag_name == tag
-                    && release_matches_channel(release, config.update_channel.trim())
-            })
-            .ok_or_else(|| {
-                format!(
-                    "A(z) {tag} release nem található a kiválasztott {} csatornán.",
-                    config.update_channel
-                )
-            })?;
-        firmware_artifact_from_release(release).ok_or_else(|| {
-            format!("A(z) {tag} release nem tartalmaz ellenőrzött firmware binárist és checksumot.")
-        })?
+            .find(|release| release.tag_name == tag)
+            .ok_or_else(|| format!("A(z) {tag} GitHub release nem található."))?;
+        let artifact = firmware_artifact_from_release(release).ok_or_else(|| {
+            format!(
+                "A(z) {tag} release firmware-verziója és GitHub prerelease jelölése ellentmondásos, vagy hiányzik a bináris/checksum."
+            )
+        })?;
+        if artifact.channel != config.update_channel.trim() {
+            return Err(format!(
+                "CSATORNA_ELTÉRÉS: a(z) {tag} firmware {} csatornás, de az alkalmazás {} csatornára van állítva.",
+                artifact.channel, config.update_channel
+            ));
+        }
+        artifact
     } else {
         latest_firmware(&config).await?
     };
