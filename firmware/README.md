@@ -2,7 +2,7 @@
 
 ## Verzió
 
-- firmware: `4.3.0-beta.2`;
+- firmware: `4.3.0-beta.3`;
 - Direct API: `1.0.0`;
 - feature: `f14-complete-direct-api-storage`.
 

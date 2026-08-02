@@ -2,7 +2,7 @@ const DEFAULTS = Object.freeze({
   id: 'default', name: 'Arduino vezérlő', protocol: 'https', localProtocol: 'http', localHost: '', localPort: 80,
   remoteHost: '', remotePort: 443, preferLocal: true, macosLocalApiEnabled: false, privateApiPath: '',
   otaUseApiHost: true, otaHost: '', otaPort: 65280, otaToolMode: 'auto', otaToolPath: '',
-  otaTimeoutSeconds: 120, updateChannel: 'beta', autoCheckUpdates: true,
+  otaTimeoutSeconds: 120, updateChannel: 'beta', firmwareUpdateChannel: 'beta', autoCheckUpdates: true,
   autoDownloadUpdates: false, firmwareUpdateChecks: true,
   expectedFirmwareVersion: '4.3.0-beta.2', expectedDirectApiVersion: '1.0.0'
 });
@@ -24,6 +24,7 @@ export function normalizeDirectArduinoProfile(input = {}) {
     otaToolMode: ['auto','system','bundled','custom'].includes(requestedMode) ? requestedMode : 'auto',
     otaToolPath: text(input.otaToolPath), otaTimeoutSeconds: seconds(input.otaTimeoutSeconds, 120),
     updateChannel: text(input.updateChannel).toLowerCase() === 'stable' ? 'stable' : 'beta',
+    firmwareUpdateChannel: text(input.firmwareUpdateChannel || input.updateChannel).toLowerCase() === 'stable' ? 'stable' : 'beta',
     autoCheckUpdates: input.autoCheckUpdates !== false, autoDownloadUpdates: input.autoDownloadUpdates === true,
     firmwareUpdateChecks: input.firmwareUpdateChecks !== false,
     expectedFirmwareVersion: text(input.expectedFirmwareVersion) || DEFAULTS.expectedFirmwareVersion,

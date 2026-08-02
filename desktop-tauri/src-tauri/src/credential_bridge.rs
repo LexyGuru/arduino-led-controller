@@ -120,8 +120,33 @@ mod desktop {
     use super::{backend_name, platform_name, CredentialStatus, ALLOWED_SERVICE};
 
     use keyring::{Entry, Error as KeyringError};
-
+    use std::{
+        collections::HashMap,
+        sync::{Mutex, OnceLock},
+    };
     use zeroize::Zeroizing;
+
+    static SESSION_CACHE: OnceLock<Mutex<HashMap<String, String>>> = OnceLock::new();
+
+    fn session_cache() -> &'static Mutex<HashMap<String, String>> {
+        SESSION_CACHE.get_or_init(|| Mutex::new(HashMap::new()))
+    }
+
+    fn cached(account: &str) -> Option<String> {
+        session_cache().lock().ok()?.get(account).cloned()
+    }
+
+    fn cache(account: &str, secret: &str) {
+        if let Ok(mut values) = session_cache().lock() {
+            values.insert(account.to_string(), secret.to_string());
+        }
+    }
+
+    fn evict(account: &str) {
+        if let Ok(mut values) = session_cache().lock() {
+            values.remove(account);
+        }
+    }
 
     fn create_entry(account: &str) -> Result<Entry, String> {
         Entry::new(ALLOWED_SERVICE, account).map_err(|_| {
@@ -151,12 +176,25 @@ mod desktop {
     }
 
     pub async fn status(account: String) -> CredentialStatus {
+        if cached(&account).is_some() {
+            return CredentialStatus {
+                supported: true,
+                available: true,
+                backend: backend_name().to_string(),
+                platform: platform_name().to_string(),
+                service: ALLOWED_SERVICE.to_string(),
+                account,
+                present: Some(true),
+                error_code: None,
+            };
+        }
         let task_account = account.clone();
         let result = blocking(move || {
             let entry = create_entry(&task_account)?;
 
             match entry.get_password() {
                 Ok(password) => {
+                    cache(&task_account, &password);
                     let _password = Zeroizing::new(password);
 
                     Ok(true)
@@ -198,11 +236,17 @@ mod desktop {
     }
 
     pub async fn get(account: String) -> Result<Option<String>, String> {
+        if let Some(secret) = cached(&account) {
+            return Ok(Some(secret));
+        }
         blocking(move || {
             let entry = create_entry(&account)?;
 
             match entry.get_password() {
-                Ok(password) => Ok(Some(password)),
+                Ok(password) => {
+                    cache(&account, &password);
+                    Ok(Some(password))
+                }
                 Err(KeyringError::NoEntry) => Ok(None),
                 Err(error) => Err(operation_error("get", error)),
             }
@@ -218,7 +262,9 @@ mod desktop {
 
             entry
                 .set_password(secret.as_str())
-                .map_err(|error| operation_error("set", error))
+                .map_err(|error| operation_error("set", error))?;
+            cache(&account, secret.as_str());
+            Ok(())
         })
         .await
     }
@@ -228,8 +274,14 @@ mod desktop {
             let entry = create_entry(&account)?;
 
             match entry.delete_credential() {
-                Ok(()) => Ok(true),
-                Err(KeyringError::NoEntry) => Ok(false),
+                Ok(()) => {
+                    evict(&account);
+                    Ok(true)
+                }
+                Err(KeyringError::NoEntry) => {
+                    evict(&account);
+                    Ok(false)
+                }
                 Err(error) => Err(operation_error("delete", error)),
             }
         })

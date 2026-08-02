@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "firmwareVersion": "4.3.0-beta.3",
+  "channel": "beta",
+  "board": "arduino:renesas_uno:unor4wifi",
+  "directApiVersion": "1.0.0",
+  "otaPort": 65280,
+  "binary": "ArduinoLedController.ino.bin",
+  "checksum": "ArduinoLedController.ino.bin.sha256"
+}

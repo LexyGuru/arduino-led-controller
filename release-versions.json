@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "application": "5.0.0-beta.4",
+  "firmware": "4.3.0-beta.3",
+  "directApi": "1.0.0",
+  "channel": "beta",
+  "board": "arduino:renesas_uno:unor4wifi",
+  "otaPort": 65280
+}

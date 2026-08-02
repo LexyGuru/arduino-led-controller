@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-VERSION="${BETA_VERSION:-5.0.0-beta.3}"
+VERSION="${BETA_VERSION:-5.0.0-beta.4}"
 TAG="v${VERSION}"
 REPOSITORY="${BETA_REPOSITORY:-LexyGuru/arduino-led-controller}"
 ASSET_NAME="Arduino_LED_Controller_${VERSION}_LXC_Server.tar.gz"

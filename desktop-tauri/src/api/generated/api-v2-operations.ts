@@ -1,5 +1,5 @@
 /* AUTO-GENERÁLT — NE SZERKESZD KÉZZEL. */
-/* OpenAPI verzió: 5.0.0-beta.3 */
+/* OpenAPI verzió: 5.0.0-beta.4 */
 
 export const API_V2_OPERATIONS = [
   {

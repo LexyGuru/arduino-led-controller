@@ -7,7 +7,8 @@ for f in "${required[@]}"; do test -f "$f" || { echo "HIBA: hiányzik: $f"; exit
 if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   ! git ls-files | grep -Eq '(^|/)(secrets\.h|\.env|.*\.pem|.*\.p12|.*\.jks)$' || { echo 'HIBA: titkos fájl trackelve'; exit 1; }
 fi
-grep -q '#define FIRMWARE_VERSION "4.3.0-beta.2"' firmware/ArduinoLedController/ArduinoLedController.ino
+EXPECTED_FIRMWARE_VERSION="$(node -p "JSON.parse(require('fs').readFileSync('release-versions.json','utf8')).firmware")"
+grep -Fq "#define FIRMWARE_VERSION \"${EXPECTED_FIRMWARE_VERSION}\"" firmware/ArduinoLedController/ArduinoLedController.ino
 grep -q '#define DIRECT_API_VERSION "1.0.0"' firmware/ArduinoLedController/ArduinoLedController.ino
 grep -q '#define API_ALLOW_QUERY_KEY_FALLBACK 0' firmware/ArduinoLedController/ArduinoLedController.ino
 grep -q 'case 202: return "202 Accepted"' firmware/ArduinoLedController/ArduinoLedController.ino

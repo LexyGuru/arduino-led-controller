@@ -54,6 +54,7 @@ const fallbackConfig:
     arduinoApiPath: '',
     arduinoApiKey: '',
     updateChannel: 'beta',
+    firmwareUpdateChannel: 'beta',
     autoCheckUpdates: true,
     autoDownloadUpdates: false,
     firmwareUpdateChecks: true

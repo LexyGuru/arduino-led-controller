@@ -150,12 +150,37 @@ assert.match(
 
 assert.match(
   settings,
-  /Stable és Beta csatorna/
+  /Alkalmazás- és firmware-csatorna/
 );
 
 assert.match(
   settings,
-  /Frissítési csatorna/
+  /Alkalmazásfrissítési csatorna/
+);
+
+assert.match(
+  settings,
+  /Firmware-frissítési csatorna/
+);
+
+assert.match(
+  settings,
+  /config\.updateChannel/
+);
+
+assert.match(
+  settings,
+  /config\.firmwareUpdateChannel/
+);
+
+assert.match(
+  settings,
+  /Stabil – main release/
+);
+
+assert.match(
+  settings,
+  /Béta – prerelease/
 );
 
 assert.match(

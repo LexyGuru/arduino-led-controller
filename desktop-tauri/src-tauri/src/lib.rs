@@ -44,6 +44,7 @@ struct Config {
     #[serde(skip_serializing, default)]
     arduino_api_key: String,
     update_channel: String,
+    firmware_update_channel: String,
     auto_check_updates: bool,
     auto_download_updates: bool,
     firmware_update_checks: bool,
@@ -70,6 +71,7 @@ impl Default for Config {
             arduino_api_path: String::new(),
             arduino_api_key: String::new(),
             update_channel: "beta".into(),
+            firmware_update_channel: "beta".into(),
             auto_check_updates: true,
             auto_download_updates: false,
             firmware_update_checks: true,
@@ -255,6 +257,7 @@ struct FirmwareStatus {
     progress: Option<u8>,
     phase: Option<String>,
     update_channel: String,
+    firmware_update_channel: String,
     app_current_version: String,
     available_app: Option<AppUpdateArtifact>,
     app_update_available: bool,
@@ -400,7 +403,10 @@ fn validate_config(c: &Config) -> Result<(), String> {
         return Err("Az OTA timeout 30 és 600 másodperc közötti lehet.".into());
     }
     if !matches!(c.update_channel.as_str(), "stable" | "beta") {
-        return Err("A frissítési csatorna csak stable vagy beta lehet.".into());
+        return Err("Az alkalmazás frissítési csatornája csak stable vagy beta lehet.".into());
+    }
+    if !matches!(c.firmware_update_channel.as_str(), "stable" | "beta") {
+        return Err("A firmware frissítési csatornája csak stable vagy beta lehet.".into());
     }
     Ok(())
 }
@@ -1170,7 +1176,7 @@ async fn firmware_releases(state: State<'_, AppState>) -> Result<Vec<FirmwareArt
         .config
         .lock()
         .map_err(|_| "Beállítás zárolva".to_string())?
-        .update_channel
+        .firmware_update_channel
         .clone();
     let mut artifacts = github_releases()
         .await?
@@ -1187,11 +1193,11 @@ async fn latest_firmware(config: &Config) -> Result<FirmwareArtifact, String> {
         .await?
         .iter()
         .filter_map(firmware_artifact_from_release)
-        .find(|artifact| artifact.channel == config.update_channel.trim())
+        .find(|artifact| artifact.channel == config.firmware_update_channel.trim())
         .ok_or_else(|| {
             format!(
                 "A(z) {} csatornán nem található csatornahelyes, teljes firmware release. Stabil firmware-re nincs fallback.",
-                config.update_channel
+                config.firmware_update_channel
             )
         })
 }
@@ -2478,6 +2484,7 @@ async fn firmware_status(
         state: "idle".into(),
         message: "Nincs folyamatban firmware-frissítés.".into(),
         update_channel: config.update_channel.clone(),
+        firmware_update_channel: config.firmware_update_channel.clone(),
         app_current_version: env!("CARGO_PKG_VERSION").into(),
         ..Default::default()
     };
@@ -2569,8 +2576,9 @@ async fn firmware_status(
     }
     if status.compatibility_status.is_none() {
         status.compatibility_status = Some(format!(
-            "{} csatorna: alkalmazás {}, firmware {}",
+            "alkalmazás {} / firmware {} csatorna: alkalmazás {}, firmware {}",
             config.update_channel,
+            config.firmware_update_channel,
             if status.app_update_available {
                 "frissíthető"
             } else {
@@ -2658,10 +2666,10 @@ async fn firmware_update_inner(
                 "A(z) {tag} release firmware-verziója és GitHub prerelease jelölése ellentmondásos, vagy hiányzik a bináris/checksum."
             )
         })?;
-        if artifact.channel != config.update_channel.trim() {
+        if artifact.channel != config.firmware_update_channel.trim() {
             return Err(format!(
-                "CSATORNA_ELTÉRÉS: a(z) {tag} firmware {} csatornás, de az alkalmazás {} csatornára van állítva.",
-                artifact.channel, config.update_channel
+                "CSATORNA_ELTÉRÉS: a(z) {tag} firmware {} csatornás, de a firmware-csatorna {} értékre van állítva.",
+                artifact.channel, config.firmware_update_channel
             ));
         }
         artifact
@@ -3050,6 +3058,7 @@ async fn firmware_update_inner(
         progress: Some(100),
         phase: Some("Kész".into()),
         update_channel: config.update_channel.clone(),
+        firmware_update_channel: config.firmware_update_channel.clone(),
         app_current_version: env!("CARGO_PKG_VERSION").into(),
         available_app: latest_app_release(&config).await.ok(),
         app_update_available: false,

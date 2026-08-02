@@ -98,7 +98,7 @@ export function FirmwarePage({
     }
   };
 
-  useEffect(() => { void refreshCatalog(); }, [firmware?.updateChannel]);
+  useEffect(() => { void refreshCatalog(); }, [firmware?.firmwareUpdateChannel]);
 
   const available =
     firmware
@@ -254,7 +254,7 @@ export function FirmwarePage({
             Alkalmazáscsatorna
           </small>
           <strong>
-            {firmware?.updateChannel ?? 'ismeretlen'}
+            App: {firmware?.updateChannel ?? 'ismeretlen'} · Firmware: {firmware?.firmwareUpdateChannel ?? 'ismeretlen'}
             {' · '}
             {firmware?.appCurrentVersion ?? 'ismeretlen'}
           </strong>
@@ -519,7 +519,7 @@ export function FirmwarePage({
         <div className="panel-title">
           <div>
             <p className="eyebrow">GITHUB FIRMWARE-KATALÓGUS</p>
-            <h2>{firmware?.updateChannel === 'stable' ? 'Stable / main' : 'Beta'} visszaállítási verziók</h2>
+            <h2>{firmware?.firmwareUpdateChannel === 'stable' ? 'Stable / main' : 'Beta'} visszaállítási verziók</h2>
           </div>
           <ShieldCheck />
         </div>
@@ -547,7 +547,7 @@ export function FirmwarePage({
                   }
                 }}
               >
-                {item.firmwareVersion === firmware?.installedVersion ? 'Újratelepítés' : 'Telepítés / visszaállítás'}
+                {item.firmwareVersion === firmware?.installedVersion ? 'Újratelepítés' : (firmware?.installedVersion && item.firmwareVersion && item.firmwareVersion < firmware.installedVersion ? 'Visszaállítás' : 'Frissítés')}
               </button>
             </article>
           ))}

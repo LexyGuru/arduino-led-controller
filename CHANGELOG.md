@@ -1,6 +1,6 @@
 # Változásnapló
 
-## 5.0.0-beta.3 / firmware 4.3.0-beta.2 — 2026-08-01
+## 5.0.0-beta.4 / firmware 4.3.0-beta.3 — 2026-08-01
 
 ### Direct schedule-szinkron
 
@@ -16,12 +16,12 @@
 
 - A React réteg megvárja a Direct schedule Promise-okat, ezért a hibák nem maradnak néma háttérműveletek.
 - Új Direct schedule regressziós teszt és architektúra-dokumentáció.
-- Firmware 4.3.0-beta.2 gyorsítás: kisebb HTTP timeoutok, 512 bájtos válaszchunk és 8 ms settle delay.
+- Firmware 4.3.0-beta.3 gyorsítás: kisebb HTTP timeoutok, 512 bájtos válaszchunk és 8 ms settle delay.
 - GitHub Stable/Beta firmware-katalógus, csatornahelyes visszaállítás és schedule teljes törlés előtti automatikus backup.
-- Az alkalmazás verziója `5.0.0-beta.3`; a firmware változatlanul `4.3.0-beta.2`, Direct API `1.0.0`.
+- Az alkalmazás verziója `5.0.0-beta.4`; a firmware változatlanul `4.3.0-beta.3`, Direct API `1.0.0`.
 - Beta.3 telepítési útmutató, release notes, checklist és frissített GitHub prerelease workflow.
 
-## 5.0.0-beta.2 / firmware 4.3.0-beta.2 — 2026-07-31
+## 5.0.0-beta.2 / firmware 4.3.0-beta.3 — 2026-07-31
 
 ### Direct kapcsolat és biztonság
 
@@ -38,11 +38,11 @@
 
 ### Kiadás
 
-- Az alkalmazás verziója `5.0.0-beta.2`; a párosított firmware továbbra is `4.3.0-beta.2`, Direct API `1.0.0`.
+- Az alkalmazás verziója `5.0.0-beta.2`; a párosított firmware továbbra is `4.3.0-beta.3`, Direct API `1.0.0`.
 - Új Beta.2 telepítési útmutató, release notes és checklist.
 - Gépileg olvasható Beta channel manifest az alkalmazás- és firmware-artifactok kompatibilitási adataival.
 
-## 5.0.0-beta.1 / firmware 4.3.0-beta.2 — 2026-07-31
+## 5.0.0-beta.1 / firmware 4.3.0-beta.3 — 2026-07-31
 
 ### Firmware
 
@@ -61,4 +61,12 @@
 - Elavult Alpha/F14 patch-dokumentumok és package manifestek eltávolítása.
 - Fő README, firmware dokumentáció, V5 állapot és release checklist újraírása.
 - Történeti bizonyítékok összevonása egy rövid history dokumentumba.
-- Beta workflow firmware-elvárás frissítése `4.3.0-beta.2` verzióra.
+- Beta workflow firmware-elvárás frissítése `4.3.0-beta.3` verzióra.
+
+## 5.0.0-beta.4 / firmware 4.3.0-beta.3
+
+- Külön alkalmazás- és firmware-frissítési csatorna.
+- Szigorú Stable/Beta firmware release-kapu stabil fallback nélkül.
+- Központi `release-versions.json` és gépi `firmware-release.json`.
+- macOS Keychain munkamenet-cache, amely egy futás alatt összevonja a credential-olvasásokat.
+- Firmware-katalógus Frissítés / Visszaállítás / Újratelepítés műveletekkel.

@@ -1,5 +1,5 @@
 /*
- * Arduino LED Controller – 4.3.0-beta.2
+ * Arduino LED Controller – 4.3.0-beta.3
  * F14 Complete: Direct API v1, JSON body, header-only auth, A/B EEPROM és
  * tranzakciós schedule. A Tauri újratervezésének stabil firmware-alapja.
  */
@@ -13,7 +13,7 @@
 #include <stdarg.h>
 #include "secrets.h"
 
-#define FIRMWARE_VERSION "4.3.0-beta.2"
+#define FIRMWARE_VERSION "4.3.0-beta.3"
 #define FIRMWARE_FEATURE "f14-complete-direct-api-storage"
 #define DIRECT_API_VERSION "1.0.0"
 #define DEVICE_NAME "arduino-led-controller"

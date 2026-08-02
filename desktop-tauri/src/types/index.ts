@@ -31,6 +31,7 @@ export interface ConnectionConfig {
   arduinoApiPath: string;
   arduinoApiKey: string;
   updateChannel: 'stable' | 'beta';
+  firmwareUpdateChannel: 'stable' | 'beta';
   autoCheckUpdates: boolean;
   autoDownloadUpdates: boolean;
   firmwareUpdateChecks: boolean;
@@ -184,6 +185,7 @@ export interface FirmwareStatus {
   progress?: number;
   phase?: string;
   updateChannel?: string;
+  firmwareUpdateChannel?: string;
   appCurrentVersion?: string;
   availableApp?: AppUpdateArtifact;
   appUpdateAvailable?: boolean;

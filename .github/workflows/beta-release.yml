@@ -25,8 +25,8 @@ concurrency:
 env:
   NODE_VERSION: "24"
   EXPECTED_BRANCH: next/v5-rearchitecture
-  EXPECTED_VERSION: 5.0.0-beta.3
-  EXPECTED_FIRMWARE_VERSION: 4.3.0-beta.2
+  EXPECTED_VERSION: 5.0.0-beta.4
+  EXPECTED_FIRMWARE_VERSION: 4.3.0-beta.3
 
 jobs:
   validate:
@@ -547,9 +547,11 @@ jobs:
 
       - name: Add installation assets and release documentation
         run: |
-          cp docs/v5/BETA3_INSTALLATION_GUIDE.md release-assets/
-          cp docs/v5/BETA3_RELEASE_NOTES.md release-assets/
-          cp docs/v5/BETA3_RELEASE_CHECKLIST.md release-assets/
+          cp docs/v5/BETA4_INSTALLATION_GUIDE.md release-assets/
+          cp docs/v5/BETA4_RELEASE_NOTES.md release-assets/
+          cp docs/v5/BETA4_RELEASE_CHECKLIST.md release-assets/
+          cp release-versions.json release-assets/
+          cp firmware/firmware-release.json release-assets/
           cp deploy/install-beta-lxc.sh release-assets/
           cp deploy/beta-lxc.env.example release-assets/
           chmod 0755 release-assets/install-beta-lxc.sh
@@ -567,6 +569,9 @@ jobs:
           test "$(find release-assets -maxdepth 1 -type f -name '*.ipa' | wc -l | tr -d ' ')" -eq 1
           test "$(find release-assets -maxdepth 1 -type f -name '*.bin' | wc -l | tr -d ' ')" -eq 1
           test "$(find release-assets -maxdepth 1 -type f -name '*.bin.sha256' | wc -l | tr -d ' ')" -eq 1
+          test -f release-assets/release-versions.json
+          test -f release-assets/firmware-release.json
+          node -e "const r=require('./release-assets/release-versions.json'); const f=require('./release-assets/firmware-release.json'); if(r.application!==process.env.EXPECTED_VERSION||r.firmware!==process.env.EXPECTED_FIRMWARE_VERSION||f.firmwareVersion!==process.env.EXPECTED_FIRMWARE_VERSION||f.channel!=='beta') process.exit(1)"
           test "$(find release-assets -maxdepth 1 -type f -name '*.tar.gz' | wc -l | tr -d ' ')" -eq 1
           find release-assets -maxdepth 1 -type f -print | sort
 
@@ -620,7 +625,7 @@ jobs:
 
           version = os.environ["VERSION"]
           tag = os.environ["TAG"]
-          firmware_version = "4.3.0-beta.2"
+          firmware_version = "4.3.0-beta.3"
           firmware_name = f"Arduino_LED_Controller_Firmware_{firmware_version}_UNO_R4_WiFi.bin"
           firmware = next(item for item in files if item["name"] == firmware_name)
 
@@ -686,7 +691,7 @@ jobs:
           tag_name: ${{ needs.validate.outputs.tag }}
           target_commitish: ${{ github.sha }}
           name: Arduino LED Controller ${{ needs.validate.outputs.version }}
-          body_path: docs/v5/BETA3_RELEASE_NOTES.md
+          body_path: docs/v5/BETA4_RELEASE_NOTES.md
           prerelease: true
           make_latest: false
           overwrite_files: true
