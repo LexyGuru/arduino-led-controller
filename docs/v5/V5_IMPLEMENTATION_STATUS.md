@@ -1,7 +1,7 @@
 # V5 implementációs állapot
 
 **Frissítve:** 2026-08-01
-**Alkalmazás:** `5.0.0-beta.4`
+**Alkalmazás:** `5.0.0-beta.5`
 **Firmware:** `4.3.0-beta.3`
 **Direct API:** `1.0.0`
 

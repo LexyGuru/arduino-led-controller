@@ -1,5 +1,24 @@
 # Változásnapló
 
+## 5.0.0-beta.5 / firmware 4.3.0-beta.3 — 2026-08-03
+
+### Többnyelvű stabilizáció
+
+- Teljes magyar, angol és német desktop- és mobilfelület.
+- Központi i18n réteg perzisztált nyelvválasztással és rendszer-nyelv felismeréssel.
+- A kapcsolat-, LED-, schedule-, firmware-, OTA-, siker-, hiba- és státuszüzenetek központi fordítási kulcsokat használnak.
+- Új forrásintegritási, kulcsparitási, hardcoded UI és final hook i18n auditok.
+- A mobilos profilmentés és OTA-letiltás contractjai i18n-alapúak.
+
+### Kiadás és dokumentáció
+
+- Alkalmazásverzió: `5.0.0-beta.5`.
+- Firmware változatlan: `4.3.0-beta.3`.
+- Direct API változatlan: `1.0.0`.
+- Frissített README, CONTRIBUTING és SECURITY dokumentáció.
+- Új Beta.5 telepítési útmutató, release notes és checklist.
+- Frissített workflow-, artifact-, staging- és verziócontractok.
+
 ## 5.0.0-beta.4 / firmware 4.3.0-beta.3 — 2026-08-01
 
 ### Direct schedule-szinkron
