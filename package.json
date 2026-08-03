@@ -128,7 +128,8 @@
     "test:beta3-performance-backup-catalog": "node scripts/test-beta3-performance-backup-catalog.js",
     "test:f14-complete-firmware": "node scripts/test-f14-complete-firmware.js",
     "test:beta4-release-package": "node scripts/test-beta4-release-package.js",
-    "test:beta4-stabilization": "node scripts/test-beta4-stabilization.js"
+    "test:beta4-stabilization": "node scripts/test-beta4-stabilization.js",
+    "test:mobile-hotfix": "node scripts/test-mobile-hotfix-contract.js"
   },
   "engines": {
     "node": ">=20"

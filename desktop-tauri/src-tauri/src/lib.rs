@@ -383,27 +383,33 @@ fn validate_config(c: &Config) -> Result<(), String> {
     }
     validate_host(remote, "távoli Arduino-cím")?;
     validate_host(local, "helyi Arduino-cím")?;
-    validate_host(c.ota_address.trim(), "OTA DDNS/IP-cím")?;
+    if !cfg!(any(target_os = "android", target_os = "ios")) {
+        validate_host(c.ota_address.trim(), "OTA DDNS/IP-cím")?;
+    }
     if !remote.is_empty() && c.arduino_port == 0 {
         return Err("Érvénytelen távoli HTTP-port.".into());
     }
     if !local.is_empty() && c.local_arduino_port == 0 {
         return Err("Érvénytelen helyi HTTP-port.".into());
     }
-    if c.ota_port == 0 {
+    if !cfg!(any(target_os = "android", target_os = "ios")) && c.ota_port == 0 {
         return Err("Érvénytelen OTA feltöltési port.".into());
     }
     if !matches!(c.protocol.as_str(), "http" | "https") {
         return Err("A protokoll csak http vagy https lehet.".into());
     }
-    if !matches!(
-        c.ota_upload_mode.as_str(),
-        "auto" | "system" | "bundled" | "custom"
-    ) {
-        return Err("Az OTA feltöltési mód csak auto, system, bundled vagy custom lehet.".into());
-    }
-    if c.ota_timeout_seconds < 30 || c.ota_timeout_seconds > 600 {
-        return Err("Az OTA timeout 30 és 600 másodperc közötti lehet.".into());
+    if !cfg!(any(target_os = "android", target_os = "ios")) {
+        if !matches!(
+            c.ota_upload_mode.as_str(),
+            "auto" | "system" | "bundled" | "custom"
+        ) {
+            return Err(
+                "Az OTA feltöltési mód csak auto, system, bundled vagy custom lehet.".into(),
+            );
+        }
+        if c.ota_timeout_seconds < 30 || c.ota_timeout_seconds > 600 {
+            return Err("Az OTA timeout 30 és 600 másodperc közötti lehet.".into());
+        }
     }
     if !matches!(c.update_channel.as_str(), "stable" | "beta") {
         return Err("Az alkalmazás frissítési csatornája csak stable vagy beta lehet.".into());
@@ -2129,6 +2135,18 @@ async fn migrate_native_credentials(
         .map_err(|_| "Beállítás zárolva".to_string())?
         .clone();
     let mut changed = false;
+    if cfg!(any(target_os = "android", target_os = "ios")) {
+        fs::write(
+            config_path(&app)?,
+            serde_json::to_vec_pretty(&config).map_err(|e| e.to_string())?,
+        )
+        .map_err(|e| e.to_string())?;
+        *state
+            .config
+            .lock()
+            .map_err(|_| "Beállítás zárolva".to_string())? = config;
+        return Ok(false);
+    }
     if !config.arduino_api_key.trim().is_empty() {
         credential_bridge::set_profile_secret(
             profile_account(&config, "device-key"),
@@ -2173,6 +2191,21 @@ async fn save_config(
         config.ota_use_api_host = false;
     }
     validate_config(&config)?;
+    if cfg!(any(target_os = "android", target_os = "ios")) {
+        fs::write(
+            config_path(&app)?,
+            serde_json::to_vec_pretty(&config).map_err(|e| e.to_string())?,
+        )
+        .map_err(|e| e.to_string())?;
+        *state
+            .config
+            .lock()
+            .map_err(|_| "Beállítás zárolva".to_string())? = config;
+        if let Ok(mut cached) = state.last_known_local_ip.lock() {
+            *cached = None;
+        }
+        return Ok(());
+    }
     if !config.arduino_api_key.trim().is_empty() {
         credential_bridge::set_profile_secret(
             profile_account(&config, "device-key"),
@@ -2312,10 +2345,18 @@ async fn save_and_sync_schedules(
     let force = force.unwrap_or(false);
 
     if !force {
-        let expected = expected_revision.ok_or_else(|| {
-            "SCHEDULE_SYNC_REQUIRED: Mentés előtt töltsd le és ellenőrizd az Arduino teljes schedule-listáját."
-                .to_string()
-        })?;
+        let expected = match expected_revision {
+            Some(expected) => expected,
+            None => {
+                let synchronized = fetch_schedule_snapshot(&state).await.map_err(|error| {
+                    format!(
+                        "SCHEDULE_AUTO_SYNC_FAILED: A mentés előtti automatikus Arduino-szinkron sikertelen: {error}"
+                    )
+                })?;
+                write_schedule_cache(&app, synchronized.schedules)?;
+                synchronized.revision
+            }
+        };
         if before.revision != expected {
             return Err(format!(
                 "SCHEDULE_CONFLICT: Az Arduino schedule revision közben megváltozott: várt {expected}, aktuális {}.",
@@ -3083,9 +3124,8 @@ async fn firmware_update_inner(
         .get("scheduleChecksum")
         .and_then(Value::as_str)
         .map(str::to_string);
-    if boot_id_before.is_some() && boot_id_before == boot_id_after {
-        return Err("Az Arduino válaszol, de a Boot ID nem változott az OTA után.".into());
-    }
+    let boot_id_changed = boot_id_before.is_some() && boot_id_before != boot_id_after;
+    let boot_id_warning = boot_id_before.is_some() && boot_id_before == boot_id_after;
     if schedule_revision_before != schedule_revision_after
         || schedule_checksum_before != schedule_checksum_after
     {
@@ -3094,13 +3134,27 @@ async fn firmware_update_inner(
             schedule_revision_before, schedule_revision_after, schedule_checksum_before, schedule_checksum_after
         ));
     }
-    emit_ota_progress(
-        app,
-        "Persistence",
-        "success",
-        "Boot ID megváltozott, a schedule revision és checksum megmaradt.",
-        Some(98),
-    );
+    if boot_id_warning {
+        emit_ota_progress(
+            app,
+            "Persistence",
+            "warning",
+            "A várt firmware fut és a schedule-adatok megmaradtak, de a Boot ID nem változott. Az OTA sikeres, az újraindítás külön Boot ID-val nem volt igazolható.",
+            Some(98),
+        );
+    } else {
+        emit_ota_progress(
+            app,
+            "Persistence",
+            "success",
+            if boot_id_changed {
+                "Boot ID megváltozott, a schedule revision és checksum megmaradt."
+            } else {
+                "A firmware és a schedule persistence ellenőrzése sikeres; Boot ID nem állt rendelkezésre."
+            },
+            Some(98),
+        );
+    }
     state.ota_in_progress.store(false, Ordering::SeqCst);
     let final_status = FirmwareStatus {
         state: "success".into(),
@@ -3201,6 +3255,11 @@ async fn firmware_install_release(
 
 #[tauri::command]
 fn firmware_cancel(state: State<'_, AppState>) -> Result<bool, String> {
+    if cfg!(any(target_os = "android", target_os = "ios")) {
+        return Err(
+            "Mobilalkalmazásban nincs OTA-művelet, ezért megszakítás sem indítható.".into(),
+        );
+    }
     if !state.ota_in_progress.load(Ordering::SeqCst) {
         return Ok(false);
     }

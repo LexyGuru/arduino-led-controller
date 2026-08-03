@@ -992,7 +992,9 @@ export function useController(
         resetAfterConnectionChange();
 
         setMessage(
-          'Közvetlen Arduino- és OTA-beállítások mentve.'
+          capabilities.mobile
+            ? 'Mobilos Arduino-kapcsolati profil és X-Device-Key tartósan mentve.'
+            : 'Közvetlen Arduino- és OTA-beállítások mentve.'
         );
       } catch (
         error

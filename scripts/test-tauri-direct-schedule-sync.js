@@ -22,7 +22,7 @@ for (const token of [
   'empty_action_count: usize',
   'recovered_legacy_action_count: usize',
   'async fn fetch_schedule_snapshot',
-  'SCHEDULE_SYNC_REQUIRED:',
+  'SCHEDULE_AUTO_SYNC_FAILED:',
   'SCHEDULE_CONFLICT:',
   'expected_revision: Option<u64>',
   'write_schedule_cache(&app, verified.schedules.clone())?',
@@ -50,6 +50,23 @@ assert.ok(
 assert.ok(
   !saveFunction.includes('schedule_file_bytes(schedules.clone())'),
   'A mentés elején nem írható felül a helyi cache.'
+);
+
+assert.ok(
+  saveFunction.includes('let synchronized = fetch_schedule_snapshot(&state).await.map_err'),
+  'Hiányzó automatikus Arduino előszinkron revision nélküli mentésnél.'
+);
+assert.ok(
+  saveFunction.includes('write_schedule_cache(&app, synchronized.schedules)?'),
+  'Az automatikus előszinkron eredményét helyi cache-be kell írni.'
+);
+assert.ok(
+  saveFunction.includes('synchronized.revision'),
+  'Az automatikusan letöltött revisiont kell használni a konfliktusvédelemhez.'
+);
+assert.ok(
+  !saveFunction.includes('SCHEDULE_SYNC_REQUIRED:'),
+  'Az automatikus előszinkron mellett nem maradhat kötelező kézi sync hiba.'
 );
 
 for (const token of [
