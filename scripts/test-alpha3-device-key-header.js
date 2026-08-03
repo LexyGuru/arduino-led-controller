@@ -7,12 +7,17 @@ const path = require('path');
 const ROOT = path.resolve(__dirname, '..');
 const read = (relative) => fs.readFileSync(path.join(ROOT, relative), 'utf8');
 
+const versions = JSON.parse(read('release-versions.json'));
 const firmware = read('firmware/ArduinoLedController/ArduinoLedController.ino');
 const secrets = read('firmware/ArduinoLedController/secrets.example.h');
 const serverClient = read('server/arduino/arduino-client.js');
 const desktopRust = read('desktop-tauri/src-tauri/src/lib.rs');
 
-assert.match(firmware, /#define FIRMWARE_VERSION "4\.3\.0-beta\.2"/);
+assert.equal(versions.firmware, '4.3.0-beta.3');
+assert.ok(
+  firmware.includes(`#define FIRMWARE_VERSION "${versions.firmware}"`),
+  `A firmware verziója nem egyezik a release-versions.json értékével: ${versions.firmware}`,
+);
 assert.match(firmware, /#define API_DEVICE_KEY_HEADER "X-Device-Key"/);
 assert.match(firmware, /constantTimeEquals/);
 assert.match(firmware, /DUPLICATE_DEVICE_KEY_HEADER/);
@@ -29,7 +34,8 @@ assert.doesNotMatch(desktopRust, /[?&]k=/);
 assert.match(firmware, /PRIVATE_PATH_NOT_FOUND/);
 assert.match(firmware, /X-Request-Id/);
 
-console.log('OK: firmware 4.3.0-beta.2 és X-Device-Key auth-szerződés');
+console.log(`OK: firmware verzió contract ${versions.firmware}`);
+console.log('OK: X-Device-Key a firmware, Node és Tauri elsődleges authja');
 console.log('OK: duplikált/hiányzó/hibás fejléc külön hibakódot kap');
 console.log('OK: Node és Tauri nem használ query-kulcsot');
 console.log('OK: aktív firmware query fallbackje kikapcsolva');
