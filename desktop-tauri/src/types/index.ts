@@ -175,6 +175,9 @@ export interface FirmwareStatus {
   arduinoOnline: boolean;
   otaToolInstalled: boolean;
   otaPasswordConfigured: boolean;
+  otaConfigured: boolean;
+  otaMissingRequirements?: string[];
+  backupStoreConfigured: boolean;
   availableFirmware?: FirmwareArtifact;
   firmwareLookupError?: string;
   otaToolPath?: string;

@@ -247,6 +247,9 @@ struct FirmwareStatus {
     arduino_online: bool,
     ota_tool_installed: bool,
     ota_password_configured: bool,
+    ota_configured: bool,
+    ota_missing_requirements: Vec<String>,
+    backup_store_configured: bool,
     available_firmware: Option<FirmwareArtifact>,
     firmware_lookup_error: Option<String>,
     ota_tool_path: Option<String>,
@@ -1118,11 +1121,46 @@ fn release_summary(body: &str) -> String {
         .join(" ")
 }
 
+fn version_token_from_text(text: &str) -> Option<String> {
+    text.split(|ch: char| !(ch.is_ascii_alphanumeric() || ch == '.' || ch == '-'))
+        .map(|token| token.trim_start_matches(['v', 'V']))
+        .find(|token| {
+            token.chars().next().is_some_and(|ch| ch.is_ascii_digit())
+                && token.matches('.').count() >= 2
+                && token
+                    .chars()
+                    .all(|ch| ch.is_ascii_alphanumeric() || ch == '.' || ch == '-')
+        })
+        .map(str::to_string)
+}
+
 fn firmware_version_from_release(release: &GitHubRelease) -> Option<String> {
+    // Az artifact fájlnév a release tényleges firmware-verziójához kötött, ezért
+    // megbízhatóbb, mint a kézzel szerkesztett release notes.
+    if let Some(version) = release.assets.iter().find_map(|asset| {
+        let lower = asset.name.to_ascii_lowercase();
+        if lower.ends_with(".bin")
+            && !lower.ends_with(".bin.sha256")
+            && (lower.contains("firmware") || lower.ends_with(".ino.bin"))
+        {
+            version_token_from_text(&asset.name)
+        } else {
+            None
+        }
+    }) {
+        return Some(version);
+    }
+
     release.body.as_deref().and_then(|body| {
         body.lines().find_map(|line| {
-            line.strip_prefix("Firmware verzió:")
-                .map(|value| value.trim().to_string())
+            let lower = line.to_ascii_lowercase();
+            if lower.contains("firmware")
+                && (lower.contains("verzió") || lower.contains("version") || lower.contains(':'))
+            {
+                version_token_from_text(line)
+            } else {
+                None
+            }
         })
     })
 }
@@ -1148,14 +1186,17 @@ fn firmware_release_channel(release: &GitHubRelease) -> Option<&'static str> {
 }
 
 fn firmware_artifact_from_release(release: &GitHubRelease) -> Option<FirmwareArtifact> {
-    let binary = release
-        .assets
-        .iter()
-        .find(|a| a.name.ends_with(".ino.bin"))?;
+    let binary = release.assets.iter().find(|asset| {
+        let lower = asset.name.to_ascii_lowercase();
+        lower.ends_with(".bin")
+            && !lower.ends_with(".bin.sha256")
+            && (lower.contains("firmware") || lower.ends_with(".ino.bin"))
+    })?;
+    let expected_checksum = format!("{}.sha256", binary.name);
     let checksum = release
         .assets
         .iter()
-        .find(|a| a.name.ends_with(".ino.bin.sha256"))?;
+        .find(|asset| asset.name == expected_checksum)?;
     let version = firmware_version_from_release(release)?;
     let channel = firmware_release_channel(release)?;
     Some(FirmwareArtifact {
@@ -2531,6 +2572,32 @@ async fn firmware_status(
         }
     }
     status.ota_password_configured = !read_profile_ota_password(&config).await?.is_empty();
+    status.backup_store_configured = schedule_backups_dir(&app).is_ok();
+
+    let mut ota_missing_requirements = Vec::new();
+    if !status.ota_tool_installed {
+        ota_missing_requirements.push(
+            status
+                .ota_tool_error
+                .clone()
+                .unwrap_or_else(|| "Az OTA feltöltő nem érhető el.".into()),
+        );
+    }
+    if !status.ota_password_configured {
+        ota_missing_requirements
+            .push("Az OTA-jelszó nincs elmentve a profilhoz / Keychainhez.".into());
+    }
+    if status
+        .ota_target_address
+        .as_deref()
+        .map(str::trim)
+        .is_none_or(str::is_empty)
+        || status.ota_target_port.is_none()
+    {
+        ota_missing_requirements.push("Az OTA célcím vagy port nem határozható meg.".into());
+    }
+    status.ota_configured = ota_missing_requirements.is_empty();
+    status.ota_missing_requirements = ota_missing_requirements;
 
     match latest_firmware(&config).await {
         Ok(artifact) => {
@@ -3048,6 +3115,9 @@ async fn firmware_update_inner(
         arduino_online: true,
         ota_tool_installed: true,
         ota_password_configured: true,
+        ota_configured: true,
+        ota_missing_requirements: Vec::new(),
+        backup_store_configured: schedule_backups_dir(app).is_ok(),
         available_firmware: Some(artifact),
         firmware_lookup_error: None,
         ota_tool_path: Some(ota_engine_label),

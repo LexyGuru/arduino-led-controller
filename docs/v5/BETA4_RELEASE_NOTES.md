@@ -1,6 +1,6 @@
 # Arduino LED Controller 5.0.0-beta.4
 
-A Beta.4 a `4.3.0-beta.4` firmware és a Direct API `1.0.0` változatlan, hardveresen elfogadott alapjára épül. A kiadás legfontosabb célja, hogy a Tauri heti időzítése közvetlenül és adatvesztés nélkül szinkronizálja az Arduino teljes, legfeljebb 60 rekordos schedule-listáját.
+A Beta.4 a `4.3.0-beta.3` firmware és a Direct API `1.0.0` változatlan, hardveresen elfogadott alapjára épül. A kiadás legfontosabb célja, hogy a Tauri heti időzítése közvetlenül és adatvesztés nélkül szinkronizálja az Arduino teljes, legfeljebb 60 rekordos schedule-listáját.
 
 ## Fő javítások
 
@@ -18,9 +18,11 @@ A Beta.4 a `4.3.0-beta.4` firmware és a Direct API `1.0.0` változatlan, hardve
 ## Verziópárosítás
 
 - Alkalmazás: `5.0.0-beta.4`
-- Firmware: `4.3.0-beta.4`
+- Firmware: `4.3.0-beta.3`
 - Direct API: `1.0.0`
 - Board: Arduino UNO R4 WiFi
+
+Firmware verzió: 4.3.0-beta.3
 
 A firmware verziója szándékosan nem változik. A Beta.4 kizárólag a Tauri schedule-kliensét, a felületi állapotkezelést, a regressziós teszteket és a kiadási dokumentációt módosítja.
 

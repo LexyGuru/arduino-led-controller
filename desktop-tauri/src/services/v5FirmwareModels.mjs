@@ -65,9 +65,17 @@ export function normalizeFirmwareStatus(value, fallback = null) {
     installedVersion: source.installedVersion || null,
     arduinoOnline: source.arduinoOnline === true,
     networkConfigStored: source.networkConfigStored === true,
-    otaConfigured: source.otaConfigured === true,
     otaToolInstalled: source.otaToolInstalled === true,
     otaPasswordConfigured: source.otaPasswordConfigured === true,
+    otaConfigured:
+      source.otaConfigured === true ||
+      (source.otaToolInstalled === true &&
+        source.otaPasswordConfigured === true &&
+        Boolean(String(source.otaTargetAddress || '').trim()) &&
+        Number(source.otaTargetPort || 0) > 0),
+    otaMissingRequirements: Array.isArray(source.otaMissingRequirements)
+      ? source.otaMissingRequirements.map(String)
+      : [],
     backupStoreConfigured: source.backupStoreConfigured === true,
     availableFirmware: source.availableFirmware || null,
     firmwareLookupError: source.firmwareLookupError || null,

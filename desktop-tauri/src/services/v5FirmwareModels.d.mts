@@ -24,6 +24,7 @@ export function normalizeFirmwareStatus(
   backups: FirmwareBackupView[];
   networkConfigStored: boolean;
   otaConfigured: boolean;
+  otaMissingRequirements: string[];
   otaToolInstalled: boolean;
   otaPasswordConfigured: boolean;
   backupStoreConfigured: boolean;

@@ -104,6 +104,12 @@ export function FirmwarePage({
     firmware
       ?.availableFirmware;
 
+  const otaConfigured =
+    firmware?.otaConfigured === true;
+
+  const otaMissingRequirements =
+    firmware?.otaMissingRequirements ?? [];
+
   const otaTarget =
     firmware
       ?.otaTargetAddress
@@ -233,10 +239,9 @@ export function FirmwarePage({
             Backup szolgáltatás
           </small>
           <strong>
-            {firmware
-              ?.backupStoreConfigured
+            {firmware?.backupStoreConfigured
               ? 'Aktív'
-              : 'Nincs beállítva'}
+              : 'Nem elérhető'}
           </strong>
         </article>
 
@@ -286,8 +291,7 @@ export function FirmwarePage({
           <p>
             OTA:
             {' '}
-            {firmware
-              ?.otaConfigured
+            {otaConfigured
               ? 'teljesen beállítva'
               : 'hiányos konfiguráció'}
             {' · '}
@@ -315,6 +319,16 @@ export function FirmwarePage({
           <p>
             {firmware?.compatibilityStatus ?? 'A kompatibilitási kapu még nem futott le.'}
           </p>
+          {!otaConfigured && otaMissingRequirements.length > 0 && (
+            <div className="console-warning">
+              <strong>Hiányzó OTA-feltételek:</strong>
+              <ul>
+                {otaMissingRequirements.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </div>
+          )}
           {firmware?.cacheSha256 && (
             <p>Cache SHA-256: <code>{firmware.cacheSha256}</code></p>
           )}
@@ -329,8 +343,7 @@ export function FirmwarePage({
             }
             disabled={
               state.busy ||
-              !firmware
-                ?.otaConfigured ||
+              !otaConfigured ||
               !available ||
               !firmware
                 ?.arduinoOnline
