@@ -130,7 +130,13 @@
     "test:beta4-release-package": "node scripts/test-beta4-release-package.js",
     "test:beta4-stabilization": "node scripts/test-beta4-stabilization.js",
     "test:mobile-hotfix": "node scripts/test-mobile-hotfix-contract.js",
-    "test:mobile-ui-stability": "node scripts/test-mobile-ui-stability-contract.js"
+    "test:mobile-ui-stability": "node scripts/test-mobile-ui-stability-contract.js",
+    "test:i18n-foundation": "node scripts/test-i18n-foundation.js",
+    "test:i18n-contract-audit": "node scripts/test-i18n-legacy-contract-audit.js",
+    "test:i18n-phase2": "node scripts/test-i18n-phase2-main-pages.js",
+    "test:i18n-phase2-hardcoded-audit": "node scripts/test-i18n-phase2-hardcoded-ui-audit.js",
+    "test:i18n-source-integrity": "node scripts/test-i18n-source-integrity.js",
+    "test:i18n-final-hooks": "node scripts/test-i18n-final-hooks.js"
   },
   "engines": {
     "node": ">=20"

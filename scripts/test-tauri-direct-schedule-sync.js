@@ -16,6 +16,7 @@ const app = read('desktop-tauri/src/App.tsx');
 const dashboard = read('desktop-tauri/src/pages/DashboardPage.tsx');
 const types = read('desktop-tauri/src/types/index.ts');
 const docs = read('docs/architecture/TAURI_DIRECT_API_V1_SCHEDULE_SYNC.md');
+const i18n = read('desktop-tauri/src/i18n/index.tsx');
 
 for (const token of [
   'struct ScheduleSyncSnapshot',
@@ -104,13 +105,15 @@ assert.ok(!hook.includes('api.schedules'), 'A schedule oldal nem függhet V5 API
 assert.ok(!hook.includes('useDesktopApi'), 'A Direct schedule hook nem használhat V5 kapcsolatot.');
 
 for (const token of [
-  'ARDUINO DIRECT API V1',
-  'Arduino lista betöltése',
-  'Mentés Arduino-ra',
+  'schedules.title',
+  'schedules.description',
+  'schedules.loadArduino',
+  'schedules.saveArduino',
+  'schedules.backupsEyebrow',
   'state.canWrite',
   'emptyActionCount',
   'recoveredLegacyActionCount',
-  'Nincs LED-művelet · üres Arduino rekord'
+  'schedules.noLedAction'
 ]) {
   assert.ok(page.includes(token), `Hiányzó Direct schedule UI: ${token}`);
 }
@@ -123,8 +126,8 @@ assert.ok(app.includes('expectedRevision'));
 assert.ok(!app.includes('void controller\n                    .saveSchedules'));
 assert.ok(!app.includes('void controller\n                    .syncSchedulesFromArduino'));
 
-assert.ok(dashboard.includes('Betöltött lista'));
-assert.ok(dashboard.includes('A lista csak sikeres'));
+assert.ok(dashboard.includes('dashboard.loadedList'));
+assert.ok(dashboard.includes('scheduleSync'));
 
 for (const token of [
   'export interface ScheduleSyncSnapshot',

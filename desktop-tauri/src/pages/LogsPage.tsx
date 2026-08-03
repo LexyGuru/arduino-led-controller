@@ -25,6 +25,8 @@ import {
   formatLogPayload
 } from '../services/v5LogModels.mjs';
 
+import { useI18n } from '../i18n';
+
 import type {
   ArduinoLog,
   NetworkLog
@@ -62,6 +64,7 @@ export function LogsPage({
     string |
     null;
 }) {
+  const { t, language } = useI18n();
   const state =
     useV5Logs({
       legacyArduino:
@@ -134,10 +137,10 @@ export function LogsPage({
       <div className="page-heading">
         <div>
           <p className="eyebrow">
-            V5 MEGFIGYELHETŐSÉG
+            {t('logs.eyebrow')}
           </p>
           <h2>
-            Konzol, audit és események
+            {t('logs.title')}
           </h2>
         </div>
 
@@ -182,7 +185,7 @@ export function LogsPage({
                 ARDUINO
               </p>
               <h2>
-                Közös konzolcache
+                {t('logs.consoleCache')}
               </h2>
             </div>
 
@@ -211,7 +214,7 @@ export function LogsPage({
                       <b>
                         {log.type ===
                           'console'
-                          ? 'KONZOL'
+                          ? t('logs.console')
                           : (
                               log.type ||
                               'info'
@@ -226,7 +229,7 @@ export function LogsPage({
                 )
               : (
                   <p className="muted">
-                    Nincs megjeleníthető Arduino-konzolsor.
+                    {t('logs.noConsole')}
                   </p>
                 )}
           </div>
@@ -236,10 +239,10 @@ export function LogsPage({
           <div className="panel-title">
             <div>
               <p className="eyebrow">
-                BIZTONSÁGI AUDIT
+                {t('logs.audit')}
               </p>
               <h2>
-                Legutóbbi műveletek
+                {t('logs.recentActions')}
               </h2>
             </div>
 
@@ -286,7 +289,7 @@ export function LogsPage({
                 )
               : (
                   <p className="muted">
-                    Nincs auditbejegyzés, vagy nincs audit:read jogosultság.
+                    {t('logs.noAudit')}
                   </p>
                 )}
           </div>
@@ -299,7 +302,7 @@ export function LogsPage({
                 EVENT BUS
               </p>
               <h2>
-                Realtime események
+                {t('logs.realtime')}
               </h2>
             </div>
 
@@ -340,7 +343,7 @@ export function LogsPage({
                 )
               : (
                   <p className="muted">
-                    Nincs elérhető V5 esemény.
+                    {t('logs.noEvents')}
                   </p>
                 )}
           </div>
@@ -354,7 +357,7 @@ export function LogsPage({
               TAURI KLIENS
             </p>
             <h2>
-              Helyi hálózati napló
+              {t('logs.localNetwork')}
             </h2>
           </div>
 
@@ -387,9 +390,7 @@ export function LogsPage({
                         {new Date(
                           log.timestamp *
                           1000
-                        ).toLocaleTimeString(
-                          'hu-HU'
-                        )}
+                        ).toLocaleTimeString(language === 'de' ? 'de-DE' : language === 'en' ? 'en-US' : 'hu-HU')}
                       </time>
 
                       <b
@@ -400,8 +401,8 @@ export function LogsPage({
                         }
                       >
                         {log.ok
-                          ? 'SIKER'
-                          : 'HIBA'}
+                          ? t('common.success')
+                          : t('common.error')}
                       </b>
 
                       <span>
@@ -414,7 +415,7 @@ export function LogsPage({
                 )
             : (
                 <p className="muted">
-                  Még nincs helyi hálózati kérés.
+                  {t('logs.noNetwork')}
                 </p>
               )}
         </div>

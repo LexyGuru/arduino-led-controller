@@ -23,6 +23,8 @@ import {
   useV5Firmware
 } from '../hooks/useV5Firmware';
 
+import { useI18n } from '../i18n';
+
 import type {
   FirmwareArtifact,
   FirmwareStatus,
@@ -71,6 +73,7 @@ export function FirmwarePage({
   onCancel:
     directCancel
 }: FirmwarePageProps) {
+  const { t, language } = useI18n();
   const state =
     useV5Firmware({
       legacyFirmware,
@@ -121,7 +124,7 @@ export function FirmwarePage({
             .otaTargetPort ??
           65280
         }`
-      : 'A V5 szerver Arduino-beállításából származik';
+      : t('firmware.targetFromConfig');
 
   const lastLog =
     state.logs.at(-1);
@@ -153,7 +156,7 @@ export function FirmwarePage({
             V5 ARDUINO OTA
           </p>
           <h2>
-            Firmware-frissítés és rollback
+            {t('firmware.title')}
           </h2>
         </div>
 
@@ -186,7 +189,7 @@ export function FirmwarePage({
               }
               size={17}
             />
-            Ellenőrzés
+            {t('firmware.check')}
           </button>
         </div>
       </div>
@@ -213,7 +216,7 @@ export function FirmwarePage({
       <section className="stats-grid">
         <article className="stat-card">
           <small>
-            Telepített verzió
+            {t('firmware.installed')}
           </small>
           <strong>
             {firmware
@@ -224,30 +227,30 @@ export function FirmwarePage({
 
         <article className="stat-card">
           <small>
-            Elérhető verzió
+            {t('firmware.available')}
           </small>
           <strong>
             {available
               ?.firmwareVersion ??
             available?.tag ??
-            'Nincs adat'}
+            t('common.noData')}
           </strong>
         </article>
 
         <article className="stat-card">
           <small>
-            Backup szolgáltatás
+            {t('firmware.backupService')}
           </small>
           <strong>
             {firmware?.backupStoreConfigured
-              ? 'Aktív'
-              : 'Nem elérhető'}
+              ? t('common.active')
+              : t('common.unavailable')}
           </strong>
         </article>
 
         <article className="stat-card">
           <small>
-            OTA cél
+            {t('firmware.otaTarget')}
           </small>
           <strong>
             {otaTarget}
@@ -256,10 +259,10 @@ export function FirmwarePage({
 
         <article className="stat-card">
           <small>
-            Alkalmazáscsatorna
+            {t('firmware.appChannel')}
           </small>
           <strong>
-            App: {firmware?.updateChannel ?? 'ismeretlen'} · Firmware: {firmware?.firmwareUpdateChannel ?? 'ismeretlen'}
+            {t('firmware.channelValue',{app:firmware?.updateChannel ?? t('common.unknown'),firmware:firmware?.firmwareUpdateChannel ?? t('common.unknown')})}
             {' · '}
             {firmware?.appCurrentVersion ?? 'ismeretlen'}
           </strong>
@@ -267,10 +270,10 @@ export function FirmwarePage({
 
         <article className="stat-card">
           <small>
-            Elérhető alkalmazás
+            {t('firmware.availableApp')}
           </small>
           <strong>
-            {firmware?.availableApp?.tag ?? 'Nincs adat'}
+            {firmware?.availableApp?.tag ?? t('common.noData')}
           </strong>
         </article>
       </section>
@@ -285,17 +288,17 @@ export function FirmwarePage({
         <div>
           <h3>
             {firmware?.message ??
-            'Kattints az ellenőrzésre.'}
+            t('firmware.clickCheck')}
           </h3>
 
           <p>
             OTA:
             {' '}
             {otaConfigured
-              ? 'teljesen beállítva'
-              : 'hiányos konfiguráció'}
+              ? t('firmware.otaComplete')
+              : t('firmware.otaIncomplete')}
             {' · '}
-            Arduino:
+            {t('firmware.arduino')}:
             {' '}
             {firmware
               ?.arduinoOnline
@@ -313,15 +316,15 @@ export function FirmwarePage({
                 }`
               : firmware
                   ?.firmwareLookupError ??
-                'A firmware-kiadás még nincs lekérve.'}
+                t('firmware.releaseNotLoaded')}
           </p>
 
           <p>
-            {firmware?.compatibilityStatus ?? 'A kompatibilitási kapu még nem futott le.'}
+            {firmware?.compatibilityStatus ?? t('firmware.compatNotRun')}
           </p>
           {!otaConfigured && otaMissingRequirements.length > 0 && (
             <div className="console-warning">
-              <strong>Hiányzó OTA-feltételek:</strong>
+              <strong>{t('firmware.missingRequirements')}</strong>
               <ul>
                 {otaMissingRequirements.map((item) => (
                   <li key={item}>{item}</li>
@@ -352,7 +355,7 @@ export function FirmwarePage({
             <UploadCloud
               size={18}
             />
-            Firmware telepítése
+            {t('firmware.install')}
           </button>
 
           {firmware?.availableApp?.downloadUrl && (
@@ -363,7 +366,7 @@ export function FirmwarePage({
               rel="noreferrer"
             >
               <DownloadCloud size={17} />
-              Alkalmazáscsomag letöltése
+              {t('firmware.downloadApp')}
             </a>
           )}
 
@@ -379,7 +382,7 @@ export function FirmwarePage({
             }
           >
             <Ban size={17} />
-            Megszakítás
+            {t('firmware.cancel')}
           </button>
         </div>
       </section>
@@ -388,10 +391,10 @@ export function FirmwarePage({
         <div className="panel-title">
           <div>
             <p className="eyebrow">
-              VALÓS IDEJŰ OTA
+              {t('firmware.realtime')}
             </p>
             <h2>
-              Frissítési konzol
+              {t('firmware.console')}
             </h2>
           </div>
 
@@ -433,18 +436,18 @@ export function FirmwarePage({
           <div>
             <strong>
               {state.busy
-                ? 'Firmware-művelet folyamatban'
+                ? t('firmware.inProgress')
                 : state.progress ===
                     100
-                  ? 'Művelet befejezve'
-                  : 'Nincs folyamatban művelet'}
+                  ? t('firmware.completed')
+                  : t('firmware.idle')}
             </strong>
 
             <span>
               {lastLog
                 ?.message ??
               firmware?.message ??
-              'Az OTA állapotváltozásai itt jelennek meg.'}
+              t('firmware.logPlaceholder')}
             </span>
           </div>
 
@@ -481,7 +484,7 @@ export function FirmwarePage({
           {state.logs.length ===
           0 ? (
             <div className="ota-console-empty">
-              Még nincs OTA-napló.
+              {t('firmware.noLogs')}
             </div>
           ) : (
             state.logs.map(
@@ -531,27 +534,27 @@ export function FirmwarePage({
       <section className="panel v5-firmware-backups">
         <div className="panel-title">
           <div>
-            <p className="eyebrow">GITHUB FIRMWARE-KATALÓGUS</p>
-            <h2>{firmware?.firmwareUpdateChannel === 'stable' ? 'Stable / main' : 'Beta'} visszaállítási verziók</h2>
+            <p className="eyebrow">{t('firmware.catalog')}</p>
+            <h2>{t('firmware.restoreVersions',{channel:firmware?.firmwareUpdateChannel === 'stable' ? 'Stable / main' : 'Beta'})}</h2>
           </div>
           <ShieldCheck />
         </div>
-        <p className="muted">Csak a Beállításokban kiválasztott csatorna nem draft, ellenőrzött .ino.bin + SHA-256 release-ei jelennek meg.</p>
+        <p className="muted">{t('firmware.catalogHelp')}</p>
         {catalogError && <p className="console-warning">{catalogError}</p>}
         <div className="v5-backup-list">
-          {releaseCatalog.length === 0 ? <p className="muted">Nem található ellenőrzött firmware ezen a csatornán.</p> : releaseCatalog.map((item) => (
+          {releaseCatalog.length === 0 ? <p className="muted">{t('firmware.noCatalog')}</p> : releaseCatalog.map((item) => (
             <article key={item.tag}>
               <div>
                 <strong>{item.firmwareVersion ?? item.tag}</strong>
-                <small>{item.channel} · {item.tag} · {item.createdAt ? new Date(item.createdAt).toLocaleDateString('hu-HU') : 'ismeretlen dátum'}</small>
-                <p>{item.summary || 'Ehhez a firmware-verzióhoz nincs részletes változásleírás.'}</p>
+                <small>{item.channel} · {item.tag} · {item.createdAt ? new Date(item.createdAt).toLocaleDateString(language === 'de' ? 'de-DE' : language === 'en' ? 'en-US' : 'hu-HU') : t('firmware.unknownDate')}</small>
+                <p>{item.summary || t('firmware.noSummary')}</p>
                 <code>{item.name}</code>
               </div>
               <button
                 className="secondary"
                 disabled={state.busy}
                 onClick={() => {
-                  if (globalThis.confirm(`Telepíted vagy visszaállítod ezt a firmware-t: ${item.firmwareVersion ?? item.tag}?`)) {
+                  if (globalThis.confirm(t('firmware.confirmInstall',{version:item.firmwareVersion ?? item.tag}))) {
                     void (async () => {
                       const { tauriApi } = await import('../services/tauriApi');
                       await tauriApi.firmwareInstallRelease(item.tag);
@@ -560,7 +563,7 @@ export function FirmwarePage({
                   }
                 }}
               >
-                {item.firmwareVersion === firmware?.installedVersion ? 'Újratelepítés' : (firmware?.installedVersion && item.firmwareVersion && item.firmwareVersion < firmware.installedVersion ? 'Visszaállítás' : 'Frissítés')}
+                {item.firmwareVersion === firmware?.installedVersion ? t('common.reinstall') : (firmware?.installedVersion && item.firmwareVersion && item.firmwareVersion < firmware.installedVersion ? t('common.rollback') : t('common.update'))}
               </button>
             </article>
           ))}
@@ -569,7 +572,7 @@ export function FirmwarePage({
 
       <div className="notice">
         <DownloadCloud size={18} />
-        A firmware-lista közvetlenül a GitHub Releases kiadásaiból érkezik. A Tauri csak a kiválasztott Stable vagy Beta csatorna ellenőrzött binárisát tölti le, majd SHA-256 ellenőrzés után indítja az OTA-t.
+        {t('firmware.catalogFooter')}
       </div>
     </div>
   );

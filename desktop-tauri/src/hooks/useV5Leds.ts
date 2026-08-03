@@ -20,6 +20,8 @@ import {
   shouldUseDirectFallback
 } from '../services/v5LedModels.mjs';
 
+import { translate } from '../i18n';
+
 import type {
   LedStrip
 } from '../types';
@@ -218,7 +220,7 @@ export function useV5Leds({
         if (directFallback) {
           directUpdate(strip);
           setLastResult(
-            `LED ${strip.id}: közvetlen Tauri vezérlés`
+            translate('v5led.direct',{id:strip.id})
           );
           return;
         }
@@ -246,7 +248,7 @@ export function useV5Leds({
           );
 
           setLastResult(
-            `LED ${strip.id}: API v2 parancs elküldve`
+            translate('v5led.sent',{id:strip.id})
           );
 
           await refresh();
@@ -434,7 +436,7 @@ export function useV5Leds({
         try {
           await api.led.reset();
           setLastResult(
-            'LED vezérlés visszaállítva'
+            translate('v5led.reset')
           );
           await refresh();
         } catch (

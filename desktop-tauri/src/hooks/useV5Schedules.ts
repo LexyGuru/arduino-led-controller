@@ -11,6 +11,8 @@ import {
   scheduleFingerprint
 } from '../services/v5ScheduleModels.mjs';
 
+import { translate } from '../i18n';
+
 import type {
   LedSchedule,
   ScheduleSaveResult,
@@ -194,7 +196,7 @@ export function useV5Schedules({
             snapshot.revision
           );
           setNotice(
-            `${snapshot.count} Arduino-rekord letöltve; revision ${snapshot.revision}, checksum ${snapshot.checksum}.`
+            translate('v5schedule.loaded',{count:snapshot.count,revision:snapshot.revision,checksum:snapshot.checksum})
           );
 
           return snapshot;
@@ -257,7 +259,7 @@ export function useV5Schedules({
             result.revision
           );
           setNotice(
-            `${result.count} időzítés mentve az Arduino-ra; a teljes readback és checksum ellenőrzés sikeres.`
+            translate('v5schedule.saved',{count:result.count})
           );
 
           return result;

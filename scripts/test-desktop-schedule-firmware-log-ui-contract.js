@@ -16,20 +16,26 @@ const logs = read('desktop-tauri/src/pages/LogsPage.tsx');
 const scheduleHook = read('desktop-tauri/src/hooks/useV5Schedules.ts');
 const firmwareHook = read('desktop-tauri/src/hooks/useV5Firmware.ts');
 const tauriApi = read('desktop-tauri/src/services/tauriApi.ts');
+const i18n = read('desktop-tauri/src/i18n/index.tsx');
 
 for (const marker of [
-  'ARDUINO DIRECT API V1',
-  'Arduino lista betöltése',
-  'Mentés Arduino-ra',
+  'schedules.title',
+  'schedules.description',
+  'schedules.loadArduino',
+  'schedules.saveArduino',
+  'schedules.backupsEyebrow',
+  'schedules.deleteToken',
   'expectedRevision',
   'state.canWrite',
   'deleteAllSchedules',
   'restoreScheduleBackup',
   'createScheduleBackup',
-  'listScheduleBackups',
-  'TÖRLÉS'
+  'listScheduleBackups'
 ]) {
-  assert.match(schedules, new RegExp(marker));
+  assert.match(
+    schedules,
+    new RegExp(marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+  );
 }
 
 assert.doesNotMatch(schedules, /A V5 szerverlista az elsődleges/);
@@ -39,12 +45,17 @@ for (const marker of [
   'releaseCatalog',
   'firmwareReleases',
   'firmwareInstallRelease',
-  'GitHub Releases',
+  'firmware.catalog',
+  'firmware.restoreVersions',
+  'firmware.catalogHelp',
   'SHA-256',
-  'Megszakítás',
+  'firmware.cancel',
   'rollback'
 ]) {
-  assert.match(firmware, new RegExp(marker, 'i'));
+  assert.match(
+    firmware,
+    new RegExp(marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i')
+  );
 }
 
 assert.doesNotMatch(firmware, /V5FirmwareBackups/);
@@ -67,12 +78,15 @@ for (const marker of [
 }
 
 for (const marker of [
-  'Közös konzolcache',
-  'BIZTONSÁGI AUDIT',
+  'logs.consoleCache',
+  'logs.audit',
   'EVENT BUS',
   'V5LogToolbar'
 ]) {
-  assert.match(logs, new RegExp(marker));
+  assert.match(
+    logs,
+    new RegExp(marker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+  );
 }
 
 assert.match(scheduleHook, /SCHEDULE_CONFLICT/);

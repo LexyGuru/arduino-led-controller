@@ -20,6 +20,8 @@ import {
   normalizeEvents
 } from '../services/v5LogModels.mjs';
 
+import { translate } from '../i18n';
+
 import type {
   ArduinoLog,
   NetworkLog
@@ -306,7 +308,7 @@ export function useV5Logs({
             code:
               'API_V2_REQUIRED',
             message:
-              'A közös konzol törléséhez hitelesített V5 kapcsolat szükséges.',
+              translate('v5logs.authRequired'),
             status:
               null,
             details:

@@ -25,6 +25,7 @@ const ARDUINO_RESPONSE_TIMEOUT: Duration = Duration::from_secs(30);
 #[serde(rename_all = "camelCase", default)]
 struct Config {
     profile_name: String,
+    language: String,
     protocol: String,
     arduino_ip: String,
     arduino_port: u16,
@@ -54,6 +55,7 @@ impl Default for Config {
     fn default() -> Self {
         Self {
             profile_name: "Arduino vezérlő".into(),
+            language: "hu".into(),
             protocol: "https".into(),
             arduino_ip: String::new(),
             arduino_port: 443,

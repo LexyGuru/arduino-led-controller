@@ -21,32 +21,20 @@ import {
   useV5Dashboard
 } from '../hooks/useV5Dashboard';
 
+import { useI18n } from '../i18n';
+
 import type {
   ArduinoStatus,
   LedSchedule,
   ScheduleSyncState
 } from '../types';
 
-const dayNames = [
-  'Hétfő',
-  'Kedd',
-  'Szerda',
-  'Csütörtök',
-  'Péntek',
-  'Szombat',
-  'Vasárnap'
-];
-
-const effects = [
-  'Statikus',
-  'Villogás',
-  'Lélegzés',
-  'Szivárvány',
-  'Futófény'
-];
+const dayKeys = ['days.1','days.2','days.3','days.4','days.5','days.6','days.7'];
+const effectKeys = ['effects.0','effects.1','effects.2','effects.3','effects.4'];
 
 function formatUptime(
-  seconds?: number
+  seconds: number | undefined,
+  t: (key: string, values?: Record<string, string | number>) => string
 ) {
   if (
     seconds == null
@@ -77,9 +65,7 @@ function formatUptime(
       60
     );
 
-  return (
-    `${days} nap ${hours} óra ${minutes} perc`
-  );
+  return t('dashboard.uptimeValue', { days, hours, minutes });
 }
 
 function nextSchedule(
@@ -154,6 +140,7 @@ export function DashboardPage({
   scheduleSync:
     ScheduleSyncState;
 }) {
+  const { t } = useI18n();
   const {
     status,
     schedules,
@@ -175,11 +162,11 @@ export function DashboardPage({
   const cards = [
     {
       label:
-        'Kapcsolat',
+        t('dashboard.connection'),
       value:
         status?.connected
-          ? 'Online'
-          : 'Offline',
+          ? t('common.online')
+          : t('common.offline'),
       icon:
         Radio,
       good:
@@ -197,7 +184,7 @@ export function DashboardPage({
     },
     {
       label:
-        'Wi-Fi jelerősség',
+        t('dashboard.signal'),
       value:
         status?.rssi ==
         null
@@ -208,11 +195,9 @@ export function DashboardPage({
     },
     {
       label:
-        'Üzemidő',
+        t('dashboard.uptime'),
       value:
-        formatUptime(
-          status?.uptime
-        ),
+        formatUptime(status?.uptime, t),
       icon:
         Clock3
     }
@@ -223,10 +208,10 @@ export function DashboardPage({
       <div className="page-heading">
         <div>
           <p className="eyebrow">
-            V5 ÁTTEKINTÉS
+            {t('dashboard.eyebrow')}
           </p>
           <h2>
-            Arduino és LED rendszer
+            {t('dashboard.title')}
           </h2>
         </div>
 
@@ -251,7 +236,7 @@ export function DashboardPage({
                   : ''
               }
             />
-            Frissítés
+            {t('common.refresh')}
           </button>
         </div>
       </div>
@@ -259,10 +244,10 @@ export function DashboardPage({
       {error && (
         <V5ConnectionWarning
           title={
-            'Az API v2 állapot nem olvasható'
+            t('dashboard.apiUnavailable')
           }
           message={
-            `${error.code}: ${error.message}. A dashboard a közvetlen Tauri-adatokat mutatja.`
+            t('dashboard.fallbackError',{code:error.code,message:error.message})
           }
           busy={refreshing}
           onRetry={
@@ -314,7 +299,7 @@ export function DashboardPage({
           <div className="panel-title">
             <div>
               <p className="eyebrow">
-                ÜTEMEZÉSEK
+                {t('dashboard.schedules')}
               </p>
               <h2>
                 Heti program
@@ -327,7 +312,7 @@ export function DashboardPage({
           <div className="details-grid compact">
             <div>
               <span>
-                Betöltött lista
+                {t('dashboard.loadedList')}
               </span>
               <strong
                 className={
@@ -344,7 +329,7 @@ export function DashboardPage({
 
             <div>
               <span>
-                Arduino szerint
+                {t('dashboard.arduinoCount')}
               </span>
               <strong>
                 {status
@@ -355,21 +340,23 @@ export function DashboardPage({
 
             <div>
               <span>
-                Következő nap
+                {t('dashboard.nextDay')}
               </span>
               <strong>
                 {next
-                  ? dayNames[
-                      next.day -
-                      1
-                    ]
+                  ? t(
+                      dayKeys[
+                        next.day -
+                        1
+                      ]
+                    )
                   : '—'}
               </strong>
             </div>
 
             <div>
               <span>
-                Következő időpont
+                {t('dashboard.nextTime')}
               </span>
               <strong>
                 {next?.time ??
@@ -384,9 +371,10 @@ export function DashboardPage({
             <div className="notice">
               <CalendarClock size={18} />
               <p>
-                Az Arduino {status.scheduleCount} rekordot jelent, a Tauri
-                jelenleg {schedules.length} rekordot tart. A lista csak sikeres
-                teljes letöltés után írható vissza.
+                {t('dashboard.scheduleCountMismatch',{
+                  remote: status.scheduleCount,
+                  local: schedules.length
+                })}
               </p>
             </div>
           )}
@@ -396,7 +384,7 @@ export function DashboardPage({
             <div className="notice">
               <CalendarClock size={18} />
               <p>
-                Schedule-letöltési hiba: {scheduleSync.lastError}
+                {t('dashboard.scheduleError',{error:scheduleSync.lastError})}
               </p>
             </div>
           )}
@@ -406,10 +394,10 @@ export function DashboardPage({
           <div className="panel-title">
             <div>
               <p className="eyebrow">
-                LED-EK PILLANATKÉPE
+                {t('dashboard.ledSnapshot')}
               </p>
               <h2>
-                Aktuális állapot
+                {t('dashboard.currentState')}
               </h2>
             </div>
 
@@ -451,9 +439,7 @@ export function DashboardPage({
                       {' · '}
                       {strip.brightness}
                       {' · '}
-                      {effects[
-                        strip.effect
-                      ] ??
+                      {t(effectKeys[strip.effect] ?? 'effects.0') ??
                       `Effekt ${strip.effect}`}
                     </small>
                   </div>
@@ -473,7 +459,7 @@ export function DashboardPage({
               ?.strips
               ?.length && (
               <p className="muted">
-                Nincs beolvasott LED-állapot.
+                {t('dashboard.noLedState')}
               </p>
             )}
           </div>
@@ -484,10 +470,10 @@ export function DashboardPage({
         <div className="panel-title">
           <div>
             <p className="eyebrow">
-              RENDSZERÁLLAPOT
+              {t('dashboard.systemState')}
             </p>
             <h2>
-              Arduino HTTP kapcsolat
+              {t('dashboard.httpConnection')}
             </h2>
           </div>
 
@@ -497,7 +483,7 @@ export function DashboardPage({
         <div className="details-grid">
           <div>
             <span>
-              Utolsó kliens
+              {t('dashboard.lastClient')}
             </span>
             <strong>
               {status?.http
@@ -508,7 +494,7 @@ export function DashboardPage({
 
           <div>
             <span>
-              Utolsó útvonal
+              {t('dashboard.lastPath')}
             </span>
             <strong>
               {status?.http
@@ -519,7 +505,7 @@ export function DashboardPage({
 
           <div>
             <span>
-              Kérések
+              {t('dashboard.requests')}
             </span>
             <strong>
               {status?.http
@@ -530,7 +516,7 @@ export function DashboardPage({
 
           <div>
             <span>
-              Időtúllépések
+              {t('dashboard.timeouts')}
             </span>
             <strong>
               {status?.http

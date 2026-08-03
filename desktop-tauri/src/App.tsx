@@ -43,11 +43,14 @@ import {
   SettingsPage
 } from './pages/SettingsPage';
 
+import { useI18n } from './i18n';
+
 import type {
   PageId
 } from './types';
 
 export default function App() {
+  const { t } = useI18n();
   const [
     page,
     setPage
@@ -65,6 +68,7 @@ export default function App() {
   const controller =
     useController(page);
 
+
   useEffect(
     () => {
       void getVersion()
@@ -74,7 +78,7 @@ export default function App() {
         .catch(
           () =>
             setAppVersion(
-              'ismeretlen'
+              t('app.unknown')
             )
         );
     },

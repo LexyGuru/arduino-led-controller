@@ -1,3 +1,5 @@
+import { translate } from '../i18n';
+
 import {
   useCallback,
   useEffect,
@@ -234,7 +236,7 @@ export function useV5System() {
           );
 
           setNotice(
-            'A V5 rendszeradatok frissítve.'
+            translate('v5system.refreshed')
           );
         } catch (requestError) {
           setError(
@@ -330,7 +332,7 @@ export function useV5System() {
                 username,
                 password
               }),
-            'Session bejelentkezés sikeres.'
+            translate('v5system.login')
           );
         },
 
@@ -343,7 +345,7 @@ export function useV5System() {
               api.setBearerToken(
                 token
               ),
-            'Bearer token aktiválva.'
+            translate('v5system.token')
           );
         },
 
@@ -352,7 +354,7 @@ export function useV5System() {
             'logout',
             () =>
               api.auth.logout(),
-            'Kijelentkezés sikeres.',
+            translate('v5system.logout'),
             {
               refreshAfter:
                 false
@@ -375,7 +377,7 @@ export function useV5System() {
           );
 
           setNotice(
-            'Szerverprofil mentve. Az alkalmazás újratöltődik.'
+            translate('v5system.profileSaved')
           );
 
           globalThis.setTimeout(
@@ -392,7 +394,7 @@ export function useV5System() {
             () =>
               api.runtime
                 .checkConnection(),
-            'A V5 szerver elérhető.',
+            translate('v5system.reachable'),
             {
               refreshAfter:
                 false
@@ -406,7 +408,7 @@ export function useV5System() {
             () =>
               api.system
                 .verifyReleaseGate(),
-            'Az alpha.2 release-gate jelentés elfogadva.'
+            translate('v5system.gateAccepted')
           );
         },
 
@@ -416,7 +418,7 @@ export function useV5System() {
             () =>
               api.system
                 .approvePromotion(),
-            'Az alpha.2 promóció jóváhagyása létrejött.'
+            translate('v5system.promotionCreated')
           );
         },
 
@@ -426,7 +428,7 @@ export function useV5System() {
             () =>
               api.system
                 .revokePromotionApproval(),
-            'Az alpha.2 promóciós jóváhagyás visszavonva.'
+            translate('v5system.promotionRevoked')
           );
         },
 
@@ -436,7 +438,7 @@ export function useV5System() {
             () =>
               api.system
                 .verifyLxcOrchestration(),
-            'Az alpha.2 LXC orchestration lánc érvényes.'
+            translate('v5system.orchestrationValid')
           );
         },
 
@@ -446,7 +448,7 @@ export function useV5System() {
             () =>
               api.system
                 .verifyFinalization(),
-            'Az alpha.2 execution receipt-lánc érvényes.'
+            translate('v5system.receiptValid')
           );
         },
 
@@ -456,7 +458,7 @@ export function useV5System() {
             () =>
               api.system
                 .approveFinalization(),
-            'Az alpha.2 verziószinkron véglegesítése jóváhagyva.'
+            translate('v5system.finalizeApproved')
           );
         },
 
@@ -466,7 +468,7 @@ export function useV5System() {
             () =>
               api.system
                 .revokeFinalizationApproval(),
-            'Az alpha.2 véglegesítési jóváhagyás visszavonva.'
+            translate('v5system.finalizeRevoked')
           );
         },
 
@@ -480,7 +482,7 @@ export function useV5System() {
                 .enableMaintenance(
                   reason
                 ),
-            'Karbantartási mód aktiválva.'
+            translate('v5system.maintenanceOn')
           );
         },
 
@@ -490,7 +492,7 @@ export function useV5System() {
             () =>
               api.system
                 .disableMaintenance(),
-            'Karbantartási mód kikapcsolva.'
+            translate('v5system.maintenanceOff')
           );
         },
 
@@ -504,7 +506,7 @@ export function useV5System() {
                 .createSnapshot(
                   label
                 ),
-            'Rendszer-snapshot elkészült.'
+            translate('v5system.snapshotCreated')
           );
         },
 
@@ -516,7 +518,7 @@ export function useV5System() {
             () =>
               api.system
                 .verifySnapshot(id),
-            'Snapshot integritás ellenőrizve.',
+            translate('v5system.snapshotVerified'),
             {
               refreshAfter:
                 false
@@ -534,7 +536,7 @@ export function useV5System() {
                 .restoreSnapshot(
                   id
                 ),
-            'Snapshot visszaállítva. A szervert újra kell indítani.'
+            translate('v5system.snapshotRestored')
           );
         },
 
@@ -546,7 +548,7 @@ export function useV5System() {
             () =>
               api.system
                 .deleteSnapshot(id),
-            'Snapshot törölve.'
+            translate('v5system.snapshotDeleted')
           );
         },
 
@@ -556,7 +558,7 @@ export function useV5System() {
             () =>
               api.system
                 .dryRunMigrations(),
-            'Migrációs dry-run elkészült.'
+            translate('v5system.migrationDryRun')
           );
         },
 
@@ -566,7 +568,7 @@ export function useV5System() {
             () =>
               api.system
                 .applyMigrations(),
-            'A szükséges migrációk alkalmazva.'
+            translate('v5system.migrationsApplied')
           );
         }
       }),

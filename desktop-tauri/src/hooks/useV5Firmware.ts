@@ -21,6 +21,8 @@ import {
   normalizeFirmwareStatus
 } from '../services/v5FirmwareModels.mjs';
 
+import { translate } from '../i18n';
+
 import type {
   FirmwareStatus,
   OtaProgressEvent
@@ -394,7 +396,7 @@ export function useV5Firmware({
           () =>
             api.firmware
               .update(),
-          'A firmware-frissítés elfogadva; az állapot automatikusan frissül.'
+          translate('v5firmware.accepted')
         );
       },
       [
@@ -417,7 +419,7 @@ export function useV5Firmware({
           () =>
             api.firmware
               .cancel(),
-          'A firmware-művelet megszakítását elküldtük.'
+          translate('v5firmware.cancelled')
         );
       },
       [
@@ -443,7 +445,7 @@ export function useV5Firmware({
               .rollback(
                 backupId
               ),
-          'A firmware-visszaállítás elfogadva.'
+          translate('v5firmware.rollback')
         );
       },
       [
@@ -466,7 +468,7 @@ export function useV5Firmware({
           () =>
             api.firmware
               .deleteBackup(id),
-          'A firmware backup törölve.'
+          translate('v5firmware.backupDeleted')
         );
       },
       [

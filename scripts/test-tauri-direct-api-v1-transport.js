@@ -5,6 +5,7 @@ const fs = require('node:fs');
 const rust = fs.readFileSync('desktop-tauri/src-tauri/src/lib.rs', 'utf8');
 const types = fs.readFileSync('desktop-tauri/src/types/index.ts', 'utf8');
 const settings = fs.readFileSync('desktop-tauri/src/pages/SettingsPage.tsx', 'utf8');
+const i18n = fs.readFileSync('desktop-tauri/src/i18n/index.tsx', 'utf8');
 const controller = fs.readFileSync('desktop-tauri/src/hooks/useController.ts', 'utf8');
 const profile = fs.readFileSync('desktop-tauri/src/api/runtime/direct-arduino-profile-store.mjs', 'utf8');
 const firmware = fs.readFileSync('firmware/ArduinoLedController/ArduinoLedController.ino', 'utf8');
@@ -39,13 +40,23 @@ for (const token of [
 ]) assert.ok(controller.includes(token), `Hiányzó alapbeállítás: ${token}`);
 
 assert.ok(types.includes("localProtocol: 'http' | 'https'"));
+
 for (const token of [
-  'Távoli protokoll',
-  'Helyi protokoll',
+  "settings.remoteProtocol",
+  "settings.localProtocol",
   '${config.localProtocol}://',
   '${config.protocol}://',
   '/api/v1/status'
 ]) assert.ok(settings.includes(token), `Hiányzó UI-szerződés: ${token}`);
+
+for (const token of [
+  "'settings.remoteProtocol': 'Távoli protokoll'",
+  "'settings.remoteProtocol': 'Remote protocol'",
+  "'settings.remoteProtocol': 'Entferntes Protokoll'",
+  "'settings.localProtocol': 'Helyi protokoll'",
+  "'settings.localProtocol': 'Local protocol'",
+  "'settings.localProtocol': 'Lokales Protokoll'"
+]) assert.ok(i18n.includes(token), `Hiányzó i18n UI-szerződés: ${token}`);
 
 for (const token of [
   "protocol: 'https'",

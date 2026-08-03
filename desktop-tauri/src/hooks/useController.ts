@@ -13,6 +13,8 @@ import {
   tauriApi
 } from '../services/tauriApi';
 
+import { translate } from '../i18n';
+
 import type {
   ArduinoLog,
   ArduinoStatus,
@@ -36,6 +38,7 @@ import type {
 const fallbackConfig:
   ConnectionConfig = {
     profileName: 'Arduino vezérlő',
+    language: 'hu',
     protocol: 'https',
     localProtocol: 'http',
     arduinoIp: '',
@@ -265,7 +268,7 @@ export function useController(
     setOtaStage
   ] =
     useState(
-      'Készen áll'
+      translate('controller.ready')
     );
 
   const [
@@ -291,7 +294,7 @@ export function useController(
     setMessage
   ] =
     useState(
-      'Állítsd be az Arduino kapcsolatot.'
+      translate('controller.configure')
     );
 
   const testSnapshot =
@@ -528,7 +531,7 @@ export function useController(
           );
 
           setMessage(
-            'Nyisd meg az Arduino kapcsolat menüt, majd add meg a címet, privát útvonalat és eszközkulcsot.'
+            translate('controller.configureDetail')
           );
 
           return;
@@ -561,7 +564,7 @@ export function useController(
               : `${config.localArduinoIp || config.arduinoIp}:${config.localArduinoPort || config.arduinoPort}`;
 
           setMessage(
-            `Közvetlen Arduino kapcsolat: ${target}`
+            translate('controller.connected', { target })
           );
         } catch (
           error
@@ -595,7 +598,7 @@ export function useController(
           );
 
           setMessage(
-            `Arduino nem érhető el: ${String(error)}`
+            translate('controller.unreachable', { error: String(error) })
           );
         } finally {
           statusRequestInFlight.current =
@@ -628,7 +631,7 @@ export function useController(
         if (!capabilities.otaSupported) {
           setFirmware(null);
           setMessage(
-            'Mobilplatformon az OTA állapot- és kapcsolatellenőrzés teljesen le van tiltva.'
+            translate('controller.mobileOtaDisabled')
           );
           return;
         }
@@ -652,7 +655,7 @@ export function useController(
           error
         ) {
           setMessage(
-            `Firmware-ellenőrzési hiba: ${String(error)}`
+            translate('controller.firmwareCheckError', { error: String(error) })
           );
         } finally {
           setBusy(
@@ -844,11 +847,11 @@ export function useController(
             )
           ) {
             setMessage(
-              'Arduino kapcsolat betöltve.'
+              translate('controller.profileLoaded')
             );
           } else {
             setMessage(
-              'Az első használat előtt állítsd be a közvetlen Arduino kapcsolatot.'
+              translate('controller.firstSetup')
             );
           }
 
@@ -1005,14 +1008,14 @@ export function useController(
 
         setMessage(
           capabilities.mobile
-            ? 'Mobilos Arduino-kapcsolati profil és X-Device-Key tartósan mentve.'
-            : 'Közvetlen Arduino- és OTA-beállítások mentve.'
+            ? translate('controller.mobileProfileSaved')
+            : translate('controller.profileSaved')
         );
       } catch (
         error
       ) {
         setMessage(
-          `Mentési hiba: ${String(error)}`
+          translate('controller.saveError', { error: String(error) })
         );
       } finally {
         setBusy(
@@ -1098,7 +1101,7 @@ export function useController(
         );
 
         setMessage(
-          `LED ${strip.id} beállítva.`
+          translate('controller.ledSet', { id: strip.id })
         );
       } catch (
         error
@@ -1154,7 +1157,7 @@ export function useController(
           });
 
           setMessage(
-            `${snapshot.count} időzítés beolvasva és teljesen ellenőrizve az Arduino memóriájából.`
+            translate('controller.schedulesLoaded', { count: snapshot.count })
           );
 
           return snapshot;
@@ -1173,7 +1176,7 @@ export function useController(
           );
 
           setMessage(
-            `Beolvasási hiba: ${message}`
+            translate('controller.readError', { error: message })
           );
 
           throw error;
@@ -1229,7 +1232,7 @@ export function useController(
           });
 
           setMessage(
-            `${result.count} időzítés feltöltve; teljes readback és checksum ellenőrzés sikeres.`
+            translate('controller.schedulesUploaded', { count: result.count })
           );
 
           return result;
@@ -1248,7 +1251,7 @@ export function useController(
           );
 
           setMessage(
-            `Időzítés-szinkron hiba: ${message}`
+            translate('controller.scheduleSyncError', { error: message })
           );
 
           throw error;
@@ -1402,11 +1405,11 @@ export function useController(
           `LED teszt elindítva: ${
             preset ===
             'night'
-              ? 'Éjszakai kék'
+              ? translate('controller.testNight')
               : preset ===
                   'rainbow'
-                ? 'Szivárvány'
-                : 'Lélegző'
+                ? translate('controller.testRainbow')
+                : translate('controller.testBreathe')
           }.`
         );
       } catch (
@@ -1476,13 +1479,13 @@ export function useController(
           null;
 
         setMessage(
-          'LED teszt leállítva; az előző kézi állapot visszaállítva.'
+          translate('controller.testStopped')
         );
       } catch (
         error
       ) {
         setMessage(
-          `LED teszt leállítási hiba: ${String(error)}`
+          translate('controller.testStopError', { error: String(error) })
         );
       } finally {
         setBusy(
@@ -1503,7 +1506,7 @@ export function useController(
         !capabilities.otaSupported
       ) {
         setMessage(
-          'Mobilalkalmazásból firmware-frissítés nem indítható. Használj Windows, macOS vagy Linux gépet.'
+          translate('controller.mobileFirmwareDisabled')
         );
 
         return;
@@ -1522,7 +1525,7 @@ export function useController(
       );
 
       setOtaStage(
-        'Indítás'
+        translate('controller.stageStart')
       );
 
       try {
@@ -1538,7 +1541,7 @@ export function useController(
         );
 
         setOtaStage(
-          'Kész'
+          translate('controller.stageDone')
         );
 
         setMessage(
@@ -1581,7 +1584,7 @@ export function useController(
         );
 
         setMessage(
-          `OTA-frissítési hiba: ${text}`
+          translate('controller.otaError', { error: text })
         );
       } finally {
         setBusy(
@@ -1603,17 +1606,17 @@ export function useController(
           await tauriApi.firmwareCancel();
         setOtaStage(
           accepted
-            ? 'Megszakítás'
-            : 'Nincs aktív művelet'
+            ? translate('controller.cancelStage')
+            : translate('controller.noActiveOperation')
         );
         setMessage(
           accepted
-            ? 'A közvetlen OTA megszakítását elküldtük.'
-            : 'Nincs megszakítható közvetlen OTA-folyamat.'
+            ? translate('controller.cancelSent')
+            : translate('controller.nothingToCancel')
         );
       } catch (error) {
         setMessage(
-          `OTA-megszakítási hiba: ${String(error)}`
+          translate('controller.cancelError', { error: String(error) })
         );
       }
     };

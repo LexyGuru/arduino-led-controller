@@ -32,6 +32,8 @@ import {
   scheduleFingerprint
 } from '../services/v5ScheduleModels.mjs';
 
+import { useI18n } from '../i18n';
+
 import type {
   LedSchedule,
   ScheduleBackup,
@@ -41,32 +43,32 @@ import type {
   ScheduleSyncState
 } from '../types';
 
-const DAYS = [
-  'Hétfő',
-  'Kedd',
-  'Szerda',
-  'Csütörtök',
-  'Péntek',
-  'Szombat',
-  'Vasárnap'
+const dayKeys = [
+  'days.1',
+  'days.2',
+  'days.3',
+  'days.4',
+  'days.5',
+  'days.6',
+  'days.7'
 ];
 
-const DAY_SHORT = [
-  'H',
-  'K',
-  'Sze',
-  'Cs',
-  'P',
-  'Szo',
-  'V'
+const dayShortKeys = [
+  'daysShort.1',
+  'daysShort.2',
+  'daysShort.3',
+  'daysShort.4',
+  'daysShort.5',
+  'daysShort.6',
+  'daysShort.7'
 ];
 
-const EFFECTS = [
-  'Statikus',
-  'Villogás',
-  'Lélegzés',
-  'Szivárvány',
-  'Futófény'
+const effectKeys = [
+  'effects.0',
+  'effects.1',
+  'effects.2',
+  'effects.3',
+  'effects.4'
 ];
 
 type Action =
@@ -171,6 +173,7 @@ export function SchedulesPage({
   onSync:
     () => Promise<ScheduleSyncSnapshot>;
 }) {
+  const { t, language } = useI18n();
   const state =
     useV5Schedules({
       legacySchedules,
@@ -300,9 +303,9 @@ export function SchedulesPage({
   const deleteAllSchedules = async () => {
     if (!state.canWrite || draft.length === 0) return;
     const confirmation = globalThis.prompt(
-      `A művelet ${draft.length} Arduino-időzítést töröl. A folytatáshoz írd be: TÖRLÉS`
+      t('schedules.deletePrompt',{count:draft.length})
     );
-    if (confirmation !== 'TÖRLÉS') return;
+    if (confirmation !== t('schedules.deleteToken')) return;
     try {
       const backup = await tauriApi.createScheduleBackup(
         draft,
@@ -314,16 +317,16 @@ export function SchedulesPage({
       setBaseFingerprint(scheduleFingerprint(result.schedules));
       setBaseRevision(result.revision);
       setBackups(await tauriApi.listScheduleBackups());
-      setFileMessage(`Mind a ${backup.count} időzítés törölve. Automatikus backup: ${backup.id}`);
+      setFileMessage(t('schedules.deleted',{count:backup.count,id:backup.id}));
       setConflict(false);
     } catch (error) {
-      setFileMessage(`Teljes törlési hiba: ${String(error)}`);
+      setFileMessage(t('schedules.deleteError',{error:String(error)}));
     }
   };
 
   const restoreScheduleBackup = async (backup: ScheduleBackup) => {
     if (!state.canWrite) return;
-    if (!globalThis.confirm(`Visszaállítod a ${backup.count} rekordos backupot?`)) return;
+    if (!globalThis.confirm(t('schedules.restoreConfirm',{count:backup.count}))) return;
     try {
       await tauriApi.createScheduleBackup(draft, baseRevision, state.syncState.checksum);
       const result = await state.save(backup.schedules, { expectedRevision: baseRevision, force: false });
@@ -331,22 +334,22 @@ export function SchedulesPage({
       setBaseFingerprint(scheduleFingerprint(result.schedules));
       setBaseRevision(result.revision);
       setBackups(await tauriApi.listScheduleBackups());
-      setFileMessage(`Backup visszaállítva: ${backup.id}`);
+      setFileMessage(t('schedules.restored',{id:backup.id}));
       setConflict(false);
     } catch (error) {
-      setFileMessage(`Backup visszaállítási hiba: ${String(error)}`);
+      setFileMessage(t('schedules.restoreError',{error:String(error)}));
     }
   };
 
   const grouped =
     useMemo(
       () =>
-        DAYS.map(
+        dayKeys.map(
           (
-            name,
+            key,
             index
           ) => ({
-            name,
+            name: t(key),
             day:
               index + 1,
             items:
@@ -368,7 +371,7 @@ export function SchedulesPage({
                 )
           })
         ),
-      [draft]
+      [draft, t]
     );
 
   const setFormLed = (
@@ -629,7 +632,7 @@ export function SchedulesPage({
         );
 
         if (json.length < 40 || !json.includes('\"schedules\"')) {
-          throw new Error('Az exportált JSON tartalma üres vagy érvénytelen.');
+          throw new Error(t('schedules.exportEmpty'));
         }
 
         const file = new File(
@@ -644,11 +647,11 @@ export function SchedulesPage({
           navigator.canShare({ files: [file] })
         ) {
           await navigator.share({
-            title: 'Heti LED-időzítések',
+            title: t('schedules.exportTitle'),
             files: [file]
           });
           setFileMessage(
-            `${draft.length} időzítés exportálva mobilos megosztással (${json.length} bájt).`
+            t('schedules.exportShared',{count:draft.length,bytes:json.length})
           );
           return;
         }
@@ -656,13 +659,13 @@ export function SchedulesPage({
         const path =
           await save({
             title:
-              'Heti LED-időzítések mentése',
+              t('schedules.exportTitle'),
             defaultPath:
               'weekly-led-schedules.json',
             filters: [
               {
                 name:
-                  'JSON időzítés',
+                  t('schedules.jsonFilter'),
                 extensions:
                   ['json']
               }
@@ -680,13 +683,13 @@ export function SchedulesPage({
           );
 
         setFileMessage(
-          `${draft.length} időzítés elmentve: ${path} (${json.length} bájt)`
+          t('schedules.exportSaved',{count:draft.length,path,bytes:json.length})
         );
       } catch (
         error
       ) {
         setFileMessage(
-          `Letöltési hiba: ${String(error)}`
+          t('schedules.exportError',{error:String(error)})
         );
       }
     };
@@ -697,13 +700,13 @@ export function SchedulesPage({
         const selected =
           await open({
             title:
-              'Heti LED-időzítések megnyitása',
+              t('schedules.exportTitle'),
             multiple: false,
             directory: false,
             filters: [
               {
                 name:
-                  'JSON időzítés',
+                  t('schedules.jsonFilter'),
                 extensions:
                   ['json']
               }
@@ -727,13 +730,13 @@ export function SchedulesPage({
 
         setDraft(imported);
         setFileMessage(
-          `${imported.length} időzítés betöltve. Mentéskor konfliktusellenőrzés fut.`
+          t('schedules.imported',{count:imported.length})
         );
       } catch (
         error
       ) {
         setFileMessage(
-          `Feltöltési hiba: ${String(error)}`
+          t('schedules.importError',{error:String(error)})
         );
       }
     };
@@ -746,11 +749,10 @@ export function SchedulesPage({
             ARDUINO DIRECT API V1
           </p>
           <h2>
-            Heti időzítés
+            {t('schedules.title')}
           </h2>
           <p className="muted">
-            Az Arduino teljes, lapozott schedule-listája az elsődleges.
-            Mentés csak ellenőrzött revision és teljes readback után engedélyezett.
+            {t('schedules.description')}
           </p>
         </div>
 
@@ -767,7 +769,7 @@ export function SchedulesPage({
             }
           >
             <Save size={17} />
-            Mentés Arduino-ra
+            {t('schedules.saveArduino')}
           </button>
 
           <button
@@ -781,7 +783,7 @@ export function SchedulesPage({
             }
           >
             <RefreshCw size={17} />
-            Arduino lista betöltése
+            {t('schedules.loadArduino')}
           </button>
 
           <button
@@ -795,7 +797,7 @@ export function SchedulesPage({
             }
           >
             <Download size={17} />
-            JSON mentés
+            {t('schedules.saveJson')}
           </button>
 
           <button
@@ -809,7 +811,7 @@ export function SchedulesPage({
             }
           >
             <Upload size={17} />
-            JSON betöltés
+            {t('schedules.loadJson')}
           </button>
 
           <button
@@ -818,7 +820,7 @@ export function SchedulesPage({
             disabled={state.busy || !state.canWrite || draft.length === 0}
           >
             <Trash2 size={17} />
-            Összes időzítés törlése
+            {t('schedules.deleteAll')}
           </button>
         </div>
       </div>
@@ -827,7 +829,7 @@ export function SchedulesPage({
         <div className="panel-title">
           <div>
             <p className="eyebrow">
-              ELLENŐRZÖTT ARDUINO-ÁLLAPOT
+              {t('schedules.verified')}
             </p>
             <h2>
               Schedule szinkron
@@ -842,7 +844,7 @@ export function SchedulesPage({
         <div className="details-grid compact">
           <div>
             <span>
-              Arduino rekordok
+              {t('schedules.arduinoRecords')}
             </span>
             <strong>
               {state.syncState.count}
@@ -851,7 +853,7 @@ export function SchedulesPage({
 
           <div>
             <span>
-              Szerkesztési lista
+              {t('schedules.editList')}
             </span>
             <strong>
               {draft.length}
@@ -881,10 +883,7 @@ export function SchedulesPage({
           <div className="notice">
             <AlertTriangle size={18} />
             <p>
-              A mentés és a törlés le van tiltva, amíg az Arduino teljes
-              schedule-listája nem töltődött le sikeresen, azonos counttal,
-              revisionnel és checksummal. A helyi cache önmagában nem írható
-              vissza az Arduino-ra.
+              {t('schedules.writeDisabled')}
             </p>
           </div>
         )}
@@ -893,10 +892,9 @@ export function SchedulesPage({
           <div className="notice">
             <AlertTriangle size={18} />
             <p>
-              A Tauri {state.syncState.recoveredLegacyActionCount} LED-műveletet
-              helyreállított olyan örökölt Arduino rekordokból, amelyekben az
-              apply jelző hiányzott, de a LED-beállítások megmaradtak. A következő
-              sikeres mentés explicit apply jelzővel normalizálja ezeket.
+              {t('schedules.recoveredLegacy',{
+                count: state.syncState.recoveredLegacyActionCount
+              })}
             </p>
           </div>
         )}
@@ -905,10 +903,9 @@ export function SchedulesPage({
           <div className="notice">
             <AlertTriangle size={18} />
             <p>
-              Az Arduino {state.syncState.emptyActionCount} valóban üres
-              rekordot tartalmaz: egyik LED-blokkban sincs apply jelző vagy
-              megőrzött LED-adat. Ezek láthatók, külön törölhetők, és nem vesznek
-              el a letöltés során.
+              {t('schedules.emptyRecords',{
+                count: state.syncState.emptyActionCount
+              })}
             </p>
           </div>
         )}
@@ -920,11 +917,10 @@ export function SchedulesPage({
 
           <div>
             <strong>
-              Az Arduino schedule revision közben megváltozott.
+              {t('schedules.conflictTitle')}
             </strong>
             <span>
-              Töltsd újra a teljes Arduino-listát. A régi revisionre épülő
-              szerkesztést nem írjuk vissza automatikusan.
+              {t('schedules.conflictHelp')}
             </span>
           </div>
 
@@ -938,7 +934,7 @@ export function SchedulesPage({
               }
             >
               <RefreshCw size={16} />
-              Arduino lista újratöltése
+              {t('schedules.reload')}
             </button>
           </div>
         </section>
@@ -973,24 +969,24 @@ export function SchedulesPage({
       <section className="panel">
         <div className="panel-title">
           <div>
-            <p className="eyebrow">AUTOMATIKUS BACKUPOK</p>
-            <h2>Schedule visszaállítás</h2>
+            <p className="eyebrow">{t('schedules.backupsEyebrow')}</p>
+            <h2>{t('schedules.restore')}</h2>
           </div>
           <Database />
         </div>
         {backups.length === 0 ? (
-          <p className="muted">Még nincs automatikus schedule backup.</p>
+          <p className="muted">{t('schedules.noBackups')}</p>
         ) : (
           <div className="v5-backup-list">
             {backups.slice(0, 10).map((backup) => (
               <article key={backup.id}>
                 <div>
-                  <strong>{backup.count} rekord</strong>
-                  <small>{new Date(backup.createdAt).toLocaleString('hu-HU')} · revision {backup.revision ?? '—'}</small>
+                  <strong>{t('schedules.recordCount',{count:backup.count})}</strong>
+                  <small>{new Date(backup.createdAt).toLocaleString(language === 'de' ? 'de-DE' : language === 'en' ? 'en-US' : 'hu-HU')} · revision {backup.revision ?? '—'}</small>
                   <code>{backup.checksum || backup.id}</code>
                 </div>
                 <button className="secondary" disabled={state.busy || !state.canWrite} onClick={() => void restoreScheduleBackup(backup)}>
-                  Visszaállítás
+                  {t('schedules.restoreButton')}
                 </button>
               </article>
             ))}
@@ -1001,7 +997,7 @@ export function SchedulesPage({
       <section className="panel schedule-editor">
         <div className="schedule-top-row">
           <label>
-            Idő
+            {t('schedules.time')}
             <input
               type="time"
               value={time}
@@ -1042,18 +1038,18 @@ export function SchedulesPage({
                     )
                 }
               />
-              Összes nap kijelölése
+              {t('schedules.selectAllDays')}
             </label>
 
             <div className="day-buttons">
-              {DAY_SHORT.map(
+              {dayShortKeys.map(
                 (
-                  name,
+                  key,
                   index
                 ) => (
                   <button
                     type="button"
-                    key={name}
+                    key={key}
                     className={
                       selectedDays
                         .includes(
@@ -1085,7 +1081,7 @@ export function SchedulesPage({
                         )
                     }
                   >
-                    {name}
+                    {t(key)}
                   </button>
                 )
               )}
@@ -1105,7 +1101,7 @@ export function SchedulesPage({
                 </h3>
 
                 <label>
-                  Művelet
+                  {t('schedules.action')}
 
                   <select
                     value={
@@ -1125,19 +1121,19 @@ export function SchedulesPage({
                     }
                   >
                     <option value="none">
-                      Nincs módosítás
+                      {t('schedules.noChange')}
                     </option>
                     <option value="on">
-                      Bekapcsolás
+                      {t('schedules.turnOn')}
                     </option>
                     <option value="off">
-                      Kikapcsolás
+                      {t('schedules.turnOff')}
                     </option>
                   </select>
                 </label>
 
                 <label>
-                  Szín
+                  {t('schedules.color')}
 
                   <div className="color-row">
                     <input
@@ -1177,7 +1173,7 @@ export function SchedulesPage({
                 </label>
 
                 <label>
-                  Fényerő
+                  {t('schedules.brightness')}
                   {' '}
                   <b>
                     {led.brightness}
@@ -1212,7 +1208,7 @@ export function SchedulesPage({
                 </label>
 
                 <label>
-                  Effekt
+                  {t('schedules.effect')}
 
                   <select
                     disabled={
@@ -1237,16 +1233,16 @@ export function SchedulesPage({
                         )
                     }
                   >
-                    {EFFECTS.map(
+                    {effectKeys.map(
                       (
-                        name,
+                        key,
                         index
                       ) => (
                         <option
                           value={index}
-                          key={name}
+                          key={key}
                         >
-                          {name}
+                          {t(key)}
                         </option>
                       )
                     )}
@@ -1276,8 +1272,8 @@ export function SchedulesPage({
             }
           >
             {editingId
-              ? 'Időzítés módosítása'
-              : 'Új időzítés mentése'}
+              ? t('schedules.edit')
+              : t('schedules.new')}
           </button>
 
           {editingId && (
@@ -1287,7 +1283,7 @@ export function SchedulesPage({
                 resetForm
               }
             >
-              Szerkesztés megszakítása
+              {t('schedules.cancelEdit')}
             </button>
           )}
         </div>
@@ -1308,7 +1304,7 @@ export function SchedulesPage({
                   </h3>
                   <span>
                     {group.items.length}
-                    {' esemény'}
+                    {t('schedules.eventCount',{count:group.items.length})}
                   </span>
                 </div>
 
@@ -1339,18 +1335,18 @@ export function SchedulesPage({
                             ? schedule.leds
                                 .map(
                                   (led) =>
-                                    `LED ${led.id} ${led.enabled ? 'be' : 'ki'} · ${led.brightness} · RGB(${led.color.join(',')})`
+                                    t('schedules.ledSummary',{id:led.id,state:t(led.enabled?'common.on':'common.off'),brightness:led.brightness,color:led.color.join(',')})
                                 )
                                 .join(
                                   ' | '
                                 )
-                            : 'Nincs LED-művelet · üres Arduino rekord'}
+                            : t('schedules.noLedAction')}
                         </span>
                       </button>
 
                       <button
                         className="icon-button danger"
-                        title="Törlés"
+                        title={t('common.delete')}
                         disabled={!state.canWrite}
                         onClick={
                           () =>
@@ -1377,11 +1373,10 @@ export function SchedulesPage({
       {!draft.length && (
         <section className="panel empty">
           <h3>
-            Nincs időzítés
+            {t('schedules.empty')}
           </h3>
           <p>
-            Állíts be időpontot és legalább egy LED-műveletet,
-            vagy tölts be JSON-fájlt.
+            {t('schedules.emptyHelp')}
           </p>
         </section>
       )}

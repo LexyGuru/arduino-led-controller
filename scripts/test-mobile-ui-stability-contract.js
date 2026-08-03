@@ -6,11 +6,29 @@ const path = require('path');
 const root = path.resolve(__dirname, '..');
 const read = p => fs.readFileSync(path.join(root,p),'utf8');
 const controller = read('desktop-tauri/src/hooks/useController.ts');
+const i18n = read('desktop-tauri/src/i18n/index.tsx');
 const schedules = read('desktop-tauri/src/pages/SchedulesPage.tsx');
 const styles = read('desktop-tauri/src/styles.css');
 const apiCss = read('desktop-tauri/src/api-v2.css');
 assert.ok(controller.includes("if (!capabilities.otaSupported)"));
-assert.ok(controller.includes('Mobilplatformon az OTA állapot- és kapcsolatellenőrzés teljesen le van tiltva.'));
+assert.match(
+  controller,
+  /translate\(['"]controller\.mobileOtaDisabled['"]\)/
+);
+for (const value of [
+  'Mobilplatformon az OTA állapot- és kapcsolatellenőrzés teljesen le van tiltva.',
+  'OTA status and connectivity checks are completely disabled on mobile platforms.',
+  'OTA-Status- und Verbindungsprüfungen sind auf mobilen Plattformen vollständig deaktiviert.'
+]) {
+  const escaped = value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  assert.match(
+    i18n,
+    new RegExp(
+      `["']controller\\.mobileOtaDisabled["']\\s*:\\s*["']${escaped}["']`
+    ),
+    `Hiányzó controller.mobileOtaDisabled fordítás: ${value}`
+  );
+}
 assert.ok(controller.includes('[capabilities.otaSupported]'));
 assert.ok(schedules.includes('navigator.canShare({ files: [file] })'));
 assert.ok(schedules.includes('schemaVersion: 1'));

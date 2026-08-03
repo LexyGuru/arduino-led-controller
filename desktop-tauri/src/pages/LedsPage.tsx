@@ -28,17 +28,13 @@ import {
   useV5Leds
 } from '../hooks/useV5Leds';
 
+import { useI18n } from '../i18n';
+
 import type {
   LedStrip
 } from '../types';
 
-const effects = [
-  'Statikus',
-  'Villogás',
-  'Lélegzés',
-  'Szivárvány',
-  'Futófény'
-];
+const effectKeys = ['effects.0','effects.1','effects.2','effects.3','effects.4'];
 
 const SEND_DELAY_MS =
   4000;
@@ -140,6 +136,7 @@ function LedCard({
   busy,
   onUpdate
 }: LedCardProps) {
+  const { t } = useI18n();
   const [
     draft,
     setDraft
@@ -290,7 +287,7 @@ function LedCard({
       <div className="led-card-head">
         <div>
           <span>
-            CSATORNA {draft.id}
+            {t('leds.channel',{id:draft.id})}
           </span>
           <h3>
             LED {draft.id}
@@ -334,7 +331,7 @@ function LedCard({
       />
 
       <label>
-        Szín
+        {t('leds.color')}
 
         <div className="color-row">
           <input
@@ -366,7 +363,7 @@ function LedCard({
       </label>
 
       <label>
-        Fényerő
+        {t('leds.brightness')}
 
         <div className="slider-number-row">
           <input
@@ -431,13 +428,13 @@ function LedCard({
         <span className="send-hint">
           {pendingField ===
             'brightness'
-            ? 'Küldés 4 másodperc nyugalom után…'
-            : '0–255 · Enterrel azonnal küldhető'}
+            ? t('leds.delayedSend')
+            : t('leds.brightnessHelp')}
         </span>
       </label>
 
       <label>
-        Effekt
+        {t('leds.effect')}
 
         <select
           value={
@@ -455,16 +452,16 @@ function LedCard({
               })
           }
         >
-          {effects.map(
+          {effectKeys.map(
             (
-              name,
+              key,
               index
             ) => (
               <option
-                key={name}
+                key={key}
                 value={index}
               >
-                {name}
+                {t(key)}
               </option>
             )
           )}
@@ -472,7 +469,7 @@ function LedCard({
       </label>
 
       <label>
-        Effektsebesség
+        {t('leds.speed')}
 
         <div className="slider-number-row">
           <input
@@ -537,8 +534,8 @@ function LedCard({
         <span className="send-hint">
           {pendingField ===
             'speed'
-            ? 'Küldés 4 másodperc nyugalom után…'
-            : '1–100 · Enterrel azonnal küldhető'}
+            ? t('leds.delayedSend')
+            : t('leds.speedHelp')}
         </span>
       </label>
     </article>
@@ -573,6 +570,7 @@ export function LedsPage({
   onStopTest:
     () => void;
 }) {
+  const { t } = useI18n();
   const state =
     useV5Leds({
       legacyStrips,
@@ -587,15 +585,13 @@ export function LedsPage({
       <div className="page-heading">
         <div>
           <p className="eyebrow">
-            API V2 LED VEZÉRLÉS
+            {t('leds.eyebrow')}
           </p>
           <h2>
-            LED-szalagok
+            {t('leds.title')}
           </h2>
           <p className="muted">
-            Az API v2 az elsődleges. Hitelesítés vagy
-            szerverkapcsolat hiányában a meglévő közvetlen
-            Tauri vezérlés marad aktív.
+            {t('leds.description')}
           </p>
         </div>
 
@@ -609,10 +605,10 @@ export function LedsPage({
       {state.error && (
         <V5ConnectionWarning
           title={
-            'Az API v2 LED-művelet sikertelen'
+            t('leds.apiError')
           }
           message={
-            `${state.error.code}: ${state.error.message}. A parancsot biztonsági okból nem küldtük el automatikusan másodszor közvetlenül.`
+            t('leds.apiErrorDetail',{code:state.error.code,message:state.error.message})
           }
           busy={
             state.busy
@@ -653,14 +649,13 @@ export function LedsPage({
       <section className="panel test-panel">
         <div>
           <p className="eyebrow">
-            GYORS ELLENŐRZÉS
+            {t('leds.quickCheck')}
           </p>
           <h2>
-            LED teszt és effektek
+            {t('leds.testTitle')}
           </h2>
           <p className="muted">
-            A teszt az aktuális adatforráson fut. API v2 módban
-            mindhárom csatorna külön, validált parancsot kap.
+            {t('leds.testDescription')}
           </p>
         </div>
 
@@ -679,7 +674,7 @@ export function LedsPage({
             }
           >
             <Moon size={17} />
-            Éjszakai kék
+            {t('leds.nightBlue')}
           </button>
 
           <button
@@ -698,7 +693,7 @@ export function LedsPage({
             <Sparkles
               size={17}
             />
-            Szivárvány teszt
+            {t('leds.rainbowTest')}
           </button>
 
           <button
@@ -715,7 +710,7 @@ export function LedsPage({
             }
           >
             <Waves size={17} />
-            Lélegző teszt
+            {t('leds.breatheTest')}
           </button>
 
           <button
@@ -729,7 +724,7 @@ export function LedsPage({
             }
           >
             <Square size={16} />
-            Teszt leállítása
+            {t('leds.stopTest')}
           </button>
         </div>
       </section>

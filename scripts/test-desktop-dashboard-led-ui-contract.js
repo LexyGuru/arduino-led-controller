@@ -49,7 +49,7 @@ for (
     'useV5Dashboard',
     'V5DataSourceBadge',
     'V5ConnectionWarning',
-    'API v2'
+    'dashboard.eyebrow'
   ]
 ) {
   assert.match(
@@ -64,7 +64,7 @@ for (
     'useV5Leds',
     'V5LedBulkActions',
     'V5DataSourceBadge',
-    'biztonsági okból'
+    'leds.apiErrorDetail'
   ]
 ) {
   assert.match(

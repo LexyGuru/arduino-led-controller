@@ -33,6 +33,10 @@ const settings = read(
   'desktop-tauri/src/pages/SettingsPage.tsx'
 );
 
+const i18n = read(
+  'desktop-tauri/src/i18n/index.tsx'
+);
+
 const archivedPage = read(
   'desktop-tauri/src/pages/V5SystemPage.tsx'
 );
@@ -92,76 +96,69 @@ assert.match(
 
 /*
  * Az új Direct Mode Settings szerződés.
+ *
+ * Az i18n bevezetése után a komponens fordítási kulcsokat,
+ * az i18n szótár pedig a tényleges magyar feliratokat tartalmazza.
  */
-assert.match(
-  settings,
-  /DIRECT MODE PROFIL/
-);
+for (
+  const key of [
+    'settings.direct.eyebrow',
+    'settings.direct.title',
+    'settings.localHost',
+    'settings.remoteHost',
+    'settings.privatePath',
+    'settings.deviceKey',
+    'settings.ota.eyebrow',
+    'settings.ota.title',
+    'settings.ota.port',
+    'settings.ota.path',
+    'settings.updates.eyebrow',
+    'settings.updates.title',
+    'settings.updates.appChannel',
+    'settings.updates.firmwareChannel',
+    'settings.updates.stableApp',
+    'settings.updates.betaApp',
+    'settings.saveProfile',
+    'settings.testConnection'
+  ]
+) {
+  assert.match(
+    settings,
+    new RegExp(
+      key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    )
+  );
+}
 
-assert.match(
-  settings,
-  /Kapcsolat és hitelesítés/
-);
-
-assert.match(
-  settings,
-  /Helyi IP/
-);
-
-assert.match(
-  settings,
-  /Távoli IP vagy DDNS/
-);
-
-assert.match(
-  settings,
-  /Privát API path/
-);
-
-assert.match(
-  settings,
-  /X-Device-Key/
-);
-
-assert.match(
-  settings,
-  /FIRMWARE ÉS OTA/
-);
-
-assert.match(
-  settings,
-  /Helyi arduinoOTA konzol/
-);
-
-assert.match(
-  settings,
-  /OTA-port/
-);
-
-assert.match(
-  settings,
-  /arduinoOTA útvonal/
-);
-
-assert.match(
-  settings,
-  /FRISSÍTÉSEK/
-);
-
-assert.match(
-  settings,
-  /Alkalmazás- és firmware-csatorna/
-);
-
-assert.match(
-  settings,
-  /Alkalmazásfrissítési csatorna/
-);
-
-assert.match(
-  settings,
-  /Firmware-frissítési csatorna/
-);
+for (
+  const label of [
+    'DIRECT MODE PROFIL',
+    'Kapcsolat és hitelesítés',
+    'Helyi IP',
+    'Távoli IP vagy DDNS',
+    'Privát API path',
+    'X-Device-Key',
+    'FIRMWARE ÉS OTA',
+    'Helyi arduinoOTA konzol',
+    'OTA-port',
+    'arduinoOTA útvonal',
+    'FRISSÍTÉSEK',
+    'Alkalmazás- és firmware-csatorna',
+    'Alkalmazásfrissítési csatorna',
+    'Firmware-frissítési csatorna',
+    'Stabil – main release',
+    'Béta – prerelease',
+    'Profil mentése',
+    'Kapcsolat tesztelése'
+  ]
+) {
+  assert.match(
+    i18n,
+    new RegExp(
+      label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    )
+  );
+}
 
 assert.match(
   settings,
@@ -173,32 +170,17 @@ assert.match(
   /config\.firmwareUpdateChannel/
 );
 
-assert.match(
-  settings,
-  /Stabil – main release/
-);
-
-assert.match(
-  settings,
-  /Béta – prerelease/
-);
-
-assert.match(
-  settings,
-  /Profil mentése/
-);
-
-assert.match(
-  settings,
-  /Kapcsolat tesztelése/
-);
-
 /*
  * Az új Direct Mode navigáció továbbra is látható.
  */
 assert.match(
   sidebar,
-  /Arduino kapcsolat/
+  /brand\.directArduino/
+);
+
+assert.match(
+  i18n,
+  /Közvetlen Arduino/
 );
 
 /*
