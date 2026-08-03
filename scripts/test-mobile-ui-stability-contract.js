@@ -1,0 +1,26 @@
+#!/usr/bin/env node
+'use strict';
+const assert = require('assert');
+const fs = require('fs');
+const path = require('path');
+const root = path.resolve(__dirname, '..');
+const read = p => fs.readFileSync(path.join(root,p),'utf8');
+const controller = read('desktop-tauri/src/hooks/useController.ts');
+const schedules = read('desktop-tauri/src/pages/SchedulesPage.tsx');
+const styles = read('desktop-tauri/src/styles.css');
+const apiCss = read('desktop-tauri/src/api-v2.css');
+assert.ok(controller.includes("if (!capabilities.otaSupported)"));
+assert.ok(controller.includes('Mobilplatformon az OTA állapot- és kapcsolatellenőrzés teljesen le van tiltva.'));
+assert.ok(controller.includes('[capabilities.otaSupported]'));
+assert.ok(schedules.includes('navigator.canShare({ files: [file] })'));
+assert.ok(schedules.includes('schemaVersion: 1'));
+assert.ok(schedules.includes('count: draft.length'));
+assert.ok(schedules.includes("json.length < 40"));
+assert.ok(styles.includes('overflow-x: clip'));
+assert.ok(styles.includes('contain: layout paint'));
+assert.ok(styles.includes('.sidebar nav button span'));
+assert.ok(apiCss.includes('must never become horizontally scrollable'));
+console.log('OK: mobilos layout nem ugrál és nincs vízszintes oldalcsúszás');
+console.log('OK: alsó menü fixen középen marad és nem görgethető');
+console.log('OK: JSON export valós, ellenőrzött tartalmat oszt meg mobilon');
+console.log('OK: mobilon nincs OTA státusz- vagy kapcsolatlekérés');

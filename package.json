@@ -129,7 +129,8 @@
     "test:f14-complete-firmware": "node scripts/test-f14-complete-firmware.js",
     "test:beta4-release-package": "node scripts/test-beta4-release-package.js",
     "test:beta4-stabilization": "node scripts/test-beta4-stabilization.js",
-    "test:mobile-hotfix": "node scripts/test-mobile-hotfix-contract.js"
+    "test:mobile-hotfix": "node scripts/test-mobile-hotfix-contract.js",
+    "test:mobile-ui-stability": "node scripts/test-mobile-ui-stability-contract.js"
   },
   "engines": {
     "node": ">=20"

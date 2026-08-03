@@ -94,3 +94,76 @@ html,body,#root{width:100%;min-height:100%;overflow-x:hidden}body{min-width:0;-w
 .stats-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
 @media(max-width:1150px){.stats-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:800px){.stats-grid{grid-template-columns:1fr;gap:10px}}
+
+
+/* Mobile UI stability hotfix: fixed viewport, fixed centered navigation, no input reflow. */
+@media (max-width: 800px) {
+  html,
+  body,
+  #root {
+    width: 100%;
+    max-width: 100%;
+    min-height: 100dvh;
+    overflow-x: clip;
+  }
+
+  body {
+    position: relative;
+    overscroll-behavior-x: none;
+  }
+
+  .app-shell,
+  .content-shell,
+  .content,
+  .page,
+  .panel,
+  .form-grid,
+  .settings-grid,
+  label {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  input,
+  select,
+  textarea {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    font-size: 16px;
+  }
+
+  .sidebar {
+    left: 0;
+    right: 0;
+    bottom: 0;
+    transform: none;
+    overflow: hidden;
+    contain: layout paint;
+  }
+
+  .sidebar nav {
+    display: flex;
+    justify-content: center;
+    align-items: stretch;
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+    margin: 0 auto;
+  }
+
+  .sidebar nav button {
+    flex: 1 1 0;
+    width: auto;
+    max-width: 20%;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .sidebar nav button span {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}

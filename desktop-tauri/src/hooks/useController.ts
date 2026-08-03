@@ -625,6 +625,14 @@ export function useController(
   const refreshFirmware =
     useCallback(
       async () => {
+        if (!capabilities.otaSupported) {
+          setFirmware(null);
+          setMessage(
+            'Mobilplatformon az OTA állapot- és kapcsolatellenőrzés teljesen le van tiltva.'
+          );
+          return;
+        }
+
         setBusy(
           true
         );
@@ -652,11 +660,15 @@ export function useController(
           );
         }
       },
-      []
+      [capabilities.otaSupported]
     );
 
   useEffect(
     () => {
+      if (!capabilities.otaSupported) {
+        return;
+      }
+
       let disposed =
         false;
 

@@ -617,6 +617,42 @@ export function SchedulesPage({
   const exportJson =
     async () => {
       try {
+        const json = JSON.stringify(
+          {
+            schemaVersion: 1,
+            exportedAt: new Date().toISOString(),
+            count: draft.length,
+            schedules: draft
+          },
+          null,
+          2
+        );
+
+        if (json.length < 40 || !json.includes('\"schedules\"')) {
+          throw new Error('Az exportált JSON tartalma üres vagy érvénytelen.');
+        }
+
+        const file = new File(
+          [json],
+          'weekly-led-schedules.json',
+          { type: 'application/json' }
+        );
+
+        if (
+          typeof navigator.share === 'function' &&
+          typeof navigator.canShare === 'function' &&
+          navigator.canShare({ files: [file] })
+        ) {
+          await navigator.share({
+            title: 'Heti LED-időzítések',
+            files: [file]
+          });
+          setFileMessage(
+            `${draft.length} időzítés exportálva mobilos megosztással (${json.length} bájt).`
+          );
+          return;
+        }
+
         const path =
           await save({
             title:
@@ -644,7 +680,7 @@ export function SchedulesPage({
           );
 
         setFileMessage(
-          `${draft.length} időzítés elmentve: ${path}`
+          `${draft.length} időzítés elmentve: ${path} (${json.length} bájt)`
         );
       } catch (
         error

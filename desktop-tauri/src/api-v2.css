@@ -486,3 +486,14 @@
   font-size: 12px;
   line-height: 1.5;
 }
+
+
+/* The base mobile navigation is fixed and must never become horizontally scrollable. */
+@media (max-width: 800px) {
+  .sidebar nav {
+    display: flex;
+    grid-template-columns: none;
+    justify-content: center;
+    overflow-x: hidden;
+  }
+}
