@@ -32,6 +32,14 @@ assert.match(
   )
 );
 assert.match(workflow, /next\/v5-rearchitecture/);
+assert.match(
+  workflow,
+  /push:\n    branches:\n      - next\/v5-rearchitecture/
+);
+assert.doesNotMatch(
+  workflow,
+  /push:\n[\s\S]*?branches:\n      - next\/v5-rearchitecture[\s\S]*?    paths:/
+);
 assert.match(workflow, /npm test/);
 assert.match(workflow, /validate-repository\.sh/);
 assert.match(workflow, /firmware-build|UNO R4 WiFi firmware/);

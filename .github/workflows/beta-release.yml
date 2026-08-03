@@ -11,9 +11,6 @@ on:
   push:
     branches:
       - next/v5-rearchitecture
-    paths:
-      - .github/workflows/beta-release.yml
-      - VERSION
 
 permissions:
   contents: read
