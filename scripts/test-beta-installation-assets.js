@@ -21,7 +21,7 @@ const applicationVersion = versions.application;
 const firmwareVersion = versions.firmware;
 const betaLabel = applicationVersion.replace(/^\d+\.\d+\.\d+-/, '');
 
-assert.equal(applicationVersion, '5.0.0-beta.4');
+assert.equal(applicationVersion, '5.0.0-beta.5');
 assert.equal(firmwareVersion, '4.3.0-beta.3');
 assert.equal(versions.channel, 'beta');
 
@@ -98,6 +98,7 @@ for (const expected of [
   'ARDUINO_HEALTH_TIMEOUT_MS=30000',
   'ARDUINO_STATUS_MONITOR_TIMEOUT_MS=30000',
   'RELEASE_CHANNEL=beta',
+  `RELEASE_CANDIDATE=${betaLabel}-gate`,
   `RELEASE_TARGET_VERSION=${applicationVersion}`
 ]) {
   assert.ok(
@@ -124,7 +125,7 @@ assert.match(unit, /ProtectSystem=full/);
 assert.match(unit, /PrivateTmp=true/);
 assert.match(unit, /Restart=on-failure/);
 
-const guide = read('docs/v5/BETA4_INSTALLATION_GUIDE.md');
+const guide = read('docs/v5/BETA5_INSTALLATION_GUIDE.md');
 for (const expected of [
   'Windows x86_64',
   'macOS Apple Silicon',
@@ -148,7 +149,7 @@ assert.match(guide, /nincs notarizálva/);
 assert.match(guide, /SmartScreen/);
 assert.match(guide, /unsigned\.ipa.*nincs.*aláírva/is);
 
-const notes = read('docs/v5/BETA4_RELEASE_NOTES.md');
+const notes = read('docs/v5/BETA5_RELEASE_NOTES.md');
 assert.ok(
   notes.includes(applicationVersion),
   `A release notes nem tartalmazza: ${applicationVersion}`
@@ -158,7 +159,7 @@ assert.match(notes, /main.*nem módosul/is);
 assert.match(notes, /produkciós.*10\.0\.0\.123/is);
 assert.match(notes, /SBOM/);
 
-const checklist = read('docs/v5/BETA4_RELEASE_CHECKLIST.md');
+const checklist = read('docs/v5/BETA5_RELEASE_CHECKLIST.md');
 assert.match(checklist, /Windows x86_64/);
 assert.match(checklist, /macOS Apple Silicon/);
 assert.match(checklist, /macOS Intel/);

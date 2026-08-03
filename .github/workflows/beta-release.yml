@@ -22,7 +22,7 @@ concurrency:
 env:
   NODE_VERSION: "24"
   EXPECTED_BRANCH: next/v5-rearchitecture
-  EXPECTED_VERSION: 5.0.0-beta.4
+  EXPECTED_VERSION: 5.0.0-beta.5
   EXPECTED_FIRMWARE_VERSION: 4.3.0-beta.3
 
 jobs:
@@ -544,9 +544,9 @@ jobs:
 
       - name: Add installation assets and release documentation
         run: |
-          cp docs/v5/BETA4_INSTALLATION_GUIDE.md release-assets/
-          cp docs/v5/BETA4_RELEASE_NOTES.md release-assets/
-          cp docs/v5/BETA4_RELEASE_CHECKLIST.md release-assets/
+          cp docs/v5/BETA5_INSTALLATION_GUIDE.md release-assets/
+          cp docs/v5/BETA5_RELEASE_NOTES.md release-assets/
+          cp docs/v5/BETA5_RELEASE_CHECKLIST.md release-assets/
           cp release-versions.json release-assets/
           cp firmware/firmware-release.json release-assets/
           cp deploy/install-beta-lxc.sh release-assets/
@@ -689,7 +689,7 @@ jobs:
           tag_name: ${{ needs.validate.outputs.tag }}
           target_commitish: ${{ github.sha }}
           name: Arduino LED Controller ${{ needs.validate.outputs.version }}
-          body_path: docs/v5/BETA4_RELEASE_NOTES.md
+          body_path: docs/v5/BETA5_RELEASE_NOTES.md
           prerelease: true
           make_latest: false
           overwrite_files: true
