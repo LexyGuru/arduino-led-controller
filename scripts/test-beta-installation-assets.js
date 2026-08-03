@@ -12,6 +12,19 @@ function read(relativePath) {
   return fs.readFileSync(path.join(root, relativePath), 'utf8');
 }
 
+function escapeRegex(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+const versions = JSON.parse(read('release-versions.json'));
+const applicationVersion = versions.application;
+const firmwareVersion = versions.firmware;
+const betaLabel = applicationVersion.replace(/^\d+\.\d+\.\d+-/, '');
+
+assert.equal(applicationVersion, '5.0.0-beta.4');
+assert.equal(firmwareVersion, '4.3.0-beta.3');
+assert.equal(versions.channel, 'beta');
+
 const shellFiles = [
   'deploy/build-beta-release-bundle.sh',
   'deploy/install-beta-lxc.sh',
@@ -44,7 +57,12 @@ assert.match(verifier, /command -v sha256sum/);
 assert.match(verifier, /command -v shasum/);
 
 const installer = read('deploy/install-beta-lxc.sh');
-assert.match(installer, /VERSION="\$\{BETA_VERSION:-5\.0\.0-beta\.3\}"/);
+assert.match(
+  installer,
+  new RegExp(
+    `VERSION="\\$\\{BETA_VERSION:-${escapeRegex(applicationVersion)}\\}"`
+  )
+);
 assert.match(installer, /SHA256SUMS/);
 assert.match(installer, /ALLOW_PRODUCTION_ARDUINO/);
 assert.match(installer, /10\.0\.0\.123/);
@@ -59,10 +77,13 @@ for (const expected of [
   'ARDUINO_HEALTH_TIMEOUT_MS 30000',
   'ARDUINO_STATUS_MONITOR_TIMEOUT_MS 30000',
   'RELEASE_CHANNEL beta',
-  'RELEASE_CANDIDATE beta.4-gate',
-  'RELEASE_TARGET_VERSION 5.0.0-beta.4'
+  `RELEASE_CANDIDATE ${betaLabel}-gate`,
+  `RELEASE_TARGET_VERSION ${applicationVersion}`
 ]) {
-  assert.ok(stagingInstaller.includes(expected), `Hiányzó staging beállítás: ${expected}`);
+  assert.ok(
+    stagingInstaller.includes(expected),
+    `Hiányzó staging beállítás: ${expected}`
+  );
 }
 assert.match(stagingInstaller, /10\.0\.0\.123/);
 assert.match(stagingInstaller, /ALLOW_PRODUCTION_ARDUINO/);
@@ -77,9 +98,12 @@ for (const expected of [
   'ARDUINO_HEALTH_TIMEOUT_MS=30000',
   'ARDUINO_STATUS_MONITOR_TIMEOUT_MS=30000',
   'RELEASE_CHANNEL=beta',
-  'RELEASE_TARGET_VERSION=5.0.0-beta.4'
+  `RELEASE_TARGET_VERSION=${applicationVersion}`
 ]) {
-  assert.ok(stagingEnv.includes(expected), `Hiányzó staging.env érték: ${expected}`);
+  assert.ok(
+    stagingEnv.includes(expected),
+    `Hiányzó staging.env érték: ${expected}`
+  );
 }
 assert.doesNotMatch(stagingEnv, /^ARDUINO_IP=10\.0\.0\.123$/m);
 
@@ -89,7 +113,12 @@ assert.match(betaEnv, /STAGING_ARDUINO_IP=127\.0\.0\.1/);
 assert.doesNotMatch(betaEnv, /^STAGING_ARDUINO_IP=10\.0\.0\.123$/m);
 
 const unit = read('deploy/systemd/arduino-led-controller-staging.service');
-assert.match(unit, /Description=Arduino LED Controller 5\.0\.0-beta\.3 Staging/);
+assert.match(
+  unit,
+  new RegExp(
+    `Description=Arduino LED Controller ${escapeRegex(applicationVersion)} Staging`
+  )
+);
 assert.match(unit, /NoNewPrivileges=true/);
 assert.match(unit, /ProtectSystem=full/);
 assert.match(unit, /PrivateTmp=true/);
@@ -110,14 +139,20 @@ for (const expected of [
   'PROVENANCE.json',
   'SECRET-SCAN.json'
 ]) {
-  assert.ok(guide.includes(expected), `Hiányzó telepítési fejezet: ${expected}`);
+  assert.ok(
+    guide.includes(expected),
+    `Hiányzó telepítési fejezet: ${expected}`
+  );
 }
 assert.match(guide, /nincs notarizálva/);
 assert.match(guide, /SmartScreen/);
 assert.match(guide, /unsigned\.ipa.*nincs.*aláírva/is);
 
 const notes = read('docs/v5/BETA4_RELEASE_NOTES.md');
-assert.match(notes, /5\.0\.0-beta\.3/);
+assert.ok(
+  notes.includes(applicationVersion),
+  `A release notes nem tartalmazza: ${applicationVersion}`
+);
 assert.match(notes, /prerelease/);
 assert.match(notes, /main.*nem módosul/is);
 assert.match(notes, /produkciós.*10\.0\.0\.123/is);
@@ -134,7 +169,13 @@ assert.match(checklist, /LXC \/ Debian szerver/);
 assert.match(checklist, /Arduino UNO R4 WiFi firmware/);
 assert.match(checklist, /Teljes alkalmazási staging/);
 
-console.log('OK: Beta.3 LXC bundle, telepítő, systemd és rollback szerződés');
+const self = fs.readFileSync(__filename, 'utf8');
+assert.doesNotMatch(self, /5\.0\.0-beta\.3/);
+assert.doesNotMatch(self, /Beta\.3 LXC/);
+
+console.log(
+  `OK: ${applicationVersion} LXC bundle, telepítő, systemd és rollback szerződés`
+);
 console.log('OK: macOS Bash 3.2-kompatibilis verziózott release-ellenőrző');
 console.log('OK: 30 másodperces timeout és alapértelmezett hardverizoláció');
 console.log('OK: minden kiadási platform telepítési és smoke-test dokumentációja');
