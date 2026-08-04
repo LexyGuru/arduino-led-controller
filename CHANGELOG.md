@@ -106,3 +106,8 @@
 - Központi `release-versions.json` és gépi `firmware-release.json`.
 - macOS Keychain munkamenet-cache, amely egy futás alatt összevonja a credential-olvasásokat.
 - Firmware-katalógus Frissítés / Visszaállítás / Újratelepítés műveletekkel.
+
+
+## Dedikált firmware release
+
+A `v5.0.0-beta.X` release-ek kizárólag alkalmazás-, mobil- és LXC-csomagokat tartalmaznak. A Beta firmware-ek, SHA-256 fájlok és a rollback katalógus kizárólag az `Arduino_LED_Controller_Firmware_BETA` prerelease-ben találhatók.

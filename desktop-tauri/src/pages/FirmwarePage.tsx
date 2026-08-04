@@ -73,9 +73,7 @@ function deduplicateFirmwareCatalog(items: FirmwareArtifact[]) {
 
   for (const item of items) {
     const version = item.firmwareVersion ?? item.tag;
-    const key = item.metadataConflict
-      ? `${version.toLowerCase()}::${item.tag.toLowerCase()}::conflict`
-      : version.toLowerCase();
+    const key = version.toLowerCase();
     const existing = grouped.get(key);
 
     if (!existing) {
@@ -610,7 +608,7 @@ export function FirmwarePage({
               firmware?.installedVersion &&
               compareVersions(version, firmware.installedVersion) < 0
             );
-            const relatedTags = item.relatedTags ?? [item.tag];
+            const relatedTags: string[] = [];
 
             return (
               <article key={`${version}-${item.name}`}>
@@ -651,7 +649,7 @@ export function FirmwarePage({
                     if (globalThis.confirm(t('firmware.confirmInstall',{version}))) {
                       void (async () => {
                         const { tauriApi } = await import('../services/tauriApi');
-                        await tauriApi.firmwareInstallRelease(item.tag);
+                        await tauriApi.firmwareInstallRelease(version);
                         await state.refresh({ forceCheck: true });
                       })();
                     }

@@ -62,3 +62,8 @@ A redesign során külön kell kezelni:
 7. opcionális LXC/szerver mód.
 
 A szerver- és LXC-réteg csak akkor törölhető, ha a Tauri importok, modellek, panelek és tesztek már nem hivatkoznak rájuk.
+
+
+## Dedikált firmware release
+
+A `v5.0.0-beta.X` release-ek kizárólag alkalmazás-, mobil- és LXC-csomagokat tartalmaznak. A Beta firmware-ek, SHA-256 fájlok és a rollback katalógus kizárólag az `Arduino_LED_Controller_Firmware_BETA` prerelease-ben találhatók.

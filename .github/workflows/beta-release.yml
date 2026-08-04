@@ -20,7 +20,6 @@ env:
   NODE_VERSION: "24"
   EXPECTED_BRANCH: next/v5-rearchitecture
   EXPECTED_VERSION: 5.0.0-beta.6
-  EXPECTED_FIRMWARE_VERSION: 4.3.0-beta.4
 
 jobs:
   validate:
@@ -435,58 +434,6 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-  build-firmware:
-    name: UNO R4 WiFi firmware
-    needs: validate
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v5
-
-      - name: Verify firmware contract
-        run: node scripts/test-alpha3-device-key-header.js
-
-      - name: Install Arduino CLI
-        uses: arduino/setup-arduino-cli@v2
-        with:
-          version: "1.x"
-
-      - name: Install core and libraries
-        run: |
-          arduino-cli config init
-          arduino-cli core update-index
-          arduino-cli lib update-index
-          arduino-cli core install arduino:renesas_uno
-          arduino-cli lib install "Adafruit NeoPixel"
-          arduino-cli lib install "ArduinoOTA"
-
-      - name: Create non-secret firmware configuration
-        run: cp firmware/ArduinoLedController/secrets.example.h firmware/ArduinoLedController/secrets.h
-
-      - name: Compile firmware
-        run: |
-          mkdir -p build/firmware artifacts
-          arduino-cli compile \
-            --fqbn arduino:renesas_uno:unor4wifi \
-            --output-dir build/firmware \
-            --warnings all \
-            firmware/ArduinoLedController
-          BIN="$(find build/firmware -type f -name '*.ino.bin' -print | sort | head -n 1)"
-          test -f "${BIN}"
-          FW_VERSION="$(sed -nE 's/^#define[[:space:]]+FIRMWARE_VERSION[[:space:]]+"([^"]+)".*/\1/p' firmware/ArduinoLedController/ArduinoLedController.ino | head -n 1)"
-          test "${FW_VERSION}" = "${EXPECTED_FIRMWARE_VERSION}"
-          OUT="artifacts/Arduino_LED_Controller_Firmware_${FW_VERSION}_UNO_R4_WiFi.bin"
-          cp "${BIN}" "${OUT}"
-          sha256sum "${OUT}" > "${OUT}.sha256"
-
-      - name: Upload firmware artifact
-        uses: actions/upload-artifact@v5
-        with:
-          name: beta-firmware
-          path: artifacts/*
-          if-no-files-found: error
-          retention-days: 30
-
   build-lxc:
     name: Debian and Proxmox LXC server bundle
     needs: validate
@@ -524,7 +471,6 @@ jobs:
       - build-desktop
       - build-android
       - build-ios
-      - build-firmware
       - build-lxc
     runs-on: ubuntu-22.04
     permissions:
@@ -545,7 +491,6 @@ jobs:
           cp docs/v5/BETA6_RELEASE_NOTES.md release-assets/
           cp docs/v5/BETA6_RELEASE_CHECKLIST.md release-assets/
           cp release-versions.json release-assets/
-          cp firmware/firmware-release.json release-assets/
           cp deploy/install-beta-lxc.sh release-assets/
           cp deploy/beta-lxc.env.example release-assets/
           chmod 0755 release-assets/install-beta-lxc.sh
@@ -561,11 +506,10 @@ jobs:
           test "$(find release-assets -maxdepth 1 -type f -name '*.apk' | wc -l | tr -d ' ')" -eq 1
           test "$(find release-assets -maxdepth 1 -type f -name '*.aab' | wc -l | tr -d ' ')" -eq 1
           test "$(find release-assets -maxdepth 1 -type f -name '*.ipa' | wc -l | tr -d ' ')" -eq 1
-          test "$(find release-assets -maxdepth 1 -type f -name '*.bin' | wc -l | tr -d ' ')" -eq 1
-          test "$(find release-assets -maxdepth 1 -type f -name '*.bin.sha256' | wc -l | tr -d ' ')" -eq 1
+          test "$(find release-assets -maxdepth 1 -type f -name '*.bin' | wc -l | tr -d ' ')" -eq 0
+          test "$(find release-assets -maxdepth 1 -type f -name '*.bin.sha256' | wc -l | tr -d ' ')" -eq 0
           test -f release-assets/release-versions.json
-          test -f release-assets/firmware-release.json
-          node -e "const r=require('./release-assets/release-versions.json'); const f=require('./release-assets/firmware-release.json'); if(r.application!==process.env.EXPECTED_VERSION||r.firmware!==process.env.EXPECTED_FIRMWARE_VERSION||f.firmwareVersion!==process.env.EXPECTED_FIRMWARE_VERSION||f.channel!=='beta') process.exit(1)"
+          node -e "const r=require('./release-assets/release-versions.json'); if(r.application!==process.env.EXPECTED_VERSION) process.exit(1)"
           test "$(find release-assets -maxdepth 1 -type f -name '*.tar.gz' | wc -l | tr -d ' ')" -eq 1
           find release-assets -maxdepth 1 -type f -print | sort
 
@@ -620,10 +564,6 @@ jobs:
           version = os.environ["VERSION"]
           tag = os.environ["TAG"]
           versions = json.loads(Path("release-versions.json").read_text(encoding="utf-8"))
-          firmware_version = versions["firmware"]
-          firmware_name = f"Arduino_LED_Controller_Firmware_{firmware_version}_UNO_R4_WiFi.bin"
-          firmware = next(item for item in files if item["name"] == firmware_name)
-
           manifest = {
               "schemaVersion": 2,
               "product": "Arduino LED Controller",
@@ -637,7 +577,6 @@ jobs:
                   "board": "arduino-uno-r4-wifi",
                   "directApiVersion": "1.0.0",
                   "applicationVersion": version,
-                  "firmwareVersion": firmware_version,
               },
               "files": files,
           }
@@ -664,21 +603,20 @@ jobs:
                   "releaseUrl": f"https://github.com/LexyGuru/arduino-led-controller/releases/tag/{tag}",
                   "artifacts": {key: {"name": name, "url": f"{base_url}/{name}"} for key, name in app_assets.items()},
               },
-              "firmware": {
-                  "version": firmware_version,
-                  "board": "arduino-uno-r4-wifi",
-                  "directApiVersion": "1.0.0",
-                  "name": firmware_name,
-                  "url": f"{base_url}/{firmware_name}",
-                  "checksumUrl": f"{base_url}/{firmware_name}.sha256",
-                  "sha256": firmware["sha256"],
-              },
           }
           (root / "latest-beta.json").write_text(
               json.dumps(latest, indent=2, ensure_ascii=False) + "\n",
               encoding="utf-8",
           )
           PY
+
+      - name: Enforce application-only release assets
+        run: |
+          set -euo pipefail
+          if find release-assets -maxdepth 1 -type f \( -name 'Arduino_LED_Controller_Firmware_*' -o -name 'firmware-release.json' -o -name 'firmware-catalog.json' \) | grep -q .; then
+            echo "::error::Firmware asset nem kerülhet v5.0.0-beta.X alkalmazásrelease-be."
+            exit 1
+          fi
 
       - name: Publish or update prerelease
         uses: softprops/action-gh-release@v2
@@ -701,7 +639,7 @@ jobs:
           gh release view "${TAG}" --json isPrerelease,targetCommitish,assets \
             --jq '{isPrerelease,targetCommitish,assetCount:(.assets|length),assets:[.assets[].name]}'
           test "$(gh release view "${TAG}" --json isPrerelease --jq '.isPrerelease')" = "true"
-          test "$(gh release view "${TAG}" --json assets --jq '.assets | length')" -ge 22
+          test "$(gh release view "${TAG}" --json assets --jq '.assets | length')" -ge 18
 
       - name: Upload complete release set as workflow artifact
         uses: actions/upload-artifact@v5

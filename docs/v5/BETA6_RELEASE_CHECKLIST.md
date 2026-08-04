@@ -64,3 +64,8 @@
 - [ ] tiltott fájl- és secret-scan.
 - [ ] tiszta working tree a commit után.
 - [ ] `v5.0.0-beta.6` tag a jóváhagyott release commiton.
+
+
+## Dedikált firmware release
+
+A `v5.0.0-beta.X` release-ek kizárólag alkalmazás-, mobil- és LXC-csomagokat tartalmaznak. A Beta firmware-ek, SHA-256 fájlok és a rollback katalógus kizárólag az `Arduino_LED_Controller_Firmware_BETA` prerelease-ben találhatók.

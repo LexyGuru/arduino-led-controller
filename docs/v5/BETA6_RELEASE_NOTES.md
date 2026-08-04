@@ -58,3 +58,8 @@ A release tartalmazza a platformartifactokat, `SHA256SUMS`, `RELEASE-MANIFEST.js
 - Külön látható a telepített, a legújabb és a korábbi firmware.
 - A teljes alkalmazásrelease kizárólag manuálisan indítható.
 - Új firmware-only workflow frissítheti a meglévő prerelease firmware assetjeit a desktop, mobil és LXC csomagok újrabuildelése nélkül.
+
+
+## Dedikált firmware release
+
+A `v5.0.0-beta.X` release-ek kizárólag alkalmazás-, mobil- és LXC-csomagokat tartalmaznak. A Beta firmware-ek, SHA-256 fájlok és a rollback katalógus kizárólag az `Arduino_LED_Controller_Firmware_BETA` prerelease-ben találhatók.

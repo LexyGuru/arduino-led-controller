@@ -140,8 +140,8 @@
     "test:beta5-release-package": "node scripts/test-beta5-release-package.js",
     "test:firmware-430-beta4-scheduler-hotfix": "node scripts/test-firmware-430-beta4-scheduler-hotfix.js",
     "test:firmware-catalog-dedup": "node scripts/test-firmware-catalog-dedup.js",
-    "test:firmware-hotfix-workflow": "node scripts/test-firmware-hotfix-workflow.js",
-    "test:beta6-release-package": "node scripts/test-beta6-release-package.js"
+    "test:beta6-release-package": "node scripts/test-beta6-release-package.js",
+    "test:firmware-beta-release": "node scripts/test-firmware-beta-release.js"
   },
   "engines": {
     "node": ">=20"

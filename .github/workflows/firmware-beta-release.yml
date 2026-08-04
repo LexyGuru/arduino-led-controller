@@ -1,0 +1,250 @@
+name: Firmware BETA release
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Build and update the dedicated firmware BETA release
+        required: true
+        default: true
+        type: boolean
+      migrate_legacy_assets:
+        description: Import firmware assets from existing v5 beta releases
+        required: true
+        default: true
+        type: boolean
+      cleanup_application_releases:
+        description: Remove firmware assets from v5 beta releases after verified migration
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: firmware-beta-release
+  cancel-in-progress: false
+
+env:
+  NODE_VERSION: "24"
+  EXPECTED_BRANCH: next/v5-rearchitecture
+  FIRMWARE_RELEASE_TAG: Arduino_LED_Controller_Firmware_BETA
+  FIRMWARE_RELEASE_NAME: Arduino LED Controller Firmware BETA
+
+jobs:
+  validate:
+    name: Firmware BETA gate
+    runs-on: ubuntu-22.04
+    outputs:
+      firmware_version: ${{ steps.versions.outputs.firmware_version }}
+      application_version: ${{ steps.versions.outputs.application_version }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - name: Verify branch, versions and contracts
+        id: versions
+        run: |
+          set -euo pipefail
+          test "${GITHUB_REF_NAME}" = "${EXPECTED_BRANCH}"
+          APP_VERSION="$(node -p "require('./release-versions.json').application")"
+          FW_VERSION="$(node -p "require('./release-versions.json').firmware")"
+          SOURCE_VERSION="$(sed -nE 's/^#define[[:space:]]+FIRMWARE_VERSION[[:space:]]+"([^"]+)".*/\1/p' firmware/ArduinoLedController/ArduinoLedController.ino | head -n 1)"
+          META_VERSION="$(node -p "require('./firmware/firmware-release.json').firmwareVersion")"
+          EXPECTED_BINARY="$(node -p "require('./firmware/firmware-release.json').binary")"
+          test "${FW_VERSION}" = "${SOURCE_VERSION}"
+          test "${FW_VERSION}" = "${META_VERSION}"
+          test "${EXPECTED_BINARY}" = "Arduino_LED_Controller_Firmware_${FW_VERSION}_UNO_R4_WiFi.bin"
+          echo "firmware_version=${FW_VERSION}" >> "${GITHUB_OUTPUT}"
+          echo "application_version=${APP_VERSION}" >> "${GITHUB_OUTPUT}"
+          npm ci --no-audit --no-fund
+          npm run test:firmware-beta-release
+          npm run test:firmware-catalog-dedup
+
+  build:
+    name: Build UNO R4 WiFi firmware
+    needs: validate
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install Arduino CLI
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sh
+          echo "${GITHUB_WORKSPACE}/bin" >> "${GITHUB_PATH}"
+      - name: Install core and libraries
+        run: |
+          arduino-cli config init
+          arduino-cli core update-index
+          arduino-cli lib update-index
+          arduino-cli core install arduino:renesas_uno
+          arduino-cli lib install "Adafruit NeoPixel"
+          arduino-cli lib install "ArduinoOTA"
+      - name: Compile, name and checksum firmware
+        env:
+          FW_VERSION: ${{ needs.validate.outputs.firmware_version }}
+        run: |
+          set -euo pipefail
+          cp firmware/ArduinoLedController/secrets.example.h firmware/ArduinoLedController/secrets.h
+          mkdir -p build/firmware artifacts
+          arduino-cli compile --fqbn arduino:renesas_uno:unor4wifi --output-dir build/firmware --warnings all firmware/ArduinoLedController
+          BIN="$(find build/firmware -type f -name '*.ino.bin' -print | sort | head -n 1)"
+          OUT="artifacts/Arduino_LED_Controller_Firmware_${FW_VERSION}_UNO_R4_WiFi.bin"
+          test -f "${BIN}"
+          cp "${BIN}" "${OUT}"
+          sha256sum "${OUT}" > "${OUT}.sha256"
+          test "$(basename "${OUT}")" = "$(node -p "require('./firmware/firmware-release.json').binary")"
+          cp firmware/firmware-release.json artifacts/
+      - uses: actions/upload-artifact@v5
+        with:
+          name: firmware-beta-current
+          path: artifacts/*
+          if-no-files-found: error
+          retention-days: 30
+
+  publish:
+    name: Publish dedicated firmware catalog
+    if: ${{ inputs.publish }}
+    needs: [validate, build]
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v5
+        with:
+          name: firmware-beta-current
+          path: current
+      - name: Create or open dedicated firmware prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if ! gh release view "${FIRMWARE_RELEASE_TAG}" >/dev/null 2>&1; then
+            gh release create "${FIRMWARE_RELEASE_TAG}" --target "${GITHUB_SHA}" --title "${FIRMWARE_RELEASE_NAME}" --notes "Dedikált Beta firmware-katalógus. Az alkalmazásrelease-ektől független telepítéshez és rollbackhez." --prerelease
+          fi
+          test "$(gh release view "${FIRMWARE_RELEASE_TAG}" --json isPrerelease --jq '.isPrerelease')" = "true"
+
+      - name: Migrate verified legacy firmware assets
+        if: ${{ inputs.migrate_legacy_assets }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p migrated
+          gh api --paginate "repos/${GITHUB_REPOSITORY}/releases?per_page=100" > releases-pages.json
+          jq -s 'add' releases-pages.json > releases.json
+          jq -r '.[] | select(.tag_name|test("^v5\\.0\\.0-beta\\.[0-9]+$")) | .tag_name' releases.json | while read -r tag; do
+            gh release view "${tag}" --json assets --jq '.assets[].name' | while read -r name; do
+              case "${name}" in
+                Arduino_LED_Controller_Firmware_*_UNO_R4_WiFi.bin|Arduino_LED_Controller_Firmware_*_UNO_R4_WiFi.bin.sha256)
+                  [ -f "migrated/${name}" ] || gh release download "${tag}" --pattern "${name}" --dir migrated
+                  ;;
+              esac
+            done
+          done
+          for bin in migrated/Arduino_LED_Controller_Firmware_*_UNO_R4_WiFi.bin; do
+            [ -f "${bin}" ] || continue
+            sha_file="${bin}.sha256"
+            test -f "${sha_file}"
+            expected="$(awk '{print $1}' "${sha_file}")"
+            actual="$(sha256sum "${bin}" | awk '{print $1}')"
+            test "${expected}" = "${actual}"
+          done
+
+      - name: Upload without overwriting a different binary
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FW_VERSION: ${{ needs.validate.outputs.firmware_version }}
+        run: |
+          set -euo pipefail
+          mkdir -p upload
+          cp current/* upload/
+          [ ! -d migrated ] || cp migrated/* upload/ 2>/dev/null || true
+          for file in upload/Arduino_LED_Controller_Firmware_*_UNO_R4_WiFi.bin upload/Arduino_LED_Controller_Firmware_*_UNO_R4_WiFi.bin.sha256; do
+            [ -f "${file}" ] || continue
+            name="$(basename "${file}")"
+            if gh release view "${FIRMWARE_RELEASE_TAG}" --json assets --jq '.assets[].name' | grep -Fxq "${name}"; then
+              gh release download "${FIRMWARE_RELEASE_TAG}" --pattern "${name}" --dir existing
+              test "$(sha256sum "existing/${name}" | awk '{print $1}')" = "$(sha256sum "${file}" | awk '{print $1}')" || {
+                echo "::error::Azonos firmware assetnév eltérő tartalommal: ${name}"
+                exit 1
+              }
+            else
+              gh release upload "${FIRMWARE_RELEASE_TAG}" "${file}"
+            fi
+          done
+          gh release upload "${FIRMWARE_RELEASE_TAG}" current/firmware-release.json --clobber
+
+      - name: Generate authoritative firmware catalog
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${FIRMWARE_RELEASE_TAG}" > firmware-release-api.json
+          python3 - <<'PY'
+          import json,re,os
+          from pathlib import Path
+          r=json.loads(Path('firmware-release-api.json').read_text())
+          assets={a['name']:a for a in r['assets']}
+          pat=re.compile(r'^Arduino_LED_Controller_Firmware_(\d+\.\d+\.\d+-beta\.\d+)_UNO_R4_WiFi\.bin$')
+          entries=[]
+          for name,a in assets.items():
+            m=pat.match(name)
+            if not m: continue
+            checksum=name+'.sha256'
+            if checksum not in assets: raise SystemExit(f'Hiányzó checksum asset: {checksum}')
+            digest=a.get('digest') or ''
+            if not digest.startswith('sha256:'): raise SystemExit(f'Hiányzó GitHub SHA-256 digest: {name}')
+            entries.append({'version':m.group(1),'channel':'beta','board':'arduino-uno-r4-wifi','directApiVersion':'1.0.0','file':name,'checksumFile':checksum,'sha256':digest[7:],'bytes':a['size'],'publishedAt':a.get('updated_at'),'url':a['browser_download_url'],'checksumUrl':assets[checksum]['browser_download_url']})
+          def key(e):
+            x=re.match(r'(\d+)\.(\d+)\.(\d+)-beta\.(\d+)',e['version']); return tuple(map(int,x.groups()))
+          entries.sort(key=key,reverse=True)
+          if not entries: raise SystemExit('Üres firmware-katalógus.')
+          catalog={'schemaVersion':1,'product':'Arduino LED Controller Firmware','releaseTag':os.environ['FIRMWARE_RELEASE_TAG'],'channel':'beta','latest':entries[0]['version'],'firmwares':entries}
+          Path('firmware-catalog.json').write_text(json.dumps(catalog,indent=2,ensure_ascii=False)+'\n')
+          Path('FIRMWARE-SHA256SUMS').write_text(''.join(f"{e['sha256']}  {e['file']}\n" for e in entries))
+          PY
+          gh release upload "${FIRMWARE_RELEASE_TAG}" firmware-catalog.json FIRMWARE-SHA256SUMS --clobber
+
+      - name: Verify dedicated catalog before cleanup
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release download "${FIRMWARE_RELEASE_TAG}" --pattern firmware-catalog.json --dir verify
+          jq -e '.releaseTag=="Arduino_LED_Controller_Firmware_BETA" and (.firmwares|length)>0' verify/firmware-catalog.json
+          while read -r name; do
+            gh release view "${FIRMWARE_RELEASE_TAG}" --json assets --jq '.assets[].name' | grep -Fxq "${name}"
+          done < <(jq -r '.firmwares[] | .file,.checksumFile' verify/firmware-catalog.json)
+
+      - name: Remove firmware assets from application releases after migration
+        if: ${{ inputs.cleanup_application_releases }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api --paginate "repos/${GITHUB_REPOSITORY}/releases?per_page=100" --jq '.[] | select(.tag_name|test("^v5\\.0\\.0-beta\\.[0-9]+$")) | .tag_name' | while read -r tag; do
+            gh release view "${tag}" --json assets --jq '.assets[] | [.name,.databaseId] | @tsv' | while IFS=$'\t' read -r name id; do
+              case "${name}" in
+                Arduino_LED_Controller_Firmware_*_UNO_R4_WiFi.bin|Arduino_LED_Controller_Firmware_*_UNO_R4_WiFi.bin.sha256|firmware-release.json|firmware-catalog.json|FIRMWARE-SHA256SUMS|FIRMWARE-RELEASE-MANIFEST.json)
+                  gh api --method DELETE "repos/${GITHUB_REPOSITORY}/releases/assets/${id}"
+                  ;;
+              esac
+            done
+          done
+
+      - name: Final separation verification
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release view "${FIRMWARE_RELEASE_TAG}" --json assets --jq '.assets[].name' | grep -Fxq firmware-catalog.json
+          if gh api --paginate "repos/${GITHUB_REPOSITORY}/releases?per_page=100" --jq '.[] | select(.tag_name|test("^v5\\.0\\.0-beta\\.[0-9]+$")) | .assets[].name' | grep -E '^Arduino_LED_Controller_Firmware_|^firmware-release.json$'; then
+            echo "::error::Firmware asset maradt alkalmazásrelease-ben."
+            exit 1
+          fi

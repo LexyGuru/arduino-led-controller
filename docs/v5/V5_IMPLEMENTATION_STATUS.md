@@ -34,3 +34,8 @@ A firmware többé nem blokkoló tényező. A következő munkafázis kizáróla
 - query kulcsfallback visszakapcsolása;
 - firmware-verzió emelése új firmware-funkció nélkül;
 - szerver/LXC eltávolítása a Tauri importfüggőségek felmérése nélkül.
+
+
+## Dedikált firmware release
+
+A `v5.0.0-beta.X` release-ek kizárólag alkalmazás-, mobil- és LXC-csomagokat tartalmaznak. A Beta firmware-ek, SHA-256 fájlok és a rollback katalógus kizárólag az `Arduino_LED_Controller_Firmware_BETA` prerelease-ben találhatók.

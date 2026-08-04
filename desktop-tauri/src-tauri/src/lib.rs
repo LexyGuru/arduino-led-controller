@@ -1090,6 +1090,7 @@ struct GitHubAsset {
 }
 
 const FIRMWARE_REPOSITORY: &str = "LexyGuru/arduino-led-controller";
+const FIRMWARE_BETA_RELEASE_TAG: &str = "Arduino_LED_Controller_Firmware_BETA";
 const OTA_UPLOAD_PORT: u16 = 65280;
 
 async fn github_releases() -> Result<Vec<GitHubRelease>, String> {
@@ -1146,96 +1147,81 @@ fn version_token_from_text(text: &str) -> Option<String> {
         .map(str::to_string)
 }
 
-fn firmware_version_from_asset(release: &GitHubRelease) -> Option<String> {
-    release.assets.iter().find_map(|asset| {
-        let lower = asset.name.to_ascii_lowercase();
-        if lower.ends_with(".bin")
-            && !lower.ends_with(".bin.sha256")
-            && (lower.contains("firmware") || lower.ends_with(".ino.bin"))
-        {
-            version_token_from_text(&asset.name)
-        } else {
-            None
-        }
-    })
-}
-
-fn firmware_version_from_release_body(release: &GitHubRelease) -> Option<String> {
-    release.body.as_deref().and_then(|body| {
-        body.lines().find_map(|line| {
-            let lower = line.to_ascii_lowercase();
-            if lower.contains("firmware")
-                && (lower.contains("verzió") || lower.contains("version") || lower.contains(':'))
-            {
-                version_token_from_text(line)
-            } else {
-                None
-            }
-        })
-    })
-}
-
-fn firmware_version_from_release(release: &GitHubRelease) -> Option<String> {
-    firmware_version_from_asset(release)
+fn firmware_version_from_asset_name(name: &str) -> Option<String> {
+    let lower = name.to_ascii_lowercase();
+    if lower.ends_with(".bin")
+        && !lower.ends_with(".bin.sha256")
+        && lower.starts_with("arduino_led_controller_firmware_")
+        && lower.ends_with("_uno_r4_wifi.bin")
+    {
+        version_token_from_text(name)
+    } else {
+        None
+    }
 }
 
 fn firmware_version_is_prerelease(version: &str) -> bool {
-    let value = normalize_version(version);
-    ["-alpha", "-beta", "-rc", "-pre", "-preview"]
-        .iter()
-        .any(|marker| value.contains(marker))
+    normalize_version(version).contains("-beta")
 }
 
-fn firmware_release_channel(release: &GitHubRelease) -> Option<&'static str> {
-    if release.draft {
-        return None;
+fn firmware_artifacts_from_release(release: &GitHubRelease) -> Vec<FirmwareArtifact> {
+    if release.draft || release.tag_name != FIRMWARE_BETA_RELEASE_TAG {
+        return Vec::new();
     }
-    let version = firmware_version_from_release(release)?;
-    let version_is_prerelease = firmware_version_is_prerelease(&version);
-    match (release.prerelease, version_is_prerelease) {
-        (true, true) => Some("beta"),
-        (false, false) => Some("stable"),
-        _ => None,
-    }
-}
-
-fn firmware_artifact_from_release(release: &GitHubRelease) -> Option<FirmwareArtifact> {
-    let binary = release.assets.iter().find(|asset| {
-        let lower = asset.name.to_ascii_lowercase();
-        lower.ends_with(".bin")
-            && !lower.ends_with(".bin.sha256")
-            && (lower.contains("firmware") || lower.ends_with(".ino.bin"))
-    })?;
-    let expected_checksum = format!("{}.sha256", binary.name);
-    let checksum = release
+    release
         .assets
         .iter()
-        .find(|asset| asset.name == expected_checksum)?;
-    let version = firmware_version_from_asset(release)?;
-    let expected_version = firmware_version_from_release_body(release);
-    let metadata_conflict = expected_version.as_ref().and_then(|expected| {
-        if normalize_version(expected) != normalize_version(&version) {
-            Some(format!(
-                "Firmware metadata-konfliktus: a release leírása {} verziót állít, de a tényleges BIN asset {}.",
-                expected, version
-            ))
-        } else {
-            None
-        }
-    });
-    let channel = firmware_release_channel(release)?;
-    Some(FirmwareArtifact {
-        name: binary.name.clone(),
-        download_url: binary.browser_download_url.clone(),
-        checksum_url: checksum.browser_download_url.clone(),
-        firmware_version: Some(version),
-        tag: release.tag_name.clone(),
-        created_at: release.published_at.clone(),
-        summary: release.body.as_deref().map(release_summary),
-        channel: channel.into(),
-        expected_firmware_version: expected_version,
-        metadata_conflict,
-    })
+        .filter_map(|binary| {
+            let version = firmware_version_from_asset_name(&binary.name)?;
+            if !firmware_version_is_prerelease(&version) {
+                return None;
+            }
+            let checksum_name = format!("{}.sha256", binary.name);
+            let checksum = release
+                .assets
+                .iter()
+                .find(|asset| asset.name == checksum_name)?;
+            Some(FirmwareArtifact {
+                name: binary.name.clone(),
+                download_url: binary.browser_download_url.clone(),
+                checksum_url: checksum.browser_download_url.clone(),
+                firmware_version: Some(version.clone()),
+                tag: version,
+                created_at: release.published_at.clone(),
+                summary: Some("Dedikált Arduino LED Controller Beta firmware-katalógus".into()),
+                channel: "beta".into(),
+                expected_firmware_version: None,
+                metadata_conflict: None,
+            })
+        })
+        .collect()
+}
+
+fn firmware_version_key(version: &str) -> (u64, u64, u64, u64) {
+    let normalized = normalize_version(version);
+    let (core, beta) = normalized
+        .split_once("-beta.")
+        .unwrap_or((&normalized, "0"));
+    let mut parts = core.split('.').filter_map(|v| v.parse::<u64>().ok());
+    (
+        parts.next().unwrap_or(0),
+        parts.next().unwrap_or(0),
+        parts.next().unwrap_or(0),
+        beta.parse().unwrap_or(0),
+    )
+}
+
+async fn firmware_beta_release() -> Result<GitHubRelease, String> {
+    github_releases()
+        .await?
+        .into_iter()
+        .find(|release| release.tag_name == FIRMWARE_BETA_RELEASE_TAG && !release.draft)
+        .ok_or_else(|| {
+            format!(
+                "A dedikált {} GitHub release nem található.",
+                FIRMWARE_BETA_RELEASE_TAG
+            )
+        })
 }
 
 #[tauri::command]
@@ -1246,30 +1232,32 @@ async fn firmware_releases(state: State<'_, AppState>) -> Result<Vec<FirmwareArt
         .map_err(|_| "Beállítás zárolva".to_string())?
         .firmware_update_channel
         .clone();
-    let mut artifacts = github_releases()
-        .await?
-        .iter()
-        .filter_map(firmware_artifact_from_release)
-        .filter(|artifact| artifact.channel == channel.trim())
-        .collect::<Vec<_>>();
-    artifacts.truncate(20);
+    if channel.trim() != "beta" {
+        return Ok(Vec::new());
+    }
+    let release = firmware_beta_release().await?;
+    let mut artifacts = firmware_artifacts_from_release(&release);
+    artifacts.sort_by_key(|a| {
+        std::cmp::Reverse(firmware_version_key(
+            a.firmware_version.as_deref().unwrap_or(&a.tag),
+        ))
+    });
     Ok(artifacts)
 }
 
 async fn latest_firmware(config: &Config) -> Result<FirmwareArtifact, String> {
-    github_releases()
-        .await?
-        .iter()
-        .filter_map(firmware_artifact_from_release)
-        .find(|artifact| {
-            artifact.channel == config.firmware_update_channel.trim()
-                && artifact.metadata_conflict.is_none()
-        })
+    if config.firmware_update_channel.trim() != "beta" {
+        return Err(
+            "A stabil dedikált firmware-release még nincs konfigurálva; nincs beta fallback."
+                .into(),
+        );
+    }
+    let release = firmware_beta_release().await?;
+    firmware_artifacts_from_release(&release)
+        .into_iter()
+        .max_by_key(|a| firmware_version_key(a.firmware_version.as_deref().unwrap_or(&a.tag)))
         .ok_or_else(|| {
-            format!(
-                "A(z) {} csatornán nem található csatornahelyes, teljes firmware release. Stabil firmware-re nincs fallback.",
-                config.firmware_update_channel
-            )
+            "A dedikált Beta firmware-release nem tartalmaz teljes BIN + SHA-256 párt.".into()
         })
 }
 fn app_asset_for_platform(release: &GitHubRelease) -> Option<&GitHubAsset> {
@@ -2787,24 +2775,23 @@ async fn firmware_update_inner(
         Some(7),
     );
     ensure_not_cancelled(state)?;
-    let artifact = if let Some(tag) = requested_tag {
-        let releases = github_releases().await?;
-        let release = releases
-            .iter()
-            .find(|release| release.tag_name == tag)
-            .ok_or_else(|| format!("A(z) {tag} GitHub release nem található."))?;
-        let artifact = firmware_artifact_from_release(release).ok_or_else(|| {
-            format!(
-                "A(z) {tag} release firmware-verziója és GitHub prerelease jelölése ellentmondásos, vagy hiányzik a bináris/checksum."
-            )
-        })?;
-        if artifact.channel != config.firmware_update_channel.trim() {
-            return Err(format!(
-                "CSATORNA_ELTÉRÉS: a(z) {tag} firmware {} csatornás, de a firmware-csatorna {} értékre van állítva.",
-                artifact.channel, config.firmware_update_channel
-            ));
-        }
-        artifact
+    let artifact = if let Some(version) = requested_tag {
+        let release = firmware_beta_release().await?;
+        firmware_artifacts_from_release(&release)
+            .into_iter()
+            .find(|artifact| {
+                normalize_version(
+                    artifact
+                        .firmware_version
+                        .as_deref()
+                        .unwrap_or(&artifact.tag),
+                ) == normalize_version(version)
+            })
+            .ok_or_else(|| {
+                format!(
+                    "A(z) {version} firmware nem található a dedikált Beta firmware-katalógusban."
+                )
+            })?
     } else {
         latest_firmware(&config).await?
     };
