@@ -1,0 +1,21 @@
+#!/usr/bin/env node
+'use strict';
+const assert = require('assert');
+const fs = require('fs');
+const full = fs.readFileSync('.github/workflows/beta-release.yml','utf8');
+const hotfix = fs.readFileSync('.github/workflows/firmware-hotfix-release.yml','utf8');
+assert.match(full, /workflow_dispatch:/);
+assert.doesNotMatch(full, /\n  push:/);
+for (const job of ['build-desktop:','build-android:','build-ios:','build-firmware:','build-lxc:','publish:']) assert.match(full,new RegExp(job));
+assert.match(hotfix,/target_release_tag:/);
+assert.match(hotfix,/UNO R4 WiFi firmware only/);
+assert.doesNotMatch(hotfix,/build-desktop:/);
+assert.doesNotMatch(hotfix,/build-android:/);
+assert.doesNotMatch(hotfix,/build-ios:/);
+assert.doesNotMatch(hotfix,/build-lxc:/);
+assert.match(hotfix,/releases\/assets\/\$\{id\}/);
+assert.match(hotfix,/dmg\|exe\|AppImage\|deb\|apk\|aab\|ipa/);
+assert.match(hotfix,/FIRMWARE-RELEASE-MANIFEST\.json/);
+assert.match(hotfix,/FIRMWARE-SHA256SUMS/);
+assert.match(hotfix,/digest.*sha256/s);
+console.log('OK: teljes app release és firmware-only hotfix workflow szétválasztva');

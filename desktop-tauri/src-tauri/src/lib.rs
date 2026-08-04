@@ -226,6 +226,10 @@ struct FirmwareArtifact {
     summary: Option<String>,
     #[serde(default)]
     channel: String,
+    #[serde(default)]
+    expected_firmware_version: Option<String>,
+    #[serde(default)]
+    metadata_conflict: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -1142,10 +1146,8 @@ fn version_token_from_text(text: &str) -> Option<String> {
         .map(str::to_string)
 }
 
-fn firmware_version_from_release(release: &GitHubRelease) -> Option<String> {
-    // Az artifact fájlnév a release tényleges firmware-verziójához kötött, ezért
-    // megbízhatóbb, mint a kézzel szerkesztett release notes.
-    if let Some(version) = release.assets.iter().find_map(|asset| {
+fn firmware_version_from_asset(release: &GitHubRelease) -> Option<String> {
+    release.assets.iter().find_map(|asset| {
         let lower = asset.name.to_ascii_lowercase();
         if lower.ends_with(".bin")
             && !lower.ends_with(".bin.sha256")
@@ -1155,10 +1157,10 @@ fn firmware_version_from_release(release: &GitHubRelease) -> Option<String> {
         } else {
             None
         }
-    }) {
-        return Some(version);
-    }
+    })
+}
 
+fn firmware_version_from_release_body(release: &GitHubRelease) -> Option<String> {
     release.body.as_deref().and_then(|body| {
         body.lines().find_map(|line| {
             let lower = line.to_ascii_lowercase();
@@ -1171,6 +1173,10 @@ fn firmware_version_from_release(release: &GitHubRelease) -> Option<String> {
             }
         })
     })
+}
+
+fn firmware_version_from_release(release: &GitHubRelease) -> Option<String> {
+    firmware_version_from_asset(release)
 }
 
 fn firmware_version_is_prerelease(version: &str) -> bool {
@@ -1205,7 +1211,18 @@ fn firmware_artifact_from_release(release: &GitHubRelease) -> Option<FirmwareArt
         .assets
         .iter()
         .find(|asset| asset.name == expected_checksum)?;
-    let version = firmware_version_from_release(release)?;
+    let version = firmware_version_from_asset(release)?;
+    let expected_version = firmware_version_from_release_body(release);
+    let metadata_conflict = expected_version.as_ref().and_then(|expected| {
+        if normalize_version(expected) != normalize_version(&version) {
+            Some(format!(
+                "Firmware metadata-konfliktus: a release leírása {} verziót állít, de a tényleges BIN asset {}.",
+                expected, version
+            ))
+        } else {
+            None
+        }
+    });
     let channel = firmware_release_channel(release)?;
     Some(FirmwareArtifact {
         name: binary.name.clone(),
@@ -1216,6 +1233,8 @@ fn firmware_artifact_from_release(release: &GitHubRelease) -> Option<FirmwareArt
         created_at: release.published_at.clone(),
         summary: release.body.as_deref().map(release_summary),
         channel: channel.into(),
+        expected_firmware_version: expected_version,
+        metadata_conflict,
     })
 }
 
@@ -1242,7 +1261,10 @@ async fn latest_firmware(config: &Config) -> Result<FirmwareArtifact, String> {
         .await?
         .iter()
         .filter_map(firmware_artifact_from_release)
-        .find(|artifact| artifact.channel == config.firmware_update_channel.trim())
+        .find(|artifact| {
+            artifact.channel == config.firmware_update_channel.trim()
+                && artifact.metadata_conflict.is_none()
+        })
         .ok_or_else(|| {
             format!(
                 "A(z) {} csatornán nem található csatornahelyes, teljes firmware release. Stabil firmware-re nincs fallback.",

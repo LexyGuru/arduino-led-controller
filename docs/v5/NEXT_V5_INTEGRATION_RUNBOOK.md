@@ -4,7 +4,7 @@
 
 A `next/v5-rearchitecture` ág firmware-oldala lezárt és hardveren elfogadott.
 
-- alkalmazás: `5.0.0-beta.5`;
+- alkalmazás: `5.0.0-beta.6`;
 - firmware: `4.3.0-beta.4`;
 - Direct API: `1.0.0`;
 - query fallback: forrásból tiltva;

@@ -98,8 +98,8 @@ Használj rövid, célzott Conventional Commit üzenetet:
 
 ```text
 feat(i18n): add translated runtime messages
-chore(release): prepare 5.0.0-beta.5
-docs: update documentation for 5.0.0-beta.5
+chore(release): prepare 5.0.0-beta.6
+docs: update documentation for 5.0.0-beta.6
 ```
 
 A funkció-, release- és dokumentációs változásokat lehetőleg külön commitold.

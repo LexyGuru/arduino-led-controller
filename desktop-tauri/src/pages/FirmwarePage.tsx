@@ -42,6 +42,64 @@ interface FirmwarePageProps {
   onCancel: () => void;
 }
 
+
+function versionParts(value?: string) {
+  return (value ?? '')
+    .replace(/^v/i, '')
+    .split(/[.-]/)
+    .map((part) => (/^\d+$/.test(part) ? Number(part) : part));
+}
+
+function compareVersions(left?: string, right?: string) {
+  const a = versionParts(left);
+  const b = versionParts(right);
+  const length = Math.max(a.length, b.length);
+
+  for (let index = 0; index < length; index += 1) {
+    const av = a[index] ?? 0;
+    const bv = b[index] ?? 0;
+    if (av === bv) continue;
+    if (typeof av === 'number' && typeof bv === 'number') return av - bv;
+    if (typeof av === 'number') return 1;
+    if (typeof bv === 'number') return -1;
+    return String(av).localeCompare(String(bv));
+  }
+
+  return 0;
+}
+
+function deduplicateFirmwareCatalog(items: FirmwareArtifact[]) {
+  const grouped = new Map<string, FirmwareArtifact>();
+
+  for (const item of items) {
+    const version = item.firmwareVersion ?? item.tag;
+    const key = item.metadataConflict
+      ? `${version.toLowerCase()}::${item.tag.toLowerCase()}::conflict`
+      : version.toLowerCase();
+    const existing = grouped.get(key);
+
+    if (!existing) {
+      grouped.set(key, { ...item, relatedTags: [item.tag] });
+      continue;
+    }
+
+    existing.relatedTags = Array.from(
+      new Set([...(existing.relatedTags ?? [existing.tag]), item.tag])
+    );
+
+    if (new Date(item.createdAt ?? 0).getTime() > new Date(existing.createdAt ?? 0).getTime()) {
+      grouped.set(key, {
+        ...item,
+        relatedTags: existing.relatedTags
+      });
+    }
+  }
+
+  return Array.from(grouped.values()).sort((left, right) =>
+    compareVersions(right.firmwareVersion ?? right.tag, left.firmwareVersion ?? left.tag)
+  );
+}
+
 function logTime(timestamp: number) {
   return new Date(
     timestamp
@@ -91,6 +149,8 @@ export function FirmwarePage({
 
   const [releaseCatalog, setReleaseCatalog] = useState<FirmwareArtifact[]>([]);
   const [catalogError, setCatalogError] = useState('');
+  const firmwareCatalog = deduplicateFirmwareCatalog(releaseCatalog);
+  const latestCatalogVersion = firmwareCatalog[0]?.firmwareVersion ?? firmwareCatalog[0]?.tag;
 
   const refreshCatalog = async () => {
     try {
@@ -542,31 +602,66 @@ export function FirmwarePage({
         <p className="muted">{t('firmware.catalogHelp')}</p>
         {catalogError && <p className="console-warning">{catalogError}</p>}
         <div className="v5-backup-list">
-          {releaseCatalog.length === 0 ? <p className="muted">{t('firmware.noCatalog')}</p> : releaseCatalog.map((item) => (
-            <article key={item.tag}>
-              <div>
-                <strong>{item.firmwareVersion ?? item.tag}</strong>
-                <small>{item.channel} · {item.tag} · {item.createdAt ? new Date(item.createdAt).toLocaleDateString(language === 'de' ? 'de-DE' : language === 'en' ? 'en-US' : 'hu-HU') : t('firmware.unknownDate')}</small>
-                <p>{item.summary || t('firmware.noSummary')}</p>
-                <code>{item.name}</code>
-              </div>
-              <button
-                className="secondary"
-                disabled={state.busy}
-                onClick={() => {
-                  if (globalThis.confirm(t('firmware.confirmInstall',{version:item.firmwareVersion ?? item.tag}))) {
-                    void (async () => {
-                      const { tauriApi } = await import('../services/tauriApi');
-                      await tauriApi.firmwareInstallRelease(item.tag);
-                      await state.refresh({ forceCheck: true });
-                    })();
-                  }
-                }}
-              >
-                {item.firmwareVersion === firmware?.installedVersion ? t('common.reinstall') : (firmware?.installedVersion && item.firmwareVersion && item.firmwareVersion < firmware.installedVersion ? t('common.rollback') : t('common.update'))}
-              </button>
-            </article>
-          ))}
+          {firmwareCatalog.length === 0 ? <p className="muted">{t('firmware.noCatalog')}</p> : firmwareCatalog.map((item) => {
+            const version = item.firmwareVersion ?? item.tag;
+            const installed = version === firmware?.installedVersion;
+            const latest = version === latestCatalogVersion;
+            const rollback = Boolean(
+              firmware?.installedVersion &&
+              compareVersions(version, firmware.installedVersion) < 0
+            );
+            const relatedTags = item.relatedTags ?? [item.tag];
+
+            return (
+              <article key={`${version}-${item.name}`}>
+                <div>
+                  <strong>{t('firmware.versionTitle',{version})}</strong>
+                  <small>
+                    {installed ? t('firmware.badgeInstalled') : latest ? t('firmware.badgeLatest') : t('firmware.badgePrevious')}
+                    {' · '}
+                    {item.channel}
+                    {' · '}
+                    {item.createdAt ? new Date(item.createdAt).toLocaleDateString(language === 'de' ? 'de-DE' : language === 'en' ? 'en-US' : 'hu-HU') : t('firmware.unknownDate')}
+                  </small>
+                  <p>
+                    <b>{t('firmware.relatedReleases')}</b>
+                    {' '}
+                    {relatedTags.join(', ')}
+                  </p>
+                  {item.metadataConflict && (
+                    <p className="console-warning">
+                      <AlertTriangle size={15} />
+                      {item.metadataConflict}
+                    </p>
+                  )}
+                  {item.expectedFirmwareVersion && item.expectedFirmwareVersion !== version && (
+                    <p>
+                      <b>{t('firmware.metadataVersionLabel')}</b>
+                      {' '}
+                      <code>{item.expectedFirmwareVersion}</code>
+                    </p>
+                  )}
+                  <p>{item.summary || t('firmware.noSummary')}</p>
+                  <p><b>{t('firmware.fileLabel')}</b> <code>{item.name}</code></p>
+                </div>
+                <button
+                  className="secondary"
+                  disabled={state.busy || Boolean(item.metadataConflict)}
+                  onClick={() => {
+                    if (globalThis.confirm(t('firmware.confirmInstall',{version}))) {
+                      void (async () => {
+                        const { tauriApi } = await import('../services/tauriApi');
+                        await tauriApi.firmwareInstallRelease(item.tag);
+                        await state.refresh({ forceCheck: true });
+                      })();
+                    }
+                  }}
+                >
+                  {installed ? t('common.reinstall') : rollback ? t('common.rollback') : t('common.update')}
+                </button>
+              </article>
+            );
+          })}
         </div>
       </section>
 

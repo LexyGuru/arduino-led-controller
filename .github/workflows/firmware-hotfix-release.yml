@@ -1,0 +1,314 @@
+name: Firmware hotfix release
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_release_tag:
+        description: Existing application prerelease tag to update
+        required: true
+        default: v5.0.0-beta.6
+        type: string
+      publish:
+        description: Replace firmware assets in the target prerelease
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: firmware-hotfix-${{ inputs.target_release_tag }}
+  cancel-in-progress: false
+
+env:
+  NODE_VERSION: "24"
+  EXPECTED_BRANCH: next/v5-rearchitecture
+
+jobs:
+  validate:
+    name: Firmware release gate
+    runs-on: ubuntu-22.04
+    outputs:
+      app_version: ${{ steps.versions.outputs.app_version }}
+      firmware_version: ${{ steps.versions.outputs.firmware_version }}
+      target_tag: ${{ steps.versions.outputs.target_tag }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Verify branch and versions
+        id: versions
+        shell: bash
+        env:
+          TARGET_TAG: ${{ inputs.target_release_tag }}
+        run: |
+          set -euo pipefail
+          test "${GITHUB_REF_NAME}" = "${EXPECTED_BRANCH}"
+          APP_VERSION="$(node -p "require('./release-versions.json').application")"
+          FIRMWARE_VERSION="$(node -p "require('./release-versions.json').firmware")"
+          test "$(tr -d '[:space:]' < VERSION)" = "${APP_VERSION}"
+          test "$(node -p "require('./firmware/firmware-release.json').firmwareVersion")" = "${FIRMWARE_VERSION}"
+          test "$(node -p "require('./firmware/firmware-release.json').channel")" = "beta"
+          test -n "${TARGET_TAG}"
+          echo "app_version=${APP_VERSION}" >> "${GITHUB_OUTPUT}"
+          echo "firmware_version=${FIRMWARE_VERSION}" >> "${GITHUB_OUTPUT}"
+          echo "target_tag=${TARGET_TAG}" >> "${GITHUB_OUTPUT}"
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Run firmware and release contracts
+        run: |
+          node scripts/test-firmware-430-beta4-scheduler-hotfix.js
+          node scripts/test-f14-complete-firmware.js
+          node scripts/test-firmware-hotfix-workflow.js
+          python3 scripts/check-versions.py
+
+  build-firmware:
+    name: UNO R4 WiFi firmware only
+    needs: validate
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Install Arduino CLI
+        uses: arduino/setup-arduino-cli@v2
+        with:
+          version: "1.x"
+
+      - name: Install core and libraries
+        run: |
+          arduino-cli config init
+          arduino-cli core update-index
+          arduino-cli lib update-index
+          arduino-cli core install arduino:renesas_uno
+          arduino-cli lib install "Adafruit NeoPixel"
+          arduino-cli lib install "ArduinoOTA"
+
+      - name: Create non-secret firmware configuration
+        run: cp firmware/ArduinoLedController/secrets.example.h firmware/ArduinoLedController/secrets.h
+
+      - name: Compile firmware and checksum
+        env:
+          FIRMWARE_VERSION: ${{ needs.validate.outputs.firmware_version }}
+        run: |
+          set -euo pipefail
+          mkdir -p build/firmware artifacts
+          arduino-cli compile \
+            --fqbn arduino:renesas_uno:unor4wifi \
+            --output-dir build/firmware \
+            --warnings all \
+            firmware/ArduinoLedController
+          BIN="$(find build/firmware -type f -name '*.ino.bin' -print | sort | head -n 1)"
+          test -f "${BIN}"
+          SOURCE_VERSION="$(sed -nE 's/^#define[[:space:]]+FIRMWARE_VERSION[[:space:]]+"([^"]+)".*/\1/p' firmware/ArduinoLedController/ArduinoLedController.ino | head -n 1)"
+          test "${SOURCE_VERSION}" = "${FIRMWARE_VERSION}"
+          OUT="artifacts/Arduino_LED_Controller_Firmware_${FIRMWARE_VERSION}_UNO_R4_WiFi.bin"
+          cp "${BIN}" "${OUT}"
+          sha256sum "${OUT}" > "${OUT}.sha256"
+          cp firmware/firmware-release.json artifacts/
+          cp release-versions.json artifacts/
+
+      - name: Upload firmware workflow artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: firmware-hotfix-assets
+          path: artifacts/*
+          if-no-files-found: error
+          retention-days: 30
+
+  publish:
+    name: Update existing application prerelease
+    if: ${{ inputs.publish }}
+    needs:
+      - validate
+      - build-firmware
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Download firmware artifact
+        uses: actions/download-artifact@v5
+        with:
+          name: firmware-hotfix-assets
+          path: firmware-assets
+
+      - name: Verify target prerelease and protected asset classes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARGET_TAG: ${{ needs.validate.outputs.target_tag }}
+        run: |
+          set -euo pipefail
+          RELEASE_JSON="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${TARGET_TAG}")"
+          test "$(jq -r '.draft' <<<"${RELEASE_JSON}")" = "false"
+          test "$(jq -r '.prerelease' <<<"${RELEASE_JSON}")" = "true"
+          jq -r '.assets[].name' <<<"${RELEASE_JSON}" > existing-assets.txt
+          grep -Eq '\.(dmg|exe|AppImage|deb|apk|aab|ipa)$|LXC_Server\.tar\.gz$' existing-assets.txt
+
+      - name: Delete only replaceable firmware metadata assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARGET_TAG: ${{ needs.validate.outputs.target_tag }}
+        run: |
+          set -euo pipefail
+          gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${TARGET_TAG}" \
+            --jq '.assets[] | [.id,.name] | @tsv' \
+            | while IFS=$'\t' read -r id name; do
+                case "${name}" in
+                  Arduino_LED_Controller_Firmware_*_UNO_R4_WiFi.bin|\
+                  Arduino_LED_Controller_Firmware_*_UNO_R4_WiFi.bin.sha256|\
+                  firmware-release.json|release-versions.json|latest-beta.json|\
+                  FIRMWARE-SHA256SUMS|FIRMWARE-RELEASE-MANIFEST.json)
+                    gh api --method DELETE "repos/${GITHUB_REPOSITORY}/releases/assets/${id}"
+                    ;;
+                esac
+              done
+
+      - name: Upload new firmware assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARGET_TAG: ${{ needs.validate.outputs.target_tag }}
+        run: |
+          set -euo pipefail
+          gh release upload "${TARGET_TAG}" firmware-assets/* --clobber
+
+      - name: Generate firmware metadata from GitHub asset digests
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARGET_TAG: ${{ needs.validate.outputs.target_tag }}
+          APP_VERSION: ${{ needs.validate.outputs.app_version }}
+          FIRMWARE_VERSION: ${{ needs.validate.outputs.firmware_version }}
+        run: |
+          set -euo pipefail
+          gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${TARGET_TAG}" > release.json
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+
+          release = json.loads(Path('release.json').read_text())
+          assets = release['assets']
+          fw_name = f"Arduino_LED_Controller_Firmware_{os.environ['FIRMWARE_VERSION']}_UNO_R4_WiFi.bin"
+          by_name = {item['name']: item for item in assets}
+          firmware = by_name[fw_name]
+          digest = firmware.get('digest') or ''
+          if not digest.startswith('sha256:'):
+              raise SystemExit('A GitHub asset digest hiányzik vagy nem SHA-256.')
+
+          firmware_assets = [
+              item for item in assets
+              if item['name'] in {
+                  fw_name,
+                  f'{fw_name}.sha256',
+                  'firmware-release.json',
+                  'release-versions.json',
+              }
+          ]
+          lines = []
+          for item in sorted(firmware_assets, key=lambda value: value['name']):
+              item_digest = item.get('digest') or ''
+              if not item_digest.startswith('sha256:'):
+                  raise SystemExit(f"Hiányzó GitHub digest: {item['name']}")
+              lines.append(f"{item_digest.removeprefix('sha256:')}  {item['name']}")
+          Path('FIRMWARE-SHA256SUMS').write_text('\n'.join(lines) + '\n')
+
+          manifest = {
+              'schemaVersion': 1,
+              'product': 'Arduino LED Controller Firmware',
+              'targetReleaseTag': os.environ['TARGET_TAG'],
+              'applicationVersion': os.environ['APP_VERSION'],
+              'firmwareVersion': os.environ['FIRMWARE_VERSION'],
+              'channel': 'beta',
+              'commit': os.environ['GITHUB_SHA'],
+              'files': [
+                  {
+                      'name': item['name'],
+                      'bytes': item['size'],
+                      'sha256': item['digest'].removeprefix('sha256:'),
+                      'url': item['browser_download_url'],
+                  }
+                  for item in sorted(firmware_assets, key=lambda value: value['name'])
+              ],
+          }
+          Path('FIRMWARE-RELEASE-MANIFEST.json').write_text(json.dumps(manifest, indent=2) + '\n')
+
+          base_url = f"https://github.com/{os.environ['GITHUB_REPOSITORY']}/releases/download/{os.environ['TARGET_TAG']}"
+          latest = {
+              'schemaVersion': 1,
+              'channel': 'beta',
+              'publishedAt': release.get('published_at'),
+              'app': {
+                  'version': os.environ['APP_VERSION'],
+                  'releaseUrl': release['html_url'],
+              },
+              'firmware': {
+                  'version': os.environ['FIRMWARE_VERSION'],
+                  'board': 'arduino-uno-r4-wifi',
+                  'directApiVersion': '1.0.0',
+                  'name': fw_name,
+                  'url': f'{base_url}/{fw_name}',
+                  'checksumUrl': f'{base_url}/{fw_name}.sha256',
+                  'sha256': digest.removeprefix('sha256:'),
+              },
+          }
+          Path('latest-beta.json').write_text(json.dumps(latest, indent=2) + '\n')
+          PY
+
+      - name: Upload generated firmware metadata
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARGET_TAG: ${{ needs.validate.outputs.target_tag }}
+        run: |
+          gh release upload "${TARGET_TAG}" \
+            FIRMWARE-SHA256SUMS \
+            FIRMWARE-RELEASE-MANIFEST.json \
+            latest-beta.json \
+            --clobber
+
+      - name: Update marked firmware section in release notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARGET_TAG: ${{ needs.validate.outputs.target_tag }}
+          FIRMWARE_VERSION: ${{ needs.validate.outputs.firmware_version }}
+        run: |
+          set -euo pipefail
+          gh release view "${TARGET_TAG}" --json body --jq '.body' > current-body.md
+          python3 - <<'PY'
+          import os, re
+          from pathlib import Path
+          start='<!-- FIRMWARE-HOTFIX:START -->'
+          end='<!-- FIRMWARE-HOTFIX:END -->'
+          body=Path('current-body.md').read_text()
+          version=os.environ['FIRMWARE_VERSION']
+          block=f'''{start}\n## Firmware hotfix – {version}\n\nAz alkalmazás-, mobil- és LXC-csomagok változatlanok. A prerelease ajánlott UNO R4 WiFi firmware-e frissült.\n\n- NTP és scheduler megbízhatósági javítások\n- manual override biztonságos lejárata\n- firmware- és scheduler-diagnosztika\n{end}'''
+          pattern=re.compile(re.escape(start)+r'.*?'+re.escape(end),re.S)
+          body=pattern.sub(block,body) if pattern.search(body) else body.rstrip()+'\n\n'+block+'\n'
+          Path('updated-body.md').write_text(body)
+          PY
+          gh release edit "${TARGET_TAG}" --notes-file updated-body.md
+
+      - name: Verify firmware-only update
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARGET_TAG: ${{ needs.validate.outputs.target_tag }}
+          FIRMWARE_VERSION: ${{ needs.validate.outputs.firmware_version }}
+        run: |
+          set -euo pipefail
+          ASSETS="$(gh release view "${TARGET_TAG}" --json assets --jq '.assets[].name')"
+          grep -Fxq "Arduino_LED_Controller_Firmware_${FIRMWARE_VERSION}_UNO_R4_WiFi.bin" <<<"${ASSETS}"
+          grep -Fxq "Arduino_LED_Controller_Firmware_${FIRMWARE_VERSION}_UNO_R4_WiFi.bin.sha256" <<<"${ASSETS}"
+          grep -Fxq "FIRMWARE-RELEASE-MANIFEST.json" <<<"${ASSETS}"
+          grep -Fxq "FIRMWARE-SHA256SUMS" <<<"${ASSETS}"
+          grep -Eq '\.(dmg|exe|AppImage|deb|apk|aab|ipa)$|LXC_Server\.tar\.gz$' <<<"${ASSETS}"

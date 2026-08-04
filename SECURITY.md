@@ -4,7 +4,7 @@
 
 | Verzió | Támogatás |
 |---|---|
-| `5.0.0-beta.5` | aktívan támogatott beta |
+| `5.0.0-beta.6` | aktívan támogatott beta |
 | `5.0.0-beta.4` | átmenetileg támogatott |
 | régebbi beta | nem támogatott |
 | `4.x` stable | csak kritikus biztonsági javítások |

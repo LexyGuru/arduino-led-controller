@@ -15,7 +15,7 @@ const workflow = fs.readFileSync(
 const escapeRegex = (value) =>
   value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-assert.equal(versions.application, '5.0.0-beta.5');
+assert.equal(versions.application, '5.0.0-beta.6');
 assert.equal(versions.firmware, '4.3.0-beta.4');
 assert.equal(versions.channel, 'beta');
 
@@ -32,14 +32,8 @@ assert.match(
   )
 );
 assert.match(workflow, /next\/v5-rearchitecture/);
-assert.match(
-  workflow,
-  /push:\n    branches:\n      - next\/v5-rearchitecture/
-);
-assert.doesNotMatch(
-  workflow,
-  /push:\n[\s\S]*?branches:\n      - next\/v5-rearchitecture[\s\S]*?    paths:/
-);
+assert.match(workflow, /workflow_dispatch:/);
+assert.doesNotMatch(workflow, /\n  push:/);
 assert.match(workflow, /npm test/);
 assert.match(workflow, /validate-repository\.sh/);
 assert.match(workflow, /firmware-build|UNO R4 WiFi firmware/);

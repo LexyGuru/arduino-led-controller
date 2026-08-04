@@ -157,7 +157,11 @@ export interface FirmwareArtifact {
   createdAt?: string;
   summary?: string;
   channel?: 'stable' | 'beta' | string;
+  relatedTags?: string[];
+  expectedFirmwareVersion?: string;
+  metadataConflict?: string;
 }
+
 
 export interface AppUpdateArtifact {
   version: string;

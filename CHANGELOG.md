@@ -1,3 +1,11 @@
+## 5.0.0-beta.6 — Firmware-katalógus és workflow szétválasztás
+
+- Azonos firmware-verziók deduplikálása a Tauri katalógusban.
+- Egyértelmű Firmware előtag, telepített/legújabb/korábbi jelölések.
+- Szemantikus verzió-összehasonlítás rollback döntéshez.
+- Teljes alkalmazásrelease manuális indítása.
+- Külön firmware-only hotfix workflow meglévő prerelease frissítésére.
+
 # Változásnapló
 
 ## Firmware 4.3.0-beta.4 — scheduler/NTP hotfix — 2026-08-04
@@ -9,7 +17,7 @@
 - Sikeres első NTP-szinkron és schedule-mentés után azonnali reconcile.
 - LED-enként elérhető a kiválasztott schedule index és blokkolási ok.
 
-## 5.0.0-beta.5 / firmware 4.3.0-beta.4 — 2026-08-03
+## 5.0.0-beta.6 / firmware 4.3.0-beta.4 — 2026-08-03
 
 ### Többnyelvű stabilizáció
 
@@ -21,7 +29,7 @@
 
 ### Kiadás és dokumentáció
 
-- Alkalmazásverzió: `5.0.0-beta.5`.
+- Alkalmazásverzió: `5.0.0-beta.6`.
 - Firmware változatlan: `4.3.0-beta.4`.
 - Direct API változatlan: `1.0.0`.
 - Frissített README, CONTRIBUTING és SECURITY dokumentáció.
