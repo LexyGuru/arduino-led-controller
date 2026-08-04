@@ -228,11 +228,20 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          gh api --paginate "repos/${GITHUB_REPOSITORY}/releases?per_page=100" --jq '.[] | select(.tag_name|test("^v5\\.0\\.0-beta\\.[0-9]+$")) | .tag_name' | while read -r tag; do
-            gh release view "${tag}" --json assets --jq '.assets[] | [.name,.databaseId] | @tsv' | while IFS=$'\t' read -r name id; do
+          gh api --paginate "repos/${GITHUB_REPOSITORY}/releases?per_page=100" \
+            --jq '.[] | select(.tag_name|test("^v5\\.0\\.0-beta\\.[0-9]+$")) | .id' |
+          while read -r release_id; do
+            test "${release_id}" -gt 0
+            gh api --paginate \
+              "repos/${GITHUB_REPOSITORY}/releases/${release_id}/assets?per_page=100" \
+              --jq '.[] | [.name,.id] | @tsv' |
+            while IFS=$'\t' read -r name asset_id; do
               case "${name}" in
                 Arduino_LED_Controller_Firmware_*_UNO_R4_WiFi.bin|Arduino_LED_Controller_Firmware_*_UNO_R4_WiFi.bin.sha256|firmware-release.json|firmware-catalog.json|FIRMWARE-SHA256SUMS|FIRMWARE-RELEASE-MANIFEST.json)
-                  gh api --method DELETE "repos/${GITHUB_REPOSITORY}/releases/assets/${id}"
+                  test "${asset_id}" -gt 0
+                  echo "Removing legacy firmware asset: ${name} (asset_id=${asset_id})"
+                  gh api --method DELETE \
+                    "repos/${GITHUB_REPOSITORY}/releases/assets/${asset_id}"
                   ;;
               esac
             done
