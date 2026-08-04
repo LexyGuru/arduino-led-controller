@@ -1,5 +1,5 @@
 /*
- * Arduino LED Controller – 4.3.0-beta.3
+ * Arduino LED Controller – 4.3.0-beta.4
  * F14 Complete: Direct API v1, JSON body, header-only auth, A/B EEPROM és
  * tranzakciós schedule. A Tauri újratervezésének stabil firmware-alapja.
  */
@@ -13,7 +13,7 @@
 #include <stdarg.h>
 #include "secrets.h"
 
-#define FIRMWARE_VERSION "4.3.0-beta.3"
+#define FIRMWARE_VERSION "4.3.0-beta.4"
 #define FIRMWARE_FEATURE "f14-complete-direct-api-storage"
 #define DIRECT_API_VERSION "1.0.0"
 #define DEVICE_NAME "arduino-led-controller"
@@ -67,10 +67,13 @@ constexpr uint16_t API_SETTINGS_VERSION = 1;
 constexpr uint32_t SCHEDULE_MAGIC = 0x53434831UL;
 constexpr uint16_t MINUTES_PER_WEEK = 10080U;
 constexpr uint32_t MANUAL_OVERRIDE_INDEFINITE = 0xFFFFFFFFUL;
+constexpr unsigned long MANUAL_OVERRIDE_UNSYNCED_MAX_MS = 15UL * 60UL * 1000UL;
+constexpr unsigned long NTP_SYNC_INTERVAL_MS = 60000UL;
+constexpr unsigned long NTP_VALID_EPOCH_MIN = 1700000000UL;
 constexpr uint8_t HTTP_CLIENTS_PER_LOOP = 1;
 constexpr uint8_t LOG_CAPACITY = 32;
 constexpr uint8_t CONSOLE_LOGS_PER_RESPONSE = 8;
-constexpr size_t HTTP_BODY_BUFFER_SIZE = 2048;
+constexpr size_t HTTP_BODY_BUFFER_SIZE = 2560;
 constexpr size_t HTTP_RESPONSE_HEADER_SIZE = 192;
 constexpr size_t HTTP_WRITE_CHUNK_SIZE = 512;
 constexpr unsigned long HTTP_WRITE_INTER_CHUNK_DELAY_MS = 1UL;
@@ -268,8 +271,15 @@ unsigned long lastWifiLinkProbe = 0, lastWifiRssiRefresh = 0, lastWifi = 0;
 unsigned long lastFrame = 0, lastTimeCheck = 0, lastClockEpoch = 0;
 unsigned long lastClockMillis = 0, lastScheduleMinute = 0xFFFFFFFFUL;
 unsigned long lastScheduleAudit = 0, pirChanged[STRIP_COUNT] = {};
+unsigned long ntpAttemptCount = 0, ntpFailureCount = 0, ntpSuccessCount = 0;
+unsigned long ntpLastSuccessAt = 0, ntpLastFailureAt = 0;
+unsigned long schedulerLastRunAt = 0, schedulerLastAppliedAt = 0;
+bool clockWifiWasAvailable = false;
 unsigned long lastMotion[STRIP_COUNT] = {};
 uint32_t manualOverrideUntilMinute[STRIP_COUNT] = {};
+unsigned long manualOverrideFallbackUntilMillis[STRIP_COUNT] = {};
+int16_t schedulerLastSelectedIndex[STRIP_COUNT] = {-1, -1, -1};
+uint8_t schedulerLastBlockedReason[STRIP_COUNT] = {};
 char deviceId[20] = "ALC-UNKNOWN", lastHttpClientIp[16] = "-";
 char lastHttpPath[96] = "-", lastHttpMethod[8] = "-", lastHttpAuth[24] = "-";
 int lastHttpResponseCode = 0;
@@ -655,6 +665,8 @@ void loadSchedules() {
   schedulesStored = false;
   logEvent("warn", "Nincs ervenyes schedule; ures allapot indul");
 }
+void reconcileArduinoSchedules(bool force);
+
 bool saveSchedules(uint8_t count) {
   if (count > SCHEDULE_MAX) return false;
   uint16_t target = inactiveScheduleSlotOffset();
@@ -673,6 +685,7 @@ bool saveSchedules(uint8_t count) {
   schedulesStored = true;
   refreshManualOverrideDeadlines();
   lastScheduleAudit = 0;
+  if (timeSynced) reconcileArduinoSchedules(true);
   logEvent("success", "Schedule A/B slotba mentve es visszaellenorizve");
   return true;
 }
@@ -773,6 +786,7 @@ void activateManualOverride(uint8_t led) {
   if (led >= STRIP_COUNT) return;
   manualOverride[led] = true;
   manualOverrideUntilMinute[led] = MANUAL_OVERRIDE_INDEFINITE;
+  manualOverrideFallbackUntilMillis[led] = millis() + MANUAL_OVERRIDE_UNSYNCED_MAX_MS;
   uint8_t day, hour, minute;
   if (!localScheduleTime(day, hour, minute)) return;
   uint16_t current = (day - 1) * 1440U + hour * 60U + minute, delta = 0;
@@ -788,10 +802,12 @@ void refreshManualOverrideDeadlines() {
 }
 int32_t manualOverrideMinutesRemaining(uint8_t led) {
   if (led >= STRIP_COUNT || !manualOverride[led]) return 0;
-  if (!timeSynced || manualOverrideUntilMinute[led] == MANUAL_OVERRIDE_INDEFINITE)
-    return -1;
-  int32_t left = manualOverrideUntilMinute[led] - currentClockMinuteKey();
-  return left > 0 ? left : 0;
+  if (timeSynced && manualOverrideUntilMinute[led] != MANUAL_OVERRIDE_INDEFINITE) {
+    int32_t left = manualOverrideUntilMinute[led] - currentClockMinuteKey();
+    return left > 0 ? left : 0;
+  }
+  int32_t millisLeft = static_cast<int32_t>(manualOverrideFallbackUntilMillis[led] - millis());
+  return millisLeft > 0 ? (millisLeft + 59999L) / 60000L : 0;
 }
 void applyStoredLed(uint8_t index, const StoredLed& source) {
   leds[index] = {source.enabled != 0, source.brightness, source.effect,
@@ -803,18 +819,28 @@ void reconcileArduinoSchedules(bool force = false) {
   if (!force && lastScheduleAudit &&
       now - lastScheduleAudit < SCHEDULE_AUDIT_INTERVAL) return;
   lastScheduleAudit = now;
+  schedulerLastRunAt = now;
   uint8_t day, hour, minute;
   if (!localScheduleTime(day, hour, minute)) return;
   uint16_t current = (day - 1) * 1440U + hour * 60U + minute;
   uint32_t key = currentClockMinuteKey();
   bool changed = false;
   for (uint8_t led = 0; led < STRIP_COUNT; led++) {
+    schedulerLastSelectedIndex[led] = -1;
+    schedulerLastBlockedReason[led] = 0;
     if (manualOverride[led]) {
       uint32_t until = manualOverrideUntilMinute[led];
-      if (until == MANUAL_OVERRIDE_INDEFINITE ||
-          static_cast<int32_t>(key - until) < 0) continue;
+      bool clockDeadlineActive = until != MANUAL_OVERRIDE_INDEFINITE &&
+        static_cast<int32_t>(key - until) < 0;
+      bool fallbackActive = until == MANUAL_OVERRIDE_INDEFINITE &&
+        static_cast<int32_t>(manualOverrideFallbackUntilMillis[led] - now) > 0;
+      if (clockDeadlineActive || fallbackActive) {
+        schedulerLastBlockedReason[led] = 1;
+        continue;
+      }
       manualOverride[led] = false;
       manualOverrideUntilMinute[led] = 0;
+      manualOverrideFallbackUntilMillis[led] = 0;
       logEvent("info", "Kezi LED felulbiralas lejart");
     }
     int16_t selected = -1;
@@ -830,6 +856,7 @@ void reconcileArduinoSchedules(bool force = false) {
         selectedRelative = relative;
       }
     }
+    schedulerLastSelectedIndex[led] = selected;
     if (selected >= 0) {
       StoredLed& expected = schedules[selected].leds[led];
       if (leds[led].enabled != (expected.enabled != 0) ||
@@ -841,11 +868,54 @@ void reconcileArduinoSchedules(bool force = false) {
         applyStoredLed(led, expected);
         changed = true;
       }
+    } else {
+      schedulerLastBlockedReason[led] = 2;
     }
   }
   if (changed) {
     renderAll(true);
+    schedulerLastAppliedAt = now;
     logEvent("info", "LED allapot schedule alapjan egyeztetve");
+  }
+}
+
+unsigned long currentClockEpoch() {
+  return timeSynced
+    ? lastClockEpoch + (millis() - lastClockMillis) / 1000UL
+    : 0;
+}
+void serviceClockSync(bool force = false) {
+  bool available = wifiHasAddress();
+  if (!available) {
+    clockWifiWasAvailable = false;
+    return;
+  }
+  unsigned long now = millis();
+  unsigned long interval = timeSynced ? NTP_SYNC_INTERVAL_MS : NTP_UNSYNCED_RETRY_INTERVAL_MS;
+  bool wifiReturned = !clockWifiWasAvailable;
+  clockWifiWasAvailable = true;
+  if (!force && !wifiReturned && lastTimeCheck && now - lastTimeCheck < interval) return;
+  lastTimeCheck = now;
+  ntpAttemptCount++;
+  unsigned long epoch = WiFi.getTime();
+  if (epoch <= NTP_VALID_EPOCH_MIN) {
+    ntpFailureCount++;
+    ntpLastFailureAt = now;
+    if (!timeSynced || ntpFailureCount == 1 || ntpFailureCount % 12 == 0)
+      logEvent("warn", "NTP ido lekerese sikertelen; ujraprobalas folyamatban");
+    return;
+  }
+  bool first = !timeSynced;
+  lastClockEpoch = epoch;
+  lastClockMillis = now;
+  timeSynced = true;
+  ntpSuccessCount++;
+  ntpLastSuccessAt = now;
+  if (first) {
+    logEvent("success", "NTP ido szinkronizalva");
+    refreshManualOverrideDeadlines();
+    lastScheduleMinute = 0xFFFFFFFFUL;
+    reconcileArduinoSchedules(true);
   }
 }
 void runArduinoSchedules() {
@@ -1318,6 +1388,22 @@ bool buildStatusJson(size_t& bodyLength, uint32_t requestId, bool v1) {
     "\"connected\":%s,\"timesynced\":%s,",
     wifiHasAddress() ? "true" : "false",
     timeSynced ? "true" : "false");
+  uint8_t clockDay = 0, clockHour = 0, clockMinute = 0;
+  bool localClockAvailable = localScheduleTime(clockDay, clockHour, clockMinute);
+  appendFormat(b,
+    "\"clockEpoch\":%lu,\"clockDay\":%u,\"clockHour\":%u,\"clockMinute\":%u,",
+    currentClockEpoch(), clockDay, clockHour, clockMinute);
+  appendFormat(b,
+    "\"clockLocalAvailable\":%s,\"ntpAttemptCount\":%lu,\"ntpFailureCount\":%lu,",
+    localClockAvailable ? "true" : "false", ntpAttemptCount, ntpFailureCount);
+  appendFormat(b,
+    "\"ntpSuccessCount\":%lu,\"ntpLastSuccessAgeSeconds\":%lu,",
+    ntpSuccessCount,
+    ntpLastSuccessAt ? (millis() - ntpLastSuccessAt) / 1000UL : 0);
+  appendFormat(b,
+    "\"schedulerLastRunAgeSeconds\":%lu,\"schedulerLastAppliedAgeSeconds\":%lu,",
+    schedulerLastRunAt ? (millis() - schedulerLastRunAt) / 1000UL : 0,
+    schedulerLastAppliedAt ? (millis() - schedulerLastAppliedAt) / 1000UL : 0);
   appendFormat(b,
     "\"deviceId\":\"%s\",\"bootId\":\"%08lX\",",
     deviceId, static_cast<unsigned long>(bootId));
@@ -1421,9 +1507,12 @@ bool buildStatusJson(size_t& bodyLength, uint32_t requestId, bool v1) {
       leds[i].effect, leds[i].speed,
       leds[i].red, leds[i].green, leds[i].blue);
     appendFormat(b,
-      "\"manualOverride\":%s,\"manualOverrideMinutesRemaining\":%ld}",
+      "\"manualOverride\":%s,\"manualOverrideMinutesRemaining\":%ld,",
       manualOverride[i] ? "true" : "false",
       static_cast<long>(manualOverrideMinutesRemaining(i)));
+    appendFormat(b,
+      "\"schedulerSelectedIndex\":%d,\"schedulerBlockedReason\":%u}",
+      schedulerLastSelectedIndex[i], schedulerLastBlockedReason[i]);
   }
 
   appendRaw(b, "]}");
@@ -2701,21 +2790,7 @@ void loop() {
   if (!otaTransferActive) handleHttp();
   processPendingRemoteReboot();
   if (wifiHasAddress() && !otaTransferActive) {
-    unsigned long retry = timeSynced ? 60000UL : NTP_UNSYNCED_RETRY_INTERVAL_MS;
-    if (millis() - lastTimeCheck >= retry) {
-      lastTimeCheck = millis();
-      unsigned long epoch = WiFi.getTime();
-      if (epoch > 1700000000UL) {
-        bool first = !timeSynced;
-        lastClockEpoch = epoch;
-        lastClockMillis = millis();
-        timeSynced = true;
-        if (first) {
-          logEvent("success", "NTP ido szinkronizalva");
-          refreshManualOverrideDeadlines();
-        }
-      }
-    }
+    serviceClockSync(false);
     runArduinoSchedules();
   }
   if (!wifiHasAddress()) {

@@ -12,11 +12,11 @@ const firmware = json('firmware/firmware-release.json');
 const workflow = read('.github/workflows/beta-release.yml');
 
 assert.equal(versions.application, '5.0.0-beta.5');
-assert.equal(versions.firmware, '4.3.0-beta.3');
+assert.equal(versions.firmware, '4.3.0-beta.4');
 assert.equal(versions.directApi, '1.0.0');
 assert.equal(versions.channel, 'beta');
 
-assert.equal(firmware.firmwareVersion, '4.3.0-beta.3');
+assert.equal(firmware.firmwareVersion, '4.3.0-beta.4');
 assert.equal(firmware.directApiVersion, '1.0.0');
 assert.equal(firmware.channel, 'beta');
 
@@ -34,7 +34,7 @@ for (const file of [
 
 for (const token of [
   '5.0.0-beta.5',
-  '4.3.0-beta.3',
+  '4.3.0-beta.4',
   'BETA5_INSTALLATION_GUIDE.md',
   'BETA5_RELEASE_NOTES.md',
   'BETA5_RELEASE_CHECKLIST.md',

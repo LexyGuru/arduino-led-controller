@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "application": "5.0.0-beta.5",
-  "firmware": "4.3.0-beta.3",
+  "firmware": "4.3.0-beta.4",
   "directApi": "1.0.0",
   "channel": "beta",
   "board": "arduino:renesas_uno:unor4wifi",

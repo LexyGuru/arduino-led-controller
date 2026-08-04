@@ -3,7 +3,7 @@
 ## Verziók
 
 - [x] Alkalmazás `5.0.0-beta.5`.
-- [x] Firmware `4.3.0-beta.3`.
+- [x] Firmware `4.3.0-beta.4`.
 - [x] Direct API `1.0.0`.
 - [x] Beta csatorna és prerelease beállítás.
 - [x] A firmware-protokoll változatlan.
@@ -36,7 +36,7 @@
 - [x] beta workflow.
 - [x] staging és LXC alapverziók.
 - [x] artifact-elnevezési contract.
-- [x] `firmware-release.json` továbbra is `4.3.0-beta.3`.
+- [x] `firmware-release.json` továbbra is `4.3.0-beta.4`.
 
 ## Platformartifactok és smoke tesztek
 

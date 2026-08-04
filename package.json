@@ -137,7 +137,8 @@
     "test:i18n-phase2-hardcoded-audit": "node scripts/test-i18n-phase2-hardcoded-ui-audit.js",
     "test:i18n-source-integrity": "node scripts/test-i18n-source-integrity.js",
     "test:i18n-final-hooks": "node scripts/test-i18n-final-hooks.js",
-    "test:beta5-release-package": "node scripts/test-beta5-release-package.js"
+    "test:beta5-release-package": "node scripts/test-beta5-release-package.js",
+    "test:firmware-430-beta4-scheduler-hotfix": "node scripts/test-firmware-430-beta4-scheduler-hotfix.js"
   },
   "engines": {
     "node": ">=20"

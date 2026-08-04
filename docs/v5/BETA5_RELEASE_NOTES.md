@@ -7,7 +7,7 @@ A Beta.5 a teljes magyar, angol és német felületet, a központi runtime-üzen
 ## Verziók
 
 - Alkalmazás: `5.0.0-beta.5`
-- Firmware: `4.3.0-beta.3`
+- Firmware: `4.3.0-beta.4`
 - Direct API: `1.0.0`
 - Csatorna: `beta`
 - GitHub prerelease: igen
@@ -27,7 +27,7 @@ A Beta.5 a teljes magyar, angol és német felületet, a központi runtime-üzen
 
 ## Firmware
 
-A firmware továbbra is `4.3.0-beta.3`. Nem változott:
+A firmware továbbra is `4.3.0-beta.4`. Nem változott:
 
 - Direct API `1.0.0`;
 - fejlécalapú `X-Device-Key`;

@@ -10,7 +10,7 @@ Többplatformos LED-vezérlő rendszer Arduino UNO R4 WiFi és három WS2812B LE
 | Elem | Verzió / állapot |
 |---|---|
 | Alkalmazás | `5.0.0-beta.5` |
-| Firmware | `4.3.0-beta.3` |
+| Firmware | `4.3.0-beta.4` |
 | Direct API | `1.0.0` |
 | Kiadási csatorna | `beta` |
 | Állapot | nyilvános beta |
@@ -70,7 +70,7 @@ Az új UI- és runtime-szövegek kizárólag a központi `desktop-tauri/src/i18n
 
 ## Firmware és Direct API
 
-A párosított firmware: `4.3.0-beta.3`. A Direct API verziója `1.0.0`.
+A párosított firmware: `4.3.0-beta.4`. A Direct API verziója `1.0.0`.
 
 Biztonsági tulajdonságok:
 

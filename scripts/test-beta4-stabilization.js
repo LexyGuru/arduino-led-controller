@@ -20,6 +20,11 @@ for(const token of ['ota_configured','ota_missing_requirements','backup_store_co
 for(const token of ['otaConfigured','otaMissingRequirements','backupStoreConfigured']) assert.ok(types.includes(token),token);
 assert.ok(firmware.includes('firmware.missingRequirements'));
 assert.ok(firmware.includes('otaMissingRequirements'));
-assert.ok(read('firmware/firmware-release.json').includes('Arduino_LED_Controller_Firmware_4.3.0-beta.3_UNO_R4_WiFi.bin'));
+const activeVersions = JSON.parse(read('release-versions.json'));
+assert.ok(
+  read('firmware/firmware-release.json').includes(
+    `Arduino_LED_Controller_Firmware_${activeVersions.firmware}_UNO_R4_WiFi.bin`
+  )
+);
 assert.ok(read('docs/v5/BETA4_RELEASE_NOTES.md').includes('Firmware verzió: 4.3.0-beta.3'));
 console.log('OK: OTA konfiguráció, backup státusz és firmware artifact felismerés javítva');

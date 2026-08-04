@@ -22,7 +22,7 @@ const firmwareVersion = versions.firmware;
 const betaLabel = applicationVersion.replace(/^\d+\.\d+\.\d+-/, '');
 
 assert.equal(applicationVersion, '5.0.0-beta.5');
-assert.equal(firmwareVersion, '4.3.0-beta.3');
+assert.equal(firmwareVersion, '4.3.0-beta.4');
 assert.equal(versions.channel, 'beta');
 
 const shellFiles = [

@@ -16,7 +16,7 @@ const escapeRegex = (value) =>
   value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 assert.equal(versions.application, '5.0.0-beta.5');
-assert.equal(versions.firmware, '4.3.0-beta.3');
+assert.equal(versions.firmware, '4.3.0-beta.4');
 assert.equal(versions.channel, 'beta');
 
 assert.match(
