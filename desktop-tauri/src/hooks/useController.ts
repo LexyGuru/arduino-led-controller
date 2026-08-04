@@ -61,7 +61,12 @@ const fallbackConfig:
     firmwareUpdateChannel: 'beta',
     autoCheckUpdates: true,
     autoDownloadUpdates: false,
-    firmwareUpdateChecks: true
+    firmwareUpdateChecks: true,
+    timezoneId: 'Europe/Vienna',
+    timezoneAuto: true,
+    currentUtcOffsetMinutes: 60,
+    nextTransitionEpoch: 0,
+    nextUtcOffsetMinutes: 60
   };
 
 function hostReady(
@@ -965,6 +970,8 @@ export function useController(
       await tauriApi.saveConfig(
         config
       );
+
+      await tauriApi.syncTimeConfig();
 
       if (
         capabilities.otaSupported &&

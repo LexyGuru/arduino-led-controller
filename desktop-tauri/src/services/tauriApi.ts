@@ -21,6 +21,7 @@ export const tauriApi = {
   saveConfig: (config: ConnectionConfig) => invoke<void>('save_config', { config }),
   saveOtaPassword: (password: string) => invoke<void>('save_ota_password', { password }),
   status: () => invoke<ArduinoStatus>('arduino_status'),
+  syncTimeConfig: () => invoke<ArduinoStatus>('sync_time_config'),
   logs: (afterId = 0) => invoke<ArduinoConsoleResponse>('arduino_logs', { afterId }),
   networkLogs: () => invoke<NetworkLog[]>('network_logs'),
   setLed: (strip: LedStrip) => invoke('set_led', {

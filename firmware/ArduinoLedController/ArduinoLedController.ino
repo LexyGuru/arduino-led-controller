@@ -1,9 +1,10 @@
 /*
- * Arduino LED Controller – 4.3.0-beta.4
+ * Arduino LED Controller – 4.3.0-beta.5
  * F14 Complete: Direct API v1, JSON body, header-only auth, A/B EEPROM és
  * tranzakciós schedule. A Tauri újratervezésének stabil firmware-alapja.
  */
 #include <WiFiS3.h>
+#include <WiFiUdp.h>
 #include <Adafruit_NeoPixel.h>
 #define NO_OTA_PORT
 #include <ArduinoOTA.h>
@@ -13,8 +14,8 @@
 #include <stdarg.h>
 #include "secrets.h"
 
-#define FIRMWARE_VERSION "4.3.0-beta.4"
-#define FIRMWARE_FEATURE "f14-complete-direct-api-storage"
+#define FIRMWARE_VERSION "4.3.0-beta.5"
+#define FIRMWARE_FEATURE "f14-complete-direct-api-storage-udp-ntp-timezone"
 #define DIRECT_API_VERSION "1.0.0"
 #define DEVICE_NAME "arduino-led-controller"
 #define API_DEVICE_KEY_HEADER "X-Device-Key"
@@ -47,6 +48,7 @@ constexpr uint8_t BUTTON_MODE = A0, BUTTON_UP = A1, BUTTON_DOWN = A2;
 constexpr uint8_t SCHEDULE_MAX = 60;
 constexpr uint16_t SCHEDULE_EEPROM_OFFSET = 256;
 constexpr uint16_t API_SETTINGS_EEPROM_OFFSET = 2300;
+constexpr uint16_t TIME_SETTINGS_EEPROM_OFFSET = 4608;
 // F14 Complete A/B storage layout (UNO R4 WiFi 8192-byte EEPROM).
 constexpr uint16_t CONFIG_SLOT_A_OFFSET = 0;
 constexpr uint16_t CONFIG_SLOT_B_OFFSET = 384;
@@ -64,11 +66,18 @@ constexpr uint32_t NETWORK_SETTINGS_MAGIC = 0x4C454431UL;
 constexpr uint16_t NETWORK_SETTINGS_VERSION = 1;
 constexpr uint32_t API_SETTINGS_MAGIC = 0x41504931UL;
 constexpr uint16_t API_SETTINGS_VERSION = 1;
+constexpr uint32_t TIME_SETTINGS_MAGIC = 0x54494D31UL;
+constexpr uint16_t TIME_SETTINGS_VERSION = 1;
 constexpr uint32_t SCHEDULE_MAGIC = 0x53434831UL;
 constexpr uint16_t MINUTES_PER_WEEK = 10080U;
 constexpr uint32_t MANUAL_OVERRIDE_INDEFINITE = 0xFFFFFFFFUL;
 constexpr unsigned long MANUAL_OVERRIDE_UNSYNCED_MAX_MS = 15UL * 60UL * 1000UL;
-constexpr unsigned long NTP_SYNC_INTERVAL_MS = 60000UL;
+constexpr unsigned long NTP_SYNC_INTERVAL_MS = 6UL * 60UL * 60UL * 1000UL;
+constexpr unsigned long NTP_INITIAL_RETRY_INTERVAL_MS = 30000UL;
+constexpr unsigned long NTP_UDP_TIMEOUT_MS = 2500UL;
+constexpr uint16_t NTP_LOCAL_PORT = 2391;
+constexpr uint16_t NTP_REMOTE_PORT = 123;
+constexpr uint32_t NTP_UNIX_OFFSET = 2208988800UL;
 constexpr unsigned long NTP_VALID_EPOCH_MIN = 1700000000UL;
 constexpr uint8_t HTTP_CLIENTS_PER_LOOP = 1;
 constexpr uint8_t LOG_CAPACITY = 32;
@@ -92,7 +101,7 @@ constexpr unsigned long HTTP_POLLING_SUMMARY_INTERVAL = 30000UL;
 constexpr unsigned long HTTP_TRACE_MAX_TIME = 600000UL;
 constexpr unsigned long WIFI_LINK_PROBE_INTERVAL_MS = 15000UL;
 constexpr unsigned long WIFI_RSSI_REFRESH_INTERVAL_MS = 30000UL;
-constexpr unsigned long NTP_UNSYNCED_RETRY_INTERVAL_MS = 5000UL;
+constexpr unsigned long NTP_UNSYNCED_RETRY_INTERVAL_MS = NTP_INITIAL_RETRY_INTERVAL_MS;
 constexpr unsigned long OTA_PREPARE_WINDOW = 30000UL;
 constexpr unsigned long OTA_ERROR_INDICATOR_TIME = 5000UL;
 constexpr unsigned long REMOTE_REBOOT_DELAY_MS = 750UL;
@@ -127,6 +136,15 @@ struct ApiSettings {
   uint32_t magic;
   uint16_t version;
   char privatePath[49], sharedSecret[65];
+  uint32_t checksum;
+};
+struct TimeSettings {
+  uint32_t magic;
+  uint16_t version;
+  char timezoneId[48];
+  int16_t currentUtcOffsetMinutes;
+  uint32_t nextTransitionEpoch;
+  int16_t nextUtcOffsetMinutes;
   uint32_t checksum;
 };
 struct __attribute__((packed)) StoredLed {
@@ -198,6 +216,7 @@ Adafruit_NeoPixel strip[STRIP_COUNT] = {
 };
 ArduinoLEDMatrix matrix;
 WiFiServer server(HTTP_API_PORT);
+WiFiUDP ntpUdp;
 
 uint8_t MATRIX_BOOT[8][12] = {
  {0,0,0,0,1,1,1,1,0,0,0,0},{0,0,0,1,0,0,0,0,1,0,0,0},
@@ -234,6 +253,19 @@ Led leds[STRIP_COUNT];
 Log logs[LOG_CAPACITY];
 NetworkSettings networkSettings = {};
 ApiSettings apiSettings = {};
+TimeSettings timeSettings = {};
+bool timeSettingsStored = false;
+char ntpLastServer[48] = "";
+uint8_t ntpLastServerIndex = 0;
+const char* NTP_SERVERS[] = {
+  "time.apple.com",
+  "time.cloudflare.com",
+  "time.google.com",
+  "pool.ntp.org",
+  "0.pool.ntp.org",
+  "1.pool.ntp.org"
+};
+constexpr uint8_t NTP_SERVER_COUNT = sizeof(NTP_SERVERS) / sizeof(NTP_SERVERS[0]);
 StoredSchedule schedules[SCHEDULE_MAX] = {};
 bool networkSettingsStored = false, apiSettingsStored = false;
 bool schedulesStored = false, otaReady = false, otaTransferActive = false;
@@ -742,26 +774,139 @@ bool importSchedulesHex(const String& payload) {
   return saveSchedules(count);
 }
 
-bool euSummerTime(const tm& utc) {
-  int month = utc.tm_mon + 1, day = utc.tm_mday;
-  if (month < 3 || month > 10) return false;
-  if (month > 3 && month < 10) return true;
-  int weekdayLast = (utc.tm_wday + (31 - day)) % 7;
-  int lastSunday = 31 - weekdayLast;
-  if (month == 3) return day > lastSunday ||
-    (day == lastSunday && utc.tm_hour >= 1);
-  return day < lastSunday || (day == lastSunday && utc.tm_hour < 1);
+uint32_t timeSettingsChecksum(const TimeSettings& settings) {
+  return fnv1a(
+    reinterpret_cast<const uint8_t*>(&settings),
+    sizeof(TimeSettings) - sizeof(settings.checksum)
+  );
+}
+bool timezoneIdValid(const char* value) {
+  size_t length = strlen(value);
+  if (length < 1 || length >= sizeof(timeSettings.timezoneId)) return false;
+  for (const char* p = value; *p; p++) {
+    bool valid = isalnum(*p) || *p == '/' || *p == '_' || *p == '-' || *p == '+';
+    if (!valid) return false;
+  }
+  return true;
+}
+bool timeSettingsValid(const TimeSettings& settings) {
+  return settings.magic == TIME_SETTINGS_MAGIC &&
+    settings.version == TIME_SETTINGS_VERSION &&
+    timezoneIdValid(settings.timezoneId) &&
+    settings.currentUtcOffsetMinutes >= -840 &&
+    settings.currentUtcOffsetMinutes <= 840 &&
+    settings.nextUtcOffsetMinutes >= -840 &&
+    settings.nextUtcOffsetMinutes <= 840 &&
+    settings.checksum == timeSettingsChecksum(settings);
+}
+void saveTimeSettings() {
+  timeSettings.magic = TIME_SETTINGS_MAGIC;
+  timeSettings.version = TIME_SETTINGS_VERSION;
+  timeSettings.checksum = timeSettingsChecksum(timeSettings);
+  EEPROM.put(TIME_SETTINGS_EEPROM_OFFSET, timeSettings);
+  TimeSettings verify = {};
+  EEPROM.get(TIME_SETTINGS_EEPROM_OFFSET, verify);
+  timeSettingsStored = timeSettingsValid(verify);
+}
+void loadTimeSettings() {
+  EEPROM.get(TIME_SETTINGS_EEPROM_OFFSET, timeSettings);
+  if (timeSettingsValid(timeSettings)) {
+    timeSettingsStored = true;
+    logEvent("success", "Idozona beallitas EEPROM-bol betoltve");
+    return;
+  }
+  memset(&timeSettings, 0, sizeof(timeSettings));
+  timeSettings.magic = TIME_SETTINGS_MAGIC;
+  timeSettings.version = TIME_SETTINGS_VERSION;
+  copyText(timeSettings.timezoneId, sizeof(timeSettings.timezoneId), "Europe/Vienna");
+  timeSettings.currentUtcOffsetMinutes = 60;
+  timeSettings.nextTransitionEpoch = 0;
+  timeSettings.nextUtcOffsetMinutes = 60;
+  saveTimeSettings();
+  logEvent("warn", "Idozona alapertelmezett: Europe/Vienna");
+}
+int16_t utcOffsetMinutesForEpoch(unsigned long epoch) {
+  if (timeSettings.nextTransitionEpoch > 0 &&
+      epoch >= timeSettings.nextTransitionEpoch) {
+    return timeSettings.nextUtcOffsetMinutes;
+  }
+  return timeSettings.currentUtcOffsetMinutes;
+}
+unsigned long localClockEpoch() {
+  unsigned long utcEpoch = currentClockEpoch();
+  if (!utcEpoch) return 0;
+  int32_t offsetSeconds =
+    static_cast<int32_t>(utcOffsetMinutesForEpoch(utcEpoch)) * 60L;
+  return static_cast<unsigned long>(
+    static_cast<int64_t>(utcEpoch) + offsetSeconds
+  );
 }
 bool localScheduleTime(uint8_t& day, uint8_t& hour, uint8_t& minute) {
   if (!timeSynced) return false;
-  time_t epoch = lastClockEpoch + (millis() - lastClockMillis) / 1000UL;
-  tm utc = *gmtime(&epoch);
-  epoch += 3600UL + (euSummerTime(utc) ? 3600UL : 0UL);
+  time_t epoch = static_cast<time_t>(localClockEpoch());
   tm local = *gmtime(&epoch);
   day = local.tm_wday == 0 ? 7 : local.tm_wday;
   hour = local.tm_hour;
   minute = local.tm_min;
   return true;
+}
+bool readUdpNtp(const char* hostname, unsigned long& epochOut) {
+  epochOut = 0;
+  IPAddress address(0, 0, 0, 0);
+  if (WiFi.hostByName(hostname, address) != 1) return false;
+
+  byte packet[48] = {};
+  packet[0] = 0b11100011;
+  packet[1] = 0;
+  packet[2] = 6;
+  packet[3] = 0xEC;
+  packet[12] = 49;
+  packet[13] = 0x4E;
+  packet[14] = 49;
+  packet[15] = 52;
+
+  while (ntpUdp.parsePacket() > 0) {
+    byte discard[48];
+    ntpUdp.read(discard, sizeof(discard));
+  }
+
+  if (!ntpUdp.beginPacket(address, NTP_REMOTE_PORT)) return false;
+  if (ntpUdp.write(packet, sizeof(packet)) != sizeof(packet)) {
+    ntpUdp.endPacket();
+    return false;
+  }
+  if (!ntpUdp.endPacket()) return false;
+
+  unsigned long startedAt = millis();
+  while (millis() - startedAt < NTP_UDP_TIMEOUT_MS) {
+    int packetSize = ntpUdp.parsePacket();
+    if (packetSize >= 48) {
+      byte response[48] = {};
+      int readLength = ntpUdp.read(response, sizeof(response));
+      if (readLength < 48) return false;
+      uint32_t ntpSeconds =
+        (static_cast<uint32_t>(response[40]) << 24) |
+        (static_cast<uint32_t>(response[41]) << 16) |
+        (static_cast<uint32_t>(response[42]) << 8) |
+        static_cast<uint32_t>(response[43]);
+      if (ntpSeconds <= NTP_UNIX_OFFSET) return false;
+      epochOut = ntpSeconds - NTP_UNIX_OFFSET;
+      return epochOut > NTP_VALID_EPOCH_MIN;
+    }
+    delay(10);
+  }
+  return false;
+}
+bool readAnyUdpNtp(unsigned long& epochOut) {
+  for (uint8_t step = 0; step < NTP_SERVER_COUNT; step++) {
+    uint8_t index = (ntpLastServerIndex + step) % NTP_SERVER_COUNT;
+    if (readUdpNtp(NTP_SERVERS[index], epochOut)) {
+      ntpLastServerIndex = index;
+      copyText(ntpLastServer, sizeof(ntpLastServer), NTP_SERVERS[index]);
+      return true;
+    }
+  }
+  return false;
 }
 uint32_t currentClockMinuteKey() {
   return timeSynced
@@ -890,29 +1035,51 @@ void serviceClockSync(bool force = false) {
     clockWifiWasAvailable = false;
     return;
   }
+
   unsigned long now = millis();
-  unsigned long interval = timeSynced ? NTP_SYNC_INTERVAL_MS : NTP_UNSYNCED_RETRY_INTERVAL_MS;
+  unsigned long interval =
+    timeSynced ? NTP_SYNC_INTERVAL_MS : NTP_UNSYNCED_RETRY_INTERVAL_MS;
   bool wifiReturned = !clockWifiWasAvailable;
   clockWifiWasAvailable = true;
-  if (!force && !wifiReturned && lastTimeCheck && now - lastTimeCheck < interval) return;
+
+  if (!force && !wifiReturned && lastTimeCheck &&
+      now - lastTimeCheck < interval) return;
+
   lastTimeCheck = now;
   ntpAttemptCount++;
+
   unsigned long epoch = WiFi.getTime();
+  bool usedUdpFallback = false;
+
+  if (epoch <= NTP_VALID_EPOCH_MIN) {
+    usedUdpFallback = true;
+    if (!readAnyUdpNtp(epoch)) epoch = 0;
+  } else {
+    copyText(ntpLastServer, sizeof(ntpLastServer), "WiFi.getTime");
+  }
+
   if (epoch <= NTP_VALID_EPOCH_MIN) {
     ntpFailureCount++;
     ntpLastFailureAt = now;
-    if (!timeSynced || ntpFailureCount == 1 || ntpFailureCount % 12 == 0)
-      logEvent("warn", "NTP ido lekerese sikertelen; ujraprobalas folyamatban");
+    if (!timeSynced || ntpFailureCount == 1 || ntpFailureCount % 10 == 0) {
+      logEvent("warn",
+        "NTP ido lekerese sikertelen minden szerverrol; ujraprobalas");
+    }
     return;
   }
+
   bool first = !timeSynced;
   lastClockEpoch = epoch;
   lastClockMillis = now;
   timeSynced = true;
   ntpSuccessCount++;
   ntpLastSuccessAt = now;
+
   if (first) {
-    logEvent("success", "NTP ido szinkronizalva");
+    logEvent("success",
+      usedUdpFallback
+        ? "UDP NTP ido szinkronizalva"
+        : "WiFi.getTime ido szinkronizalva");
     refreshManualOverrideDeadlines();
     lastScheduleMinute = 0xFFFFFFFFUL;
     reconcileArduinoSchedules(true);
@@ -1400,6 +1567,18 @@ bool buildStatusJson(size_t& bodyLength, uint32_t requestId, bool v1) {
     "\"ntpSuccessCount\":%lu,\"ntpLastSuccessAgeSeconds\":%lu,",
     ntpSuccessCount,
     ntpLastSuccessAt ? (millis() - ntpLastSuccessAt) / 1000UL : 0);
+  appendFormat(b,
+    "\"timezoneId\":\"%s\",\"utcOffsetMinutes\":%d,",
+    timeSettings.timezoneId,
+    utcOffsetMinutesForEpoch(currentClockEpoch()));
+  appendFormat(b,
+    "\"nextTransitionEpoch\":%lu,\"nextUtcOffsetMinutes\":%d,",
+    static_cast<unsigned long>(timeSettings.nextTransitionEpoch),
+    timeSettings.nextUtcOffsetMinutes);
+  appendFormat(b,
+    "\"ntpServer\":\"%s\",\"timeSettingsStored\":%s,",
+    ntpLastServer[0] ? ntpLastServer : "",
+    timeSettingsStored ? "true" : "false");
   appendFormat(b,
     "\"schedulerLastRunAgeSeconds\":%lu,\"schedulerLastAppliedAgeSeconds\":%lu,",
     schedulerLastRunAt ? (millis() - schedulerLastRunAt) / 1000UL : 0,
@@ -2123,6 +2302,48 @@ int routeV1(WiFiClient& c, const String& method, const String& base,
   if (base == "/api/v1/status" && method == "GET") { sendStatusJson(c, requestId, true); return 200; }
   if (base == "/api/v1/diagnostics" && method == "GET") { sendDiagnosticsJson(c, requestId); return 200; }
   if (base == "/api/v1/config/status" && method == "GET") { sendConfigStatusJson(c, requestId); return 200; }
+  if (base == "/api/v1/time/config" && method == "GET") {
+    FixedBuffer b; resetBuffer(b, httpBodyBuffer, sizeof(httpBodyBuffer));
+    appendFormat(b,
+      "{\"success\":true,\"timezoneId\":\"%s\",\"currentUtcOffsetMinutes\":%d,",
+      timeSettings.timezoneId, timeSettings.currentUtcOffsetMinutes);
+    appendFormat(b,
+      "\"nextTransitionEpoch\":%lu,\"nextUtcOffsetMinutes\":%d}",
+      static_cast<unsigned long>(timeSettings.nextTransitionEpoch),
+      timeSettings.nextUtcOffsetMinutes);
+    sendJsonBuffer(c, b.data, b.length, 200, requestId);
+    return 200;
+  }
+  if (base == "/api/v1/time/config" && method == "PUT") {
+    char timezoneId[48] = {};
+    long currentOffset = 0, nextTransition = 0, nextOffset = 0;
+    if (!jsonReadString(body, "timezoneId", timezoneId, sizeof(timezoneId)) ||
+        !jsonReadInt(body, "currentUtcOffsetMinutes", currentOffset) ||
+        !jsonReadInt(body, "nextTransitionEpoch", nextTransition) ||
+        !jsonReadInt(body, "nextUtcOffsetMinutes", nextOffset) ||
+        !timezoneIdValid(timezoneId) ||
+        currentOffset < -840 || currentOffset > 840 ||
+        nextOffset < -840 || nextOffset > 840 ||
+        nextTransition < 0) {
+      sendErrorJson(c, 422, "VALIDATION_FAILED",
+        "Ervenytelen idozona konfiguracio.", requestId);
+      return 422;
+    }
+    copyText(timeSettings.timezoneId, sizeof(timeSettings.timezoneId), timezoneId);
+    timeSettings.currentUtcOffsetMinutes = static_cast<int16_t>(currentOffset);
+    timeSettings.nextTransitionEpoch = static_cast<uint32_t>(nextTransition);
+    timeSettings.nextUtcOffsetMinutes = static_cast<int16_t>(nextOffset);
+    saveTimeSettings();
+    if (!timeSettingsStored) {
+      sendErrorJson(c, 500, "EEPROM_VERIFY_FAILED",
+        "Idozona EEPROM mentes sikertelen.", requestId);
+      return 500;
+    }
+    lastScheduleMinute = 0xFFFFFFFFUL;
+    reconcileArduinoSchedules(true);
+    sendJsonLiteral(c, "{\"success\":true}", 200, requestId);
+    return 200;
+  }
   if (base == "/api/v1/logs" && method == "GET") {
     sendLogsJson(c, valueInt(query, "afterId", 0, 0, 2147483647), requestId, true); return 200;
   }
@@ -2771,8 +2992,10 @@ void setup() {
     __DATE__, __TIME__, FIRMWARE_FEATURE);
   logEvent("info", info);
   loadPersistentConfig();
+  loadTimeSettings();
   loadSchedules();
   connectWifi();
+  ntpUdp.begin(NTP_LOCAL_PORT);
   server.begin();
   logEvent("success", "HTTP szerver elinditva a 80/TCP porton");
   logEvent("info", "Serial diagnosztika aktiv; parancslista: help");

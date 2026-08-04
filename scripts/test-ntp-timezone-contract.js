@@ -1,0 +1,22 @@
+#!/usr/bin/env node
+'use strict';
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const fw = fs.readFileSync('firmware/ArduinoLedController/ArduinoLedController.ino','utf8');
+const rust = fs.readFileSync('desktop-tauri/src-tauri/src/lib.rs','utf8');
+const types = fs.readFileSync('desktop-tauri/src/types/index.ts','utf8');
+const api = fs.readFileSync('desktop-tauri/src/services/tauriApi.ts','utf8');
+const settings = fs.readFileSync('desktop-tauri/src/pages/SettingsPage.tsx','utf8');
+const readme = fs.readFileSync('README.md','utf8');
+for (const host of ['time.apple.com','time.cloudflare.com','time.google.com','pool.ntp.org','0.pool.ntp.org','1.pool.ntp.org']) assert.ok(fw.includes(host), host);
+assert.match(fw,/WiFiUDP ntpUdp/);
+assert.match(fw,/readAnyUdpNtp/);
+assert.match(fw,/\/api\/v1\/time\/config/);
+assert.match(fw,/TIME_SETTINGS_EEPROM_OFFSET/);
+assert.match(rust,/sync_time_config/);
+assert.match(types,/timezoneId: string/);
+assert.match(api,/syncTimeConfig/);
+assert.match(settings,/resolvedOptions\(\)\.timeZone/);
+assert.match(readme,/beta-release\.yml\/badge\.svg\?branch=next%2Fv5-rearchitecture/);
+assert.match(readme,/firmware-beta-release\.yml\/badge\.svg\?branch=next%2Fv5-rearchitecture/);
+console.log('OK: UDP NTP fallback + timezone + README badge contract');

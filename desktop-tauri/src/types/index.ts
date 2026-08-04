@@ -37,6 +37,11 @@ export interface ConnectionConfig {
   autoCheckUpdates: boolean;
   autoDownloadUpdates: boolean;
   firmwareUpdateChecks: boolean;
+  timezoneId: string;
+  timezoneAuto: boolean;
+  currentUtcOffsetMinutes: number;
+  nextTransitionEpoch: number;
+  nextUtcOffsetMinutes: number;
 }
 
 export interface LedStrip {
@@ -70,6 +75,14 @@ export interface ArduinoStatus {
   strips?: LedStrip[];
   http?: ArduinoHttpStatus;
   scheduleCount?: number;
+  timesynced?: boolean;
+  clockEpoch?: number;
+  clockLocalAvailable?: boolean;
+  timezoneId?: string;
+  utcOffsetMinutes?: number;
+  nextTransitionEpoch?: number;
+  nextUtcOffsetMinutes?: number;
+  ntpServer?: string;
 }
 
 export interface ArduinoLog {

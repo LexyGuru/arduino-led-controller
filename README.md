@@ -1,7 +1,8 @@
 # Arduino LED Controller V5
 
 [![Firmware build](https://github.com/LexyGuru/arduino-led-controller/actions/workflows/firmware-build.yml/badge.svg)](https://github.com/LexyGuru/arduino-led-controller/actions/workflows/firmware-build.yml)
-[![V5 Beta release](https://github.com/LexyGuru/arduino-led-controller/actions/workflows/beta-release.yml/badge.svg)](https://github.com/LexyGuru/arduino-led-controller/actions/workflows/beta-release.yml)
+[![Firmware Beta release](https://github.com/LexyGuru/arduino-led-controller/actions/workflows/firmware-beta-release.yml/badge.svg?branch=next%2Fv5-rearchitecture)](https://github.com/LexyGuru/arduino-led-controller/actions/workflows/firmware-beta-release.yml)
+[![V5 Beta release](https://github.com/LexyGuru/arduino-led-controller/actions/workflows/beta-release.yml/badge.svg?branch=next%2Fv5-rearchitecture)](https://github.com/LexyGuru/arduino-led-controller/actions/workflows/beta-release.yml)
 
 Többplatformos LED-vezérlő rendszer Arduino UNO R4 WiFi és három WS2812B LED-szalag számára. Az elsődleges üzemmód a közvetlen Arduino-kapcsolat; a Node.js/LXC szerver opcionális.
 
@@ -10,7 +11,7 @@ Többplatformos LED-vezérlő rendszer Arduino UNO R4 WiFi és három WS2812B LE
 | Elem | Verzió / állapot |
 |---|---|
 | Alkalmazás | `5.0.0-beta.6` |
-| Firmware | `4.3.0-beta.4` |
+| Firmware | `4.3.0-beta.5` |
 | Direct API | `1.0.0` |
 | Kiadási csatorna | `beta` |
 | Állapot | nyilvános beta |
@@ -70,7 +71,7 @@ Az új UI- és runtime-szövegek kizárólag a központi `desktop-tauri/src/i18n
 
 ## Firmware és Direct API
 
-A párosított firmware: `4.3.0-beta.4`. A Direct API verziója `1.0.0`.
+A párosított firmware: `4.3.0-beta.5`. A Direct API verziója `1.0.0`.
 
 Biztonsági tulajdonságok:
 

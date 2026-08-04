@@ -13,7 +13,7 @@ const secrets = read('firmware/ArduinoLedController/secrets.example.h');
 const serverClient = read('server/arduino/arduino-client.js');
 const desktopRust = read('desktop-tauri/src-tauri/src/lib.rs');
 
-assert.equal(versions.firmware, '4.3.0-beta.4');
+assert.equal(versions.firmware, '4.3.0-beta.5');
 assert.ok(
   firmware.includes(`#define FIRMWARE_VERSION "${versions.firmware}"`),
   `A firmware verziója nem egyezik a release-versions.json értékével: ${versions.firmware}`,

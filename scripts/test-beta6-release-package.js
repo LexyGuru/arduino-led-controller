@@ -15,7 +15,7 @@ const firmwareWorkflow = read(
 );
 
 assert.equal(versions.application, '5.0.0-beta.6');
-assert.equal(versions.firmware, '4.3.0-beta.4');
+assert.equal(versions.firmware, '4.3.0-beta.5');
 assert.equal(versions.directApi, '1.0.0');
 assert.equal(versions.channel, 'beta');
 

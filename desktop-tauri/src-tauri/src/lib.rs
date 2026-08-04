@@ -49,6 +49,11 @@ struct Config {
     auto_check_updates: bool,
     auto_download_updates: bool,
     firmware_update_checks: bool,
+    timezone_id: String,
+    timezone_auto: bool,
+    current_utc_offset_minutes: i16,
+    next_transition_epoch: u64,
+    next_utc_offset_minutes: i16,
 }
 
 impl Default for Config {
@@ -77,6 +82,11 @@ impl Default for Config {
             auto_check_updates: true,
             auto_download_updates: false,
             firmware_update_checks: true,
+            timezone_id: "Europe/Vienna".into(),
+            timezone_auto: true,
+            current_utc_offset_minutes: 60,
+            next_transition_epoch: 0,
+            next_utc_offset_minutes: 60,
         }
     }
 }
@@ -2276,6 +2286,25 @@ async fn save_ota_password(state: State<'_, AppState>, password: String) -> Resu
 async fn arduino_status(state: State<'_, AppState>) -> Result<Value, String> {
     get_json(&state, "/api/v1/status").await
 }
+#[tauri::command]
+async fn sync_time_config(state: State<'_, AppState>) -> Result<Value, String> {
+    let config = state
+        .config
+        .lock()
+        .map_err(|_| "Beállítás zárolva".to_string())?
+        .clone();
+    put_json(
+        &state,
+        "/api/v1/time/config",
+        serde_json::json!({
+            "timezoneId": config.timezone_id,
+            "currentUtcOffsetMinutes": config.current_utc_offset_minutes,
+            "nextTransitionEpoch": config.next_transition_epoch,
+            "nextUtcOffsetMinutes": config.next_utc_offset_minutes
+        }),
+    )
+    .await
+}
 
 #[tauri::command]
 async fn arduino_logs(state: State<'_, AppState>, after_id: u32) -> Result<Value, String> {
@@ -3456,6 +3485,7 @@ pub fn run() {
             save_config,
             save_ota_password,
             arduino_status,
+            sync_time_config,
             arduino_logs,
             network_logs,
             set_led,
