@@ -31,6 +31,7 @@ export interface ConnectionConfig {
   otaTimeoutSeconds: number;
   arduinoApiPath: string;
   arduinoApiKey: string;
+  arduinoApiKeyConfigured: boolean;
   updateChannel: 'stable' | 'beta';
   firmwareUpdateChannel: 'stable' | 'beta';
   autoCheckUpdates: boolean;

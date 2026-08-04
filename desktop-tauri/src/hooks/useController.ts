@@ -56,6 +56,7 @@ const fallbackConfig:
     otaTimeoutSeconds: 120,
     arduinoApiPath: '',
     arduinoApiKey: '',
+    arduinoApiKeyConfigured: false,
     updateChannel: 'beta',
     firmwareUpdateChannel: 'beta',
     autoCheckUpdates: true,
@@ -84,22 +85,27 @@ function hostReady(
 
 function authenticationReady(
   config: ConnectionConfig
-) {
+): boolean {
   const path =
     config.arduinoApiPath
       .trim();
-
   const key =
     config.arduinoApiKey
       .trim();
+
+  const inlineKeyReady =
+    key.length >= 24 &&
+    key.length <= 64 &&
+    /^[\x21-\x7e]+$/.test(key);
 
   return (
     path.startsWith('/') &&
     path.length >= 18 &&
     !/\s/.test(path) &&
-    key.length >= 24 &&
-    key.length <= 64 &&
-    /^[\x21-\x7e]+$/.test(key)
+    (
+      config.arduinoApiKeyConfigured ||
+      inlineKeyReady
+    )
   );
 }
 
@@ -139,6 +145,8 @@ function migrateLegacyPlaceholder(
   }
 
   const noAuthentication =
+    !merged
+      .arduinoApiKeyConfigured &&
     !merged.arduinoApiPath
       .trim() &&
     !merged.arduinoApiKey

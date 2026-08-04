@@ -81,6 +81,18 @@ impl Default for Config {
     }
 }
 
+fn config_runtime_value(config: &Config) -> Result<Value, String> {
+    let mut value = serde_json::to_value(config).map_err(|error| error.to_string())?;
+    let object = value
+        .as_object_mut()
+        .ok_or_else(|| "A futásidejű kapcsolatbeállítás nem JSON-objektum.".to_string())?;
+    object.insert(
+        "arduinoApiKeyConfigured".to_string(),
+        Value::Bool(!config.arduino_api_key.trim().is_empty()),
+    );
+    Ok(value)
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct ScheduleLed {
@@ -2123,7 +2135,7 @@ fn runtime_capabilities() -> RuntimeCapabilities {
 }
 
 #[tauri::command]
-fn load_config(state: State<AppState>) -> Result<Config, String> {
+fn load_config(state: State<AppState>) -> Result<Value, String> {
     let mut config = state
         .config
         .lock()
@@ -2133,7 +2145,7 @@ fn load_config(state: State<AppState>) -> Result<Config, String> {
         config.prefer_local = false;
         config.ota_use_api_host = false;
     }
-    Ok(config)
+    config_runtime_value(&config)
 }
 
 #[tauri::command]
