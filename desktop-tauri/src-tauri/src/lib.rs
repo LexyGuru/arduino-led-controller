@@ -1512,32 +1512,26 @@ fn find_ota_tool(app: &AppHandle, config: &Config) -> Option<PathBuf> {
         .find(|candidate| ota_tool_works(candidate))
 }
 
+fn ota_upload_mode_prefers_terminal(mode: &str) -> bool {
+    matches!(mode.trim(), "system" | "custom")
+}
+fn normalized_ota_timeout_seconds(value: u64) -> u64 {
+    value.clamp(30, 600)
+}
 fn use_terminal_ota(app: &AppHandle, config: &Config) -> Result<bool, String> {
-    match config.ota_upload_mode.trim() {
-        "bundled" => Ok(false),
-        "system" | "custom" => {
-            #[cfg(target_os = "macos")]
-            {
-                if find_ota_tool(app, config).is_none() {
-                    return Err("A rendszer/egyedi arduinoOTA mód van kiválasztva, de nem található működő arduinoOTA feltöltő.".into());
-                }
-                Ok(true)
-            }
-            #[cfg(not(target_os = "macos"))]
-            {
-                Err("A külső arduinoOTA konzol ebben a csomagban macOS-en támogatott; Windowson és Linuxon a beépített uploader az alapértelmezett.".into())
-            }
+    if !ota_upload_mode_prefers_terminal(&config.ota_upload_mode) {
+        return Ok(false);
+    }
+    #[cfg(target_os = "macos")]
+    {
+        if find_ota_tool(app, config).is_none() {
+            return Err("A rendszer/egyedi arduinoOTA mód van kiválasztva, de nem található működő arduinoOTA feltöltő.".into());
         }
-        _ => {
-            #[cfg(target_os = "macos")]
-            {
-                Ok(find_ota_tool(app, config).is_some())
-            }
-            #[cfg(not(target_os = "macos"))]
-            {
-                Ok(false)
-            }
-        }
+        Ok(true)
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        Err("A külső arduinoOTA konzol ebben a csomagban macOS-en támogatott; Windowson és Linuxon a beépített uploader az alapértelmezett.".into())
     }
 }
 
@@ -1600,6 +1594,7 @@ BINARY={}
 LOG={}
 EXIT_FILE={}
 SECRET_FILE={}
+TIMEOUT_SECONDS={}
 trap 'rm -f "$SECRET_FILE" "$0"' EXIT
 PASSWORD="$(cat "$SECRET_FILE")"
 rm -f "$SECRET_FILE" "$EXIT_FILE"
@@ -1622,13 +1617,16 @@ if [[ "$PORT_READY" != "1" ]]; then
   print -r -- "2" > "$EXIT_FILE"
   exit 2
 fi
-TIMEOUT_ARGS=()
-if "$TOOL" -h 2>&1 | /usr/bin/grep -q -- "-t"; then
-  TIMEOUT_ARGS=(-t 90)
-  print -r -- "[Tauri OTA] Az arduinoOTA támogatja a hosszabb időkorlátot: 90 másodperc." | tee -a "$LOG"
-else
-  print -r -- "[Tauri OTA] Az arduinoOTA nem jelzett -t támogatást; a feltöltés után az alkalmazás firmware-verzióval ellenőrzi a tényleges eredményt." | tee -a "$LOG"
+TOOL_HELP="$("$TOOL" -h 2>&1 || true)"
+TOOL_HELP="$TOOL_HELP
+$("$TOOL" --help 2>&1 || true)"
+if ! print -r -- "$TOOL_HELP" | /usr/bin/grep -E -q -- '(^|[[:space:],])-t([[:space:],=]|$)'; then
+  print -r -- "[Tauri OTA] HIBA: a kiválasztott külső arduinoOTA nem támogat igazolható -t timeout kapcsolót. UNO R4 frissítéshez válaszd az auto vagy bundled módot; ezek a beépített Rust OTA-motort használják." | tee -a "$LOG"
+  print -r -- "64" > "$EXIT_FILE"
+  exit 64
 fi
+TIMEOUT_ARGS=(-t "$TIMEOUT_SECONDS")
+print -r -- "[Tauri OTA] Külső arduinoOTA timeout: $TIMEOUT_SECONDS másodperc." | tee -a "$LOG"
 "$TOOL" -v "${{TIMEOUT_ARGS[@]}}" -address "$ADDRESS" -port "$PORT" -username arduino -password "$PASSWORD" -sketch "$BINARY" -upload /sketch -b 2>&1 | tee -a "$LOG"
 STATUS=${{pipestatus[1]}}
 print -r -- "$STATUS" > "$EXIT_FILE"
@@ -1648,6 +1646,7 @@ exit "$STATUS"
         shell_single_quote(&log_path.to_string_lossy()),
         shell_single_quote(&exit_path.to_string_lossy()),
         shell_single_quote(&secret_path.to_string_lossy()),
+        normalized_ota_timeout_seconds(config.ota_timeout_seconds),
     );
 
     fs::write(&script_path, script.as_bytes())
@@ -1830,6 +1829,7 @@ async fn upload_firmware_native(
     port: u16,
     password: &str,
     firmware: Vec<u8>,
+    timeout_seconds: u64,
 ) -> Result<String, String> {
     let total = firmware.len();
     if total < 1024 {
@@ -1870,12 +1870,24 @@ async fn upload_firmware_native(
             format!("A Tauri beépített OTA-kliense nem tudott kapcsolódni a(z) {address}:{port} címhez. {last_error}")
         })?;
         stream.set_nodelay(true).ok();
+        let ota_timeout =
+            Duration::from_secs(normalized_ota_timeout_seconds(timeout_seconds));
         stream
-            .set_read_timeout(Some(Duration::from_secs(240)))
+            .set_read_timeout(Some(ota_timeout))
             .map_err(|error| format!("OTA olvasási időkorlát nem állítható be: {error}"))?;
         stream
-            .set_write_timeout(Some(Duration::from_secs(240)))
+            .set_write_timeout(Some(ota_timeout))
             .map_err(|error| format!("OTA írási időkorlát nem állítható be: {error}"))?;
+        emit_ota_progress(
+            &app,
+            "Kapcsolat",
+            "info",
+            format!(
+                "Beépített Rust OTA timeout: {} másodperc.",
+                ota_timeout.as_secs()
+            ),
+            Some(53),
+        );
 
         emit_ota_progress(
             &app,
@@ -2798,7 +2810,7 @@ async fn firmware_update_inner(
             find_ota_tool(app, &config).ok_or("A Terminal OTA módhoz nem található arduinoOTA.")?;
         format!("macOS Terminal + arduinoOTA ({})", tool.to_string_lossy())
     } else {
-        "Beépített Tauri/Rust HTTP OTA-motor".to_string()
+        "Beépített Tauri/Rust HTTP OTA-motor (auto/bundled alapértelmezett)".to_string()
     };
     emit_ota_progress(
         app,
@@ -3137,6 +3149,7 @@ async fn firmware_update_inner(
             ota_port,
             &password,
             firmware.to_vec(),
+            config.ota_timeout_seconds,
         )
         .await
     };
@@ -3177,7 +3190,6 @@ async fn firmware_update_inner(
         .and_then(Value::as_str)
         .map(str::to_string);
     let boot_id_changed = boot_id_before.is_some() && boot_id_before != boot_id_after;
-    let boot_id_warning = boot_id_before.is_some() && boot_id_before == boot_id_after;
     if schedule_revision_before != schedule_revision_after
         || schedule_checksum_before != schedule_checksum_after
     {
@@ -3186,27 +3198,23 @@ async fn firmware_update_inner(
             schedule_revision_before, schedule_revision_after, schedule_checksum_before, schedule_checksum_after
         ));
     }
-    if boot_id_warning {
-        emit_ota_progress(
-            app,
-            "Persistence",
-            "warning",
-            "A várt firmware fut és a schedule-adatok megmaradtak, de a Boot ID nem változott. Az OTA sikeres, az újraindítás külön Boot ID-val nem volt igazolható.",
-            Some(98),
-        );
-    } else {
-        emit_ota_progress(
-            app,
-            "Persistence",
-            "success",
-            if boot_id_changed {
-                "Boot ID megváltozott, a schedule revision és checksum megmaradt."
-            } else {
-                "A firmware és a schedule persistence ellenőrzése sikeres; Boot ID nem állt rendelkezésre."
-            },
-            Some(98),
-        );
+    if boot_id_before.is_some() && !boot_id_changed {
+        return Err(format!(
+            "OTA SIKERTELEN: a várt firmware-verzió elérhető, de a Boot ID nem változott. Boot ID előtte: {:?}, utána: {:?}. Az újraindítás és a flash alkalmazása nem igazolható.",
+            boot_id_before, boot_id_after
+        ));
     }
+    emit_ota_progress(
+        app,
+        "Persistence",
+        "success",
+        if boot_id_changed {
+            "Boot ID megváltozott, a firmware-verzió és a schedule revision/checksum megmaradása igazolt."
+        } else {
+            "A firmware és a schedule persistence ellenőrzése sikeres; indulás előtti Boot ID nem állt rendelkezésre."
+        },
+        Some(98),
+    );
     state.ota_in_progress.store(false, Ordering::SeqCst);
     let final_status = FirmwareStatus {
         state: "success".into(),
@@ -3418,6 +3426,20 @@ mod tests {
         assert_eq!(value, "YXJkdWlubzpwYXNzd29yZA==");
     }
 
+    #[test]
+    fn automatic_ota_prefers_builtin_rust_engine() {
+        assert!(!ota_upload_mode_prefers_terminal("auto"));
+        assert!(!ota_upload_mode_prefers_terminal("bundled"));
+        assert!(ota_upload_mode_prefers_terminal("system"));
+        assert!(ota_upload_mode_prefers_terminal("custom"));
+        assert!(!ota_upload_mode_prefers_terminal(""));
+    }
+    #[test]
+    fn ota_timeout_is_clamped_to_supported_range() {
+        assert_eq!(normalized_ota_timeout_seconds(1), 30);
+        assert_eq!(normalized_ota_timeout_seconds(120), 120);
+        assert_eq!(normalized_ota_timeout_seconds(900), 600);
+    }
     #[test]
     fn terminal_ota_uses_current_status_ip() {
         let config = Config {

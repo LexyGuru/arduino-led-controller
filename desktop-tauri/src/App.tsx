@@ -155,6 +155,13 @@ export default function App() {
               scheduleSync={
                 controller.scheduleSync
               }
+              busy={
+                controller.busy
+              }
+              onSyncTime={
+                controller
+                  .syncTimeWithComputer
+              }
             />
           )}
 

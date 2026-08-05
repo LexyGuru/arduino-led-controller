@@ -68,61 +68,154 @@ function formatUptime(
   return t('dashboard.uptimeValue', { days, hours, minutes });
 }
 
+type ArduinoClock = {
+  day: number;
+  minutes: number;
+  date: Date;
+  source: 'arduino' | 'computer';
+};
+
+function arduinoClock(
+  status: ArduinoStatus | null
+): ArduinoClock {
+  if (
+    status?.clockEpoch != null &&
+    Number.isFinite(status.clockEpoch)
+  ) {
+    const offset =
+      status.utcOffsetMinutes ??
+      0;
+    const date =
+      new Date(
+        (
+          status.clockEpoch +
+          offset * 60
+        ) *
+          1000
+      );
+    const weekday =
+      date.getUTCDay();
+
+    return {
+      day:
+        weekday === 0
+          ? 7
+          : weekday,
+      minutes:
+        date.getUTCHours() *
+          60 +
+        date.getUTCMinutes(),
+      date,
+      source: 'arduino'
+    };
+  }
+
+  const date =
+    new Date();
+  const weekday =
+    date.getDay();
+
+  return {
+    day:
+      weekday === 0
+        ? 7
+        : weekday,
+    minutes:
+      date.getHours() *
+        60 +
+      date.getMinutes(),
+    date,
+    source: 'computer'
+  };
+}
+
 function nextSchedule(
-  items: LedSchedule[]
+  items: LedSchedule[],
+  clock: ArduinoClock
 ) {
   if (!items.length) {
     return null;
   }
 
-  const now =
-    new Date();
-
-  const currentDay =
-    now.getDay() === 0
-      ? 7
-      : now.getDay();
-
-  const currentMinutes =
-    now.getHours() *
-    60 +
-    now.getMinutes();
-
-  const sorted =
-    [...items].sort(
-      (left, right) =>
-        left.day -
-        right.day ||
-        left.time
-          .localeCompare(
-            right.time
-          )
-    );
-
-  return sorted.find(
-    (item) =>
-      item.day >
-        currentDay ||
-      (
-        item.day ===
-          currentDay &&
-        Number(
-          item.time.slice(
-            0,
-            2
-          )
-        ) *
-          60 +
+  return items
+    .map(
+      (item) => {
+        const itemMinutes =
+          Number(
+            item.time.slice(
+              0,
+              2
+            )
+          ) *
+            60 +
           Number(
             item.time.slice(
               3,
               5
             )
-          ) >=
-          currentMinutes
-      )
-  ) ??
-    sorted[0];
+          );
+        const dayDelta =
+          (
+            item.day -
+            clock.day +
+            7
+          ) %
+          7;
+        let minuteDelta =
+          dayDelta *
+            1440 +
+          itemMinutes -
+          clock.minutes;
+
+        if (minuteDelta < 0) {
+          minuteDelta +=
+            7 *
+            1440;
+        }
+
+        return {
+          item,
+          minuteDelta,
+          dayOffset:
+            Math.floor(
+              minuteDelta /
+                1440
+            )
+        };
+      }
+    )
+    .sort(
+      (left, right) =>
+        left.minuteDelta -
+        right.minuteDelta
+    )[0];
+}
+
+function formatArduinoTime(
+  clock: ArduinoClock,
+  locale: string
+) {
+  return new Intl
+    .DateTimeFormat(
+      locale,
+      {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false,
+        timeZone:
+          clock.source ===
+          'arduino'
+            ? 'UTC'
+            : undefined
+      }
+    )
+    .format(
+      clock.date
+    );
 }
 
 export function DashboardPage({
@@ -130,7 +223,9 @@ export function DashboardPage({
     legacyStatus,
   schedules:
     legacySchedules,
-  scheduleSync
+  scheduleSync,
+  busy,
+  onSyncTime
 }: {
   status:
     ArduinoStatus |
@@ -139,6 +234,10 @@ export function DashboardPage({
     LedSchedule[];
   scheduleSync:
     ScheduleSyncState;
+  busy:
+    boolean;
+  onSyncTime:
+    () => Promise<void>;
 }) {
   const { t } = useI18n();
   const {
@@ -154,10 +253,38 @@ export function DashboardPage({
       legacySchedules
     );
 
+  const clock =
+    arduinoClock(
+      status
+    );
   const next =
     nextSchedule(
-      schedules
+      schedules,
+      clock
     );
+  const locale =
+    document
+      .documentElement
+      .lang ||
+    'hu';
+  const nextDayLabel =
+    next?.dayOffset ===
+    0
+      ? t('dashboard.today')
+      : next?.dayOffset ===
+        1
+        ? t('dashboard.tomorrow')
+        : t('dashboard.nextDay');
+  const utcOffset =
+    status?.utcOffsetMinutes;
+  const offsetLabel =
+    utcOffset == null
+      ? '—'
+      : `UTC${utcOffset >= 0 ? '+' : '-'}${String(
+          Math.floor(Math.abs(utcOffset) / 60)
+        ).padStart(2, '0')}:${String(
+          Math.abs(utcOffset) % 60
+        ).padStart(2, '0')}`;
 
   const cards = [
     {
@@ -340,13 +467,13 @@ export function DashboardPage({
 
             <div>
               <span>
-                {t('dashboard.nextDay')}
+                {nextDayLabel}
               </span>
               <strong>
                 {next
                   ? t(
                       dayKeys[
-                        next.day -
+                        next.item.day -
                         1
                       ]
                     )
@@ -359,12 +486,83 @@ export function DashboardPage({
                 {t('dashboard.nextTime')}
               </span>
               <strong>
-                {next?.time ??
+                {next?.item.time ??
                 '—'}
               </strong>
             </div>
           </div>
 
+          <div className="details-grid compact">
+            <div>
+              <span>
+                {t('dashboard.arduinoTime')}
+              </span>
+              <strong>
+                {status?.clockEpoch != null
+                  ? formatArduinoTime(
+                      clock,
+                      locale
+                    )
+                  : '—'}
+              </strong>
+            </div>
+            <div>
+              <span>
+                {t('dashboard.timezone')}
+              </span>
+              <strong>
+                {status?.timezoneId ??
+                '—'}
+              </strong>
+            </div>
+            <div>
+              <span>
+                {t('dashboard.utcOffset')}
+              </span>
+              <strong>
+                {offsetLabel}
+              </strong>
+            </div>
+            <div>
+              <span>
+                {t('dashboard.timeSync')}
+              </span>
+              <strong
+                className={
+                  status?.timesynced
+                    ? 'ok'
+                    : 'bad'
+                }
+              >
+                {status?.timesynced
+                  ? t('dashboard.synced')
+                  : t('dashboard.notSynced')}
+              </strong>
+            </div>
+          </div>
+          <div className="page-actions">
+            <button
+              className="secondary"
+              disabled={
+                busy ||
+                !status?.connected
+              }
+              onClick={
+                () =>
+                  void onSyncTime()
+              }
+            >
+              <RefreshCw
+                size={17}
+                className={
+                  busy
+                    ? 'spin'
+                    : ''
+                }
+              />
+              {t('dashboard.syncComputer')}
+            </button>
+          </div>
           {(status?.scheduleCount != null &&
             status.scheduleCount !==
               schedules.length) && (

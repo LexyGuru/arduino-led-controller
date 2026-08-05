@@ -965,6 +965,57 @@ export function useController(
     ]
   );
 
+  const syncTimeWithComputer =
+    async () => {
+      setBusy(
+        true
+      );
+
+      try {
+        const syncedStatus =
+          await tauriApi
+            .syncTimeConfig();
+
+        setStatus({
+          ...syncedStatus,
+          connected: true
+        });
+
+        statusHealthy.current =
+          true;
+
+        setMessage(
+          translate(
+            'controller.timeSynced',
+            {
+              zone:
+                syncedStatus
+                  .timezoneId ??
+                config.timezoneId
+            }
+          )
+        );
+      } catch (
+        error
+      ) {
+        setMessage(
+          translate(
+            'controller.timeSyncError',
+            {
+              error:
+                String(error)
+            }
+          )
+        );
+
+        throw error;
+      } finally {
+        setBusy(
+          false
+        );
+      }
+    };
+
   const persistConfig =
     async () => {
       await tauriApi.saveConfig(
@@ -1656,6 +1707,7 @@ export function useController(
     message,
     refresh,
     refreshFirmware,
+    syncTimeWithComputer,
     saveConfig,
     testConnection,
     updateStrip,
