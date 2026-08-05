@@ -54,17 +54,24 @@ jobs:
           test "${GITHUB_REF_NAME}" = "${EXPECTED_BRANCH}"
           APP_VERSION="$(node -p "require('./release-versions.json').application")"
           FW_VERSION="$(node -p "require('./release-versions.json').firmware")"
+          API_VERSION="$(node -p "require('./release-versions.json').directApi")"
           SOURCE_VERSION="$(sed -nE 's/^#define[[:space:]]+FIRMWARE_VERSION[[:space:]]+"([^"]+)".*/\1/p' firmware/ArduinoLedController/ArduinoLedController.ino | head -n 1)"
+          SOURCE_API_VERSION="$(sed -nE 's/^#define[[:space:]]+DIRECT_API_VERSION[[:space:]]+"([^"]+)".*/\1/p' firmware/ArduinoLedController/ArduinoLedController.ino | head -n 1)"
           META_VERSION="$(node -p "require('./firmware/firmware-release.json').firmwareVersion")"
+          META_API_VERSION="$(node -p "require('./firmware/firmware-release.json').directApiVersion")"
           EXPECTED_BINARY="$(node -p "require('./firmware/firmware-release.json').binary")"
           test "${FW_VERSION}" = "${SOURCE_VERSION}"
           test "${FW_VERSION}" = "${META_VERSION}"
+          test "${API_VERSION}" = "${SOURCE_API_VERSION}"
+          test "${API_VERSION}" = "${META_API_VERSION}"
           test "${EXPECTED_BINARY}" = "Arduino_LED_Controller_Firmware_${FW_VERSION}_UNO_R4_WiFi.bin"
           echo "firmware_version=${FW_VERSION}" >> "${GITHUB_OUTPUT}"
           echo "application_version=${APP_VERSION}" >> "${GITHUB_OUTPUT}"
           npm ci --no-audit --no-fund
           npm run test:firmware-beta-release
           npm run test:firmware-catalog-dedup
+          npm run test:ntp-timezone-contract
+          npm run test:firmware-430-beta4-scheduler-hotfix
 
   build:
     name: Build UNO R4 WiFi firmware

@@ -9,19 +9,34 @@ const json = (file) => JSON.parse(read(file));
 
 const versions = json('release-versions.json');
 const firmware = json('firmware/firmware-release.json');
+const firmwareSource = read(
+  'firmware/ArduinoLedController/ArduinoLedController.ino',
+);
 const appWorkflow = read('.github/workflows/beta-release.yml');
 const firmwareWorkflow = read(
-  '.github/workflows/firmware-beta-release.yml'
+  '.github/workflows/firmware-beta-release.yml',
 );
 
 assert.equal(versions.application, '5.0.0-beta.6');
-assert.equal(versions.firmware, '4.3.0-beta.5');
-assert.equal(versions.directApi, '1.0.0');
+assert.match(versions.firmware, /^\d+\.\d+\.\d+-beta\.\d+$/);
+assert.match(versions.directApi, /^\d+\.\d+\.\d+$/);
 assert.equal(versions.channel, 'beta');
 
 assert.equal(firmware.firmwareVersion, versions.firmware);
 assert.equal(firmware.directApiVersion, versions.directApi);
 assert.equal(firmware.channel, versions.channel);
+assert.ok(
+  firmwareSource.includes(
+    `#define FIRMWARE_VERSION "${versions.firmware}"`,
+  ),
+  'A firmware forrásverzió nem egyezik a központi verzióval',
+);
+assert.ok(
+  firmwareSource.includes(
+    `#define DIRECT_API_VERSION "${versions.directApi}"`,
+  ),
+  'A Direct API forrásverzió nem egyezik a központi verzióval',
+);
 
 for (const file of [
   'README.md',
@@ -30,27 +45,27 @@ for (const file of [
   'CHANGELOG.md',
   'docs/v5/BETA6_INSTALLATION_GUIDE.md',
   'docs/v5/BETA6_RELEASE_NOTES.md',
-  'docs/v5/BETA6_RELEASE_CHECKLIST.md'
+  'docs/v5/BETA6_RELEASE_CHECKLIST.md',
 ]) {
   assert.ok(
     fs.existsSync(file),
-    `Hiányzó Beta.6 dokumentum: ${file}`
+    `Hiányzó Beta.6 dokumentum: ${file}`,
   );
 }
 
 // Az alkalmazásrelease kizárólag a Beta.6 alkalmazáscsomagot kezeli.
 for (const token of [
-  '5.0.0-beta.6',
+  versions.application,
   'BETA6_INSTALLATION_GUIDE.md',
   'BETA6_RELEASE_NOTES.md',
   'BETA6_RELEASE_CHECKLIST.md',
   'prerelease: true',
   'make_latest: false',
-  'Enforce application-only release assets'
+  'Enforce application-only release assets',
 ]) {
   assert.ok(
     appWorkflow.includes(token),
-    `Hiányzó alkalmazás-workflow marker: ${token}`
+    `Hiányzó alkalmazás-workflow marker: ${token}`,
   );
 }
 
@@ -59,7 +74,7 @@ assert.doesNotMatch(appWorkflow, /build-firmware:/);
 assert.doesNotMatch(appWorkflow, /UNO R4 WiFi firmware/);
 assert.doesNotMatch(
   appWorkflow,
-  /Arduino_LED_Controller_Firmware_.*UNO_R4_WiFi/
+  /Arduino_LED_Controller_Firmware_.*UNO_R4_WiFi/,
 );
 
 // A firmware külön, állandó többverziós Beta release-be kerül.
@@ -69,39 +84,61 @@ for (const token of [
   'FIRMWARE-SHA256SUMS',
   'Build UNO R4 WiFi firmware',
   'Migrate verified legacy firmware assets',
-  'Remove firmware assets from application releases after migration'
+  'Remove firmware assets from application releases after migration',
+  'API_VERSION=',
+  'SOURCE_API_VERSION=',
+  'META_API_VERSION=',
+  'npm run test:ntp-timezone-contract',
 ]) {
   assert.ok(
     firmwareWorkflow.includes(token),
-    `Hiányzó firmware-workflow marker: ${token}`
+    `Hiányzó firmware-workflow marker: ${token}`,
   );
 }
 
-// A firmware-verzió nincs a workflow-ba fixen beégetve.
-// A workflow a három hivatalos forrás egyezését ellenőrzi.
 assert.match(
   firmwareWorkflow,
-  /require\('\.\/release-versions\.json'\)\.firmware/
+  /require\('\.\/release-versions\.json'\)\.firmware/,
 );
 assert.match(
   firmwareWorkflow,
-  /FIRMWARE_VERSION.*ArduinoLedController\.ino/
+  /require\('\.\/release-versions\.json'\)\.directApi/,
 );
 assert.match(
   firmwareWorkflow,
-  /require\('\.\/firmware\/firmware-release\.json'\)\.firmwareVersion/
+  /FIRMWARE_VERSION.*ArduinoLedController\.ino/,
 );
 assert.match(
   firmwareWorkflow,
-  /test "\$\{FW_VERSION\}" = "\$\{SOURCE_VERSION\}"/
+  /DIRECT_API_VERSION.*ArduinoLedController\.ino/,
 );
 assert.match(
   firmwareWorkflow,
-  /test "\$\{FW_VERSION\}" = "\$\{META_VERSION\}"/
+  /require\('\.\/firmware\/firmware-release\.json'\)\.firmwareVersion/,
 );
 assert.match(
   firmwareWorkflow,
-  /Arduino_LED_Controller_Firmware_\$\{FW_VERSION\}_UNO_R4_WiFi\.bin/
+  /require\('\.\/firmware\/firmware-release\.json'\)\.directApiVersion/,
+);
+assert.match(
+  firmwareWorkflow,
+  /test "\$\{FW_VERSION\}" = "\$\{SOURCE_VERSION\}"/,
+);
+assert.match(
+  firmwareWorkflow,
+  /test "\$\{FW_VERSION\}" = "\$\{META_VERSION\}"/,
+);
+assert.match(
+  firmwareWorkflow,
+  /test "\$\{API_VERSION\}" = "\$\{SOURCE_API_VERSION\}"/,
+);
+assert.match(
+  firmwareWorkflow,
+  /test "\$\{API_VERSION\}" = "\$\{META_API_VERSION\}"/,
+);
+assert.match(
+  firmwareWorkflow,
+  /Arduino_LED_Controller_Firmware_\$\{FW_VERSION\}_UNO_R4_WiFi\.bin/,
 );
 
 assert.match(read('README.md'), /magyar.*angol.*német/is);
@@ -111,15 +148,15 @@ assert.match(read('SECURITY.md'), /X-Device-Key/);
 assert.match(read('SECURITY.md'), /Keychain/);
 assert.match(
   read('CHANGELOG.md'),
-  /Firmware-katalógus|workflow/i
+  /Firmware-katalógus|workflow/i,
 );
 
 assert.doesNotMatch(
   appWorkflow,
-  /EXPECTED_VERSION: 5\.0\.0-beta\.4/
+  /EXPECTED_VERSION: 5\.0\.0-beta\.4/,
 );
 assert.doesNotMatch(read('VERSION'), /5\.0\.0-beta\.4/);
 
 console.log(
-  'OK: 5.0.0-beta.6 alkalmazásrelease és dedikált többverziós firmware BETA release contract'
+  `OK: ${versions.application} alkalmazásrelease, firmware ${versions.firmware}, Direct API ${versions.directApi} contract`,
 );

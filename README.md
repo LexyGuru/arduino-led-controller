@@ -1,8 +1,10 @@
 # Arduino LED Controller V5
 
 [![Firmware build](https://github.com/LexyGuru/arduino-led-controller/actions/workflows/firmware-build.yml/badge.svg)](https://github.com/LexyGuru/arduino-led-controller/actions/workflows/firmware-build.yml)
-[![Firmware Beta release](https://github.com/LexyGuru/arduino-led-controller/actions/workflows/firmware-beta-release.yml/badge.svg?branch=next%2Fv5-rearchitecture)](https://github.com/LexyGuru/arduino-led-controller/actions/workflows/firmware-beta-release.yml)
-[![V5 Beta release](https://github.com/LexyGuru/arduino-led-controller/actions/workflows/beta-release.yml/badge.svg?branch=next%2Fv5-rearchitecture)](https://github.com/LexyGuru/arduino-led-controller/actions/workflows/beta-release.yml)
+[![Firmware Beta release](https://img.shields.io/badge/Firmware_Beta-release-blue?logo=githubactions)](https://github.com/LexyGuru/arduino-led-controller/actions/workflows/firmware-beta-release.yml)
+[![V5 Beta release](https://img.shields.io/badge/V5_Beta-release-blue?logo=githubactions)](https://github.com/LexyGuru/arduino-led-controller/actions/workflows/beta-release.yml)
+
+> A Beta release workflow-k a `next/v5-rearchitecture` fejlesztési ágon futnak.
 
 Többplatformos LED-vezérlő rendszer Arduino UNO R4 WiFi és három WS2812B LED-szalag számára. Az elsődleges üzemmód a közvetlen Arduino-kapcsolat; a Node.js/LXC szerver opcionális.
 

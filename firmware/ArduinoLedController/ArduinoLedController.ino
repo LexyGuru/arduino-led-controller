@@ -1,5 +1,5 @@
 /*
- * Arduino LED Controller – 4.3.0-beta.5
+ * Arduino LED Controller – 4.3.0-beta.6
  * F14 Complete: Direct API v1, JSON body, header-only auth, A/B EEPROM és
  * tranzakciós schedule. A Tauri újratervezésének stabil firmware-alapja.
  */
@@ -14,8 +14,8 @@
 #include <stdarg.h>
 #include "secrets.h"
 
-#define FIRMWARE_VERSION "4.3.0-beta.5"
-#define FIRMWARE_FEATURE "f14-complete-direct-api-storage-udp-ntp-timezone"
+#define FIRMWARE_VERSION "4.3.0-beta.6"
+#define FIRMWARE_FEATURE "f14-complete-direct-api-storage-udp-ntp-timezone-autonomous-dst"
 #define DIRECT_API_VERSION "1.0.0"
 #define DEVICE_NAME "arduino-led-controller"
 #define API_DEVICE_KEY_HEADER "X-Device-Key"
@@ -258,9 +258,11 @@ bool timeSettingsStored = false;
 char ntpLastServer[48] = "";
 uint8_t ntpLastServerIndex = 0;
 const char* NTP_SERVERS[] = {
-  "time.apple.com",
+  "0.europe.pool.ntp.org",
+  "1.europe.pool.ntp.org",
   "time.cloudflare.com",
   "time.google.com",
+  "time.apple.com",
   "pool.ntp.org",
   "0.pool.ntp.org",
   "1.pool.ntp.org"
@@ -825,11 +827,99 @@ void loadTimeSettings() {
   saveTimeSettings();
   logEvent("warn", "Idozona alapertelmezett: Europe/Vienna");
 }
-int16_t utcOffsetMinutesForEpoch(unsigned long epoch) {
-  if (timeSettings.nextTransitionEpoch > 0 &&
-      epoch >= timeSettings.nextTransitionEpoch) {
-    return timeSettings.nextUtcOffsetMinutes;
+int64_t daysFromCivil(int year, unsigned month, unsigned day) {
+  year -= month <= 2;
+  const int era = (year >= 0 ? year : year - 399) / 400;
+  const unsigned yoe = static_cast<unsigned>(year - era * 400);
+  const int adjustedMonth =
+    static_cast<int>(month) + (month > 2 ? -3 : 9);
+  const unsigned doy =
+    (153U * static_cast<unsigned>(adjustedMonth) + 2U) /
+      5U + day - 1U;
+  const unsigned doe = yoe * 365U + yoe / 4U - yoe / 100U + doy;
+  return static_cast<int64_t>(era) * 146097LL +
+    static_cast<int64_t>(doe) - 719468LL;
+}
+unsigned long utcEpochForDate(int year, unsigned month, unsigned day,
+    unsigned hour = 0) {
+  int64_t seconds = daysFromCivil(year, month, day) * 86400LL +
+    static_cast<int64_t>(hour) * 3600LL;
+  return seconds > 0 ? static_cast<unsigned long>(seconds) : 0UL;
+}
+uint8_t weekdaySundayZero(int year, unsigned month, unsigned day) {
+  int64_t days = daysFromCivil(year, month, day);
+  int value = static_cast<int>((days + 4LL) % 7LL);
+  return static_cast<uint8_t>(value < 0 ? value + 7 : value);
+}
+uint8_t daysInMonth(int year, uint8_t month) {
+  static const uint8_t DAYS[] = {31,28,31,30,31,30,31,31,30,31,30,31};
+  if (month != 2) return DAYS[month - 1];
+  bool leap = (year % 4 == 0 && year % 100 != 0) || year % 400 == 0;
+  return leap ? 29 : 28;
+}
+uint8_t lastSundayOfMonth(int year, uint8_t month) {
+  uint8_t last = daysInMonth(year, month);
+  return last - weekdaySundayZero(year, month, last);
+}
+bool isCentralEuropeanTimezone(const char* timezoneId) {
+  static const char* ZONES[] = {
+    "Europe/Vienna", "Europe/Berlin", "Europe/Bratislava",
+    "Europe/Budapest", "Europe/Prague", "Europe/Ljubljana",
+    "Europe/Zagreb", "Europe/Warsaw", "Europe/Rome",
+    "Europe/Paris", "Europe/Amsterdam", "Europe/Brussels",
+    "Europe/Luxembourg", "Europe/Madrid", "Europe/Stockholm",
+    "Europe/Oslo", "Europe/Copenhagen"
+  };
+  for (const char* zone : ZONES) if (!strcmp(timezoneId, zone)) return true;
+  return false;
+}
+void centralEuropeanTimezoneState(unsigned long epoch, int16_t& offset,
+    uint32_t& nextTransition, int16_t& nextOffset, bool& dstActive) {
+  time_t raw = static_cast<time_t>(epoch);
+  tm utc = *gmtime(&raw);
+  int year = utc.tm_year + 1900;
+  uint32_t spring = utcEpochForDate(year, 3, lastSundayOfMonth(year, 3), 1);
+  uint32_t autumn = utcEpochForDate(year, 10, lastSundayOfMonth(year, 10), 1);
+  if (epoch < spring) {
+    offset = 60; nextTransition = spring; nextOffset = 120; dstActive = false;
+  } else if (epoch < autumn) {
+    offset = 120; nextTransition = autumn; nextOffset = 60; dstActive = true;
+  } else {
+    offset = 60;
+    nextTransition = utcEpochForDate(year + 1, 3, lastSundayOfMonth(year + 1, 3), 1);
+    nextOffset = 120; dstActive = false;
   }
+}
+bool autonomousTimezoneState(unsigned long epoch, int16_t& offset,
+    uint32_t& nextTransition, int16_t& nextOffset, bool& dstActive) {
+  if (!epoch || !isCentralEuropeanTimezone(timeSettings.timezoneId)) return false;
+  centralEuropeanTimezoneState(epoch, offset, nextTransition, nextOffset, dstActive);
+  return true;
+}
+void refreshAutonomousTimezoneState(unsigned long epoch, bool persist) {
+  int16_t offset = 0, nextOffset = 0;
+  uint32_t nextTransition = 0;
+  bool dstActive = false;
+  if (!autonomousTimezoneState(epoch, offset, nextTransition, nextOffset, dstActive)) return;
+  bool changed =
+    timeSettings.currentUtcOffsetMinutes != offset ||
+    timeSettings.nextTransitionEpoch != nextTransition ||
+    timeSettings.nextUtcOffsetMinutes != nextOffset;
+  timeSettings.currentUtcOffsetMinutes = offset;
+  timeSettings.nextTransitionEpoch = nextTransition;
+  timeSettings.nextUtcOffsetMinutes = nextOffset;
+  if (changed && persist) {
+    saveTimeSettings();
+    logEvent("info", "Idozona es DST szabaly autonom modon frissitve");
+  }
+}
+int16_t utcOffsetMinutesForEpoch(unsigned long epoch) {
+  int16_t offset = 0, nextOffset = 0;
+  uint32_t nextTransition = 0;
+  bool dstActive = false;
+  if (autonomousTimezoneState(epoch, offset, nextTransition, nextOffset, dstActive)) return offset;
+  if (timeSettings.nextTransitionEpoch > 0 &&
+      epoch >= timeSettings.nextTransitionEpoch) return timeSettings.nextUtcOffsetMinutes;
   return timeSettings.currentUtcOffsetMinutes;
 }
 unsigned long localClockEpoch() {
@@ -1072,6 +1162,7 @@ void serviceClockSync(bool force = false) {
   lastClockEpoch = epoch;
   lastClockMillis = now;
   timeSynced = true;
+  refreshAutonomousTimezoneState(epoch, true);
   ntpSuccessCount++;
   ntpLastSuccessAt = now;
 
@@ -1827,7 +1918,7 @@ void sendDiagnosticsJson(WiFiClient& c, uint32_t requestId) {
     httpTraceEnabled ? "true" : "false",
     static_cast<unsigned long>(nextHttpRequestId));
 
-  appendRaw(b, "\"storage\":{\"layout\":\"legacy-4.1-compatible\",");
+  appendRaw(b, "\"storage\":{\"layout\":\"ab-v2\",");
   appendFormat(b,
     "\"networkOffset\":0,\"scheduleOffset\":%u,\"apiOffset\":%u,",
     SCHEDULE_EEPROM_OFFSET, API_SETTINGS_EEPROM_OFFSET);
@@ -1842,7 +1933,7 @@ void sendDiagnosticsJson(WiFiClient& c, uint32_t requestId) {
     "\"scheduleRevision\":%lu,\"scheduleChecksum\":\"%08lX\",",
     static_cast<unsigned long>(scheduleRevision),
     static_cast<unsigned long>(scheduleChecksum(schedules, scheduleCount)));
-  appendRaw(b, "\"abSlots\":false,\"readbackAfterWrite\":false},");
+  appendRaw(b, "\"abSlots\":true,\"readbackAfterWrite\":true},");
 
   appendFormat(b,
     "\"ota\":{\"ready\":%s,\"transferActive\":%s,",
@@ -2707,8 +2798,8 @@ void printSerialHelp() {
   Serial.println("[cmd] help | status | network | api status | api url | api test");
   Serial.println("[cmd] http stats | http trace on | http trace off");
   Serial.println("[cmd] profile show | profile export secrets | eeprom status");
-  Serial.println("[cmd] schedule status | schedule list | logs | logs clear");
-  Serial.println("[cmd] ota status | reboot");
+  Serial.println("[cmd] time status | schedule status | schedule list");
+  Serial.println("[cmd] logs | logs clear | ota status | reboot");
 }
 void printNetworkStatus() {
   char ip[16];
@@ -2829,6 +2920,54 @@ void exportSecretProfile() {
   Serial.println("}");
   Serial.println("[profile-secret-end]");
 }
+void printUtcDateTime(const char* label, unsigned long epoch) {
+  Serial.print(label);
+  if (!epoch) { Serial.println("UNAVAILABLE"); return; }
+  time_t raw = static_cast<time_t>(epoch);
+  tm value = *gmtime(&raw);
+  char text[32];
+  snprintf(text, sizeof(text), "%04d-%02d-%02d %02d:%02d:%02d",
+    value.tm_year + 1900, value.tm_mon + 1, value.tm_mday,
+    value.tm_hour, value.tm_min, value.tm_sec);
+  Serial.println(text);
+}
+void printTimeStatus() {
+  Serial.println("[cmd] TIME STATUS");
+  unsigned long utcEpoch = currentClockEpoch();
+  unsigned long localEpoch = localClockEpoch();
+  int16_t activeOffset = utcOffsetMinutesForEpoch(utcEpoch);
+  int16_t nextOffset = timeSettings.nextUtcOffsetMinutes;
+  uint32_t nextTransition = timeSettings.nextTransitionEpoch;
+  bool dstActive = false;
+  int16_t derivedOffset = activeOffset;
+  if (autonomousTimezoneState(utcEpoch, derivedOffset, nextTransition, nextOffset, dstActive))
+    activeOffset = derivedOffset;
+  Serial.print("Time synced: "); Serial.println(timeSynced ? "YES" : "NO");
+  Serial.print("UTC epoch: "); Serial.println(utcEpoch);
+  printUtcDateTime("UTC date/time: ", utcEpoch);
+  printUtcDateTime("Local date/time: ", localEpoch);
+  Serial.print("Timezone: "); Serial.println(timeSettings.timezoneId);
+  Serial.print("Rule source: ");
+  Serial.println(isCentralEuropeanTimezone(timeSettings.timezoneId) ? "ARDUINO-CET/CEST" : "TAURI-PROVIDED");
+  Serial.print("Active UTC offset minutes: "); Serial.println(activeOffset);
+  Serial.print("DST active: "); Serial.println(dstActive ? "YES" : "NO");
+  Serial.print("Next transition epoch: "); Serial.println(nextTransition);
+  printUtcDateTime("Next transition UTC: ", nextTransition);
+  Serial.print("Next UTC offset minutes: "); Serial.println(nextOffset);
+  Serial.print("Last NTP source: "); Serial.println(ntpLastServer[0] ? ntpLastServer : "-");
+  Serial.print("Last NTP sync age seconds: ");
+  Serial.println(ntpLastSuccessAt ? (millis() - ntpLastSuccessAt) / 1000UL : 0);
+  Serial.print("Scheduler last audit age seconds: ");
+  Serial.println(schedulerLastRunAt ? (millis() - schedulerLastRunAt) / 1000UL : 0);
+  for (uint8_t led = 0; led < STRIP_COUNT; led++) {
+    Serial.print("LED"); Serial.print(led + 1);
+    Serial.print(" selectedIndex="); Serial.print(schedulerLastSelectedIndex[led]);
+    Serial.print(" manualOverride="); Serial.print(manualOverride[led] ? 1 : 0);
+    Serial.print(" blockedReason="); Serial.print(schedulerLastBlockedReason[led]);
+    Serial.print(" enabled="); Serial.print(leds[led].enabled ? 1 : 0);
+    Serial.print(" brightness="); Serial.println(leds[led].brightness);
+  }
+}
 void printEepromStatus() {
   Serial.println("[cmd] EEPROM STATUS");
   Serial.print("Bytes: "); Serial.println(EEPROM.length());
@@ -2840,8 +2979,10 @@ void printEepromStatus() {
   Serial.print("API offset: "); Serial.println(API_SETTINGS_EEPROM_OFFSET);
   Serial.print("API checksum: ");
   Serial.println(apiSettingsValid(apiSettings) ? "OK" : "FAILED");
-  Serial.println("A/B slots: NOT IMPLEMENTED (F14.3)");
-  Serial.println("Write readback: NOT IMPLEMENTED (F14.3)");
+  Serial.print("A/B config slot: "); Serial.println(activeConfigSlotOffset);
+  Serial.print("A/B schedule slot: "); Serial.println(activeScheduleSlotOffset);
+  Serial.println("A/B slots: IMPLEMENTED (schema v2)");
+  Serial.println("Write readback: IMPLEMENTED");
 }
 void printScheduleStatus() {
   Serial.println("[cmd] SCHEDULE STATUS");
@@ -2850,7 +2991,25 @@ void printScheduleStatus() {
   Serial.print("Revision: "); Serial.println(scheduleRevision);
   Serial.print("Checksum: ");
   Serial.println(scheduleChecksum(schedules, scheduleCount), HEX);
-  Serial.println("Storage: legacy-4.1-compatible");
+  Serial.println("Storage: ab-v2 (legacy-4.1 import compatible)");
+  uint8_t day = 0, hour = 0, minute = 0;
+  if (localScheduleTime(day, hour, minute)) {
+    Serial.print("Local day/time: "); Serial.print(day); Serial.print(' ');
+    if (hour < 10) Serial.print('0');
+    Serial.print(hour); Serial.print(':');
+    if (minute < 10) Serial.print('0');
+    Serial.println(minute);
+    Serial.print("UTC offset minutes: ");
+    Serial.println(utcOffsetMinutesForEpoch(currentClockEpoch()));
+  } else Serial.println("Local day/time: UNSYNCED");
+  Serial.print("Last audit age seconds: ");
+  Serial.println(schedulerLastRunAt ? (millis() - schedulerLastRunAt) / 1000UL : 0);
+  for (uint8_t led = 0; led < STRIP_COUNT; led++) {
+    Serial.print("LED"); Serial.print(led + 1);
+    Serial.print(" selectedIndex="); Serial.print(schedulerLastSelectedIndex[led]);
+    Serial.print(" manualOverride="); Serial.print(manualOverride[led] ? 1 : 0);
+    Serial.print(" blockedReason="); Serial.println(schedulerLastBlockedReason[led]);
+  }
 }
 void printScheduleList() {
   printScheduleStatus();
@@ -2931,6 +3090,7 @@ void executeSerialCommand(const char* command) {
   } else if (!strcmp(command, "profile show")) printProfileShow();
   else if (!strcmp(command, "profile export secrets")) exportSecretProfile();
   else if (!strcmp(command, "eeprom status")) printEepromStatus();
+  else if (!strcmp(command, "time status")) printTimeStatus();
   else if (!strcmp(command, "schedule status")) printScheduleStatus();
   else if (!strcmp(command, "schedule list")) printScheduleList();
   else if (!strcmp(command, "logs")) printRamLogs();
