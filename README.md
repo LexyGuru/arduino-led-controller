@@ -13,14 +13,14 @@ Többplatformos LED-vezérlő rendszer Arduino UNO R4 WiFi és három WS2812B LE
 | Elem | Verzió / állapot |
 |---|---|
 | Alkalmazás | `5.0.0-beta.6` |
-| Firmware | `4.3.0-beta.5` |
+| Firmware | `4.3.0-beta.6` |
 | Direct API | `1.0.0` |
 | Kiadási csatorna | `beta` |
 | Állapot | nyilvános beta |
 | Aktív fejlesztési ág | `next/v5-rearchitecture` |
 | Stabil ág | `main` |
 
-A beta.5 többnyelvű stabilizációs kiadás. A desktop és mobil felület, valamint a runtime-, kapcsolat-, LED-, schedule-, firmware- és OTA-üzenetek magyarul, angolul és németül érhetők el. A firmware-protokoll nem változott.
+A Beta.6 többnyelvű desktop-stabilizációs kiadás. A jelenlegi ajánlott Beta firmware önálló CET/CEST és DST-kezelést, regionális NTP fallbacket, új `time status` diagnosztikát és kibővített scheduler-ellenőrzést tartalmaz.
 
 ## Fő funkciók
 
@@ -73,7 +73,7 @@ Az új UI- és runtime-szövegek kizárólag a központi `desktop-tauri/src/i18n
 
 ## Firmware és Direct API
 
-A párosított firmware: `4.3.0-beta.5`. A Direct API verziója `1.0.0`.
+A jelenlegi ajánlott Beta firmware: `4.3.0-beta.6`. A Direct API verziója `1.0.0`.
 
 Biztonsági tulajdonságok:
 
@@ -143,9 +143,9 @@ cargo test --locked --manifest-path desktop-tauri/src-tauri/Cargo.toml
 
 ## Dokumentáció
 
-- [Beta.5 release notes](docs/v5/BETA5_RELEASE_NOTES.md)
-- [Beta.5 telepítési útmutató](docs/v5/BETA5_INSTALLATION_GUIDE.md)
-- [Beta.5 release checklist](docs/v5/BETA5_RELEASE_CHECKLIST.md)
+- [Beta.6 release notes](docs/v5/BETA6_RELEASE_NOTES.md)
+- [Beta.6 telepítési útmutató](docs/v5/BETA6_INSTALLATION_GUIDE.md)
+- [Beta.6 release checklist](docs/v5/BETA6_RELEASE_CHECKLIST.md)
 - [Firmware áttekintés](firmware/README.md)
 - [Direct API v1](docs/firmware/DIRECT_API_V1.md)
 - [EEPROM tárolás](docs/firmware/EEPROM_STORAGE.md)

@@ -3,10 +3,10 @@
 ## Verziók
 
 - [x] Alkalmazás `5.0.0-beta.6`.
-- [x] Firmware `4.3.0-beta.4`.
+- [x] Firmware `4.3.0-beta.6`.
 - [x] Direct API `1.0.0`.
 - [x] Beta csatorna és prerelease beállítás.
-- [x] A firmware-protokoll változatlan.
+- [x] Direct API `1.0.0` változatlan; a firmware autonóm DST-kezeléssel bővült.
 
 ## Lokalizáció
 
@@ -23,8 +23,8 @@
 - [x] CONTRIBUTING.md.
 - [x] SECURITY.md.
 - [x] CHANGELOG.md.
-- [x] BETA5_INSTALLATION_GUIDE.md.
-- [x] BETA5_RELEASE_NOTES.md.
+- [x] BETA6_INSTALLATION_GUIDE.md.
+- [x] BETA6_RELEASE_NOTES.md.
 - [x] V5_IMPLEMENTATION_STATUS.md.
 
 ## Release contractok
@@ -36,7 +36,7 @@
 - [x] beta workflow.
 - [x] staging és LXC alapverziók.
 - [x] artifact-elnevezési contract.
-- [x] `firmware-release.json` továbbra is `4.3.0-beta.4`.
+- [x] `firmware-release.json` firmware-verziója `4.3.0-beta.6`.
 
 ## Platformartifactok és smoke tesztek
 
@@ -56,7 +56,7 @@
 - [ ] `npm run validate`.
 - [ ] `npm run test:i18n-source-integrity`.
 - [ ] `npm run test:i18n-final-hooks`.
-- [ ] `npm run test:beta5-release-package`.
+- [ ] `npm run test:beta6-release-package`.
 - [ ] frontend TypeScript/Vite build.
 - [ ] `cargo fmt --check`.
 - [ ] `cargo check --locked`.
@@ -69,3 +69,12 @@
 ## Dedikált firmware release
 
 A `v5.0.0-beta.X` release-ek kizárólag alkalmazás-, mobil- és LXC-csomagokat tartalmaznak. A Beta firmware-ek, SHA-256 fájlok és a rollback katalógus kizárólag az `Arduino_LED_Controller_Firmware_BETA` prerelease-ben találhatók.
+
+
+## Időzóna és scheduler kapuk
+
+- [x] Autonóm CET/CEST határesettesztek.
+- [x] `time status` soros diagnosztika.
+- [x] Kibővített `schedule status`.
+- [x] NTP-szinkron utáni scheduler-egyeztetés.
+- [x] A/B EEPROM diagnosztika.

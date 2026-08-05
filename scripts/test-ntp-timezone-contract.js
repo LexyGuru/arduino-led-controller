@@ -206,6 +206,25 @@ assert.ok(fw.includes('"Europe/Budapest"'));
 assert.ok(fw.includes('"Europe/Berlin"'));
 assert.ok(!fw.includes('"America/New_York"'));
 
+
+for (const file of [
+  'README.md',
+  'docs/v5/BETA6_RELEASE_NOTES.md',
+  'docs/v5/BETA6_INSTALLATION_GUIDE.md',
+  'docs/v5/BETA6_RELEASE_CHECKLIST.md',
+]) {
+  const content = fs.readFileSync(file, 'utf8');
+  assert.ok(
+    content.includes(versions.firmware),
+    `${file}: Beta.6 documentation firmware version mismatch`,
+  );
+  assert.doesNotMatch(
+    content,
+    /4\.3\.0-beta\.[0-5](?!\d)/,
+    `${file}: stale firmware version`,
+  );
+}
+
 console.log(
   'OK: autonomous CET/CEST behavior, UDP NTP, version and diagnostics contract',
 );

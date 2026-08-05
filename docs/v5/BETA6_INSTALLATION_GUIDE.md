@@ -1,6 +1,6 @@
 # Arduino LED Controller 5.0.0-beta.6 telepítési útmutató
 
-A Beta.4 GitHub prerelease tagje: `v5.0.0-beta.6`. Minden fájl ugyanabból a commitból készül. Telepítés előtt ellenőrizd a `SHA256SUMS` fájlt. A `RELEASE-MANIFEST.json`, `SBOM.cdx.json`, `PROVENANCE.json` és `SECRET-SCAN.json` a kiadás eredetét és integritását dokumentálja.
+A Beta.6 GitHub prerelease tagje: `v5.0.0-beta.6`. Minden fájl ugyanabból a commitból készül. Telepítés előtt ellenőrizd a `SHA256SUMS` fájlt. A `RELEASE-MANIFEST.json`, `SBOM.cdx.json`, `PROVENANCE.json` és `SECRET-SCAN.json` a kiadás eredetét és integritását dokumentálja.
 
 ## Windows x86_64
 
@@ -109,12 +109,12 @@ sudo bash /opt/arduino-led-controller-staging/current/deploy/rollback-versioned-
 
 ## Arduino UNO R4 WiFi firmware
 
-A kiadás tartalmazza az `Arduino_LED_Controller_Firmware_4.3.0-beta.4_UNO_R4_WiFi.bin` fájlt. Első telepítéshez USB-s, saját `secrets.h` konfigurációval fordított firmware ajánlott. A publikus bináris nem tartalmaz valódi Wi-Fi-, API- vagy OTA-titkot.
+A kiadás tartalmazza az `Arduino_LED_Controller_Firmware_4.3.0-beta.6_UNO_R4_WiFi.bin` fájlt. Első telepítéshez USB-s, saját `secrets.h` konfigurációval fordított firmware ajánlott. A publikus bináris nem tartalmaz valódi Wi-Fi-, API- vagy OTA-titkot.
 
 A produkciós Arduino firmware-jét csak külön, dokumentált telepítési kapu után frissítsd.
 
 
-## Beta.4 schedule-szinkron ellenőrzése
+## Schedule- és időzóna-szinkron ellenőrzése
 
 1. Nyisd meg a Heti időzítés képernyőt.
 2. Várd meg, amíg a teljes Arduino-snapshot betöltődik.
@@ -122,7 +122,7 @@ A produkciós Arduino firmware-jét csak külön, dokumentált telepítési kapu
 4. Eltérés vagy revision-konfliktus esetén a Mentés és Törlés gombnak letiltva kell maradnia.
 5. Egy tesztrekord módosítása után a kliensnek teljes readbacket kell végeznie, és csak ezután jelezhet sikert.
 
-A Beta.4 schedule-kezeléséhez nem szükséges V5/Node/LXC szerver; az Arduino Direct API az elsődleges adatforrás.
+A Beta.6 schedule-kezeléséhez nem szükséges V5/Node/LXC szerver; az Arduino Direct API az elsődleges adatforrás.
 
 ## Beta.6 nyelvi ellenőrzés
 
@@ -130,8 +130,20 @@ Az alkalmazás első indításkor a támogatott rendszer-nyelvet választja, maj
 
 ## Firmware-kompatibilitás
 
-A Beta.6 nem emeli a firmware-protokollt. A támogatott párosítás:
+A Beta.6 Direct API protokollja változatlan, de a jelenlegi ajánlott Beta firmware önálló időzóna- és DST-kezelést tartalmaz. A támogatott párosítás:
 
 - alkalmazás: `5.0.0-beta.6`;
-- firmware: `4.3.0-beta.4`;
+- firmware: `4.3.0-beta.6`;
 - Direct API: `1.0.0`.
+
+
+## Firmware idődiagnosztika
+
+A `4.3.0-beta.6` firmware feltöltése után a soros monitorban futtasd:
+
+```text
+time status
+schedule status
+```
+
+Közép-európai nyári időszámítás alatt az elvárt aktív UTC-eltolás `120` perc, téli időszámítás alatt `60` perc.

@@ -24,6 +24,24 @@ assert.equal(versions.channel, 'beta');
 
 assert.equal(firmware.firmwareVersion, versions.firmware);
 assert.equal(firmware.directApiVersion, versions.directApi);
+
+for (const file of [
+  'README.md',
+  'docs/v5/BETA6_RELEASE_NOTES.md',
+  'docs/v5/BETA6_INSTALLATION_GUIDE.md',
+  'docs/v5/BETA6_RELEASE_CHECKLIST.md',
+]) {
+  const content = read(file);
+  assert.ok(content.includes(versions.application), `${file}: application version`);
+  assert.ok(content.includes(versions.firmware), `${file}: firmware version`);
+  assert.ok(content.includes(versions.directApi), `${file}: Direct API version`);
+  assert.doesNotMatch(
+    content,
+    /4\.3\.0-beta\.[0-5](?!\d)/,
+    `${file}: stale firmware version`,
+  );
+}
+
 assert.equal(firmware.channel, versions.channel);
 assert.ok(
   firmwareSource.includes(

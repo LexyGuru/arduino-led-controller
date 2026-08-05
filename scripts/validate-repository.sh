@@ -21,6 +21,9 @@ required=(
   docs/firmware/OTA_UPDATE.md
   docs/firmware/TESTING.md
   docs/v5/V5_IMPLEMENTATION_STATUS.md
+  docs/v5/BETA6_RELEASE_CHECKLIST.md
+  docs/v5/BETA6_INSTALLATION_GUIDE.md
+  docs/v5/BETA6_RELEASE_NOTES.md
   docs/v5/V5_REARCHITECTURE_CHECKLIST.md
   scripts/test-ntp-timezone-contract.js
 )
