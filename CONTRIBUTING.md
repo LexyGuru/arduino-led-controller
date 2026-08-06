@@ -1,4 +1,25 @@
+## Aktuális Beta.7 integrációs cél
+
+- Alkalmazás: `5.0.0-beta.7`
+- Firmware: `5.0.0-beta.1`
+- Direct API: `1.0.0`
+- Integrációs ág: `feature/beta7-ui-overhaul`
+- A `main` és `next/v5-rearchitecture` ág közvetlen módosítása ebben a lépésben tilos.
+- Commit előtt kötelező a repository-validáció, a teljes Node-regresszió és az UNO R4 firmware-fordítás.
+
 # Közreműködés
+
+## Beta.7 UI-fejlesztési szabályok
+
+- A Beta.7 UI munkaága: `feature/beta7-ui-overhaul`.
+- A `next/v5-rearchitecture` csak sikeres teljes regresszió után frissíthető.
+- A `main` ág Beta-fejlesztés közben nem módosítható.
+- Új UI-szöveg csak a HU/EN/DE központi i18n szótárba kerülhet.
+- A Theme Engine tokenjeit kell használni; új fix világos/sötét szín csak indokolt kivételként adható hozzá.
+- A Direct Arduino UI-ban a régi Event Bus és szerveroldali auditpanel nem állítható vissza.
+- Új alkalmazásműveletnél meg kell vizsgálni, szükséges-e helyi `runAudited` naplózás.
+- Contractot az aktuális UI-modellhez kell írni, nem régi JSX-formázáshoz.
+- Törékeny, teljes JSX-részletre épülő patch helyett teljes fájl vagy stabil szerkezeti marker használata szükséges.
 
 ## Ágmodell
 

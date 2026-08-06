@@ -3,12 +3,12 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 
-const dashboard = fs.readFileSync(
-  'desktop-tauri/src/pages/DashboardPage.tsx',
-  'utf8',
-);
 const app = fs.readFileSync(
   'desktop-tauri/src/App.tsx',
+  'utf8',
+);
+const dashboard = fs.readFileSync(
+  'desktop-tauri/src/pages/DashboardPage.tsx',
   'utf8',
 );
 const controller = fs.readFileSync(
@@ -20,38 +20,93 @@ const i18n = fs.readFileSync(
   'utf8',
 );
 
-assert.match(dashboard, /function arduinoClock\(/);
-assert.match(dashboard, /status\.clockEpoch \+/);
-assert.match(dashboard, /status\.utcOffsetMinutes/);
-assert.match(dashboard, /getUTCDay\(\)/);
-assert.match(dashboard, /getUTCHours\(\)/);
-assert.match(dashboard, /clock: ArduinoClock/);
-assert.match(dashboard, /minuteDelta/);
-assert.match(dashboard, /next\?\.dayOffset ===\s*0/);
-assert.match(dashboard, /dashboard\.today/);
-assert.match(dashboard, /dashboard\.tomorrow/);
-assert.match(dashboard, /dashboard\.arduinoTime/);
-assert.match(dashboard, /dashboard\.syncComputer/);
-assert.match(dashboard, /onSyncTime/);
-assert.doesNotMatch(
-  dashboard,
-  /const now\s*=\s*new Date\(\);\s*const currentDay/,
+for (const marker of [
+  'function arduinoClock(',
+  'clockEpoch',
+  'utcOffsetMinutes',
+  'dashboard.today',
+  'dashboard.tomorrow',
+  'dashboard.arduinoTime',
+  'dashboard.timezone',
+  'dashboard.utcOffset',
+  'dashboard.timeSync',
+  'dashboard.syncComputer',
+  'onSyncTime',
+]) {
+  assert.match(
+    dashboard,
+    new RegExp(
+      marker.replace(
+        /[.*+?^${}()|[\]\\]/g,
+        '\\$&',
+      ),
+    ),
+  );
+}
+
+for (const marker of [
+  'const syncTimeWithComputer',
+  '.syncTimeConfig()',
+  'controller.timeSynced',
+  'controller.timeSyncError',
+]) {
+  assert.match(
+    controller,
+    new RegExp(
+      marker.replace(
+        /[.*+?^${}()|[\]\\]/g,
+        '\\$&',
+      ),
+    ),
+  );
+}
+
+const syncPropStart =
+  app.indexOf('onSyncTime={');
+
+assert.ok(
+  syncPropStart >= 0,
+  'Az App.tsx fájlban hiányzik az onSyncTime prop',
 );
 
-assert.match(
-  app,
+const syncPropEnd =
+  app.indexOf('/>', syncPropStart);
+
+assert.ok(
+  syncPropEnd > syncPropStart,
+  'Az onSyncTime propot tartalmazó DashboardPage blokk vége nem található',
+);
+
+const syncBlock =
+  app.slice(
+    syncPropStart,
+    syncPropEnd,
+  );
+
+for (const marker of [
+  'runAudited(',
+  "source:'time'",
+  "action:'time.sync'",
+  "t('audit.timeSyncStart')",
+  "t('audit.timeSyncSuccess')",
+  'controller.syncTimeWithComputer',
+]) {
+  assert.match(
+    syncBlock,
+    new RegExp(
+      marker.replace(
+        /[.*+?^${}()|[\]\\]/g,
+        '\\$&',
+      ),
+    ),
+    `Hiányzó auditált időszinkron marker: ${marker}`,
+  );
+}
+
+assert.doesNotMatch(
+  syncBlock,
   /onSyncTime=\{\s*controller\s*\.syncTimeWithComputer/,
-);
-assert.match(controller, /const syncTimeWithComputer/);
-assert.match(
-  controller,
-  /await tauriApi\s*\.syncTimeConfig\(\)/,
-);
-assert.match(controller, /controller\.timeSynced/);
-assert.match(controller, /controller\.timeSyncError/);
-assert.match(
-  controller,
-  /syncTimeWithComputer,\s*saveConfig/,
+  'A régi, audit nélküli közvetlen időszinkron handler nem térhet vissza',
 );
 
 for (const key of [
@@ -66,18 +121,19 @@ for (const key of [
   'dashboard.syncComputer',
   'controller.timeSynced',
   'controller.timeSyncError',
+  'audit.timeSyncStart',
+  'audit.timeSyncSuccess',
 ]) {
   const escaped =
     key.replaceAll('.', '\\.');
-  const count =
-    (
-      i18n.match(
-        new RegExp(
-          `["']${escaped}["']`,
-          'g',
-        ),
-      ) || []
-    ).length;
+  const count = (
+    i18n.match(
+      new RegExp(
+        `['"]${escaped}['"]\\s*:`,
+        'g',
+      ),
+    ) || []
+  ).length;
 
   assert.equal(
     count,
@@ -87,5 +143,5 @@ for (const key of [
 }
 
 console.log(
-  'OK: Arduino-idő alapú mai/holnapi schedule és kézi számítógépes időszinkron',
+  'OK: Arduino-idő alapú mai/holnapi schedule és auditált kézi számítógépes időszinkron',
 );

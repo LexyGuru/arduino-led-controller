@@ -44,6 +44,7 @@ import {
 } from './pages/SettingsPage';
 
 import { useI18n } from './i18n';
+import { runAudited } from './services/tauriAudit';
 
 import type {
   PageId
@@ -159,8 +160,10 @@ export default function App() {
                 controller.busy
               }
               onSyncTime={
-                controller
-                  .syncTimeWithComputer
+                () => runAudited(
+                  {source:'time',action:'time.sync',message:t('audit.timeSyncStart'),successMessage:t('audit.timeSyncSuccess')},
+                  controller.syncTimeWithComputer
+                )
               }
             />
           )}
@@ -177,23 +180,26 @@ export default function App() {
                 controller.busy
               }
               onUpdate={
-                (strip) =>
-                  void controller
-                    .updateStrip(
-                      strip
-                    )
+                (strip) => void runAudited(
+                  {
+                    source:'led',
+                    action:strip.enabled?'led.enable':'led.disable',
+                    message:t(strip.enabled?'audit.ledEnabled':'audit.ledDisabled',{led:strip.id})
+                  },
+                  () => controller.updateStrip(strip)
+                )
               }
               onTest={
-                (preset) =>
-                  void controller
-                    .runLedTest(
-                      preset
-                    )
+                (preset) => void runAudited(
+                  {source:'led',action:'led.test',message:t('audit.ledTest',{preset})},
+                  () => controller.runLedTest(preset)
+                )
               }
               onStopTest={
-                () =>
-                  void controller
-                    .stopLedTest()
+                () => void runAudited(
+                  {source:'led',action:'led.test.stop',message:t('audit.ledTestStop')},
+                  controller.stopLedTest
+                )
               }
             />
           )}
@@ -215,17 +221,21 @@ export default function App() {
                   schedules,
                   expectedRevision,
                   force
-                ) =>
-                  controller.saveSchedules(
-                    schedules,
-                    expectedRevision,
-                    force
-                  )
+                ) => runAudited(
+                  {
+                    source:'schedule',
+                    action:'schedule.save',
+                    message:t('audit.scheduleSave',{count:schedules.length}),
+                    successMessage:t('audit.scheduleSaved',{count:schedules.length})
+                  },
+                  () => controller.saveSchedules(schedules,expectedRevision,force)
+                )
               }
               onSync={
-                () =>
-                  controller
-                    .syncSchedulesFromArduino()
+                () => runAudited(
+                  {source:'schedule',action:'schedule.sync',message:t('audit.scheduleSync')},
+                  controller.syncSchedulesFromArduino
+                )
               }
             />
           )}
@@ -251,19 +261,22 @@ export default function App() {
                 controller.otaStage
               }
               onRefresh={
-                () =>
-                  void controller
-                    .refreshFirmware()
+                () => void runAudited(
+                  {source:'firmware',action:'firmware.check',message:t('audit.firmwareCheck')},
+                  controller.refreshFirmware
+                )
               }
               onUpdate={
-                () =>
-                  void controller
-                    .updateFirmware()
+                () => void runAudited(
+                  {source:'ota',action:'ota.start',message:t('audit.otaStart')},
+                  controller.updateFirmware
+                )
               }
               onCancel={
-                () =>
-                  void controller
-                    .cancelFirmware()
+                () => void runAudited(
+                  {source:'ota',action:'ota.cancel',message:t('audit.otaCancel')},
+                  controller.cancelFirmware
+                )
               }
             />
           )}

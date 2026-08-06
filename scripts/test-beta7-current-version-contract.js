@@ -1,0 +1,14 @@
+"use strict";
+const assert=require("node:assert/strict");
+const fs=require("node:fs");
+const pkg=JSON.parse(fs.readFileSync("package.json","utf8"));
+const fw=fs.readFileSync("firmware/ArduinoLedController/ArduinoLedController.ino","utf8");
+const readme=fs.readFileSync("README.md","utf8");
+const state=fs.readFileSync("docs/v5/BETA7_CURRENT_STATE.md","utf8");
+assert.equal(pkg.version,"5.0.0-beta.7");
+assert.ok(fw.includes('#define FIRMWARE_VERSION "5.0.0-beta.1"'));
+assert.ok(fw.includes('#define DIRECT_API_VERSION "1.0.0"'));
+assert.ok(readme.includes('| Alkalmazás | `5.0.0-beta.7` |'));
+assert.ok(readme.includes('| Firmware | `5.0.0-beta.1` |'));
+assert.ok(state.includes('`5.0.0-beta.7`')&&state.includes('`5.0.0-beta.1`')&&state.includes('`1.0.0`'));
+console.log("OK: app 5.0.0-beta.7, firmware 5.0.0-beta.1, Direct API 1.0.0");

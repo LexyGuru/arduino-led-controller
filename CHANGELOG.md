@@ -1,4 +1,39 @@
+## [5.0.0-beta.7] - 2026-08-06
+
+### Alkalmazás
+
+- Beta.7 UI-overhaul, Theme Engine és egységes Design System.
+- Tauri auditkonzol és csatornahelyes firmware-katalógus.
+- Schedule backup, restore és teljes törlés.
+- macOS UNO R4 helyi `arduinoOTA` Terminal útvonal.
+
+### Firmware 5.0.0-beta.1
+
+- Direct API `1.0.0`-only router.
+- Legacy firmware endpointok és JSON-ágak eltávolítása.
+- OTA maintenance mód.
+- BIN méret: `118516` bájt.
+
+### Validáció
+
+- Repository-validáció, teljes Node-regresszió és UNO R4 fordítás sikeres.
+
 ## 5.0.0-beta.6 — Firmware-katalógus és workflow szétválasztás
+
+## [Unreleased] – Beta.7 UI Freeze
+
+- központi Theme Engine System / Light / Dark móddal;
+- Arctic és Midnight téma, kiemelőszínek, sűrűség és lekerekítés;
+- perzisztált megjelenési beállítások;
+- helyi Tauri műveleti audit legfeljebb 500 bejegyzéssel;
+- Event Bus helyett Tauri auditkonzol a Direct Arduino felületen;
+- LED-, schedule-, időszinkron-, firmware- és OTA-műveletek auditálása;
+- világos OTA-konzol és firmware rollback kontraszt;
+- auditált Dashboard időszinkron;
+- Beta.7 UI Freeze és dokumentációs contractok;
+- a `LedStrip` azonosítója `id`, nem `index`.
+
+A Beta.7 még fejlesztés alatt áll, és nem nyilvános kiadás.
 
 - Azonos firmware-verziók deduplikálása a Tauri katalógusban.
 - Egyértelmű Firmware előtag, telepített/legújabb/korábbi jelölések.

@@ -147,6 +147,7 @@ export function FirmwarePage({
 
   const [releaseCatalog, setReleaseCatalog] = useState<FirmwareArtifact[]>([]);
   const [catalogError, setCatalogError] = useState('');
+  const [pendingInstallVersion, setPendingInstallVersion] = useState<string | null>(null);
   const firmwareCatalog = deduplicateFirmwareCatalog(releaseCatalog);
   const latestCatalogVersion = firmwareCatalog[0]?.firmwareVersion ?? firmwareCatalog[0]?.tag;
 
@@ -646,16 +647,25 @@ export function FirmwarePage({
                   className="secondary"
                   disabled={state.busy || Boolean(item.metadataConflict)}
                   onClick={() => {
-                    if (globalThis.confirm(t('firmware.confirmInstall',{version}))) {
-                      void (async () => {
-                        const { tauriApi } = await import('../services/tauriApi');
-                        await tauriApi.firmwareInstallRelease(version);
-                        await state.refresh({ forceCheck: true });
-                      })();
+                    if (pendingInstallVersion !== version) {
+                      setPendingInstallVersion(version);
+                      return;
                     }
+                    setPendingInstallVersion(null);
+                    void (async () => {
+                      const { tauriApi } = await import('../services/tauriApi');
+                      await tauriApi.firmwareInstallRelease(version);
+                      await state.refresh({ forceCheck: true });
+                    })();
                   }}
                 >
-                  {installed ? t('common.reinstall') : rollback ? t('common.rollback') : t('common.update')}
+                  {pendingInstallVersion === version
+                    ? t('firmware.confirmInstallButton')
+                    : installed
+                      ? t('common.reinstall')
+                      : rollback
+                        ? t('common.rollback')
+                        : t('common.update')}
                 </button>
               </article>
             );

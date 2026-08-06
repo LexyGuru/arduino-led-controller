@@ -7,6 +7,7 @@ const fs = require('node:fs');
   const module = await import(
     '../desktop-tauri/src/api/runtime/ota-tool-config.mjs'
   );
+
   const lib = fs.readFileSync(
     'desktop-tauri/src-tauri/src/lib.rs',
     'utf8',
@@ -61,7 +62,20 @@ const fs = require('node:fs');
     /Ok\(find_ota_tool\(app, config\)\.is_some\(\)\)/,
   );
 
+  assert.match(
+    lib,
+    /macOS-en az UNO R4 OTA-frissítéshez/,
+  );
+  assert.match(
+    lib,
+    /return Ok\(true\);/,
+  );
+  assert.match(
+    lib,
+    /matches!\(mode\.trim\(\), "auto" \| "system" \| "custom" \| "bundled"\)/,
+  );
+
   console.log(
-    'OK: OTA tool detektálás, kézi elsőbbség és timeout capability gate',
+    'OK: macOS UNO R4 helyi arduinoOTA detektálás, Terminal kényszerítés és timeout capability gate',
   );
 })();

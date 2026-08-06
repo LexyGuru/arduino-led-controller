@@ -1513,28 +1513,27 @@ fn find_ota_tool(app: &AppHandle, config: &Config) -> Option<PathBuf> {
 }
 
 fn ota_upload_mode_prefers_terminal(mode: &str) -> bool {
-    matches!(mode.trim(), "system" | "custom")
+    matches!(mode.trim(), "auto" | "system" | "custom" | "bundled")
 }
 fn normalized_ota_timeout_seconds(value: u64) -> u64 {
     value.clamp(30, 600)
 }
 fn use_terminal_ota(app: &AppHandle, config: &Config) -> Result<bool, String> {
-    if !ota_upload_mode_prefers_terminal(&config.ota_upload_mode) {
-        return Ok(false);
-    }
     #[cfg(target_os = "macos")]
     {
         if find_ota_tool(app, config).is_none() {
-            return Err("A rendszer/egyedi arduinoOTA mód van kiválasztva, de nem található működő arduinoOTA feltöltő.".into());
+            return Err(
+                "macOS-en az UNO R4 OTA-frissítéshez nem található működő helyi arduinoOTA. Ellenőrzött helyek: az egyedi útvonal, /usr/local/bin/arduinoOTA és /opt/homebrew/bin/arduinoOTA."
+                    .into(),
+            );
         }
-        Ok(true)
+        return Ok(true);
     }
     #[cfg(not(target_os = "macos"))]
     {
-        Err("A külső arduinoOTA konzol ebben a csomagban macOS-en támogatott; Windowson és Linuxon a beépített uploader az alapértelmezett.".into())
+        Ok(matches!(config.ota_upload_mode.trim(), "system" | "custom"))
     }
 }
-
 fn percentage_from_ota_line(line: &str) -> Option<u8> {
     let percent_at = line.find('%')?;
     let bytes = line.as_bytes();
@@ -2810,7 +2809,7 @@ async fn firmware_update_inner(
             find_ota_tool(app, &config).ok_or("A Terminal OTA módhoz nem található arduinoOTA.")?;
         format!("macOS Terminal + arduinoOTA ({})", tool.to_string_lossy())
     } else {
-        "Beépített Tauri/Rust HTTP OTA-motor (auto/bundled alapértelmezett)".to_string()
+        "Beépített Tauri/Rust HTTP OTA-motor".to_string()
     };
     emit_ota_progress(
         app,
@@ -3427,9 +3426,9 @@ mod tests {
     }
 
     #[test]
-    fn automatic_ota_prefers_builtin_rust_engine() {
-        assert!(!ota_upload_mode_prefers_terminal("auto"));
-        assert!(!ota_upload_mode_prefers_terminal("bundled"));
+    fn macos_ota_modes_resolve_to_terminal_tool() {
+        assert!(ota_upload_mode_prefers_terminal("auto"));
+        assert!(ota_upload_mode_prefers_terminal("bundled"));
         assert!(ota_upload_mode_prefers_terminal("system"));
         assert!(ota_upload_mode_prefers_terminal("custom"));
         assert!(!ota_upload_mode_prefers_terminal(""));

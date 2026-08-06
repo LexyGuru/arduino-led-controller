@@ -93,10 +93,23 @@ assert.ok(
 );
 assert.ok(readme.includes('actions/workflows/firmware-beta-release.yml'));
 assert.ok(readme.includes('actions/workflows/beta-release.yml'));
+for (const marker of [
+  'feature/beta7-ui-overhaul',
+  'Integrációs ág | `next/v5-rearchitecture`',
+  'Stabil ág | `main`',
+  'Beta.7 UI Freeze',
+]) {
+  assert.ok(
+    readme.includes(marker),
+    `README aktuális ág-/fejlesztési marker hiányzik: ${marker}`,
+  );
+}
+
 assert.ok(
-  readme.includes(
+  !readme.includes(
     'A Beta release workflow-k a `next/v5-rearchitecture` fejlesztési ágon futnak.',
   ),
+  'A README nem nevezheti a next/v5 integrációs ágat az aktív Beta.7 fejlesztési ágnak',
 );
 assert.ok(!readme.includes('firmware-beta-release.yml/badge.svg'));
 assert.ok(
@@ -209,19 +222,29 @@ assert.ok(!fw.includes('"America/New_York"'));
 
 for (const file of [
   'README.md',
+  'docs/v5/BETA7_CURRENT_STATE.md',
+  'docs/v5/BETA7_UI_FREEZE.md',
+]) {
+  const content = fs.readFileSync(file, 'utf8');
+  assert.ok(
+    content.includes(versions.firmware),
+    `${file}: current Beta.7 firmware version mismatch`,
+  );
+}
+
+for (const file of [
   'docs/v5/BETA6_RELEASE_NOTES.md',
   'docs/v5/BETA6_INSTALLATION_GUIDE.md',
   'docs/v5/BETA6_RELEASE_CHECKLIST.md',
 ]) {
   const content = fs.readFileSync(file, 'utf8');
   assert.ok(
-    content.includes(versions.firmware),
-    `${file}: Beta.6 documentation firmware version mismatch`,
+    content.includes('4.3.0-beta.6'),
+    `${file}: historical Beta.6 firmware pairing changed`,
   );
-  assert.doesNotMatch(
-    content,
-    /4\.3\.0-beta\.[0-5](?!\d)/,
-    `${file}: stale firmware version`,
+  assert.ok(
+    content.includes('5.0.0-beta.6'),
+    `${file}: historical Beta.6 application version changed`,
   );
 }
 

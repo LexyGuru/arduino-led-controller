@@ -14,8 +14,9 @@
 #include <stdarg.h>
 #include "secrets.h"
 
-#define FIRMWARE_VERSION "4.3.0-beta.6"
-#define FIRMWARE_FEATURE "f14-complete-direct-api-storage-udp-ntp-timezone-autonomous-dst"
+#define FIRMWARE_VERSION "5.0.0-beta.1"
+#define FIRMWARE_FEATURE "f14-direct-api-v1-only-storage-udp-ntp-dst-ota-maintenance"
+#define OTA_MAINTENANCE_MODE_V1 1
 #define DIRECT_API_VERSION "1.0.0"
 #define DEVICE_NAME "arduino-led-controller"
 #define API_DEVICE_KEY_HEADER "X-Device-Key"
@@ -308,7 +309,7 @@ unsigned long lastScheduleAudit = 0, pirChanged[STRIP_COUNT] = {};
 unsigned long ntpAttemptCount = 0, ntpFailureCount = 0, ntpSuccessCount = 0;
 unsigned long ntpLastSuccessAt = 0, ntpLastFailureAt = 0;
 unsigned long schedulerLastRunAt = 0, schedulerLastAppliedAt = 0;
-bool clockWifiWasAvailable = false;
+bool clockWifiWasAvailable = false, ntpUdpActive = false;
 unsigned long lastMotion[STRIP_COUNT] = {};
 uint32_t manualOverrideUntilMinute[STRIP_COUNT] = {};
 unsigned long manualOverrideFallbackUntilMillis[STRIP_COUNT] = {};
@@ -940,8 +941,27 @@ bool localScheduleTime(uint8_t& day, uint8_t& hour, uint8_t& minute) {
   minute = local.tm_min;
   return true;
 }
+bool startNtpUdpService() {
+  if (ntpUdpActive) return true;
+  if (!wifiHasAddress()) return false;
+  ntpUdpActive = ntpUdp.begin(NTP_LOCAL_PORT) != 0;
+  return ntpUdpActive;
+}
+void stopNtpUdpService() {
+  if (!ntpUdpActive) return;
+  ntpUdp.stop();
+  ntpUdpActive = false;
+}
+void enterOtaMaintenanceMode() {
+  stopNtpUdpService();
+  Serial.println("[info] OTA maintenance mode: NTP UDP, HTTP, schedule, LED es hatterfeladatok leallitva");
+}
+void leaveOtaMaintenanceMode() {
+  if (wifiHasAddress()) startNtpUdpService();
+}
 bool readUdpNtp(const char* hostname, unsigned long& epochOut) {
   epochOut = 0;
+  if (!ntpUdpActive && !startNtpUdpService()) return false;
   IPAddress address(0, 0, 0, 0);
   if (WiFi.hostByName(hostname, address) != 1) return false;
 
@@ -1261,9 +1281,6 @@ void printConnectionBlock() {
   consoleLine(line);
   consoleLine("------------------------------------------");
   if (apiSettingsStored) {
-    consoleLine("Teljes legacy status URL:");
-    snprintf(line, sizeof(line), "http://%s:%u%s/api/status",
-      ip, HTTP_API_PORT, apiSettings.privatePath); consoleLine(line);
     consoleLine("Teljes Direct API v1 status URL:");
     snprintf(line, sizeof(line), "http://%s:%u%s/api/v1/status",
       ip, HTTP_API_PORT, apiSettings.privatePath); consoleLine(line);
@@ -1319,7 +1336,8 @@ void restoreNormalVisualState() {
 void updateOtaVisualState() {
   if (otaPrepareUntil && !otaPrepareModeActive() && !otaTransferActive) {
     otaPrepareUntil = 0;
-    logEvent("info", "OTA elokeszitesi idoablak lejart");
+    leaveOtaMaintenanceMode();
+    logEvent("info", "OTA elokeszitesi idoablak lejart; hatter szolgaltatasok visszaallitva");
     restoreNormalVisualState();
   }
   if (otaErrorIndicatorUntil && !otaErrorIndicatorActive() && !otaTransferActive) {
@@ -1332,14 +1350,10 @@ void otaTransferStarted() {
   otaPrepareUntil = otaErrorIndicatorUntil = 0;
   otaLastTransferStartedAt = millis();
   otaLastErrorCode = 0;
-  logEvent("info", "OTA atvitel elindult - HTTP es LED terheles szunetel");
-  showMatrix(MATRIX_OTA);
-  showOtaIndicator(0,70,255);
+  enterOtaMaintenanceMode();
 }
 void otaBeforeApply() {
-  logEvent("success", "OTA kesz - ujrainditas");
-  showMatrix(MATRIX_OK);
-  showOtaIndicator(0,255,60);
+  Serial.println("[success] OTA adatfolyam kesz; flash finalizalas es ujrainditas");
 }
 void otaTransferError(int code, const char*) {
   otaTransferActive = false;
@@ -1347,8 +1361,9 @@ void otaTransferError(int code, const char*) {
   otaLastErrorCode = code;
   otaLastErrorAt = millis();
   otaErrorIndicatorUntil = millis() + OTA_ERROR_INDICATOR_TIME;
+  leaveOtaMaintenanceMode();
   char message[96];
-  snprintf(message, sizeof(message), "OTA hiba: %d", code);
+  snprintf(message, sizeof(message), "OTA hiba: %d; hatter szolgaltatasok visszaallitva", code);
   logEvent("error", message);
   showMatrix(MATRIX_ERROR);
   showOtaIndicator(255,0,0);
@@ -1358,11 +1373,12 @@ void startOta() {
   ArduinoOTA.onStart(otaTransferStarted);
   ArduinoOTA.beforeApply(otaBeforeApply);
   ArduinoOTA.onError(otaTransferError);
-  ArduinoOTA.begin(cachedWifiIp, DEVICE_NAME, networkSettings.otaPassword,
+  IPAddress otaIp = WiFi.localIP();
+  ArduinoOTA.begin(otaIp, DEVICE_NAME, networkSettings.otaPassword,
     InternalStorage);
   otaReady = true;
   char ip[16], message[112];
-  ipToText(cachedWifiIp, ip, sizeof(ip));
+  ipToText(otaIp, ip, sizeof(ip));
   snprintf(message, sizeof(message), "OTA fogado aktiv: %s:%u", ip,
     OTA_UPLOAD_PORT);
   logEvent("success", message);
@@ -1375,8 +1391,9 @@ bool prepareOtaService() {
   lastOtaRestartAt = millis();
   otaPrepareUntil = millis() + OTA_PREPARE_WINDOW;
   otaErrorIndicatorUntil = 0;
+  stopNtpUdpService();
   showMatrix(MATRIX_OTA);
-  logEvent("info", "OTA listener elokeszitve 30 masodpercre");
+  logEvent("info", "OTA listener elokeszitve 30 masodpercre; NTP UDP leallitva");
   return true;
 }
 
@@ -1570,11 +1587,12 @@ const char* authResultText(HttpAuthResult result) {
   }
 }
 bool pollingPath(const char* path) {
-  return !strcmp(path, "/api/status") || !strcmp(path, "/api/led/status") ||
-    !strcmp(path, "/api/console/logs") || !strcmp(path, "/api/console/stats") ||
-    !strcmp(path, "/api/ota/status") || !strcmp(path, "/api/v1/ping") ||
-    !strcmp(path, "/api/v1/status") || !strcmp(path, "/api/v1/diagnostics") ||
-    !strcmp(path, "/api/v1/config/status");
+  return !strcmp(path, "/api/v1/ping") ||
+    !strcmp(path, "/api/v1/status") ||
+    !strcmp(path, "/api/v1/diagnostics") ||
+    !strcmp(path, "/api/v1/logs") ||
+    !strcmp(path, "/api/v1/logs/stats") ||
+    !strcmp(path, "/api/v1/ota/status");
 }
 void printHttpAudit(const HttpRequestContext& r, unsigned long duration) {
   char message[192];
@@ -1628,19 +1646,15 @@ void updateHttpTraceTimeout() {
   }
 }
 
-bool buildStatusJson(size_t& bodyLength, uint32_t requestId, bool v1) {
+bool buildStatusJson(size_t& bodyLength, uint32_t requestId) {
   FixedBuffer b;
   resetBuffer(b, httpBodyBuffer, sizeof(httpBodyBuffer));
   char fingerprint[16];
   fingerprintText(deviceKeyFingerprint, fingerprint, sizeof(fingerprint));
 
-  if (v1) {
-    appendFormat(b,
-      "{\"success\":true,\"requestId\":%lu,",
-      static_cast<unsigned long>(requestId));
-  } else {
-    appendRaw(b, "{");
-  }
+  appendFormat(b,
+    "{\"success\":true,\"requestId\":%lu,",
+    static_cast<unsigned long>(requestId));
 
   appendFormat(b,
     "\"connected\":%s,\"timesynced\":%s,",
@@ -1789,9 +1803,9 @@ bool buildStatusJson(size_t& bodyLength, uint32_t requestId, bool v1) {
   bodyLength = b.length;
   return b.valid;
 }
-void sendStatusJson(WiFiClient& c, uint32_t requestId, bool v1) {
+void sendStatusJson(WiFiClient& c, uint32_t requestId) {
   size_t length = 0;
-  if (!buildStatusJson(length, requestId, v1)) {
+  if (!buildStatusJson(length, requestId)) {
     sendErrorJson(c, 503, "RESPONSE_BUFFER_EXHAUSTED",
       "A statusz valasz nem fert el.", requestId);
     return;
@@ -1951,7 +1965,7 @@ void sendDiagnosticsJson(WiFiClient& c, uint32_t requestId) {
   }
   sendJsonBuffer(c, b.data, b.length, 200, requestId);
 }
-void sendLogsJson(WiFiClient& c, uint32_t afterId, uint32_t requestId, bool v1) {
+void sendLogsJson(WiFiClient& c, uint32_t afterId, uint32_t requestId) {
   uint8_t selected[CONSOLE_LOGS_PER_RESPONSE] = {}, count = 0;
   uint32_t lastId = afterId;
   for (uint8_t offset = 0; offset < logSize && count < CONSOLE_LOGS_PER_RESPONSE;
@@ -1964,11 +1978,9 @@ void sendLogsJson(WiFiClient& c, uint32_t afterId, uint32_t requestId, bool v1) 
   }
   FixedBuffer b;
   resetBuffer(b, httpBodyBuffer, sizeof(httpBodyBuffer));
-  if (v1) appendFormat(b,
+  appendFormat(b,
     "{\"success\":true,\"requestId\":%lu,\"lastId\":%lu,\"logs\":[",
     static_cast<unsigned long>(requestId), static_cast<unsigned long>(lastId));
-  else appendFormat(b, "{\"lastId\":%lu,\"logs\":[",
-    static_cast<unsigned long>(lastId));
   for (uint8_t i = 0; i < count; i++) {
     Log& entry = logs[selected[i]];
     if (i) appendChar(b, ',');
@@ -1984,16 +1996,12 @@ void sendLogsJson(WiFiClient& c, uint32_t afterId, uint32_t requestId, bool v1) 
     "A log valasz nem fert el.", requestId);
   else sendJsonBuffer(c, b.data, b.length, 200, requestId);
 }
-void sendConsoleStatsJson(WiFiClient& c, uint32_t requestId, bool v1) {
+void sendConsoleStatsJson(WiFiClient& c, uint32_t requestId) {
   FixedBuffer b;
   resetBuffer(b, httpBodyBuffer, sizeof(httpBodyBuffer));
-  if (v1) {
-    appendFormat(b,
-      "{\"success\":true,\"requestId\":%lu,",
-      static_cast<unsigned long>(requestId));
-  } else {
-    appendRaw(b, "{");
-  }
+  appendFormat(b,
+    "{\"success\":true,\"requestId\":%lu,",
+    static_cast<unsigned long>(requestId));
   appendFormat(b,
     "\"logCount\":%u,\"uptime\":%lu,\"wifiSignal\":%ld,",
     logSize, millis() / 1000UL, cachedWifiRssi);
@@ -2023,22 +2031,16 @@ void sendConsoleStatsJson(WiFiClient& c, uint32_t requestId, bool v1) {
   }
   sendJsonBuffer(c, b.data, b.length, 200, requestId);
 }
-void sendOtaStatusJson(WiFiClient& c, uint32_t requestId, bool v1) {
+void sendOtaStatusJson(WiFiClient& c, uint32_t requestId) {
   FixedBuffer b;
   resetBuffer(b, httpBodyBuffer, sizeof(httpBodyBuffer));
-  if (v1) {
-    appendFormat(b,
-      "{\"success\":true,\"requestId\":%lu,",
-      static_cast<unsigned long>(requestId));
-  } else {
-    appendRaw(b, "{\"success\":true,");
-  }
+  appendFormat(b,
+    "{\"success\":true,\"requestId\":%lu,",
+    static_cast<unsigned long>(requestId));
   appendFormat(b,
     "\"firmwareVersion\":\"%s\",\"firmwareFeature\":\"%s\",",
     FIRMWARE_VERSION, FIRMWARE_FEATURE);
-  if (v1) {
-    appendFormat(b, "\"directApiVersion\":\"%s\",", DIRECT_API_VERSION);
-  }
+  appendFormat(b, "\"directApiVersion\":\"%s\",", DIRECT_API_VERSION);
   appendFormat(b,
     "\"buildDate\":\"%s\",\"buildTime\":\"%s\",",
     __DATE__, __TIME__);
@@ -2390,7 +2392,7 @@ int routeV1(WiFiClient& c, const String& method, const String& base,
     const String& query, const char* body, uint32_t requestId) {
   if (base == "/api/v1/ping" && method == "GET") { sendPingJson(c, requestId); return 200; }
   if (base == "/api/v1/capabilities" && method == "GET") { sendCapabilitiesJson(c, requestId); return 200; }
-  if (base == "/api/v1/status" && method == "GET") { sendStatusJson(c, requestId, true); return 200; }
+  if (base == "/api/v1/status" && method == "GET") { sendStatusJson(c, requestId); return 200; }
   if (base == "/api/v1/diagnostics" && method == "GET") { sendDiagnosticsJson(c, requestId); return 200; }
   if (base == "/api/v1/config/status" && method == "GET") { sendConfigStatusJson(c, requestId); return 200; }
   if (base == "/api/v1/time/config" && method == "GET") {
@@ -2436,13 +2438,13 @@ int routeV1(WiFiClient& c, const String& method, const String& base,
     return 200;
   }
   if (base == "/api/v1/logs" && method == "GET") {
-    sendLogsJson(c, valueInt(query, "afterId", 0, 0, 2147483647), requestId, true); return 200;
+    sendLogsJson(c, valueInt(query, "afterId", 0, 0, 2147483647), requestId); return 200;
   }
-  if (base == "/api/v1/logs/stats" && method == "GET") { sendConsoleStatsJson(c, requestId, true); return 200; }
+  if (base == "/api/v1/logs/stats" && method == "GET") { sendConsoleStatsJson(c, requestId); return 200; }
   if (base == "/api/v1/logs/clear" && method == "POST") {
     clearRamLogs(); sendJsonLiteral(c, "{\"success\":true}", 200, requestId); return 200;
   }
-  if (base == "/api/v1/ota/status" && method == "GET") { sendOtaStatusJson(c, requestId, true); return 200; }
+  if (base == "/api/v1/ota/status" && method == "GET") { sendOtaStatusJson(c, requestId); return 200; }
   if (base == "/api/v1/ota/prepare" && method == "POST") {
     bool prepared = prepareOtaService();
     sendJsonLiteral(c, prepared ? "{\"success\":true}" : "{\"success\":false}",
@@ -2461,7 +2463,7 @@ int routeV1(WiFiClient& c, const String& method, const String& base,
       "\"delayMs\":750}", 202, requestId);
     return 202;
   }
-  if (base == "/api/v1/leds" && method == "GET") { sendStatusJson(c, requestId, true); return 200; }
+  if (base == "/api/v1/leds" && method == "GET") { sendStatusJson(c, requestId); return 200; }
   if (base.startsWith("/api/v1/leds/") && base != "/api/v1/leds/all") {
     int id = base.substring(strlen("/api/v1/leds/")).toInt();
     if (id < 1 || id > STRIP_COUNT) { sendErrorJson(c,404,"LED_NOT_FOUND","Ismeretlen LED.",requestId); return 404; }
@@ -2475,7 +2477,7 @@ int routeV1(WiFiClient& c, const String& method, const String& base,
     for (uint8_t i=0;i<STRIP_COUNT;i++) if (!applyLedJson(i, body)) {
       sendErrorJson(c,422,"VALIDATION_FAILED","Ervenytelen kozos LED JSON.",requestId); return 422;
     }
-    sendStatusJson(c, requestId, true); return 200;
+    sendStatusJson(c, requestId); return 200;
   }
   if (base == "/api/v1/schedules/status" && method == "GET") {
     FixedBuffer b; resetBuffer(b,httpBodyBuffer,sizeof(httpBodyBuffer));
@@ -2549,94 +2551,17 @@ int routeV1(WiFiClient& c, const String& method, const String& base,
   sendErrorJson(c,405,"METHOD_NOT_ALLOWED","Ismeretlen vegpont vagy hibas metodus.",requestId);
   return 405;
 }
-int routeLegacy(WiFiClient& c, const String& method, const String& path,
-    uint32_t requestId) {
-  int queryAt = path.indexOf('?');
-  String base = queryAt < 0 ? path : path.substring(0, queryAt);
-  String query = queryAt < 0 ? "" : path.substring(queryAt + 1);
-  if (base == "/api/status" || base == "/api/led/status") {
-    if (method != "GET" && method != "POST") {
-      sendErrorJson(c, 405, "METHOD_NOT_ALLOWED",
-        "A legacy statusz csak GET vagy POST.", requestId);
-      return 405;
-    }
-    sendStatusJson(c, requestId, false);
-    return 200;
-  }
-  if (base == "/api/console/logs") {
-    uint32_t after = valueInt(query, "after", 0, 0, 2147483647);
-    sendLogsJson(c, after, requestId, false); return 200;
-  }
-  if (base == "/api/console/stats") {
-    sendConsoleStatsJson(c, requestId, false); return 200;
-  }
-  if (base == "/api/console/clear") {
-    clearRamLogs();
-    sendJsonLiteral(c, "{\"success\":true}", 200, requestId);
-    return 200;
-  }
-  if (base == "/api/ota/status") {
-    sendOtaStatusJson(c, requestId, false); return 200;
-  }
-  const bool legacyMutation =
-    base == "/api/all-on" || base == "/api/all-off" ||
-    base.startsWith("/api/led/") ||
-    base == "/api/schedules/upload" ||
-    base == "/api/schedules/chunk" ||
-    base == "/api/schedules/clear";
-  if (legacyMutation) {
-    sendErrorJson(c, 410, "LEGACY_MUTATION_REMOVED",
-      "Hasznald az Arduino Direct API v1 JSON vegpontjait.", requestId);
-    return 410;
-  }
-  if (base == "/api/ota/prepare" || base == "/api/ota/restart") {
-    bool prepared = prepareOtaService();
-    FixedBuffer b;
-    resetBuffer(b, httpBodyBuffer, sizeof(httpBodyBuffer));
-    appendFormat(b,
-      "{\"success\":%s,\"firmwareVersion\":\"%s\",",
-      prepared ? "true" : "false", FIRMWARE_VERSION);
-    appendFormat(b,
-      "\"otaEnabled\":%s,\"otaPort\":%u,\"restartCount\":%lu,",
-      otaReady ? "true" : "false", OTA_UPLOAD_PORT, otaRestartCount);
-    appendFormat(b,
-      "\"prepareActive\":%s,\"prepareSecondsRemaining\":%lu}",
-      otaPrepareModeActive() ? "true" : "false",
-      otaPrepareSecondsRemaining());
-    if (!b.valid) {
-      sendErrorJson(c, 503, "RESPONSE_BUFFER_EXHAUSTED",
-        "A legacy OTA prepare valasz nem fert el.", requestId);
-      return 503;
-    }
-    sendJsonBuffer(c, b.data, b.length, prepared ? 200 : 503, requestId);
-    return prepared ? 200 : 503;
-  }
-  if (base == "/api/schedules/export") {
-    int index = valueInt(query, "index", 0, 0, SCHEDULE_MAX - 1);
-    if (index >= scheduleCount) {
-      sendErrorJson(c, 404, "SCHEDULE_INDEX_NOT_FOUND",
-        "A kert schedule index nem letezik.", requestId);
-      return 404;
-    }
-    String payload = encodeScheduleHex(schedules[index]);
-    String response = "{\"success\":true,\"index\":" + String(index) +
-      ",\"count\":" + String(scheduleCount) + ",\"payload\":\"" +
-      payload + "\"}";
-    sendJsonBuffer(c, response.c_str(), response.length(), 200, requestId);
-    return 200;
-  }
-  sendErrorJson(c, 404, "ENDPOINT_NOT_FOUND",
-    "Ismeretlen legacy Arduino API vegpont.", requestId);
-  return 404;
-}
 int routeRequest(WiFiClient& c, const String& method, const String& path,
     const char* body, uint32_t requestId) {
   int queryAt = path.indexOf('?');
   String base = queryAt < 0 ? path : path.substring(0, queryAt);
   String query = queryAt < 0 ? "" : path.substring(queryAt + 1);
-  return base.startsWith("/api/v1/")
-    ? routeV1(c, method, base, query, body, requestId)
-    : routeLegacy(c, method, path, requestId);
+  if (!base.startsWith("/api/v1/")) {
+    sendErrorJson(c, 404, "DIRECT_API_V1_REQUIRED",
+      "Direct API v1 endpoint required.", requestId);
+    return 404;
+  }
+  return routeV1(c, method, base, query, body, requestId);
 }
 
 void handleHttp() {
@@ -2829,9 +2754,6 @@ void printApiUrls() {
   }
   char ip[16];
   ipToText(cachedWifiIp, ip, sizeof(ip));
-  Serial.print("[cmd] Legacy: http://"); Serial.print(ip); Serial.print(':');
-  Serial.print(HTTP_API_PORT); Serial.print(apiSettings.privatePath);
-  Serial.println("/api/status");
   Serial.print("[cmd] Direct v1: http://"); Serial.print(ip); Serial.print(':');
   Serial.print(HTTP_API_PORT); Serial.print(apiSettings.privatePath);
   Serial.println("/api/v1/status");
@@ -3155,39 +3077,48 @@ void setup() {
   loadTimeSettings();
   loadSchedules();
   connectWifi();
-  ntpUdp.begin(NTP_LOCAL_PORT);
+  startNtpUdpService();
   server.begin();
   logEvent("success", "HTTP szerver elinditva a 80/TCP porton");
   logEvent("info", "Serial diagnosztika aktiv; parancslista: help");
 }
 void loop() {
-  handleSerialCommands();
-  updateHttpTraceTimeout();
-  updateOtaVisualState();
-  refreshWifiTelemetry(false);
   if (wifiHasAddress()) {
     startOta();
-    reportWifiConnected();
     if (otaReady) ArduinoOTA.poll();
+    if (otaTransferActive) return;
   }
-  if (!otaTransferActive) handleHttp();
-  processPendingRemoteReboot();
-  if (wifiHasAddress() && !otaTransferActive) {
+
+  updateOtaVisualState();
+  if (otaPrepareModeActive()) return;
+
+  handleSerialCommands();
+  updateHttpTraceTimeout();
+  refreshWifiTelemetry(false);
+
+  if (wifiHasAddress()) {
+    reportWifiConnected();
+    handleHttp();
+    processPendingRemoteReboot();
     serviceClockSync(false);
     runArduinoSchedules();
   }
+
   if (!wifiHasAddress()) {
     wifiReported = false;
     otaTransferActive = false;
     otaPrepareUntil = 0;
+    stopNtpUdpService();
     if (millis() - lastWifi > WIFI_RETRY) {
       otaReady = false;
       connectWifi();
     }
   }
-  handlePir();
-  handleButtons();
-  if (!otaTransferActive && !otaPrepareModeActive() &&
-      !otaErrorIndicatorActive()) renderAll(false);
+
+  if (!otaErrorIndicatorActive()) {
+    handlePir();
+    handleButtons();
+    renderAll(false);
+  }
   flushHttpPollingSummary(false);
 }

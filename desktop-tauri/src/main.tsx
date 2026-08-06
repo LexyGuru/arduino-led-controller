@@ -8,6 +8,7 @@ import {
 
 import App from './App';
 import { I18nProvider } from './i18n';
+import { ThemeProvider } from './design-system/ThemeProvider';
 
 import {
   DesktopApiProvider,
@@ -15,6 +16,7 @@ import {
 } from './api';
 
 import './styles.css';
+import './beta7-theme.css';
 import './api-v2.css';
 import './dashboard-led-api-v2.css';
 import './schedule-firmware-logs-api-v2.css';
@@ -67,8 +69,10 @@ createRoot(
         persistentBearerEnabled
     }}
   >
-    <I18nProvider>
-      <App />
-    </I18nProvider>
+    <ThemeProvider>
+      <I18nProvider>
+        <App />
+      </I18nProvider>
+    </ThemeProvider>
   </DesktopApiProvider>
 );

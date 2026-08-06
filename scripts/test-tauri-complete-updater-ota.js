@@ -26,15 +26,36 @@ for (const token of [
   'schedule_checksum_before',
   'cache_sha256',
 ]) {
-  assert.match(lib, new RegExp(token));
+  assert.match(
+    lib,
+    new RegExp(token),
+  );
 }
 
-assert.match(lib, /releases\?per_page=30/);
-assert.match(lib, /X-GitHub-Api-Version/);
-assert.match(api, /firmware_cancel/);
-assert.match(page, /firmware\.availableApp/);
-assert.match(page, /firmware\.downloadApp/);
-assert.match(page, /Cache SHA-256/);
+assert.match(
+  lib,
+  /releases\?per_page=30/,
+);
+assert.match(
+  lib,
+  /X-GitHub-Api-Version/,
+);
+assert.match(
+  api,
+  /firmware_cancel/,
+);
+assert.match(
+  page,
+  /firmware\.availableApp/,
+);
+assert.match(
+  page,
+  /firmware\.downloadApp/,
+);
+assert.match(
+  page,
+  /Cache SHA-256/,
+);
 
 assert.match(
   lib,
@@ -42,11 +63,15 @@ assert.match(
 );
 assert.match(
   lib,
-  /matches!\(mode\.trim\(\), "system" \| "custom"\)/,
+  /matches!\(mode\.trim\(\), "auto" \| "system" \| "custom" \| "bundled"\)/,
 );
 assert.match(
   lib,
-  /Beépített Tauri\/Rust HTTP OTA-motor \(auto\/bundled alapértelmezett\)/,
+  /macOS-en az UNO R4 OTA-frissítéshez/,
+);
+assert.match(
+  lib,
+  /return Ok\(true\);/,
 );
 assert.match(
   lib,
@@ -62,11 +87,20 @@ assert.match(
 );
 assert.match(
   lib,
-  /automatic_ota_prefers_builtin_rust_engine/,
+  /macos_ota_modes_resolve_to_terminal_tool/,
 );
 assert.match(
   lib,
   /ota_timeout_is_clamped_to_supported_range/,
+);
+
+assert.doesNotMatch(
+  lib,
+  /automatic_ota_prefers_builtin_rust_engine/,
+);
+assert.doesNotMatch(
+  lib,
+  /Beépített Tauri\/Rust HTTP OTA-motor \(auto\/bundled alapértelmezett\)/,
 );
 
 console.log(
@@ -76,5 +110,5 @@ console.log(
   'OK: megszakítható OTA, cache SHA és Boot ID/schedule persistence kapu',
 );
 console.log(
-  'OK: auto/bundled Rust OTA, konfigurált timeout és szigorú Boot ID kapu',
+  'OK: macOS UNO R4 helyi arduinoOTA Terminal útvonal és szigorú Boot ID kapu',
 );
