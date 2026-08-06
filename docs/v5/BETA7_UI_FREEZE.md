@@ -3,7 +3,7 @@
 ## Állapot
 
 - Alkalmazásalap: `5.0.0-beta.7`
-- Firmware-alap: `5.0.0-beta.1`
+- Firmware-alap: `5.0.0-beta.2`
 - Direct API: `1.0.0`
 - Fejlesztési ág: `feature/beta7-ui-overhaul`
 - Integrációs célág: `next/v5-rearchitecture`

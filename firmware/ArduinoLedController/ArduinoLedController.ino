@@ -14,7 +14,7 @@
 #include <stdarg.h>
 #include "secrets.h"
 
-#define FIRMWARE_VERSION "5.0.0-beta.1"
+#define FIRMWARE_VERSION "5.0.0-beta.2"
 #define FIRMWARE_FEATURE "f14-direct-api-v1-only-storage-udp-ntp-dst-ota-maintenance"
 #define OTA_MAINTENANCE_MODE_V1 1
 #define DIRECT_API_VERSION "1.0.0"
@@ -953,8 +953,8 @@ void stopNtpUdpService() {
   ntpUdpActive = false;
 }
 void enterOtaMaintenanceMode() {
-  stopNtpUdpService();
-  Serial.println("[info] OTA maintenance mode: NTP UDP, HTTP, schedule, LED es hatterfeladatok leallitva");
+  // WiFiS3/UNO R4: az OTA listener megnyitasa utan az UDP socketeket nem zarjuk ujra.
+  Serial.println("[info] OTA maintenance mode: HTTP, schedule, LED es hatterfeladatok szuneteltetve; NTP UDP valtozatlan");
 }
 void leaveOtaMaintenanceMode() {
   if (wifiHasAddress()) startNtpUdpService();
@@ -1353,7 +1353,8 @@ void otaTransferStarted() {
   enterOtaMaintenanceMode();
 }
 void otaBeforeApply() {
-  Serial.println("[success] OTA adatfolyam kesz; flash finalizalas es ujrainditas");
+  // Minimalis flash-finalizalasi allapotjelzes.
+  showOtaIndicator(0,255,60);
 }
 void otaTransferError(int code, const char*) {
   otaTransferActive = false;
@@ -1391,9 +1392,9 @@ bool prepareOtaService() {
   lastOtaRestartAt = millis();
   otaPrepareUntil = millis() + OTA_PREPARE_WINDOW;
   otaErrorIndicatorUntil = 0;
-  stopNtpUdpService();
   showMatrix(MATRIX_OTA);
-  logEvent("info", "OTA listener elokeszitve 30 masodpercre; NTP UDP leallitva");
+  showOtaIndicator(0,70,255);
+  logEvent("info", "OTA listener elokeszitve 30 masodpercre; NTP UDP valtozatlan");
   return true;
 }
 

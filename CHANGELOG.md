@@ -7,7 +7,7 @@
 - Schedule backup, restore és teljes törlés.
 - macOS UNO R4 helyi `arduinoOTA` Terminal útvonal.
 
-### Firmware 5.0.0-beta.1
+### Firmware 5.0.0-beta.2
 
 - Direct API `1.0.0`-only router.
 - Legacy firmware endpointok és JSON-ágak eltávolítása.
@@ -113,7 +113,7 @@ A Beta.7 még fejlesztés alatt áll, és nem nyilvános kiadás.
 - Új Beta.2 telepítési útmutató, release notes és checklist.
 - Gépileg olvasható Beta channel manifest az alkalmazás- és firmware-artifactok kompatibilitási adataival.
 
-## 5.0.0-beta.1 / firmware 4.3.0-beta.4 — 2026-07-31
+## 5.0.0-beta.2 / firmware 4.3.0-beta.4 — 2026-07-31
 
 ### Firmware
 

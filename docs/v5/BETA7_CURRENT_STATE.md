@@ -7,7 +7,7 @@ Dátum: 2026-08-06
 | Elem | Verzió |
 |---|---|
 | Desktop alkalmazás | `5.0.0-beta.7` |
-| Arduino firmware | `5.0.0-beta.1` |
+| Arduino firmware | `5.0.0-beta.2` |
 | Direct API | `1.0.0` |
 | Fejlesztési ág | `feature/beta7-ui-overhaul` |
 
@@ -19,7 +19,7 @@ A firmware kizárólag Direct API v1 útvonalakat szolgál ki. A legacy firmware
 - jelenlegi BIN: `118516` bájt;
 - teljes megtakarítás: `2280` bájt.
 
-Az OTA maintenance mód az OTA előkészítésekor leállítja az NTP UDP socketet, a HTTP-kezelést, a schedulert, a LED-frissítést és a háttérfeladatokat.
+Az OTA maintenance mód az OTA előkészítésekor változatlanul hagyja az NTP UDP socketet, miközben szünetelteti a HTTP-kezelést, a schedulert, a LED-frissítést és a háttérfeladatokat.
 
 ## Desktop Beta.7
 
