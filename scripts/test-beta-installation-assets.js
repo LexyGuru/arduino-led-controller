@@ -4,6 +4,8 @@
 const assert = require('assert');
 const childProcess = require('child_process');
 const fs = require('fs');
+const CURRENT_APP_VERSION = fs.readFileSync('VERSION', 'utf8').trim();
+const CURRENT_FIRMWARE_VERSION = JSON.parse(fs.readFileSync('release-versions.json', 'utf8')).firmware;
 const path = require('path');
 
 const root = path.resolve(__dirname, '..');
@@ -21,8 +23,8 @@ const applicationVersion = versions.application;
 const firmwareVersion = versions.firmware;
 const betaLabel = applicationVersion.replace(/^\d+\.\d+\.\d+-/, '');
 
-assert.equal(applicationVersion, '5.0.0-beta.6');
-assert.equal(firmwareVersion, '4.3.0-beta.4');
+assert.equal(applicationVersion, CURRENT_APP_VERSION);
+assert.equal(firmwareVersion, CURRENT_FIRMWARE_VERSION);
 assert.equal(versions.channel, 'beta');
 
 const shellFiles = [
@@ -125,7 +127,7 @@ assert.match(unit, /ProtectSystem=full/);
 assert.match(unit, /PrivateTmp=true/);
 assert.match(unit, /Restart=on-failure/);
 
-const guide = read('docs/v5/BETA6_INSTALLATION_GUIDE.md');
+const guide = read('docs/v5/BETA7_INSTALLATION_GUIDE.md');
 for (const expected of [
   'Windows x86_64',
   'macOS Apple Silicon',
@@ -149,7 +151,7 @@ assert.match(guide, /nincs notarizálva/);
 assert.match(guide, /SmartScreen/);
 assert.match(guide, /unsigned\.ipa.*nincs.*aláírva/is);
 
-const notes = read('docs/v5/BETA6_RELEASE_NOTES.md');
+const notes = read('docs/v5/BETA7_RELEASE_NOTES.md');
 assert.ok(
   notes.includes(applicationVersion),
   `A release notes nem tartalmazza: ${applicationVersion}`
@@ -159,7 +161,7 @@ assert.match(notes, /main.*nem módosul/is);
 assert.match(notes, /produkciós.*10\.0\.0\.123/is);
 assert.match(notes, /SBOM/);
 
-const checklist = read('docs/v5/BETA6_RELEASE_CHECKLIST.md');
+const checklist = read('docs/v5/BETA7_RELEASE_CHECKLIST.md');
 assert.match(checklist, /Windows x86_64/);
 assert.match(checklist, /macOS Apple Silicon/);
 assert.match(checklist, /macOS Intel/);
