@@ -475,6 +475,7 @@ jobs:
     runs-on: ubuntu-22.04
     permissions:
       contents: write
+      actions: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
@@ -487,9 +488,9 @@ jobs:
 
       - name: Add installation assets and release documentation
         run: |
-          cp docs/v5/BETA6_INSTALLATION_GUIDE.md release-assets/
-          cp docs/v5/BETA6_RELEASE_NOTES.md release-assets/
-          cp docs/v5/BETA6_RELEASE_CHECKLIST.md release-assets/
+          cp docs/v5/BETA7_INSTALLATION_GUIDE.md release-assets/
+          cp docs/v5/BETA7_RELEASE_NOTES.md release-assets/
+          cp docs/v5/BETA7_RELEASE_CHECKLIST.md release-assets/
           cp release-versions.json release-assets/
           cp deploy/install-beta-lxc.sh release-assets/
           cp deploy/beta-lxc.env.example release-assets/
@@ -618,13 +619,28 @@ jobs:
             exit 1
           fi
 
+      - name: Remove stale Beta.6 documentation assets from existing Beta.7 release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.validate.outputs.tag }}
+        run: |
+          set -euo pipefail
+          if gh release view "${TAG}" >/dev/null 2>&1; then
+            for name in BETA6_INSTALLATION_GUIDE.md BETA6_RELEASE_NOTES.md BETA6_RELEASE_CHECKLIST.md; do
+              asset_id="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${TAG}" --jq ".assets[] | select(.name==\"${name}\") | .id" | head -n 1)"
+              if [ -n "${asset_id}" ]; then
+                gh api --method DELETE "repos/${GITHUB_REPOSITORY}/releases/assets/${asset_id}"
+              fi
+            done
+          fi
+
       - name: Publish or update prerelease
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.validate.outputs.tag }}
           target_commitish: ${{ github.sha }}
           name: Arduino LED Controller ${{ needs.validate.outputs.version }}
-          body_path: docs/v5/BETA6_RELEASE_NOTES.md
+          body_path: docs/v5/BETA7_RELEASE_NOTES.md
           prerelease: true
           make_latest: false
           overwrite_files: true
@@ -640,6 +656,27 @@ jobs:
             --jq '{isPrerelease,targetCommitish,assetCount:(.assets|length),assets:[.assets[].name]}'
           test "$(gh release view "${TAG}" --json isPrerelease --jq '.isPrerelease')" = "true"
           test "$(gh release view "${TAG}" --json assets --jq '.assets | length')" -ge 18
+
+      - name: Dispatch and wait for dedicated firmware prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          STARTED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          gh workflow run firmware-beta-release.yml \
+            --ref "${GITHUB_REF_NAME}" \
+            -f publish=true \
+            -f migrate_legacy_assets=true \
+            -f cleanup_application_releases=true
+          RUN_ID=""
+          for attempt in $(seq 1 30); do
+            RUN_ID="$(gh run list --workflow firmware-beta-release.yml --branch "${GITHUB_REF_NAME}" --event workflow_dispatch --limit 20 --json databaseId,headSha,createdAt --jq "[.[] | select(.headSha==\"${GITHUB_SHA}\" and .createdAt>=\"${STARTED_AT}\")] | sort_by(.createdAt) | last | .databaseId // empty")"
+            [ -n "${RUN_ID}" ] && break
+            sleep 4
+          done
+          test -n "${RUN_ID}" || { echo "::error::A firmware workflow futása nem található."; exit 1; }
+          echo "FIRMWARE_RUN_ID=${RUN_ID}"
+          gh run watch "${RUN_ID}" --exit-status
 
       - name: Upload complete release set as workflow artifact
         uses: actions/upload-artifact@v5
