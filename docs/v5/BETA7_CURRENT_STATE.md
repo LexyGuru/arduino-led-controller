@@ -7,7 +7,7 @@ Dátum: 2026-08-06
 | Elem | Verzió |
 |---|---|
 | Desktop alkalmazás | `5.0.0-beta.7` |
-| Arduino firmware | `5.0.0-beta.2` |
+| Arduino firmware | `5.0.0-beta.3` |
 | Direct API | `1.0.0` |
 | Fejlesztési ág | `feature/beta7-ui-overhaul` |
 

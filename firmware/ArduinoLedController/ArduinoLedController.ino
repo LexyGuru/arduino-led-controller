@@ -14,7 +14,7 @@
 #include <stdarg.h>
 #include "secrets.h"
 
-#define FIRMWARE_VERSION "5.0.0-beta.2"
+#define FIRMWARE_VERSION "5.0.0-beta.3"
 #define FIRMWARE_FEATURE "f14-direct-api-v1-only-storage-udp-ntp-dst-ota-maintenance"
 #define OTA_MAINTENANCE_MODE_V1 1
 #define DIRECT_API_VERSION "1.0.0"
@@ -1350,10 +1350,12 @@ void otaTransferStarted() {
   otaPrepareUntil = otaErrorIndicatorUntil = 0;
   otaLastTransferStartedAt = millis();
   otaLastErrorCode = 0;
-  enterOtaMaintenanceMode();
+  showMatrix(MATRIX_OTA);
+  showOtaIndicator(0,70,255);
 }
 void otaBeforeApply() {
-  // Minimalis flash-finalizalasi allapotjelzes.
+  logEvent("success", "OTA kesz - zold jelzes, ujrainditas");
+  showMatrix(MATRIX_OK);
   showOtaIndicator(0,255,60);
 }
 void otaTransferError(int code, const char*) {
@@ -1362,9 +1364,9 @@ void otaTransferError(int code, const char*) {
   otaLastErrorCode = code;
   otaLastErrorAt = millis();
   otaErrorIndicatorUntil = millis() + OTA_ERROR_INDICATOR_TIME;
-  leaveOtaMaintenanceMode();
   char message[96];
-  snprintf(message, sizeof(message), "OTA hiba: %d; hatter szolgaltatasok visszaallitva", code);
+  snprintf(message, sizeof(message), "OTA hiba: %d - piros jelzes %lu mp", code,
+    OTA_ERROR_INDICATOR_TIME / 1000UL);
   logEvent("error", message);
   showMatrix(MATRIX_ERROR);
   showOtaIndicator(255,0,0);
