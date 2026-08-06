@@ -14,7 +14,7 @@
 #include <stdarg.h>
 #include "secrets.h"
 
-#define FIRMWARE_VERSION "5.0.0-beta.3"
+#define FIRMWARE_VERSION "5.0.0-beta.4"
 #define FIRMWARE_FEATURE "f14-direct-api-v1-only-storage-udp-ntp-dst-ota-maintenance"
 #define OTA_MAINTENANCE_MODE_V1 1
 #define DIRECT_API_VERSION "1.0.0"
@@ -81,7 +81,7 @@ constexpr uint16_t NTP_REMOTE_PORT = 123;
 constexpr uint32_t NTP_UNIX_OFFSET = 2208988800UL;
 constexpr unsigned long NTP_VALID_EPOCH_MIN = 1700000000UL;
 constexpr uint8_t HTTP_CLIENTS_PER_LOOP = 1;
-constexpr uint8_t LOG_CAPACITY = 32;
+constexpr uint8_t LOG_CAPACITY = 12;
 constexpr uint8_t CONSOLE_LOGS_PER_RESPONSE = 8;
 constexpr size_t HTTP_BODY_BUFFER_SIZE = 2560;
 constexpr size_t HTTP_RESPONSE_HEADER_SIZE = 192;
@@ -125,7 +125,7 @@ struct Log {
   uint32_t id;
   unsigned long timestamp;
   char type[12];
-  char message[128];
+  char message[80];
 };
 struct NetworkSettings {
   uint32_t magic;
@@ -1592,9 +1592,7 @@ const char* authResultText(HttpAuthResult result) {
 bool pollingPath(const char* path) {
   return !strcmp(path, "/api/v1/ping") ||
     !strcmp(path, "/api/v1/status") ||
-    !strcmp(path, "/api/v1/diagnostics") ||
     !strcmp(path, "/api/v1/logs") ||
-    !strcmp(path, "/api/v1/logs/stats") ||
     !strcmp(path, "/api/v1/ota/status");
 }
 void printHttpAudit(const HttpRequestContext& r, unsigned long duration) {
@@ -1856,114 +1854,13 @@ void sendCapabilitiesJson(WiFiClient& c, uint32_t requestId) {
     API_DEVICE_KEY_HEADER,
     API_ALLOW_QUERY_KEY_FALLBACK ? "true" : "false");
   appendRaw(b,
-    "\"features\":{\"diagnostics\":true,\"serialCommands\":true,"
+    "\"features\":{\"diagnostics\":false,\"serialCommands\":false,"
     "\"secretProfileExport\":true,\"ota\":true,\"legacyApi\":true,"
     "\"jsonBodyApi\":true,\"eepromAbSlots\":true,"
     "\"remoteReboot\":true}}");
   if (!b.valid) {
     sendErrorJson(c, 503, "RESPONSE_BUFFER_EXHAUSTED",
       "A capabilities valasz nem fert el.", requestId);
-    return;
-  }
-  sendJsonBuffer(c, b.data, b.length, 200, requestId);
-}
-void sendConfigStatusJson(WiFiClient& c, uint32_t requestId) {
-  char fingerprint[16];
-  fingerprintText(deviceKeyFingerprint, fingerprint, sizeof(fingerprint));
-  FixedBuffer b;
-  resetBuffer(b, httpBodyBuffer, sizeof(httpBodyBuffer));
-  appendFormat(b,
-    "{\"success\":true,\"requestId\":%lu,",
-    static_cast<unsigned long>(requestId));
-  appendFormat(b,
-    "\"networkConfigured\":%s,\"apiConfigured\":%s,",
-    networkSettingsStored ? "true" : "false",
-    apiSettingsStored ? "true" : "false");
-  appendFormat(b,
-    "\"privatePathConfigured\":%s,\"deviceKeyConfigured\":%s,",
-    apiSettingsStored && apiSettings.privatePath[0] ? "true" : "false",
-    apiSettingsStored && apiSettings.sharedSecret[0] ? "true" : "false");
-  appendFormat(b,
-    "\"deviceKeyFingerprint\":\"%s\","
-    "\"otaPasswordConfigured\":%s,",
-    apiSettingsStored ? fingerprint : "",
-    networkSettings.otaPassword[0] ? "true" : "false");
-  appendFormat(b,
-    "\"scheduleStored\":%s,\"queryKeyFallbackEnabled\":%s,"
-    "\"secretsReadableOverNetwork\":false}",
-    schedulesStored ? "true" : "false",
-    API_ALLOW_QUERY_KEY_FALLBACK ? "true" : "false");
-  if (!b.valid) {
-    sendErrorJson(c, 503, "RESPONSE_BUFFER_EXHAUSTED",
-      "A config status valasz nem fert el.", requestId);
-    return;
-  }
-  sendJsonBuffer(c, b.data, b.length, 200, requestId);
-}
-void sendDiagnosticsJson(WiFiClient& c, uint32_t requestId) {
-  FixedBuffer b;
-  resetBuffer(b, httpBodyBuffer, sizeof(httpBodyBuffer));
-
-  appendFormat(b,
-    "{\"success\":true,\"requestId\":%lu,\"deviceId\":\"%s\",",
-    static_cast<unsigned long>(requestId), deviceId);
-  appendFormat(b,
-    "\"bootId\":\"%08lX\",\"uptime\":%lu,",
-    static_cast<unsigned long>(bootId), millis() / 1000UL);
-  appendFormat(b,
-    "\"wifi\":{\"connected\":%s,\"ip\":\"%u.%u.%u.%u\",",
-    wifiHasAddress() ? "true" : "false",
-    cachedWifiIp[0], cachedWifiIp[1], cachedWifiIp[2], cachedWifiIp[3]);
-  appendFormat(b, "\"rssi\":%ld},", cachedWifiRssi);
-
-  appendFormat(b,
-    "\"http\":{\"requests\":%lu,\"timeouts\":%lu,\"rejected\":%lu,",
-    httpRequests, httpTimeouts, httpRejected);
-  appendFormat(b, "\"writeChunkBytes\":%u,",
-    static_cast<unsigned int>(HTTP_WRITE_CHUNK_SIZE));
-  appendFormat(b,
-    "\"writeFailures\":%lu,\"successResponses\":%lu,",
-    httpWriteFailures, httpSuccessResponses);
-  appendFormat(b,
-    "\"clientErrorResponses\":%lu,\"serverErrorResponses\":%lu,",
-    httpClientErrorResponses, httpServerErrorResponses);
-  appendFormat(b,
-    "\"headerAuthAccepted\":%lu,\"queryFallbackAccepted\":%lu,",
-    httpHeaderAuthAccepted, httpQueryFallbackAccepted);
-  appendFormat(b,
-    "\"traceEnabled\":%s,\"nextRequestId\":%lu},",
-    httpTraceEnabled ? "true" : "false",
-    static_cast<unsigned long>(nextHttpRequestId));
-
-  appendRaw(b, "\"storage\":{\"layout\":\"ab-v2\",");
-  appendFormat(b,
-    "\"networkOffset\":0,\"scheduleOffset\":%u,\"apiOffset\":%u,",
-    SCHEDULE_EEPROM_OFFSET, API_SETTINGS_EEPROM_OFFSET);
-  appendFormat(b,
-    "\"networkChecksumValid\":%s,\"apiChecksumValid\":%s,",
-    networkSettingsValid(networkSettings) ? "true" : "false",
-    apiSettingsValid(apiSettings) ? "true" : "false");
-  appendFormat(b,
-    "\"scheduleStored\":%s,\"scheduleCount\":%u,",
-    schedulesStored ? "true" : "false", scheduleCount);
-  appendFormat(b,
-    "\"scheduleRevision\":%lu,\"scheduleChecksum\":\"%08lX\",",
-    static_cast<unsigned long>(scheduleRevision),
-    static_cast<unsigned long>(scheduleChecksum(schedules, scheduleCount)));
-  appendRaw(b, "\"abSlots\":true,\"readbackAfterWrite\":true},");
-
-  appendFormat(b,
-    "\"ota\":{\"ready\":%s,\"transferActive\":%s,",
-    otaReady ? "true" : "false",
-    otaTransferActive ? "true" : "false");
-  appendFormat(b,
-    "\"prepareActive\":%s,\"lastErrorCode\":%d}}",
-    otaPrepareModeActive() ? "true" : "false",
-    otaLastErrorCode);
-
-  if (!b.valid) {
-    sendErrorJson(c, 503, "RESPONSE_BUFFER_EXHAUSTED",
-      "A diagnostics valasz nem fert el.", requestId);
     return;
   }
   sendJsonBuffer(c, b.data, b.length, 200, requestId);
@@ -1998,41 +1895,6 @@ void sendLogsJson(WiFiClient& c, uint32_t afterId, uint32_t requestId) {
   if (!b.valid) sendErrorJson(c, 503, "RESPONSE_BUFFER_EXHAUSTED",
     "A log valasz nem fert el.", requestId);
   else sendJsonBuffer(c, b.data, b.length, 200, requestId);
-}
-void sendConsoleStatsJson(WiFiClient& c, uint32_t requestId) {
-  FixedBuffer b;
-  resetBuffer(b, httpBodyBuffer, sizeof(httpBodyBuffer));
-  appendFormat(b,
-    "{\"success\":true,\"requestId\":%lu,",
-    static_cast<unsigned long>(requestId));
-  appendFormat(b,
-    "\"logCount\":%u,\"uptime\":%lu,\"wifiSignal\":%ld,",
-    logSize, millis() / 1000UL, cachedWifiRssi);
-  appendFormat(b,
-    "\"http\":{\"requests\":%lu,\"timeouts\":%lu,\"rejected\":%lu,",
-    httpRequests, httpTimeouts, httpRejected);
-  appendFormat(b,
-    "\"writeFailures\":%lu,\"successResponses\":%lu,"
-    "\"clientErrorResponses\":%lu,",
-    httpWriteFailures, httpSuccessResponses, httpClientErrorResponses);
-  appendFormat(b,
-    "\"serverErrorResponses\":%lu,\"deviceKeyHeaderAccepted\":%lu,"
-    "\"queryKeyFallbackAccepted\":%lu,",
-    httpServerErrorResponses, httpHeaderAuthAccepted,
-    httpQueryFallbackAccepted);
-  appendFormat(b,
-    "\"queryKeyFallbackEnabled\":%s,\"traceEnabled\":%s},",
-    API_ALLOW_QUERY_KEY_FALLBACK ? "true" : "false",
-    httpTraceEnabled ? "true" : "false");
-  appendFormat(b,
-    "\"system\":{\"wifiConnected\":%s,\"consoleActive\":true}}",
-    cachedWifiConnected ? "true" : "false");
-  if (!b.valid) {
-    sendErrorJson(c, 503, "RESPONSE_BUFFER_EXHAUSTED",
-      "A console stats valasz nem fert el.", requestId);
-    return;
-  }
-  sendJsonBuffer(c, b.data, b.length, 200, requestId);
 }
 void sendOtaStatusJson(WiFiClient& c, uint32_t requestId) {
   FixedBuffer b;
@@ -2396,8 +2258,6 @@ int routeV1(WiFiClient& c, const String& method, const String& base,
   if (base == "/api/v1/ping" && method == "GET") { sendPingJson(c, requestId); return 200; }
   if (base == "/api/v1/capabilities" && method == "GET") { sendCapabilitiesJson(c, requestId); return 200; }
   if (base == "/api/v1/status" && method == "GET") { sendStatusJson(c, requestId); return 200; }
-  if (base == "/api/v1/diagnostics" && method == "GET") { sendDiagnosticsJson(c, requestId); return 200; }
-  if (base == "/api/v1/config/status" && method == "GET") { sendConfigStatusJson(c, requestId); return 200; }
   if (base == "/api/v1/time/config" && method == "GET") {
     FixedBuffer b; resetBuffer(b, httpBodyBuffer, sizeof(httpBodyBuffer));
     appendFormat(b,
@@ -2443,7 +2303,6 @@ int routeV1(WiFiClient& c, const String& method, const String& base,
   if (base == "/api/v1/logs" && method == "GET") {
     sendLogsJson(c, valueInt(query, "afterId", 0, 0, 2147483647), requestId); return 200;
   }
-  if (base == "/api/v1/logs/stats" && method == "GET") { sendConsoleStatsJson(c, requestId); return 200; }
   if (base == "/api/v1/logs/clear" && method == "POST") {
     clearRamLogs(); sendJsonLiteral(c, "{\"success\":true}", 200, requestId); return 200;
   }
@@ -2937,7 +2796,7 @@ void printScheduleStatus() {
   }
 }
 void printScheduleList() {
-  printScheduleStatus();
+  // Release build: verbose USB schedule report disabled.
   for (uint8_t i = 0; i < scheduleCount; i++) {
     Serial.print("[cmd] #"); Serial.print(i); Serial.print(" day=");
     Serial.print(schedules[i].day); Serial.print(" time=");
@@ -3095,7 +2954,7 @@ void loop() {
   updateOtaVisualState();
   if (otaPrepareModeActive()) return;
 
-  handleSerialCommands();
+  // Release build: USB command diagnostics disabled.
   updateHttpTraceTimeout();
   refreshWifiTelemetry(false);
 

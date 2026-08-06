@@ -6,9 +6,9 @@ const fw=fs.readFileSync("firmware/ArduinoLedController/ArduinoLedController.ino
 const readme=fs.readFileSync("README.md","utf8");
 const state=fs.readFileSync("docs/v5/BETA7_CURRENT_STATE.md","utf8");
 assert.equal(pkg.version,"5.0.0-beta.7");
-assert.ok(fw.includes('#define FIRMWARE_VERSION "5.0.0-beta.3"'));
+assert.ok(fw.includes('#define FIRMWARE_VERSION "5.0.0-beta.4"'));
 assert.ok(fw.includes('#define DIRECT_API_VERSION "1.0.0"'));
 assert.ok(readme.includes('| Alkalmazás | `5.0.0-beta.7` |'));
-assert.ok(readme.includes('| Firmware | `5.0.0-beta.3` |'));
-assert.ok(state.includes('`5.0.0-beta.7`')&&state.includes('`5.0.0-beta.3`')&&state.includes('`1.0.0`'));
-console.log("OK: app 5.0.0-beta.7, firmware 5.0.0-beta.3, Direct API 1.0.0");
+assert.ok(readme.includes('| Firmware | `5.0.0-beta.4` |'));
+assert.ok(state.includes('`5.0.0-beta.7`')&&state.includes('`5.0.0-beta.4`')&&state.includes('`1.0.0`'));
+console.log("OK: app 5.0.0-beta.7, firmware 5.0.0-beta.4, Direct API 1.0.0");

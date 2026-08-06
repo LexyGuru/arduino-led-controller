@@ -1,0 +1,10 @@
+"use strict";
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const fw = fs.readFileSync("firmware/ArduinoLedController/ArduinoLedController.ino", "utf8");
+assert.match(fw, /^constexpr\s+uint8_t\s+LOG_CAPACITY\s*=\s*12\s*;/m);
+assert.match(fw, /char\s+message\s*\[\s*80\s*\]\s*;/);
+assert.doesNotMatch(fw, /^\s*handleSerialCommands\(\);\s*$/m);
+assert.doesNotMatch(fw, /^\s*printScheduleStatus\(\);\s*$/m);
+assert.match(fw, /\\"features\\":\{\\"diagnostics\\":false,\\"serialCommands\\":false,/);
+console.log("OK: release firmware size profile aktív");

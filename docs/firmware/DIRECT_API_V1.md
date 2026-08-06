@@ -16,7 +16,6 @@ A gépi szerződés: [`docs/api/arduino-direct-api-v1.json`](../api/arduino-dire
 | GET | `/api/v1/ping` | kapcsolat |
 | GET | `/api/v1/capabilities` | képességek |
 | GET | `/api/v1/status` | teljes állapot |
-| GET | `/api/v1/diagnostics` | diagnosztika |
 | GET/PUT | `/api/v1/leds/{id}` | egy LED-szalag |
 | POST | `/api/v1/leds/all` | közös LED-művelet |
 | GET | `/api/v1/schedules` | lapozott schedule |
@@ -29,3 +28,7 @@ A gépi szerződés: [`docs/api/arduino-direct-api-v1.json`](../api/arduino-dire
 ## Lapozás
 
 A dokumentált paraméter az `offset`; egy válasz legfeljebb 8 rekordot tartalmaz. A legacy `index` paraméter kompatibilitási fallbackként megmaradt, de `offset` jelenlétében az `offset` az elsődleges.
+
+## Release-size profile
+
+A firmware release buildben a duplikált diagnosztikai végpontok és a teljes USB parancsdiagnosztika ki vannak kapcsolva. A fő `/api/v1/status`, `/api/v1/logs`, OTA, időzóna, schedule és LED JSON API változatlanul elérhető.

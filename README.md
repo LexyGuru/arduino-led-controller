@@ -14,7 +14,7 @@ Többplatformos LED-vezérlő rendszer Arduino UNO R4 WiFi és három WS2812B LE
 | Elem | Verzió / állapot |
 |---|---|
 | Alkalmazás | `5.0.0-beta.7` |
-| Firmware | `5.0.0-beta.3` |
+| Firmware | `5.0.0-beta.4` |
 | Direct API | `1.0.0` |
 | Kiadási csatorna | `beta` |
 | Aktuális kiadás | Beta.6 |
@@ -23,7 +23,7 @@ Többplatformos LED-vezérlő rendszer Arduino UNO R4 WiFi és három WS2812B LE
 | Integrációs ág | `next/v5-rearchitecture` |
 | Stabil ág | `main` |
 
-A Beta.7 az új desktop felület, a Theme Engine, az auditált műveletek, a csatornahelyes firmware-katalógus, a macOS UNO R4 Terminal OTA útvonal és a Direct API v1-only firmware első integrált tesztkiadása. A hozzá párosított firmware 5.0.0-beta.3; a Direct API verziója változatlanul 1.0.0.
+A Beta.7 az új desktop felület, a Theme Engine, az auditált műveletek, a csatornahelyes firmware-katalógus, a macOS UNO R4 Terminal OTA útvonal és a Direct API v1-only firmware első integrált tesztkiadása. A hozzá párosított firmware 5.0.0-beta.4; a Direct API verziója változatlanul 1.0.0.
 
 ## Fő funkciók
 

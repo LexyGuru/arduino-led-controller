@@ -89,48 +89,6 @@
         }
       }
     },
-    "/api/v1/diagnostics": {
-      "get": {
-        "responses": {
-          "200": {
-            "description": "Success"
-          },
-          "400": {
-            "description": "Bad request"
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "422": {
-            "description": "Validation failed"
-          },
-          "500": {
-            "description": "Storage failure"
-          }
-        }
-      }
-    },
-    "/api/v1/config/status": {
-      "get": {
-        "responses": {
-          "200": {
-            "description": "Success"
-          },
-          "400": {
-            "description": "Bad request"
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "422": {
-            "description": "Validation failed"
-          },
-          "500": {
-            "description": "Storage failure"
-          }
-        }
-      }
-    },
     "/api/v1/leds": {
       "get": {
         "responses": {
@@ -359,27 +317,6 @@
       }
     },
     "/api/v1/logs": {
-      "get": {
-        "responses": {
-          "200": {
-            "description": "Success"
-          },
-          "400": {
-            "description": "Bad request"
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "422": {
-            "description": "Validation failed"
-          },
-          "500": {
-            "description": "Storage failure"
-          }
-        }
-      }
-    },
-    "/api/v1/logs/stats": {
       "get": {
         "responses": {
           "200": {

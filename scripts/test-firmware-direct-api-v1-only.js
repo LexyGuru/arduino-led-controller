@@ -44,7 +44,6 @@ assert.match(fw, /\[cmd\] Direct v1:/);
 for (const endpoint of [
   "/api/v1/status",
   "/api/v1/logs",
-  "/api/v1/logs/stats",
   "/api/v1/logs/clear",
   "/api/v1/ota/status",
   "/api/v1/ota/prepare",

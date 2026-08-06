@@ -91,8 +91,6 @@ Kötelező hibakódok:
 | GET | `/ping` | minimális hitelesített válasz |
 | GET | `/capabilities` | firmware/API képességek |
 | GET | `/status` | teljes állapot |
-| GET | `/diagnostics` | részletes számlálók és EEPROM státusz |
-| GET | `/config/status` | csak configured flag-ek és ujjlenyomatok |
 
 A `config/status` soha nem ad vissza titkot.
 
@@ -191,7 +189,6 @@ Folyamat:
 | Metódus | Endpoint | Funkció |
 |---|---|---|
 | GET | `/logs?afterId=` | események lapozása |
-| GET | `/logs/stats` | log- és HTTP-statisztika |
 | POST | `/logs/clear` | RAM-log törlése |
 
 A log nem tartalmazhat:
@@ -241,3 +238,7 @@ A `4.2.0-beta.1` átmenetileg megtarthat olvasási aliasokat:
 A módosító legacy query endpointok nem maradhatnak a stabil API-ban.
 
 A Tauri V15 kizárólag `/api/v1` végpontot használ.
+
+## Release-size profile
+
+A firmware release buildben a duplikált diagnosztikai végpontok és a teljes USB parancsdiagnosztika ki vannak kapcsolva. A fő `/api/v1/status`, `/api/v1/logs`, OTA, időzóna, schedule és LED JSON API változatlanul elérhető.
