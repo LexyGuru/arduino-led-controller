@@ -35,6 +35,22 @@ export interface CreateDesktopApiOptions {
   pollingIntervalMs?: number;
 }
 
+const directModeBlockedBackendFetch: typeof fetch = async () =>
+  new Response(
+    JSON.stringify({
+      ok: false,
+      code: 'lxc_tauri_bridge_not_configured',
+      message:
+        'Az LXC/API v2 backend Direct Arduino módban nincs frontend HTTP transportra kötve.'
+    }),
+    {
+      status: 503,
+      headers: {
+        'content-type': 'application/json'
+      }
+    }
+  );
+
 export function createDesktopApi(
   options:
     CreateDesktopApiOptions = {}
@@ -82,7 +98,7 @@ export function createDesktopApi(
       credentials:
         'include',
       fetchImplementation:
-        options.fetchImplementation
+        options.fetchImplementation ?? directModeBlockedBackendFetch,
     });
 
   auth =

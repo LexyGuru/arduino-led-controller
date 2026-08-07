@@ -157,7 +157,8 @@
     "test:beta7-firmware-metadata": "node scripts/test-beta7-firmware-metadata-contract.js",
     "test:firmware-release-size-profile": "node scripts/test-firmware-release-size-profile.js",
     "test:firmware-ota-production-regression": "node scripts/test-firmware-ota-production-regression.js",
-    "test:tauri-rust-cleanup": "node scripts/test-tauri-rust-cleanup-contract.js"
+    "test:tauri-rust-cleanup": "node scripts/test-tauri-rust-cleanup-contract.js",
+    "test:tauri-direct-mode-http-transport-gate": "node scripts/test-tauri-direct-mode-http-transport-gate.js"
   },
   "engines": {
     "node": ">=20"
