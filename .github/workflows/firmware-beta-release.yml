@@ -163,30 +163,47 @@ jobs:
             test "${expected}" = "${actual}"
           done
 
-      - name: Upload without overwriting a different binary
+      - name: Preserve immutable published firmware assets
         env:
           GH_TOKEN: ${{ github.token }}
           FW_VERSION: ${{ needs.validate.outputs.firmware_version }}
         run: |
           set -euo pipefail
-          mkdir -p upload
+          mkdir -p upload existing
           cp current/* upload/
           [ ! -d migrated ] || cp migrated/* upload/ 2>/dev/null || true
-          for file in upload/Arduino_LED_Controller_Firmware_*_UNO_R4_WiFi.bin upload/Arduino_LED_Controller_Firmware_*_UNO_R4_WiFi.bin.sha256; do
+
+          for file in upload/Arduino_LED_Controller_Firmware_*_UNO_R4_WiFi.bin; do
             [ -f "${file}" ] || continue
             name="$(basename "${file}")"
+            sha_file="${file}.sha256"
+            sha_name="${name}.sha256"
+
+            test -f "${sha_file}"
+            candidate_sha="$(sha256sum "${file}" | awk '{print $1}')"
+            expected_candidate_sha="$(awk '{print $1}' "${sha_file}")"
+            test "${candidate_sha}" = "${expected_candidate_sha}"
+
             if gh release view "${FIRMWARE_RELEASE_TAG}" --json assets --jq '.assets[].name' | grep -Fxq "${name}"; then
+              rm -f "existing/${name}" "existing/${sha_name}"
               gh release download "${FIRMWARE_RELEASE_TAG}" --pattern "${name}" --dir existing
-              test "$(sha256sum "existing/${name}" | awk '{print $1}')" = "$(sha256sum "${file}" | awk '{print $1}')" || {
-                echo "::error::Azonos firmware assetnév eltérő tartalommal: ${name}"
-                exit 1
-              }
+              gh release download "${FIRMWARE_RELEASE_TAG}" --pattern "${sha_name}" --dir existing
+
+              published_sha="$(sha256sum "existing/${name}" | awk '{print $1}')"
+              expected_published_sha="$(awk '{print $1}' "existing/${sha_name}")"
+              test "${published_sha}" = "${expected_published_sha}"
+
+              if [ "${candidate_sha}" != "${published_sha}" ]; then
+                echo "::warning::REBUILD_DRIFT_DETECTED ${name}: candidate=${candidate_sha} published=${published_sha}"
+              fi
+              echo "IMMUTABLE_EXISTING_ASSET_PRESERVED=${name}"
             else
-              gh release upload "${FIRMWARE_RELEASE_TAG}" "${file}"
+              gh release upload "${FIRMWARE_RELEASE_TAG}" "${file}" "${sha_file}"
+              echo "NEW_FIRMWARE_ASSET_UPLOADED=${name}"
             fi
           done
-          gh release upload "${FIRMWARE_RELEASE_TAG}" current/firmware-release.json --clobber
 
+          gh release upload "${FIRMWARE_RELEASE_TAG}" current/firmware-release.json --clobber
       - name: Generate authoritative firmware catalog
         env:
           GH_TOKEN: ${{ github.token }}

@@ -45,8 +45,12 @@ assert.match(
 );
 assert.match(
   fw,
-  /Azonos firmware assetnév eltérő tartalommal/
+  /Preserve immutable published firmware assets/
 );
+assert.match(fw, /IMMUTABLE_EXISTING_ASSET_PRESERVED/);
+assert.match(fw, /REBUILD_DRIFT_DETECTED/);
+assert.match(fw, /published_sha/);
+assert.match(fw, /expected_published_sha/);
 assert.match(fw, /firmware-catalog\.json/);
 assert.match(fw, /FIRMWARE-SHA256SUMS/);
 assert.doesNotMatch(fw, /build-desktop:/);
