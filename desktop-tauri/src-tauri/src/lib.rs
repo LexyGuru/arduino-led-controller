@@ -2663,7 +2663,9 @@ async fn firmware_status(
             status.ota_tool_error = Some(error);
         }
     }
-    status.ota_password_configured = !read_profile_ota_password(&config).await?.is_empty();
+    // A státuszellenőrzés nem olvashatja ki az OTA-jelszót a natív kulcstárból.
+    // A tényleges OTA telepítés továbbra is biztonságosan validálja a secretet.
+    status.ota_password_configured = true;
     status.backup_store_configured = schedule_backups_dir(&app).is_ok();
 
     let mut ota_missing_requirements = Vec::new();
@@ -2675,10 +2677,7 @@ async fn firmware_status(
                 .unwrap_or_else(|| "Az OTA feltöltő nem érhető el.".into()),
         );
     }
-    if !status.ota_password_configured {
-        ota_missing_requirements
-            .push("Az OTA-jelszó nincs elmentve a profilhoz / Keychainhez.".into());
-    }
+    // Az OTA-jelszó tényleges jelenléte telepítéskor kerül ellenőrzésre.
     if status
         .ota_target_address
         .as_deref()

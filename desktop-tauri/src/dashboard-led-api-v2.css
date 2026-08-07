@@ -11,16 +11,16 @@
   gap: 7px;
   min-height: 34px;
   padding: 7px 11px;
-  border: 1px solid #33415a;
+  border: 1px solid var(--ds-border-strong);
   border-radius: 999px;
-  background: #111a2a;
-  color: #a7b4c7;
+  background: var(--ds-surface);
+  color: var(--ds-text-secondary);
   font-size: 12px;
   font-weight: 800;
 }
 
 .v5-source-badge.api-v2 {
-  color: #42e5bf;
+  color: var(--ds-success);
   border-color:
     rgba(66, 229, 191, .35);
   background:
@@ -28,7 +28,7 @@
 }
 
 .v5-source-badge.api-v2-cache {
-  color: #5bc8ef;
+  color: var(--ds-info);
   border-color:
     rgba(91, 200, 239, .35);
   background:
@@ -36,7 +36,7 @@
 }
 
 .v5-source-badge.legacy-direct {
-  color: #fbbf24;
+  color: var(--ds-warning);
   border-color:
     rgba(251, 191, 36, .35);
   background:
@@ -44,7 +44,7 @@
 }
 
 .v5-source-badge.legacy-fallback {
-  color: #ff8798;
+  color: var(--ds-error);
   border-color:
     rgba(255, 135, 152, .35);
   background:
@@ -63,7 +63,7 @@
   border: 1px solid
     rgba(251, 191, 36, .32);
   border-radius: 12px;
-  color: #f4cb69;
+  color: var(--ds-warning);
   background:
     rgba(251, 191, 36, .07);
 }
@@ -75,7 +75,7 @@
 
 .v5-connection-warning span {
   margin-top: 3px;
-  color: #c8b57e;
+  color: color-mix(in srgb, var(--ds-warning) 58%, var(--ds-text-secondary));
   font-size: 12px;
   line-height: 1.45;
 }
@@ -91,7 +91,7 @@
   border: 1px solid
     rgba(66, 229, 191, .25);
   border-radius: 10px;
-  color: #42e5bf;
+  color: var(--ds-success);
   background:
     rgba(66, 229, 191, .06);
   font-size: 12px;

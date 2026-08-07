@@ -18,27 +18,27 @@
   min-height: 32px;
   padding: 6px 10px;
   border-radius: 999px;
-  border: 1px solid #33415a;
-  color: #8c99ad;
-  background: #111a2a;
+  border: 1px solid var(--ds-border-strong);
+  color: var(--ds-text-secondary);
+  background: var(--ds-surface);
   font-size: 12px;
   font-weight: 800;
 }
 
 .v5-dirty.yes {
-  color: #fbbf24;
+  color: var(--ds-warning);
   border-color:
     rgba(251, 191, 36, .35);
 }
 
 .v5-conflict {
-  color: #ff8798;
+  color: var(--ds-error);
   border-color:
     rgba(255, 135, 152, .35);
 }
 
 .v5-runner-summary {
-  color: #8d9aaf;
+  color: var(--ds-text-muted);
   font-size: 12px;
 }
 
@@ -58,7 +58,7 @@
   border: 1px solid
     rgba(255, 135, 152, .4);
   border-radius: 12px;
-  color: #ff9aaa;
+  color: var(--ds-error);
   background:
     rgba(255, 90, 115, .08);
 }
@@ -70,7 +70,7 @@
 
 .v5-schedule-conflict span {
   margin-top: 4px;
-  color: #c79aa3;
+  color: color-mix(in srgb, var(--ds-error) 58%, var(--ds-text-secondary));
   font-size: 12px;
   line-height: 1.5;
 }
@@ -99,9 +99,9 @@
   gap: 12px;
   align-items: center;
   padding: 13px 14px;
-  border: 1px solid #28354c;
+  border: 1px solid var(--ds-border);
   border-radius: 11px;
-  background: #0b1220;
+  background: var(--ds-surface-soft);
 }
 
 .v5-backup-list article.last-known-good {
@@ -119,18 +119,18 @@
 
 .v5-backup-list small {
   margin: 4px 0;
-  color: #8491a6;
+  color: var(--ds-text-muted);
 }
 
 .v5-backup-list code {
-  color: #68768d;
+  color: var(--ds-text-muted);
   font-size: 11px;
 }
 
 .v5-lkg {
   padding: 6px 9px;
   border-radius: 999px;
-  color: #42e5bf;
+  color: var(--ds-success);
   background:
     rgba(66, 229, 191, .1);
   font-size: 11px;
@@ -150,9 +150,9 @@
   align-items: center;
   gap: 9px;
   padding: 0 12px;
-  border: 1px solid #28354c;
+  border: 1px solid var(--ds-border);
   border-radius: 10px;
-  background: #0b1220;
+  background: var(--ds-surface-soft);
 }
 
 .v5-log-toolbar input {
@@ -190,23 +190,23 @@
     minmax(0, 1fr);
   gap: 10px;
   padding: 9px 10px;
-  border: 1px solid #243149;
+  border: 1px solid var(--ds-border);
   border-radius: 8px;
-  background: #0b1220;
+  background: var(--ds-surface-soft);
   font-size: 11px;
 }
 
 .v5-observability-list time {
-  color: #66758c;
+  color: var(--ds-text-muted);
 }
 
 .v5-observability-list b {
-  color: #5bc8ef;
+  color: var(--ds-info);
   overflow-wrap: anywhere;
 }
 
 .v5-observability-list span {
-  color: #a5b0c2;
+  color: var(--ds-text-secondary);
   overflow-wrap: anywhere;
 }
 

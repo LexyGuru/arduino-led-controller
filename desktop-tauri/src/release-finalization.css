@@ -11,7 +11,7 @@
 }
 
 .v5-execution-chain > svg {
-  color: #52617a;
+  color: var(--ds-text-muted);
 }
 
 .v5-execution-receipt {
@@ -22,9 +22,9 @@
   gap: 10px;
   align-items: center;
   padding: 13px;
-  border: 1px solid #34415a;
+  border: 1px solid var(--ds-border-strong);
   border-radius: 11px;
-  background: #0b1220;
+  background: var(--ds-surface-soft);
 }
 
 .v5-execution-receipt.ok {
@@ -49,11 +49,11 @@
 
 .v5-execution-receipt small {
   margin: 4px 0;
-  color: #8491a6;
+  color: var(--ds-text-muted);
 }
 
 .v5-execution-receipt code {
-  color: #6f7d93;
+  color: var(--ds-text-muted);
   font-size: 10px;
   overflow-wrap: anywhere;
 }

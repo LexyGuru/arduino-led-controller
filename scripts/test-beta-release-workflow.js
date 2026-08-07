@@ -57,7 +57,7 @@ assert.match(appWorkflow, /validate-repository\.sh/);
 assert.match(appWorkflow, /prerelease: true/);
 assert.match(appWorkflow, /make_latest: false/);
 assert.match(appWorkflow, /Enforce application-only release assets/);
-assert.match(appWorkflow, /docs\/v5\/BETA7_RELEASE_NOTES\.md/);
+assert.match(appWorkflow, /docs\/v5\/BETA8_RELEASE_NOTES\.md/);
 assert.match(appWorkflow, /docs\/v5\/BETA7_INSTALLATION_GUIDE\.md/);
 assert.match(appWorkflow, /docs\/v5\/BETA7_RELEASE_CHECKLIST\.md/);
 assert.doesNotMatch(appWorkflow, /body_path: docs\/v5\/BETA6_RELEASE_NOTES\.md/);

@@ -300,8 +300,8 @@ button:not(:disabled):active,
   background:
     linear-gradient(
       135deg,
-      #e11d48,
-      #be123c
+      var(--ds-error),
+      color-mix(in srgb, var(--ds-error) 72%, black)
     );
 }
 
@@ -530,9 +530,14 @@ html[data-appearance='light'] label b,html[data-appearance='light'] .empty h3,ht
 .v5-backup-list>article code{display:inline-block;max-width:100%;color:var(--ds-text)!important;background:var(--ds-surface-soft)!important;border:1px solid var(--ds-border)!important;border-radius:var(--ds-radius-small)!important;padding:3px 7px!important;overflow-wrap:anywhere}
 .v5-backup-list>article button.secondary{color:var(--ds-text)!important;background:var(--ds-surface-soft)!important;border:1px solid var(--ds-border-strong)!important}
 .v5-backup-list>article button.secondary:hover:not(:disabled){background:var(--ds-surface-hover)!important}
-html[data-appearance='light'] .v5-backup-list>article{background:#fff!important;color:#122033!important;border-color:#9db2c7!important}
-html[data-appearance='light'] .v5-backup-list>article strong,html[data-appearance='light'] .v5-backup-list>article b,html[data-appearance='light'] .v5-backup-list>article p{color:#122033!important}
-html[data-appearance='light'] .v5-backup-list>article small{color:#384b61!important}
-html[data-appearance='light'] .v5-backup-list>article code{color:#122033!important;background:#e8f1f9!important;border-color:#c8d7e6!important}
 .ota-terminal-toggle{margin:14px 0 10px;padding:12px 14px;color:var(--ds-text)!important;background:var(--ds-surface-soft);border:1px solid var(--ds-border);border-radius:var(--ds-radius-medium)}
 .ota-terminal-toggle input{width:18px;height:18px;margin:0}
+
+/* Beta.7 local audit responsive grid fix */
+.v5-observability-list.tauri-audit-list{align-content:start}
+.v5-observability-list.tauri-audit-list>.audit-entry{grid-template-columns:72px minmax(76px,96px) minmax(0,1fr);align-items:start;min-width:0;min-height:0;height:auto;padding:9px 10px}
+.v5-observability-list.tauri-audit-list>.audit-entry>time,.v5-observability-list.tauri-audit-list>.audit-entry>b,.v5-observability-list.tauri-audit-list>.audit-entry>span{min-width:0}
+.v5-observability-list.tauri-audit-list>.audit-entry>b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.v5-observability-list.tauri-audit-list>.audit-entry>span{overflow-wrap:anywhere;word-break:normal}
+@media(max-width:1100px){.v5-observability-list.tauri-audit-list>.audit-entry{grid-template-columns:68px minmax(70px,86px) minmax(0,1fr)}}
+@media(max-width:760px){.v5-observability-list.tauri-audit-list>.audit-entry{grid-template-columns:68px minmax(0,1fr);gap:5px 10px}.v5-observability-list.tauri-audit-list>.audit-entry>span{grid-column:1/-1}}

@@ -11,10 +11,10 @@
   gap: 10px;
   align-items: center;
   padding: 11px 13px;
-  border: 1px solid #313e56;
+  border: 1px solid var(--ds-border);
   border-radius: 10px;
-  background: #0b1220;
-  color: #738097;
+  background: var(--ds-surface-soft);
+  color: var(--ds-text-muted);
 }
 
 .v5-orchestration-phase strong,
@@ -25,19 +25,19 @@
 
 .v5-orchestration-phase small {
   margin-top: 3px;
-  color: #8c98aa;
+  color: var(--ds-text-secondary);
 }
 
 .v5-orchestration-phase span {
   margin-top: 4px;
-  color: #5d6a80;
+  color: var(--ds-text-muted);
   font-size: 11px;
 }
 
 .v5-orchestration-phase.passed {
   border-color:
     rgba(66, 229, 191, .28);
-  color: #42e5bf;
+  color: var(--ds-success);
   background:
     rgba(66, 229, 191, .05);
 }
@@ -45,7 +45,7 @@
 .v5-orchestration-phase.running {
   border-color:
     rgba(91, 200, 239, .32);
-  color: #5bc8ef;
+  color: var(--ds-info);
   background:
     rgba(91, 200, 239, .06);
 }
@@ -53,7 +53,7 @@
 .v5-orchestration-phase.failed {
   border-color:
     rgba(255, 135, 152, .34);
-  color: #ff8798;
+  color: var(--ds-error);
   background:
     rgba(255, 135, 152, .06);
 }

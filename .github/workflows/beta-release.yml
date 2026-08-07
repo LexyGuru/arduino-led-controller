@@ -19,7 +19,7 @@ concurrency:
 env:
   NODE_VERSION: "24"
   EXPECTED_BRANCH: next/v5-rearchitecture
-  EXPECTED_VERSION: 5.0.0-beta.7
+  EXPECTED_VERSION: 5.0.0-beta.8
 
 jobs:
   validate:
@@ -619,7 +619,7 @@ jobs:
             exit 1
           fi
 
-      - name: Remove stale Beta.6 documentation assets from existing Beta.7 release
+      - name: Remove stale legacy documentation assets from existing Beta.8 release
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ needs.validate.outputs.tag }}
@@ -640,7 +640,7 @@ jobs:
           tag_name: ${{ needs.validate.outputs.tag }}
           target_commitish: ${{ github.sha }}
           name: Arduino LED Controller ${{ needs.validate.outputs.version }}
-          body_path: docs/v5/BETA7_RELEASE_NOTES.md
+          body_path: docs/v5/BETA8_RELEASE_NOTES.md
           prerelease: true
           make_latest: false
           overwrite_files: true

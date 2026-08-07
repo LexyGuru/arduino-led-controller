@@ -1,8 +1,16 @@
 # Arduino LED Controller V5
 
+> *Direct Arduino Control & Automation*
+
+
 [![Firmware build](https://github.com/LexyGuru/arduino-led-controller/actions/workflows/firmware-build.yml/badge.svg)](https://github.com/LexyGuru/arduino-led-controller/actions/workflows/firmware-build.yml)
 [![Firmware Beta release](https://img.shields.io/badge/Firmware_Beta-release-blue?logo=githubactions)](https://github.com/LexyGuru/arduino-led-controller/actions/workflows/firmware-beta-release.yml)
 [![V5 Beta release](https://img.shields.io/badge/V5_Beta-release-blue?logo=githubactions)](https://github.com/LexyGuru/arduino-led-controller/actions/workflows/beta-release.yml)
+
+
+<p align="center">
+  <img src="docs/assets/v5-neon-panel-presentation.png" alt="Arduino LED Controller V5 – Neon Panel" />
+</p>
 
 > A Beta.7 felületfejlesztés a `feature/beta7-ui-overhaul` ágon történik.
 > A sikeresen stabilizált változások csak teljes regresszió után kerülhetnek vissza a `next/v5-rearchitecture` integrációs ágra. A `main` stabil ág nem módosul.
@@ -13,7 +21,7 @@ Többplatformos LED-vezérlő rendszer Arduino UNO R4 WiFi és három WS2812B LE
 
 | Elem | Verzió / állapot |
 |---|---|
-| Alkalmazás | `5.0.0-beta.7` |
+| Alkalmazás | `5.0.0-beta.8` |
 | Firmware | `5.0.0-beta.6` |
 | Direct API | `1.0.0` |
 | Kiadási csatorna | `beta` |

@@ -540,7 +540,7 @@ export function DashboardPage({
               </strong>
             </div>
           </div>
-          <div className="page-actions">
+          <div className="page-actions dashboard-time-actions">
             <button
               className="secondary"
               disabled={

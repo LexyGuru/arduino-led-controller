@@ -182,6 +182,10 @@ export function createDesktopApi(
         runtime
       }),
     async initializeCredentials() {
+      if (options.allowPersistentBearer !== true) {
+        return auth.snapshot();
+      }
+
       await credentialVault
         .probe?.();
 

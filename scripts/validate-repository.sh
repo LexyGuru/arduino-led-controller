@@ -36,13 +36,20 @@ for file in "${required[@]}"; do
   }
 done
 
-! find . -path ./.git -prune -o -type f \
-  \( -name .DS_Store -o -name '*.bin' -o -name '*.elf' \
-  -o -name '*.hex' -o -name '*.log' \) -print | grep -q . || {
-    echo 'HIBA: szemét/build fájl'
-    exit 1
-  }
-
+if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  ! git ls-files -z | tr '\0' '\n' | grep -Eq \
+    '(^|/)\.DS_Store$|\.bin$|\.elf$|\.hex$|\.log$' || {
+      echo 'HIBA: trackelt szemét/build fájl'
+      exit 1
+    }
+else
+  ! find . -type f \
+    \( -name .DS_Store -o -name '*.bin' -o -name '*.elf' \
+    -o -name '*.hex' -o -name '*.log' \) -print | grep -q . || {
+      echo 'HIBA: szemét/build fájl'
+      exit 1
+    }
+fi
 if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   ! git ls-files | grep -Eq \
     '(^|/)(secrets\.h|\.env|.*\.pem|.*\.p12|.*\.jks)$' || {
