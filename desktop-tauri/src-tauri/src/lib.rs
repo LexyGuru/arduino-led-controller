@@ -1504,10 +1504,10 @@ fn find_ota_tool(app: &AppHandle, config: &Config) -> Option<PathBuf> {
 fn normalized_ota_timeout_seconds(value: u64) -> u64 {
     value.clamp(30, 600)
 }
-fn use_terminal_ota(app: &AppHandle, config: &Config) -> Result<bool, String> {
+fn use_terminal_ota(_app: &AppHandle, config: &Config) -> Result<bool, String> {
     #[cfg(target_os = "macos")]
     {
-        if find_ota_tool(app, config).is_none() {
+        if find_ota_tool(_app, config).is_none() {
             return Err(
                 "macOS-en az UNO R4 OTA-frissítéshez nem található működő helyi arduinoOTA. Ellenőrzött helyek: az egyedi útvonal, /usr/local/bin/arduinoOTA és /opt/homebrew/bin/arduinoOTA."
                     .into(),
@@ -1520,6 +1520,7 @@ fn use_terminal_ota(app: &AppHandle, config: &Config) -> Result<bool, String> {
         Ok(matches!(config.ota_upload_mode.trim(), "system" | "custom"))
     }
 }
+#[cfg(target_os = "macos")]
 fn percentage_from_ota_line(line: &str) -> Option<u8> {
     let percent_at = line.find('%')?;
     let bytes = line.as_bytes();
@@ -1536,6 +1537,7 @@ fn percentage_from_ota_line(line: &str) -> Option<u8> {
         .map(|value| value.min(100))
 }
 
+#[cfg(target_os = "macos")]
 fn shell_single_quote(value: &str) -> String {
     format!("'{}'", value.replace('\'', "'\\''"))
 }

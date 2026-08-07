@@ -106,7 +106,7 @@ jobs:
           sha256sum "${OUT}" > "${OUT}.sha256"
           test "$(basename "${OUT}")" = "$(node -p "require('./firmware/firmware-release.json').binary")"
           cp firmware/firmware-release.json artifacts/
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v6
         with:
           name: firmware-beta-current
           path: artifacts/*
@@ -122,7 +122,7 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v5
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v7
         with:
           name: firmware-beta-current
           path: current
