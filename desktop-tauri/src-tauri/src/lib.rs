@@ -1097,7 +1097,6 @@ fn encode_schedule(s: &Schedule) -> Result<String, String> {
 struct GitHubRelease {
     tag_name: String,
     published_at: Option<String>,
-    body: Option<String>,
     html_url: Option<String>,
     #[serde(default)]
     prerelease: bool,
@@ -1145,15 +1144,6 @@ fn release_matches_channel(release: &GitHubRelease, channel: &str) -> bool {
         } else {
             release.prerelease
         }
-}
-
-fn release_summary(body: &str) -> String {
-    body.lines()
-        .map(str::trim)
-        .filter(|line| !line.is_empty() && !line.starts_with('#'))
-        .take(4)
-        .collect::<Vec<_>>()
-        .join(" ")
 }
 
 fn version_token_from_text(text: &str) -> Option<String> {
@@ -1510,10 +1500,6 @@ fn find_ota_tool(app: &AppHandle, config: &Config) -> Option<PathBuf> {
     candidates
         .into_iter()
         .find(|candidate| ota_tool_works(candidate))
-}
-
-fn ota_upload_mode_prefers_terminal(mode: &str) -> bool {
-    matches!(mode.trim(), "auto" | "system" | "custom" | "bundled")
 }
 fn normalized_ota_timeout_seconds(value: u64) -> u64 {
     value.clamp(30, 600)
@@ -2643,7 +2629,8 @@ async fn firmware_status(
         return Ok(status);
     }
 
-    let terminal_mode = use_terminal_ota(&app, &config).unwrap_or(false);
+    let terminal_mode_result = use_terminal_ota(&app, &config);
+    let terminal_mode = matches!(&terminal_mode_result, Ok(true));
 
     if let Ok(value) = get_json(&state, "/api/v1/status").await {
         status.arduino_online = true;
@@ -2657,7 +2644,7 @@ async fn firmware_status(
         }
     }
 
-    match use_terminal_ota(&app, &config) {
+    match terminal_mode_result {
         Ok(true) => {
             let tool = find_ota_tool(&app, &config);
             status.ota_tool_installed = tool.is_some();
@@ -3425,14 +3412,6 @@ mod tests {
         assert_eq!(value, "YXJkdWlubzpwYXNzd29yZA==");
     }
 
-    #[test]
-    fn macos_ota_modes_resolve_to_terminal_tool() {
-        assert!(ota_upload_mode_prefers_terminal("auto"));
-        assert!(ota_upload_mode_prefers_terminal("bundled"));
-        assert!(ota_upload_mode_prefers_terminal("system"));
-        assert!(ota_upload_mode_prefers_terminal("custom"));
-        assert!(!ota_upload_mode_prefers_terminal(""));
-    }
     #[test]
     fn ota_timeout_is_clamped_to_supported_range() {
         assert_eq!(normalized_ota_timeout_seconds(1), 30);

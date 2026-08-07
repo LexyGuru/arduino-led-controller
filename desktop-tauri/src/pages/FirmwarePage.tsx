@@ -23,6 +23,8 @@ import {
   useV5Firmware
 } from '../hooks/useV5Firmware';
 
+import { tauriApi } from '../services/tauriApi';
+
 import { useI18n } from '../i18n';
 
 import type {
@@ -153,7 +155,7 @@ export function FirmwarePage({
 
   const refreshCatalog = async () => {
     try {
-      setReleaseCatalog(await (await import('../services/tauriApi')).tauriApi.firmwareReleases());
+      setReleaseCatalog(await tauriApi.firmwareReleases());
       setCatalogError('');
     } catch (error) {
       setCatalogError(String(error));
@@ -653,7 +655,6 @@ export function FirmwarePage({
                     }
                     setPendingInstallVersion(null);
                     void (async () => {
-                      const { tauriApi } = await import('../services/tauriApi');
                       await tauriApi.firmwareInstallRelease(version);
                       await state.refresh({ forceCheck: true });
                     })();

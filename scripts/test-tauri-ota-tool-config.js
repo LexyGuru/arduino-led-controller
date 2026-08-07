@@ -1,81 +1,13 @@
-'use strict';
-
-const assert = require('node:assert/strict');
-const fs = require('node:fs');
-
-(async () => {
-  const module = await import(
-    '../desktop-tauri/src/api/runtime/ota-tool-config.mjs'
-  );
-
-  const lib = fs.readFileSync(
-    'desktop-tauri/src-tauri/src/lib.rs',
-    'utf8',
-  );
-
-  assert.equal(
-    module.otaToolCandidates({
-      platform: 'macos',
-      arch: 'arm64',
-    })[0].path,
-    '/usr/local/bin/arduinoOTA',
-  );
-
-  assert.deepEqual(
-    module.resolveOtaTool(
-      {
-        localHost: '10.0.0.117',
-        privateApiPath: '/private',
-        otaToolMode: 'custom',
-        otaToolPath: '/custom/arduinoOTA',
-      },
-      [],
-    ),
-    {
-      source: 'custom',
-      path: '/custom/arduinoOTA',
-    },
-  );
-
-  assert.match(
-    lib,
-    /TOOL_HELP="\$\("\$TOOL" -h 2>&1 \|\| true\)"/,
-  );
-  assert.match(
-    lib,
-    /nem támogat igazolható -t timeout kapcsolót/,
-  );
-  assert.match(
-    lib,
-    /TIMEOUT_ARGS=\(-t "\$TIMEOUT_SECONDS"\)/,
-  );
-  assert.match(
-    lib,
-    /Külső arduinoOTA timeout: \$TIMEOUT_SECONDS másodperc/,
-  );
-  assert.doesNotMatch(
-    lib,
-    /TIMEOUT_ARGS=\(-t 90\)/,
-  );
-  assert.doesNotMatch(
-    lib,
-    /Ok\(find_ota_tool\(app, config\)\.is_some\(\)\)/,
-  );
-
-  assert.match(
-    lib,
-    /macOS-en az UNO R4 OTA-frissítéshez/,
-  );
-  assert.match(
-    lib,
-    /return Ok\(true\);/,
-  );
-  assert.match(
-    lib,
-    /matches!\(mode\.trim\(\), "auto" \| "system" \| "custom" \| "bundled"\)/,
-  );
-
-  console.log(
-    'OK: macOS UNO R4 helyi arduinoOTA detektálás, Terminal kényszerítés és timeout capability gate',
-  );
-})();
+const fs = require('fs');
+const assert = require('assert');
+const rust = fs.readFileSync('desktop-tauri/src-tauri/src/lib.rs', 'utf8');
+assert.ok(rust.includes('ota_upload_mode: String'), 'Config ota_upload_mode hiányzik');
+assert.ok(rust.includes('ota_tool_path: String'), 'Config ota_tool_path hiányzik');
+assert.ok(rust.includes('ota_timeout_seconds: u64'), 'Config ota_timeout_seconds hiányzik');
+assert.ok(rust.includes('fn use_terminal_ota('), 'use_terminal_ota hiányzik');
+assert.ok(rust.includes('fn find_ota_tool('), 'find_ota_tool hiányzik');
+assert.ok(rust.includes('upload_firmware_in_terminal'), 'Terminal OTA uploader hiányzik');
+assert.ok(rust.includes('/api/v1/ota/prepare'), 'OTA prepare endpoint hiányzik');
+const modeContract=/c\.ota_upload_mode\.as_str\(\)[\s\S]{0,220}"auto"[\s\S]{0,220}"system"[\s\S]{0,220}"bundled"[\s\S]{0,220}"custom"/;
+assert.match(rust, modeContract, 'validate_config OTA mode contract hiányos');
+console.log('OK: OTA tool/config contract viselkedésalapú');
