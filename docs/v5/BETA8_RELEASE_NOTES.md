@@ -38,3 +38,11 @@ A Beta.8 a V5 desktop felület, branding, reszponzív megjelenítés és macOS c
 ### Kiadás neve
 
 **5.0.0-beta.8 — Neon Panel UI Stabilization**
+
+### Release és supply-chain
+
+- GitHub **prerelease**: `v5.0.0-beta.8`.
+- A stabil `main` branch nem módosul.
+- Az alkalmazásrelease nem tartalmaz firmware BIN-t.
+- Az LXC staging alapból nem használja a produkciós `10.0.0.123` Arduino-célt.
+- A release `SHA256SUMS`, `RELEASE-MANIFEST.json`, `SBOM.cdx.json`, `PROVENANCE.json` és `SECRET-SCAN.json` bizonyítékokat tartalmaz.

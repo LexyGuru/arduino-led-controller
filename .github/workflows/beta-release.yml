@@ -488,9 +488,9 @@ jobs:
 
       - name: Add installation assets and release documentation
         run: |
-          cp docs/v5/BETA7_INSTALLATION_GUIDE.md release-assets/
-          cp docs/v5/BETA7_RELEASE_NOTES.md release-assets/
-          cp docs/v5/BETA7_RELEASE_CHECKLIST.md release-assets/
+          cp docs/v5/BETA8_INSTALLATION_GUIDE.md release-assets/
+          cp docs/v5/BETA8_RELEASE_NOTES.md release-assets/
+          cp docs/v5/BETA8_RELEASE_CHECKLIST.md release-assets/
           cp release-versions.json release-assets/
           cp deploy/install-beta-lxc.sh release-assets/
           cp deploy/beta-lxc.env.example release-assets/
@@ -626,7 +626,7 @@ jobs:
         run: |
           set -euo pipefail
           if gh release view "${TAG}" >/dev/null 2>&1; then
-            for name in BETA6_INSTALLATION_GUIDE.md BETA6_RELEASE_NOTES.md BETA6_RELEASE_CHECKLIST.md; do
+            for name in BETA6_INSTALLATION_GUIDE.md BETA6_RELEASE_NOTES.md BETA6_RELEASE_CHECKLIST.md BETA7_INSTALLATION_GUIDE.md BETA7_RELEASE_NOTES.md BETA7_RELEASE_CHECKLIST.md; do
               asset_id="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${TAG}" --jq ".assets[] | select(.name==\"${name}\") | .id" | head -n 1)"
               if [ -n "${asset_id}" ]; then
                 gh api --method DELETE "repos/${GITHUB_REPOSITORY}/releases/assets/${asset_id}"

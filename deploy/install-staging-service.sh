@@ -7,6 +7,8 @@ ROOT_DIR="$(
   )/.." &&
   pwd
 )"
+RELEASE_TARGET_VERSION_DEFAULT="$(tr -d '[:space:]' < "${ROOT_DIR}/VERSION")"
+RELEASE_CANDIDATE_DEFAULT="${RELEASE_TARGET_VERSION_DEFAULT#*-}-gate"
 UNIT_SOURCE="${UNIT_SOURCE:-${ROOT_DIR}/deploy/systemd/arduino-led-controller-staging.service}"
 UNIT_TARGET="${UNIT_TARGET:-/etc/systemd/system/arduino-led-controller-staging.service}"
 ENV_SOURCE="${ENV_SOURCE:-${ROOT_DIR}/deploy/staging.env.example}"
@@ -26,8 +28,8 @@ STAGING_PORT="${STAGING_PORT:-3100}"
 STAGING_BIND_HOST="${STAGING_BIND_HOST:-127.0.0.1}"
 STAGING_ARDUINO_IP="${STAGING_ARDUINO_IP:-127.0.0.1}"
 STAGING_ARDUINO_PORT="${STAGING_ARDUINO_PORT:-65535}"
-STAGING_ARDUINO_API_PATH="${STAGING_ARDUINO_API_PATH:-/__beta1_staging_disabled__}"
-STAGING_ARDUINO_API_KEY="${STAGING_ARDUINO_API_KEY:-<BETA1_STAGING_DISABLED_API_KEY>}"
+STAGING_ARDUINO_API_PATH="${STAGING_ARDUINO_API_PATH:-/__beta8_staging_disabled__}"
+STAGING_ARDUINO_API_KEY="${STAGING_ARDUINO_API_KEY:-<BETA8_STAGING_DISABLED_API_KEY>}"
 ALLOW_PRODUCTION_ARDUINO="${ALLOW_PRODUCTION_ARDUINO:-0}"
 SYSTEMCTL_COMMAND="${SYSTEMCTL_COMMAND:-systemctl}"
 
@@ -96,8 +98,8 @@ upsert_env LEGACY_LOCAL_SCHEDULE_ADAPTERS_ENABLED 1
 upsert_env LEGACY_SUPPRESS_LOCAL_SCHEDULE_CRON 1
 upsert_env LEGACY_SUPPRESS_STATUS_CRON 1
 upsert_env RELEASE_CHANNEL beta
-upsert_env RELEASE_CANDIDATE beta.7-gate
-upsert_env RELEASE_TARGET_VERSION 5.0.0-beta.7
+upsert_env RELEASE_CANDIDATE beta.8-gate
+upsert_env RELEASE_TARGET_VERSION 5.0.0-beta.8
 upsert_env RELEASE_GATE_REPORT_DIR "${RELEASE_GATE_DIR}"
 upsert_env RELEASE_PROMOTION_APPROVAL_FILE "${RELEASE_GATE_DIR}/beta1-promotion-approval.json"
 upsert_env RELEASE_GATE_MAX_AGE_HOURS 72
@@ -145,7 +147,7 @@ try {
 }
 NODE
 then
-  RUNTIME_SETTINGS_BACKUP="${CONFIG_DIR}/server-settings.pre-beta1-isolation.$(date -u +%Y%m%dT%H%M%SZ).json"
+  RUNTIME_SETTINGS_BACKUP="${CONFIG_DIR}/server-settings.pre-beta8-isolation.$(date -u +%Y%m%dT%H%M%SZ).json"
   mv "${RUNTIME_SETTINGS_FILE}" "${RUNTIME_SETTINGS_BACKUP}"
   chmod 0600 "${RUNTIME_SETTINGS_BACKUP}"
   echo "Staging runtime settings elkülönítve: ${RUNTIME_SETTINGS_BACKUP}"
@@ -154,7 +156,7 @@ fi
 "${SYSTEMCTL_COMMAND}" daemon-reload
 "${SYSTEMCTL_COMMAND}" enable arduino-led-controller-staging.service
 
-echo 'A Beta.1 staging systemd szolgáltatás telepítve és összehangolva.'
+echo 'A Beta.8 staging systemd szolgáltatás telepítve és összehangolva.'
 echo "Környezeti fájl: ${ENV_TARGET}"
 echo "Staging release könyvtár: ${RELEASES_DIR}"
 echo "Staging adatkönyvtár: ${DATA_DIR}"
