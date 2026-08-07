@@ -14,7 +14,7 @@ Többplatformos LED-vezérlő rendszer Arduino UNO R4 WiFi és három WS2812B LE
 | Elem | Verzió / állapot |
 |---|---|
 | Alkalmazás | `5.0.0-beta.7` |
-| Firmware | `5.0.0-beta.5` |
+| Firmware | `5.0.0-beta.6` |
 | Direct API | `1.0.0` |
 | Kiadási csatorna | `beta` |
 | Aktuális kiadás | Beta.6 |
@@ -23,7 +23,7 @@ Többplatformos LED-vezérlő rendszer Arduino UNO R4 WiFi és három WS2812B LE
 | Integrációs ág | `next/v5-rearchitecture` |
 | Stabil ág | `main` |
 
-A Beta.7 az új desktop felület, a Theme Engine, az auditált műveletek, a csatornahelyes firmware-katalógus, a macOS UNO R4 Terminal OTA útvonal és a Direct API v1-only firmware első integrált tesztkiadása. A hozzá párosított firmware 5.0.0-beta.5; a Direct API verziója változatlanul 1.0.0.
+A Beta.7 az új desktop felület, a Theme Engine, az auditált műveletek, a csatornahelyes firmware-katalógus, a macOS UNO R4 Terminal OTA útvonal és a Direct API v1-only firmware első integrált tesztkiadása. A hozzá párosított firmware 5.0.0-beta.6; a Direct API verziója változatlanul 1.0.0.
 
 ## Fő funkciók
 
@@ -90,7 +90,7 @@ A Logok oldalon:
 
 ## Firmware és Direct API
 
-A jelenlegi ajánlott Beta firmware: `4.3.0-beta.6`. A Direct API verziója `1.0.0`.
+A jelenlegi ajánlott Beta firmware: `5.0.0-beta.6`. A Direct API verziója `1.0.0`.
 
 Biztonsági tulajdonságok:
 
@@ -186,4 +186,4 @@ A repository licencfeltételeit a projekt tulajdonosa határozza meg. Külső te
 
 ### Beta firmware OTA Exclusive Mode
 
-A `5.0.0-beta.5` firmware OTA alatt kizárólag a Wi-Fi kapcsolatot, az ArduinoOTA motort és a LED Matrix visszajelzést hagyja aktívan; a többi alkalmazás-alrendszer szünetel a flash-finalizálás izolálásához.
+A `5.0.0-beta.6` firmware OTA alatt kizárólag a Wi-Fi kapcsolatot, az ArduinoOTA motort és a LED Matrix visszajelzést hagyja aktívan; a többi alkalmazás-alrendszer szünetel a flash-finalizálás alatt. Ha az `/api/v1/ota/prepare` után nem csatlakozik feltöltő a 30 másodperces ablakban, a firmware automatikusan kilép az Exclusive Mode-ból és visszaállítja a normál szolgáltatásokat. Az OTA folyamat nem törli és nem írja újra a schedule rekordokat.

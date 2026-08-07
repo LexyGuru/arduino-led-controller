@@ -3,7 +3,7 @@
 ## Állapot
 
 - Alkalmazásalap: `5.0.0-beta.7`
-- Firmware-alap: `5.0.0-beta.5`
+- Firmware-alap: `5.0.0-beta.6`
 - Direct API: `1.0.0`
 - Fejlesztési ág: `feature/beta7-ui-overhaul`
 - Integrációs célág: `next/v5-rearchitecture`
@@ -77,4 +77,4 @@ A merge előtt vizuálisan is ellenőrizendő:
 - Tauri auditkonzol;
 - LED-, schedule-, időszinkron- és OTA-audit.
 
-- Firmware 5.0.0-beta.5: OTA Exclusive Mode tesztprofil; OTA alatt csak Wi-Fi + ArduinoOTA + LED Matrix aktív.
+- Firmware 5.0.0-beta.6: OTA Exclusive Mode tesztprofil; OTA alatt csak Wi-Fi + ArduinoOTA + LED Matrix aktív.

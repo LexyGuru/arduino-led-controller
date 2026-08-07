@@ -18,7 +18,7 @@ for (const marker of [
   'Theme Engine',
   'Tauri auditkonzol',
   'Legutóbbi műveletek',
-  '4.3.0-beta.6',
+  '5.0.0-beta.6',
   'Direct API',
   'A/B EEPROM',
 ]) {

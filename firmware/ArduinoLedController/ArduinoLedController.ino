@@ -14,7 +14,7 @@
 #include <stdarg.h>
 #include "secrets.h"
 
-#define FIRMWARE_VERSION "5.0.0-beta.5"
+#define FIRMWARE_VERSION "5.0.0-beta.6"
 #define FIRMWARE_FEATURE "f14-direct-api-v1-only-storage-udp-ntp-dst-ota-exclusive"
 #define OTA_MAINTENANCE_MODE_V1 1
 #define DIRECT_API_VERSION "1.0.0"
@@ -2953,10 +2953,13 @@ void loop() {
   if (wifiHasAddress()) {
     startOta();
     if (otaReady) ArduinoOTA.poll();
-    if (otaExclusiveMode || otaTransferActive) return;
   }
 
+  // OTA Exclusive Mode must still service its prepare timeout. If no uploader
+  // connects within the prepare window, updateOtaVisualState() leaves exclusive
+  // mode and restores the normal runtime without requiring a reboot.
   updateOtaVisualState();
+  if (otaExclusiveMode || otaTransferActive) return;
   if (otaPrepareModeActive()) return;
 
   // Release build: USB command diagnostics disabled.

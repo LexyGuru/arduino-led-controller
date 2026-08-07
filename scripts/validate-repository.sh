@@ -26,6 +26,7 @@ required=(
   docs/v5/BETA6_RELEASE_NOTES.md
   docs/v5/V5_REARCHITECTURE_CHECKLIST.md
   scripts/test-ntp-timezone-contract.js
+  scripts/test-firmware-ota-production-regression.js
 )
 
 for file in "${required[@]}"; do
@@ -88,6 +89,8 @@ grep -Fq \
   firmware/ArduinoLedController/ArduinoLedController.ino
 
 node scripts/test-ntp-timezone-contract.js
+node scripts/test-firmware-ota-maintenance-mode.js
+node scripts/test-firmware-ota-production-regression.js
 node scripts/test-firmware-430-beta4-scheduler-hotfix.js
 node scripts/test-v5-documentation-status.js
 node scripts/test-beta-release-workflow.js
