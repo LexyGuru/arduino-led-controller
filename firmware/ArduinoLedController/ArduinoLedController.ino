@@ -14,8 +14,8 @@
 #include <stdarg.h>
 #include "secrets.h"
 
-#define FIRMWARE_VERSION "5.0.0-beta.4"
-#define FIRMWARE_FEATURE "f14-direct-api-v1-only-storage-udp-ntp-dst-ota-maintenance"
+#define FIRMWARE_VERSION "5.0.0-beta.5"
+#define FIRMWARE_FEATURE "f14-direct-api-v1-only-storage-udp-ntp-dst-ota-exclusive"
 #define OTA_MAINTENANCE_MODE_V1 1
 #define DIRECT_API_VERSION "1.0.0"
 #define DEVICE_NAME "arduino-led-controller"
@@ -271,7 +271,7 @@ const char* NTP_SERVERS[] = {
 constexpr uint8_t NTP_SERVER_COUNT = sizeof(NTP_SERVERS) / sizeof(NTP_SERVERS[0]);
 StoredSchedule schedules[SCHEDULE_MAX] = {};
 bool networkSettingsStored = false, apiSettingsStored = false;
-bool schedulesStored = false, otaReady = false, otaTransferActive = false;
+bool schedulesStored = false, otaReady = false, otaTransferActive = false, otaExclusiveMode = false;
 bool timeSynced = false, wifiReported = false, cachedWifiConnected = false;
 bool pirRaw[STRIP_COUNT] = {}, pirActive[STRIP_COUNT] = {};
 bool manualOverride[STRIP_COUNT] = {}, httpTraceEnabled = false;
@@ -415,6 +415,7 @@ void storeConsoleLine(const char* type, const char* message, bool prefix) {
   Serial.println(message);
 }
 void logEvent(const char* type, const char* message) {
+  if (otaExclusiveMode) return;
   storeConsoleLine(type, message, true);
 }
 void consoleLine(const char* message) {
@@ -952,11 +953,20 @@ void stopNtpUdpService() {
   ntpUdp.stop();
   ntpUdpActive = false;
 }
-void enterOtaMaintenanceMode() {
-  // WiFiS3/UNO R4: az OTA listener megnyitasa utan az UDP socketeket nem zarjuk ujra.
-  Serial.println("[info] OTA maintenance mode: HTTP, schedule, LED es hatterfeladatok szuneteltetve; NTP UDP valtozatlan");
+void stopNeoPixelsForOta() {
+  for (uint8_t i = 0; i < STRIP_COUNT; i++) {
+    strip[i].clear();
+    strip[i].show();
+  }
 }
-void leaveOtaMaintenanceMode() {
+void enterOtaExclusiveMode() {
+  otaExclusiveMode = true;
+  stopNtpUdpService();
+  stopNeoPixelsForOta();
+  showMatrix(MATRIX_OTA);
+}
+void leaveOtaExclusiveMode() {
+  otaExclusiveMode = false;
   if (wifiHasAddress()) startNtpUdpService();
 }
 bool readUdpNtp(const char* hostname, unsigned long& epochOut) {
@@ -1336,8 +1346,7 @@ void restoreNormalVisualState() {
 void updateOtaVisualState() {
   if (otaPrepareUntil && !otaPrepareModeActive() && !otaTransferActive) {
     otaPrepareUntil = 0;
-    leaveOtaMaintenanceMode();
-    logEvent("info", "OTA elokeszitesi idoablak lejart; hatter szolgaltatasok visszaallitva");
+    leaveOtaExclusiveMode();
     restoreNormalVisualState();
   }
   if (otaErrorIndicatorUntil && !otaErrorIndicatorActive() && !otaTransferActive) {
@@ -1346,17 +1355,15 @@ void updateOtaVisualState() {
   }
 }
 void otaTransferStarted() {
+  otaExclusiveMode = true;
   otaTransferActive = true;
   otaPrepareUntil = otaErrorIndicatorUntil = 0;
   otaLastTransferStartedAt = millis();
   otaLastErrorCode = 0;
   showMatrix(MATRIX_OTA);
-  showOtaIndicator(0,70,255);
 }
 void otaBeforeApply() {
-  logEvent("success", "OTA kesz - zold jelzes, ujrainditas");
   showMatrix(MATRIX_OK);
-  showOtaIndicator(0,255,60);
 }
 void otaTransferError(int code, const char*) {
   otaTransferActive = false;
@@ -1364,12 +1371,12 @@ void otaTransferError(int code, const char*) {
   otaLastErrorCode = code;
   otaLastErrorAt = millis();
   otaErrorIndicatorUntil = millis() + OTA_ERROR_INDICATOR_TIME;
+  leaveOtaExclusiveMode();
   char message[96];
   snprintf(message, sizeof(message), "OTA hiba: %d - piros jelzes %lu mp", code,
     OTA_ERROR_INDICATOR_TIME / 1000UL);
   logEvent("error", message);
   showMatrix(MATRIX_ERROR);
-  showOtaIndicator(255,0,0);
 }
 void startOta() {
   if (!wifiHasAddress() || otaReady || !networkSettings.otaPassword[0]) return;
@@ -1394,9 +1401,7 @@ bool prepareOtaService() {
   lastOtaRestartAt = millis();
   otaPrepareUntil = millis() + OTA_PREPARE_WINDOW;
   otaErrorIndicatorUntil = 0;
-  showMatrix(MATRIX_OTA);
-  showOtaIndicator(0,70,255);
-  logEvent("info", "OTA listener elokeszitve 30 masodpercre; NTP UDP valtozatlan");
+  enterOtaExclusiveMode();
   return true;
 }
 
@@ -2948,7 +2953,7 @@ void loop() {
   if (wifiHasAddress()) {
     startOta();
     if (otaReady) ArduinoOTA.poll();
-    if (otaTransferActive) return;
+    if (otaExclusiveMode || otaTransferActive) return;
   }
 
   updateOtaVisualState();
@@ -2969,6 +2974,7 @@ void loop() {
   if (!wifiHasAddress()) {
     wifiReported = false;
     otaTransferActive = false;
+    otaExclusiveMode = false;
     otaPrepareUntil = 0;
     stopNtpUdpService();
     if (millis() - lastWifi > WIFI_RETRY) {

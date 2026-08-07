@@ -7,7 +7,7 @@ Dátum: 2026-08-06
 | Elem | Verzió |
 |---|---|
 | Desktop alkalmazás | `5.0.0-beta.7` |
-| Arduino firmware | `5.0.0-beta.4` |
+| Arduino firmware | `5.0.0-beta.5` |
 | Direct API | `1.0.0` |
 | Fejlesztési ág | `feature/beta7-ui-overhaul` |
 
@@ -35,3 +35,7 @@ Az OTA maintenance mód az OTA előkészítésekor változatlanul hagyja az NTP 
 ## Kiadási döntés
 
 Ez integrációs tesztcommit. Tag és GitHub Release még nem készül.
+
+## Firmware 5.0.0-beta.5 OTA Exclusive Mode
+
+Az `/api/v1/ota/prepare` után a firmware kizárólag a Wi-Fi kapcsolatot, az ArduinoOTA poll ciklust és a LED Matrix OTA-visszajelzését tartja aktívan. Az NTP UDP socket leáll, a NeoPixel frissítés leáll, a RAM-log írás némított, és a fő loop nem futtat HTTP-, scheduler-, EEPROM-, NTP-, LED- vagy egyéb háttérfeladatot az OTA ablak alatt. Hiba vagy előkészítési timeout után a normál szolgáltatások visszaállnak.

@@ -14,7 +14,7 @@ Többplatformos LED-vezérlő rendszer Arduino UNO R4 WiFi és három WS2812B LE
 | Elem | Verzió / állapot |
 |---|---|
 | Alkalmazás | `5.0.0-beta.7` |
-| Firmware | `5.0.0-beta.4` |
+| Firmware | `5.0.0-beta.5` |
 | Direct API | `1.0.0` |
 | Kiadási csatorna | `beta` |
 | Aktuális kiadás | Beta.6 |
@@ -23,7 +23,7 @@ Többplatformos LED-vezérlő rendszer Arduino UNO R4 WiFi és három WS2812B LE
 | Integrációs ág | `next/v5-rearchitecture` |
 | Stabil ág | `main` |
 
-A Beta.7 az új desktop felület, a Theme Engine, az auditált műveletek, a csatornahelyes firmware-katalógus, a macOS UNO R4 Terminal OTA útvonal és a Direct API v1-only firmware első integrált tesztkiadása. A hozzá párosított firmware 5.0.0-beta.4; a Direct API verziója változatlanul 1.0.0.
+A Beta.7 az új desktop felület, a Theme Engine, az auditált műveletek, a csatornahelyes firmware-katalógus, a macOS UNO R4 Terminal OTA útvonal és a Direct API v1-only firmware első integrált tesztkiadása. A hozzá párosított firmware 5.0.0-beta.5; a Direct API verziója változatlanul 1.0.0.
 
 ## Fő funkciók
 
@@ -183,3 +183,7 @@ A `v5.0.0-beta.X` release-ek kizárólag alkalmazás-, mobil- és LXC-csomagokat
 ## Licenc
 
 A repository licencfeltételeit a projekt tulajdonosa határozza meg. Külső terjesztés előtt külön `LICENSE` fájl szükséges.
+
+### Beta firmware OTA Exclusive Mode
+
+A `5.0.0-beta.5` firmware OTA alatt kizárólag a Wi-Fi kapcsolatot, az ArduinoOTA motort és a LED Matrix visszajelzést hagyja aktívan; a többi alkalmazás-alrendszer szünetel a flash-finalizálás izolálásához.
