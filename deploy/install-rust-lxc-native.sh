@@ -122,7 +122,14 @@ catalog={
     "directApiVersion":v.get("directApi"),
     "board":v.get("board"),
     "otaPort":v.get("otaPort"),
-    "artifacts":[{"version":v.get("firmware"),"board":v.get("board"),"otaPort":v.get("otaPort"),"installMode":"desktop-system-ota"}]
+    "artifacts":[{
+        "version":v.get("firmware"),
+        "board":v.get("board"),
+        "otaPort":v.get("otaPort"),
+        "installMode":"native-rust-http",
+        "downloadUrl":"https://github.com/LexyGuru/arduino-led-controller/releases/download/Arduino_LED_Controller_Firmware_BETA/Arduino_LED_Controller_Firmware_"+str(v.get("firmware"))+"_UNO_R4_WiFi.bin",
+        "checksumUrl":"https://github.com/LexyGuru/arduino-led-controller/releases/download/Arduino_LED_Controller_Firmware_BETA/Arduino_LED_Controller_Firmware_"+str(v.get("firmware"))+"_UNO_R4_WiFi.bin.sha256"
+    }]
 }
 with open(dst,"w",encoding="utf-8") as f:
     json.dump(catalog,f,indent=2,ensure_ascii=False)
@@ -153,6 +160,19 @@ echo "WEB_LXC_INSTALL=SUCCESS"
 if [[ ! -f "$ETC/lxc.env" ]]; then
   install -m 0600 "${SOURCE_ROOT}/deploy/rust-lxc.env.example" "$ETC/lxc.env"
 fi
+grep -q '^ARDUINO_OTA_PORT=' "$ETC/lxc.env" || printf '\nARDUINO_OTA_PORT=65280\n' >> "$ETC/lxc.env"
+grep -q '^ARDUINO_OTA_PASSWORD=' "$ETC/lxc.env" || printf 'ARDUINO_OTA_PASSWORD=CHANGE_ME\n' >> "$ETC/lxc.env"
+if ! grep -q '^LXC_OTA_CONTROL_TOKEN=' "$ETC/lxc.env" || grep -q '^LXC_OTA_CONTROL_TOKEN=CHANGE_ME$' "$ETC/lxc.env"; then
+  TOKEN="$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')"
+  if grep -q '^LXC_OTA_CONTROL_TOKEN=' "$ETC/lxc.env"; then
+    sed -i.bak "s|^LXC_OTA_CONTROL_TOKEN=.*$|LXC_OTA_CONTROL_TOKEN=${TOKEN}|" "$ETC/lxc.env"
+    rm -f "$ETC/lxc.env.bak"
+  else
+    printf 'LXC_OTA_CONTROL_TOKEN=%s\n' "$TOKEN" >> "$ETC/lxc.env"
+  fi
+fi
+chmod 0600 "$ETC/lxc.env"
+echo "LXC_OTA_ENV_MIGRATION=SUCCESS"
 
 install -m 0644 \
   "${SOURCE_ROOT}/deploy/systemd/arduino-led-controller-rust.service" \

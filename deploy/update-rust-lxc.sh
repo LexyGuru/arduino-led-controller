@@ -84,6 +84,17 @@ test -f "${SRC}/web-lxc/package.json" || die "web-lxc hiányzik."
 test -f "${SRC}/rust/Cargo.toml" || die "Rust workspace hiányzik."
 
 VERSION="$(tr -d '[:space:]' < "${SRC}/VERSION")"
+LXC_ENV="/etc/${APP}/lxc.env"
+if [[ -f "$LXC_ENV" ]]; then
+  grep -q '^ARDUINO_OTA_PORT=' "$LXC_ENV" || printf '\nARDUINO_OTA_PORT=65280\n' >> "$LXC_ENV"
+  grep -q '^ARDUINO_OTA_PASSWORD=' "$LXC_ENV" || printf 'ARDUINO_OTA_PASSWORD=CHANGE_ME\n' >> "$LXC_ENV"
+  if ! grep -q '^LXC_OTA_CONTROL_TOKEN=' "$LXC_ENV"; then
+    TOKEN="$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')"
+    printf 'LXC_OTA_CONTROL_TOKEN=%s\n' "$TOKEN" >> "$LXC_ENV"
+  fi
+  chmod 0600 "$LXC_ENV"
+  log "LXC_OTA_ENV_MIGRATION=SUCCESS"
+fi
 
 python3 - "${SRC}/release-versions.json" "${STATE_DIR}/firmware-catalog.json.new" <<'PYCAT'
 import json,sys
@@ -100,7 +111,14 @@ catalog={
     "directApiVersion":v.get("directApi"),
     "board":v.get("board"),
     "otaPort":v.get("otaPort"),
-    "artifacts":[{"version":v.get("firmware"),"board":v.get("board"),"otaPort":v.get("otaPort"),"installMode":"desktop-system-ota"}]
+    "artifacts":[{
+        "version":v.get("firmware"),
+        "board":v.get("board"),
+        "otaPort":v.get("otaPort"),
+        "installMode":"native-rust-http",
+        "downloadUrl":"https://github.com/LexyGuru/arduino-led-controller/releases/download/Arduino_LED_Controller_Firmware_BETA/Arduino_LED_Controller_Firmware_"+str(v.get("firmware"))+"_UNO_R4_WiFi.bin",
+        "checksumUrl":"https://github.com/LexyGuru/arduino-led-controller/releases/download/Arduino_LED_Controller_Firmware_BETA/Arduino_LED_Controller_Firmware_"+str(v.get("firmware"))+"_UNO_R4_WiFi.bin.sha256"
+    }]
 }
 with open(dst,"w",encoding="utf-8") as f:
     json.dump(catalog,f,indent=2,ensure_ascii=False)

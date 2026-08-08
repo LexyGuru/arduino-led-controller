@@ -19,7 +19,12 @@ export type ServerInfo={
   service:string;platform:string;configPath:string;updateConfigPath:string;
   installedVersion:string|null;installedCommit:string|null;channel:string|null;
   branch:string|null;firmwareCatalogPath:string|null;
-  firmwareCatalogAvailable:boolean;webRoot:string
+  firmwareCatalogAvailable:boolean;webRoot:string;
+  otaEngine?:string;otaSupported?:boolean;otaPasswordConfigured?:boolean;otaControlTokenConfigured?:boolean
+};
+export type OtaRuntime={
+  runtime?:{state?:string;phase?:string;message?:string;progress?:number;busy?:boolean;expectedVersion?:string|null;installedVersion?:string|null;lastError?:string|null};
+  configured?:boolean;controlTokenConfigured?:boolean;engine?:string;supportedPlatforms?:string[];mobileSupported?:boolean
 };
 
 async function json<T>(url:string,init?:RequestInit):Promise<T>{
@@ -75,6 +80,8 @@ export const api={
   deleteAllSchedules:()=>json<any>('/api/v1/schedules',{method:'DELETE'}),
   otaStatus:()=>json<any>('/api/v1/ota/status'),
   firmwareCatalog:()=>json<any>('/api/v1/server/firmware/catalog'),
+  otaRuntime:()=>json<OtaRuntime>('/api/v1/server/ota/runtime'),
+  installFirmware:(token:string,version?:string)=>json<any>('/api/v1/server/firmware/install',{method:'POST',headers:{'X-LXC-OTA-Token':token},body:JSON.stringify({version:version||null})}),
   serverInfo:()=>json<ServerInfo>('/api/v1/server/info'),
   setLed:(strip:Strip)=>json<any>(`/api/v1/leds/${strip.id}`,{method:'PUT',body:JSON.stringify({enabled:strip.enabled,brightness:strip.brightness,effect:strip.effect,speed:strip.speed,color:strip.color})}),
   setAllLeds:(patch:Partial<Strip>)=>json<any>('/api/v1/leds/all',{method:'POST',body:JSON.stringify(patch)})

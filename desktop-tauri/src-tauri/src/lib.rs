@@ -1470,22 +1470,41 @@ fn find_ota_tool(app: &AppHandle, config: &Config) -> Option<PathBuf> {
 fn normalized_ota_timeout_seconds(value: u64) -> u64 {
     value.clamp(30, 600)
 }
-fn use_terminal_ota(_app: &AppHandle, config: &Config) -> Result<bool, String> {
+fn use_terminal_ota(app: &AppHandle, config: &Config) -> Result<bool, String> {
+    let mode = config.ota_upload_mode.trim();
+
+    // Universal default: Windows, macOS és Linux ugyanazt a beépített
+    // Rust HTTP OTA-motort használja. Külső program nem szükséges.
+    if matches!(mode, "auto" | "bundled") {
+        return Ok(false);
+    }
+
     #[cfg(target_os = "macos")]
     {
-        if find_ota_tool(_app, config).is_none() {
-            return Err(
-                "macOS-en az UNO R4 OTA-frissítéshez nem található működő helyi arduinoOTA. Ellenőrzött helyek: az egyedi útvonal, /usr/local/bin/arduinoOTA és /opt/homebrew/bin/arduinoOTA."
-                    .into(),
-            );
+        // A külső arduinoOTA csak opcionális legacy mód macOS-en.
+        if matches!(mode, "system" | "custom") {
+            if find_ota_tool(app, config).is_none() {
+                return Err(
+                    "A kiválasztott külső OTA módhoz nem található működő arduinoOTA. Válaszd az auto vagy bundled módot a platformfüggetlen beépített Rust OTA-motorhoz."
+                        .into(),
+                );
+            }
+            return Ok(true);
         }
-        return Ok(true);
     }
+
     #[cfg(not(target_os = "macos"))]
     {
-        Ok(matches!(config.ota_upload_mode.trim(), "system" | "custom"))
+        let _ = app;
+        // Windows/Linux: system/custom esetén is natív Rust fallback.
+        if matches!(mode, "system" | "custom") {
+            return Ok(false);
+        }
     }
+
+    Ok(false)
 }
+
 #[cfg(target_os = "macos")]
 fn percentage_from_ota_line(line: &str) -> Option<u8> {
     let percent_at = line.find('%')?;
@@ -2763,7 +2782,7 @@ async fn firmware_update_inner(
             find_ota_tool(app, &config).ok_or("A Terminal OTA módhoz nem található arduinoOTA.")?;
         format!("macOS Terminal + arduinoOTA ({})", tool.to_string_lossy())
     } else {
-        "Beépített Tauri/Rust HTTP OTA-motor".to_string()
+        "Beépített Rust HTTP OTA-motor (Windows/macOS/Linux)".to_string()
     };
     emit_ota_progress(
         app,

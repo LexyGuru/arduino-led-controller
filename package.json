@@ -167,7 +167,7 @@
     "test:beta7-topbar-v5-header": "node scripts/test-beta7-topbar-v5-header.js",
     "test:beta7-keychain-single-access": "node scripts/test-beta7-keychain-single-access.js",
     "test:beta8-neon-panel-release": "node scripts/test-beta8-neon-panel-release.js",
-    "test:rust-lxc": "npm run test:rust-lxc-shared-core && npm run test:rust-lxc-runtime-deploy && npm run test:proxmox-debian13 && npm run test:rust-lxc-web-ui && npm run test:rust-lxc-self-update && npm run test:rust-lxc-self-update-bundle && npm run test:proxmox-installer-ux && npm run test:proxmox-installer-contract-audit && npm run test:proxmox-runtime-bundle-contract && npm run test:rust-lxc-functional-overhaul && npm run test:rust-lxc-updater-toolchain-path && npm run test:rust-lxc-web-permissions-runtime-gate",
+    "test:rust-lxc": "npm run test:rust-lxc-shared-core && npm run test:rust-lxc-runtime-deploy && npm run test:proxmox-debian13 && npm run test:rust-lxc-web-ui && npm run test:rust-lxc-self-update && npm run test:rust-lxc-self-update-bundle && npm run test:proxmox-installer-ux && npm run test:proxmox-installer-contract-audit && npm run test:proxmox-runtime-bundle-contract && npm run test:rust-lxc-functional-overhaul && npm run test:rust-lxc-updater-toolchain-path && npm run test:rust-lxc-web-permissions-runtime-gate && npm run test:universal-native-ota",
     "test:rust-lxc-shared-core": "node scripts/test-rust-lxc-shared-core.js",
     "test:rust-lxc-runtime-deploy": "node scripts/test-rust-lxc-runtime-deploy.js",
     "test:proxmox-debian13": "node scripts/test-proxmox-debian13-installer.js",
@@ -180,7 +180,8 @@
     "test:proxmox-runtime-bundle-contract": "node scripts/test-proxmox-runtime-bundle-contract.js",
     "test:rust-lxc-functional-overhaul": "node scripts/test-rust-lxc-functional-overhaul.js",
     "test:rust-lxc-updater-toolchain-path": "node scripts/test-rust-lxc-updater-toolchain-path.js",
-    "test:rust-lxc-web-permissions-runtime-gate": "node scripts/test-rust-lxc-web-permissions-runtime-gate.js"
+    "test:rust-lxc-web-permissions-runtime-gate": "node scripts/test-rust-lxc-web-permissions-runtime-gate.js",
+    "test:universal-native-ota": "node scripts/test-universal-native-ota.js"
   },
   "engines": {
     "node": ">=20"

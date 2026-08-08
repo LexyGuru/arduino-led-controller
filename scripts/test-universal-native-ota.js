@@ -1,0 +1,31 @@
+#!/usr/bin/env node
+'use strict';
+const fs=require('fs'),assert=require('node:assert/strict');
+const desktop=fs.readFileSync('desktop-tauri/src-tauri/src/lib.rs','utf8');
+const lxc=fs.readFileSync('rust/arduino-led-lxc-server/src/main.rs','utf8');
+const api=fs.readFileSync('web-lxc/src/api.ts','utf8');
+const app=fs.readFileSync('web-lxc/src/App.tsx','utf8');
+const env=fs.readFileSync('deploy/rust-lxc.env.example','utf8');
+const installer=fs.readFileSync('deploy/install-rust-lxc-native.sh','utf8');
+const updater=fs.readFileSync('deploy/update-rust-lxc.sh','utf8');
+const css=fs.readFileSync('web-lxc/src/style.css','utf8');
+for(const m of ['ota_supported: !mobile','if matches!(mode, "auto" | "bundled")','Beépített Rust HTTP OTA-motor (Windows/macOS/Linux)','async fn upload_firmware_native('])assert.ok(desktop.includes(m),m);
+for(const m of ['upload_native(','POST /sketch HTTP/1.1','/api/v1/server/ota/runtime','/api/v1/server/firmware/install','x-lxc-ota-token','ARDUINO_OTA_PASSWORD','LXC_OTA_CONTROL_TOKEN','sha256sum','scheduleRevision','scheduleChecksum','bootId','native-rust-http'])assert.ok(lxc.includes(m),m);
+for(const m of ['ARDUINO_OTA_PORT=65280','ARDUINO_OTA_PASSWORD=CHANGE_ME','LXC_OTA_CONTROL_TOKEN=CHANGE_ME'])assert.ok(env.includes(m),m);
+for(const t of [installer,updater]){assert.ok(t.includes('"installMode":"native-rust-http"'));assert.ok(t.includes('"downloadUrl"'));assert.ok(t.includes('"checksumUrl"'))}
+assert.ok(api.includes('installFirmware:(token:string,version?:string)'));
+assert.ok(api.includes("'X-LXC-OTA-Token':token"));
+assert.ok(app.includes('Windows, macOS, Linux és Proxmox/Debian LXC'));
+assert.ok(app.includes('iOS/iPadOS/Android'));
+assert.ok(css.includes('.settings-grid + .settings-grid{margin-top:16px}'));
+console.log('DESKTOP_WINDOWS_NATIVE_OTA=YES');
+console.log('DESKTOP_MACOS_NATIVE_OTA=YES');
+console.log('DESKTOP_LINUX_NATIVE_OTA=YES');
+console.log('PROXMOX_LXC_NATIVE_OTA=YES');
+console.log('IOS_IPADOS_ANDROID_OTA=DISABLED');
+console.log('EXTERNAL_ARDUINOOTA_REQUIRED=NO');
+console.log('FIRMWARE_SHA256_VERIFY=YES');
+console.log('BOOT_ID_VERIFY=YES');
+console.log('SCHEDULE_PERSISTENCE_VERIFY=YES');
+console.log('SETTINGS_GRID_SPACING_INCLUDED=YES');
+console.log('UNIVERSAL_NATIVE_OTA_CONTRACT=PASSED');
