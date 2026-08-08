@@ -2,20 +2,15 @@
 
 > *Direct Arduino Control & Automation*
 
-
-[![Firmware build](https://github.com/LexyGuru/arduino-led-controller/actions/workflows/firmware-build.yml/badge.svg)](https://github.com/LexyGuru/arduino-led-controller/actions/workflows/firmware-build.yml)
-[![Firmware Beta release](https://img.shields.io/badge/Firmware_Beta-release-blue?logo=githubactions)](https://github.com/LexyGuru/arduino-led-controller/actions/workflows/firmware-beta-release.yml)
-[![V5 Beta release](https://img.shields.io/badge/V5_Beta-release-blue?logo=githubactions)](https://github.com/LexyGuru/arduino-led-controller/actions/workflows/beta-release.yml)
-
+[![Firmware build](https://github.com/LexyGuru/arduino-led-controller/actions/workflows/firmware-build.yml/badge.svg?branch=next%2Fv5-rearchitecture)](https://github.com/LexyGuru/arduino-led-controller/actions/workflows/firmware-build.yml)
+[![Firmware Beta release](https://github.com/LexyGuru/arduino-led-controller/actions/workflows/firmware-beta-release.yml/badge.svg?branch=next%2Fv5-rearchitecture)](https://github.com/LexyGuru/arduino-led-controller/actions/workflows/firmware-beta-release.yml)
+[![V5 Beta release](https://github.com/LexyGuru/arduino-led-controller/actions/workflows/beta-release.yml/badge.svg?branch=next%2Fv5-rearchitecture)](https://github.com/LexyGuru/arduino-led-controller/actions/workflows/beta-release.yml)
 
 <p align="center">
   <img src="docs/assets/v5-neon-panel-presentation.png" alt="Arduino LED Controller V5 – Neon Panel" />
 </p>
 
-> A Beta.7 felületfejlesztés a `feature/beta7-ui-overhaul` ágon történik.
-> A sikeresen stabilizált változások csak teljes regresszió után kerülhetnek vissza a `next/v5-rearchitecture` integrációs ágra. A `main` stabil ág nem módosul.
-
-Többplatformos LED-vezérlő rendszer Arduino UNO R4 WiFi és három WS2812B LED-szalag számára. Az elsődleges üzemmód a közvetlen Arduino-kapcsolat; a Node.js/LXC szerver opcionális üzemeltetési réteg.
+Többplatformos LED-vezérlő rendszer Arduino UNO R4 WiFi és három WS2812B LED-szalag számára. A V5 elsődleges működési módja továbbra is a közvetlen Direct API v1 kapcsolat, de a Beta.8 már teljes Debian 13 Rust LXC szervert is tartalmaz React/Vite webfelülettel, automatikus frissítéssel és rollbackkel.
 
 ## Aktuális verziók és fejlesztési állapot
 
@@ -24,14 +19,17 @@ Többplatformos LED-vezérlő rendszer Arduino UNO R4 WiFi és három WS2812B LE
 | Alkalmazás | `5.0.0-beta.8` |
 | Firmware | `5.0.0-beta.6` |
 | Direct API | `1.0.0` |
-| Kiadási csatorna | `beta` |
-| Aktuális kiadás | Beta.6 |
-| Folyamatban lévő fejlesztés | Beta.7 UI Freeze |
-| Aktív fejlesztési ág | `feature/beta7-ui-overhaul` |
-| Integrációs ág | `next/v5-rearchitecture` |
+| Beta ág | `next/v5-rearchitecture` |
 | Stabil ág | `main` |
+| LXC operációs rendszer | Debian 13 |
+| LXC backend | Rust + Axum |
+| LXC frontend | React + Vite |
+| LXC web/API port | `3000` |
+| Automatikus frissítés | 6 óránként, systemd timer |
+| Rollback | automatikus, health/web gate |
+| Megőrzött LXC release-ek | 3 |
 
-A Beta.7 az új desktop felület, a Theme Engine, az auditált műveletek, a csatornahelyes firmware-katalógus, a macOS UNO R4 Terminal OTA útvonal és a Direct API v1-only firmware első integrált tesztkiadása. A hozzá párosított firmware 5.0.0-beta.6; a Direct API verziója változatlanul 1.0.0.
+A Beta.8 a V5 desktop, Direct API, Debian 13 Rust LXC, React/Vite webfelület és az önfrissítő üzemeltetési réteg közös integrációs állapota. A hozzá tartozó Arduino firmware `5.0.0-beta.6`; a Direct API verziója `1.0.0`.
 
 ## Fő funkciók
 
@@ -45,43 +43,152 @@ A Beta.7 az új desktop felület, a Theme Engine, az auditált műveletek, a csa
 - autonóm CET/CEST és DST-kezelés, UDP NTP fallback és `time status`;
 - stable/beta firmware-katalógus csatornahelyes szűréssel;
 - megszakítható OTA, SHA-256 ellenőrzés és reboot utáni állapotkapu;
-- magyar, angol és német felület azonnali nyelvváltással;
-- System / Light / Dark mód, Arctic / Midnight téma és kiemelőszínek;
-- helyi műveleti audit és Tauri auditkonzol új Arduino API-polling nélkül;
-- macOS Keychain, Windows Credential Manager és Linux Secret Service támogatás.
+- magyar, angol és német desktop felület;
+- System / Light / Dark mód és V5 témarendszer;
+- helyi műveleti audit és Tauri auditkonzol;
+- macOS Keychain, Windows Credential Manager és Linux Secret Service támogatás;
+- Debian 13 Rust LXC szerver;
+- React/Vite LXC web UI;
+- Stable/Beta csatornafüggő automatikus LXC-frissítés;
+- atomikus release-váltás és automatikus rollback.
 
 ## Architektúra
 
 ```text
-Tauri desktop / mobil
-        │
-        │ Direct API v1 + X-Device-Key
-        ▼
-Arduino UNO R4 WiFi
-        ├─ 3 LED-szalag
-        ├─ 60 EEPROM schedule rekord
-        ├─ A/B EEPROM tárolás
-        ├─ autonóm időzóna / DST / NTP
-        ├─ diagnosztika és Arduino-konzol
-        ├─ OTA desktopról
-        └─ távoli reboot
-
-Tauri helyi réteg
-        ├─ Theme Engine
-        ├─ helyi műveleti audit
-        ├─ Tauri auditkonzol
-        ├─ firmware-katalógus és cache
-        └─ platform credential store
-
-Opcionális:
-Node.js / LXC üzemeltetési réteg
+                         ┌─────────────────────────────┐
+                         │ Arduino UNO R4 WiFi         │
+                         │ Firmware 5.0.0-beta.6       │
+                         │ Direct API v1               │
+                         │ X-Device-Key                │
+                         └──────────────┬──────────────┘
+                                        │
+                ┌───────────────────────┴───────────────────────┐
+                │                                               │
+                ▼                                               ▼
+┌───────────────────────────────┐             ┌────────────────────────────────┐
+│ Tauri V5 Desktop              │             │ Debian 13 Rust LXC             │
+│                               │             │                                │
+│ Direct Arduino API            │             │ Rust / Axum backend            │
+│ Theme Engine                  │             │ React / Vite web UI            │
+│ Audit                         │             │ :3000                           │
+│ Firmware / OTA                │             │ Direct API proxy               │
+│ Credential Store              │             │ Schedules / logs / LED control│
+└───────────────────────────────┘             │ Self-update + rollback         │
+                                              └────────────────────────────────┘
 ```
 
-A Direct Arduino módhoz nem szükséges alkalmazás-felhasználónév vagy szerverjelszó. A kliens a privát API-útvonalat és az `X-Device-Key` eszközkulcsot használja.
+A Direct Arduino módhoz nem szükséges alkalmazás-felhasználónév vagy szerverjelszó. A kliens a privát API-prefixet és az `X-Device-Key` eszközkulcsot használja.
+
+## Debian 13 Rust LXC
+
+A Beta.8 teljes headless LXC szervert tartalmaz Debian 13-hoz. A szerver ugyanazon a `3000`-es porton szolgálja ki a React webfelületet és a Rust API-t.
+
+### Alapértelmezett Proxmox profil
+
+| Erőforrás | Alapérték |
+|---|---:|
+| CPU | 2 |
+| RAM | 2048 MiB |
+| Swap | 512 MiB |
+| Disk | 8 GB |
+| Network | DHCP |
+| Bridge | `vmbr0` |
+| LXC | unprivileged |
+| Start bootkor | igen |
+
+Az Advanced telepítési mód külön CTID, hostname, CPU, RAM, swap, disk, storage, bridge, VLAN és IPv4 paraméterezést is támogat.
+
+### Beta telepítés Proxmox hostról
+
+```bash
+bash -c "$(curl -fsSL 'https://raw.githubusercontent.com/LexyGuru/arduino-led-controller/next/v5-rearchitecture/deploy/proxmox/install-proxmox-lxc.sh')"
+```
+
+A telepítő bekéri:
+
+- Stable vagy Beta csatorna;
+- Default vagy Advanced profil;
+- Arduino helyi IP / host;
+- Arduino HTTP port;
+- Arduino private API-prefixet, `/api/v1` nélkül;
+- Arduino Device Key-t;
+- Debian root jelszót a tty / Proxmox Console belépéshez.
+
+A telepítés után:
+
+```text
+http://LXC_IP:3000/
+```
+
+a React/Vite kezelőfelületet adja, míg például:
+
+```text
+http://LXC_IP:3000/health/live
+http://LXC_IP:3000/health/ready
+http://LXC_IP:3000/api/v1/status
+```
+
+a Rust szerver és az Arduino kapcsolat állapotát mutatja.
+
+## LXC automatikus frissítés
+
+Az LXC saját systemd updaterrel rendelkezik.
+
+```text
+Beta   -> next/v5-rearchitecture
+Stable -> main
+```
+
+Az updater:
+
+- 6 óránként ellenőrzi a kiválasztott GitHub ág remote HEAD-jét;
+- legfeljebb 20 perc véletlen késleltetést alkalmaz;
+- egyszerre csak egy updater példányt enged;
+- új commitnál külön staging könyvtárba tölti le a forrást;
+- lefuttatja a React/Vite buildet;
+- lefuttatja a Rust teszteket és release buildet;
+- új release könyvtárat hoz létre;
+- atomikusan váltja a `current` symlinket;
+- ellenőrzi a `/health/live` végpontot és a web UI `/` útvonalat;
+- hiba esetén automatikusan visszaáll az előző release-re;
+- az Arduino `/health/ready` állapotát diagnosztikaként kezeli, nem rollback feltételként;
+- alapból az utolsó három release-t tartja meg.
+
+### Updater ellenőrzése az LXC-ben
+
+```bash
+systemctl status arduino-led-controller-update.timer
+systemctl list-timers arduino-led-controller-update.timer
+```
+
+Kézi frissítésellenőrzés:
+
+```bash
+systemctl start arduino-led-controller-update.service
+```
+
+Updater napló:
+
+```bash
+journalctl -u arduino-led-controller-update.service --no-pager -n 200
+```
+
+## LXC webfelület
+
+A Beta.8 LXC web UI fő nézetei:
+
+- Áttekintés;
+- LED vezérlés;
+- Heti program;
+- Naplók;
+- Firmware;
+- Rendszer.
+
+A React frontend nem használ Tauri IPC-t. A böngésző ugyanazon az originen keresztül éri el az Axum `/api/v1/*` route-jait.
 
 ## Megjelenés és audit
 
-A Beta.7 Theme Engine központi design tokeneket és perzisztált megjelenési beállításokat használ:
+A V5 Theme Engine központi design tokeneket és perzisztált megjelenési beállításokat használ:
 
 - rendszer szerinti, világos és sötét mód;
 - Arctic és Midnight téma;
@@ -93,17 +200,17 @@ A Logok oldalon:
 
 - az Arduino-konzol az eszköz naplóit mutatja;
 - a Legutóbbi műveletek a helyi LED-, schedule-, időszinkron-, firmware- és OTA-műveleteket mutatja;
-- a Tauri auditkonzol a helyi alkalmazás- és meglévő hálózati eseményeket mutatja;
-- a régi üres Event Bus panel nem része a Direct Arduino felületnek.
+- a Tauri auditkonzol a helyi alkalmazás- és meglévő hálózati eseményeket mutatja.
 
 ## Firmware és Direct API
 
-A jelenlegi ajánlott Beta firmware: `5.0.0-beta.6`. A Direct API verziója `1.0.0`.
+A jelenlegi Beta firmware: `5.0.0-beta.6`. A Direct API verziója `1.0.0`.
 
 Biztonsági tulajdonságok:
 
-- kizárólag fejlécalapú `X-Device-Key`;
+- fejlécalapú `X-Device-Key`;
 - query-string kulcsfallback tiltva;
+- privát API-prefix;
 - JSON body alapú módosító végpontok;
 - A/B EEPROM slotok readback ellenőrzéssel;
 - tranzakciós schedule írás;
@@ -120,9 +227,13 @@ A desktop alkalmazás:
 - megszakítható feltöltést és élő OTA-konzolt biztosít;
 - ellenőrzi a Boot ID változását;
 - ellenőrzi a schedule revision és checksum megmaradását;
-- a világos és sötét témában is olvasható konzolt és rollback-listát használ.
+- világos és sötét témában is olvasható konzolt és rollback-listát használ.
 
 Az OTA-jelszó nem kerülhet forráskódba vagy konfigurációs exportba.
+
+### Beta firmware OTA Exclusive Mode
+
+A `5.0.0-beta.6` firmware OTA alatt kizárólag a Wi-Fi kapcsolatot, az ArduinoOTA motort és a LED Matrix visszajelzést hagyja aktívan; a többi alkalmazás-alrendszer szünetel a flash-finalizálás alatt. Ha az `/api/v1/ota/prepare` után nem csatlakozik feltöltő a 30 másodperces ablakban, a firmware automatikusan kilép az Exclusive Mode-ból és visszaállítja a normál szolgáltatásokat. Az OTA folyamat nem törli és nem írja újra a schedule rekordokat.
 
 ## Gyors kezdés
 
@@ -154,18 +265,30 @@ cargo check --locked --manifest-path desktop-tauri/src-tauri/Cargo.toml
 cargo test --locked --manifest-path desktop-tauri/src-tauri/Cargo.toml
 ```
 
+### Rust LXC tesztek
+
+```bash
+cargo fmt --manifest-path rust/Cargo.toml --all -- --check
+RUSTFLAGS="-D warnings" cargo check --locked --manifest-path rust/Cargo.toml --workspace
+RUSTFLAGS="-D warnings" cargo test --locked --manifest-path rust/Cargo.toml --workspace
+
+npm run test:rust-lxc
+```
+
 ## Ágak és kiadás
 
 - `main`: stabil, védett ág.
-- `next/v5-rearchitecture`: beta integrációs ág.
-- `feature/beta7-ui-overhaul`: Beta.7 Theme Engine és UI Freeze fejlesztési ág.
+- `next/v5-rearchitecture`: Beta integrációs ág és jelenlegi V5 fejlesztési ág.
 - `.github/workflows/firmware-beta-release.yml`: dedikált Beta firmware prerelease.
-- `.github/workflows/beta-release.yml`: teljes alkalmazás prerelease, manuális indítással.
+- `.github/workflows/beta-release.yml`: teljes V5 alkalmazás prerelease.
 - A prerelease nem jelölhető latest stabil kiadásnak.
+
+A README tetején lévő Beta badge-ek közvetlenül a GitHub Actions workflow státuszát használják. Sikeres workflow esetén a GitHub státuszbadge sikeres állapotot, hibánál sikertelen állapotot jelez.
 
 ## Dokumentáció
 
-- [Beta.7 UI Freeze állapot](docs/v5/BETA7_UI_FREEZE.md)
+- [Rust LXC architektúra](docs/v5/RUST_LXC_ARCHITECTURE.md)
+- [Beta.7 UI Freeze történeti állapot](docs/v5/BETA7_UI_FREEZE.md)
 - [Beta.7 Markdown-audit](docs/v5/MARKDOWN_AUDIT_BETA7.md)
 - [Beta.6 release notes](docs/v5/BETA6_RELEASE_NOTES.md)
 - [Beta.6 telepítési útmutató](docs/v5/BETA6_INSTALLATION_GUIDE.md)
@@ -178,20 +301,18 @@ cargo test --locked --manifest-path desktop-tauri/src-tauri/Cargo.toml
 - [Közreműködés](CONTRIBUTING.md)
 - [Változásnapló](CHANGELOG.md)
 
-A Beta.6 dokumentumok történeti kiadási dokumentumok, ezért a verziószámaik nem cserélendők Beta.7-re.
+A Beta.6/Beta.7 dokumentumok történeti kiadási dokumentumok; a bennük szereplő verziószámokat nem kell Beta.8-ra átírni.
 
 ## Biztonság
 
-Ne nyiss közvetlen internetes portot az Arduino API vagy OTA számára. Távoli eléréshez HTTPS reverse proxy és érvényes TLS chain ajánlott. Titkokat, API-kulcsot, OTA-jelszót, `.env` vagy `secrets.h` fájlt soha ne commitolj.
+Ne nyiss közvetlen internetes portot az Arduino API vagy OTA számára. Távoli eléréshez HTTPS reverse proxy és érvényes TLS chain ajánlott. Titkokat, API-kulcsot, OTA-jelszót, `.env`, `update.env` vagy `secrets.h` fájlt soha ne commitolj.
+
+A Proxmox installer a Device Key-t interaktívan kéri be. Az LXC runtime konfigurációja az `/etc/arduino-led-controller/` könyvtárban marad, és nem kerül a Git repositoryba.
 
 ## Dedikált firmware release
 
-A `v5.0.0-beta.X` release-ek kizárólag alkalmazás-, mobil- és LXC-csomagokat tartalmaznak. A Beta firmware-ek, SHA-256 fájlok és a rollback katalógus kizárólag az `Arduino_LED_Controller_Firmware_BETA` prerelease-ben találhatók.
+A `v5.0.0-beta.X` alkalmazásrelease-ek az alkalmazás- és LXC-csomagokat kezelik. A Beta firmware-ek, SHA-256 fájlok és rollback katalógus a dedikált firmware Beta release folyamat részei.
 
 ## Licenc
 
 A repository licencfeltételeit a projekt tulajdonosa határozza meg. Külső terjesztés előtt külön `LICENSE` fájl szükséges.
-
-### Beta firmware OTA Exclusive Mode
-
-A `5.0.0-beta.6` firmware OTA alatt kizárólag a Wi-Fi kapcsolatot, az ArduinoOTA motort és a LED Matrix visszajelzést hagyja aktívan; a többi alkalmazás-alrendszer szünetel a flash-finalizálás alatt. Ha az `/api/v1/ota/prepare` után nem csatlakozik feltöltő a 30 másodperces ablakban, a firmware automatikusan kilép az Exclusive Mode-ból és visszaállítja a normál szolgáltatásokat. Az OTA folyamat nem törli és nem írja újra a schedule rekordokat.

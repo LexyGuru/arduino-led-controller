@@ -79,43 +79,49 @@ assert.match(rust, /sync_time_config/);
 assert.match(types, /timezoneId: string/);
 assert.match(api, /syncTimeConfig/);
 assert.match(settings, /resolvedOptions\(\)\.timeZone/);
+
+// README current-state contract: Beta.8 + dynamic GitHub Actions badges.
 assert.ok(
   readme.includes(
-    'https://img.shields.io/badge/Firmware_Beta-release-blue?logo=githubactions',
+    'firmware-beta-release.yml/badge.svg?branch=next%2Fv5-rearchitecture',
   ),
-  'Hiányzó Firmware Beta Shields.io badge',
+  'Hiányzó dinamikus Firmware Beta workflow badge',
 );
 assert.ok(
   readme.includes(
-    'https://img.shields.io/badge/V5_Beta-release-blue?logo=githubactions',
+    'beta-release.yml/badge.svg?branch=next%2Fv5-rearchitecture',
   ),
-  'Hiányzó V5 Beta Shields.io badge',
+  'Hiányzó dinamikus V5 Beta workflow badge',
 );
 assert.ok(readme.includes('actions/workflows/firmware-beta-release.yml'));
 assert.ok(readme.includes('actions/workflows/beta-release.yml'));
+
 for (const marker of [
-  'feature/beta7-ui-overhaul',
-  'Integrációs ág | `next/v5-rearchitecture`',
+  '5.0.0-beta.8',
+  '5.0.0-beta.6',
+  'next/v5-rearchitecture',
   'Stabil ág | `main`',
-  'Beta.7 UI Freeze',
+  'Debian 13 Rust LXC',
+  'React/Vite',
+  'automatikus frissítés',
 ]) {
   assert.ok(
     readme.includes(marker),
-    `README aktuális ág-/fejlesztési marker hiányzik: ${marker}`,
+    `README aktuális Beta.8 marker hiányzik: ${marker}`,
   );
 }
 
 assert.ok(
-  !readme.includes(
-    'A Beta release workflow-k a `next/v5-rearchitecture` fejlesztési ágon futnak.',
-  ),
-  'A README nem nevezheti a next/v5 integrációs ágat az aktív Beta.7 fejlesztési ágnak',
+  !readme.includes('feature/beta7-ui-overhaul'),
+  'A fő README nem nevezheti aktív fejlesztési ágnak a történeti Beta.7 feature ágat',
 );
-assert.ok(!readme.includes('firmware-beta-release.yml/badge.svg'));
 assert.ok(
-  !readme.includes(
-    'beta-release.yml/badge.svg?branch=next%2Fv5-rearchitecture',
-  ),
+  !readme.includes('img.shields.io/badge/Firmware_Beta-release-blue'),
+  'A fő README-ben nem maradhat statikus Firmware Beta Shields badge',
+);
+assert.ok(
+  !readme.includes('img.shields.io/badge/V5_Beta-release-blue'),
+  'A fő README-ben nem maradhat statikus V5 Beta Shields badge',
 );
 
 function daysFromCivil(year, month, day) {
@@ -248,6 +254,7 @@ for (const file of [
   );
 }
 
+assert.match(readme,/firmware-beta-release\.yml\/badge\.svg\?branch=next%2Fv5-rearchitecture/);
 console.log(
   'OK: autonomous CET/CEST behavior, UDP NTP, version and diagnostics contract',
 );
