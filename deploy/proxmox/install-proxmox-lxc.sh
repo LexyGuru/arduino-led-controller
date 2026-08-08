@@ -15,7 +15,7 @@ DEFAULT_BRIDGE="vmbr0"
 DEFAULT_START_ON_BOOT="1"
 DEFAULT_UNPRIVILEGED="1"
 
-SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]:-${0}}")" 2>/dev/null && pwd || pwd)"
 GITHUB_REPO="LexyGuru/arduino-led-controller"
 PAYLOAD_ARCHIVE="${ARDUINO_LED_PAYLOAD_ARCHIVE:-}"
 
@@ -310,6 +310,20 @@ hr
 
 yes_no "Létrehozzam a konténert?" y || exit 0
 
+say
+say "${bold}Arduino Direct API konfiguráció${reset}"
+ARDUINO_HOST_INPUT="$(prompt_default "Arduino helyi IP / host" "10.0.0.117")"
+ARDUINO_PORT_INPUT="$(prompt_default "Arduino HTTP port" "80")"
+read -r -p "Arduino private path prefix (csak a prefix, /api/v1 nélkül): " ARDUINO_PRIVATE_PATH
+read -r -s -p "Arduino Device Key: " ARDUINO_DEVICE_KEY_INPUT
+printf '\n'
+[[ -n "$ARDUINO_HOST_INPUT" && "$ARDUINO_HOST_INPUT" != *"://"* && "$ARDUINO_HOST_INPUT" != *"/"* ]] || die "Érvénytelen Arduino host."
+[[ "$ARDUINO_PORT_INPUT" =~ ^[0-9]+$ ]] || die "Érvénytelen Arduino port."
+[[ "$ARDUINO_PRIVATE_PATH" == /* ]] || die "A private path / jellel kezdődjön."
+[[ "$ARDUINO_PRIVATE_PATH" != */api/v1 ]] || die "Csak a private prefixet add meg, /api/v1 nélkül."
+[[ ${#ARDUINO_DEVICE_KEY_INPUT} -ge 24 ]] || die "A Device Key túl rövid."
+say "${green}ARDUINO_CONFIG_INPUT=READY${reset}"
+
 prepare_github_payload
 [[ -s "$PAYLOAD_ARCHIVE" ]] || die "Runtime payload hiányzik."
 
@@ -374,6 +388,48 @@ pct exec "$CTID" -- bash -lc '
   printf "%s\n" "'"$BRANCH"'" > /etc/arduino-led-branch
   ./deploy/install-rust-lxc-native.sh
 '
+
+pct exec "$CTID" -- env ALC_HOST="$ARDUINO_HOST_INPUT" ALC_PORT="$ARDUINO_PORT_INPUT" ALC_PATH="$ARDUINO_PRIVATE_PATH" ALC_KEY="$ARDUINO_DEVICE_KEY_INPUT" bash -lc '
+set -Eeuo pipefail
+python3 - <<"PYCFG"
+from pathlib import Path
+import os
+p=Path("/etc/arduino-led-controller/lxc.env")
+s=p.read_text()
+vals={
+ "ARDUINO_PROTOCOL":"http",
+ "ARDUINO_HOST":os.environ["ALC_HOST"],
+ "ARDUINO_PORT":os.environ["ALC_PORT"],
+ "ARDUINO_API_PATH":os.environ["ALC_PATH"],
+ "ARDUINO_DEVICE_KEY":os.environ["ALC_KEY"],
+}
+out=[]; seen=set()
+for line in s.splitlines():
+    k=line.split("=",1)[0] if "=" in line else ""
+    if k in vals:
+        out.append(f"{k}={vals[k]}")
+        seen.add(k)
+    else:
+        out.append(line)
+for k,v in vals.items():
+    if k not in seen:
+        out.append(f"{k}={v}")
+p.write_text("\n".join(out)+"\n")
+PYCFG
+chmod 0600 /etc/arduino-led-controller/lxc.env
+systemctl restart arduino-led-controller-rust.service
+'
+
+service_ready=0
+for _ in $(seq 1 30); do
+  if pct exec "$CTID" -- curl -fsS http://127.0.0.1:3000/health/live >/dev/null 2>&1; then
+    service_ready=1
+    break
+  fi
+  sleep 1
+done
+[[ "$service_ready" == "1" ]] || die "A Rust LXC service nem állt fel 30 másodpercen belül."
+say "${green}LXC_SERVICE_LIVE=PASSED${reset}"
 
 CONFIG_STATUS="$(pct exec "$CTID" -- bash -lc \
   "grep -q '^ARDUINO_DEVICE_KEY=CHANGE_ME$' /etc/arduino-led-controller/lxc.env && echo required || echo ready")"

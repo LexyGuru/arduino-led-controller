@@ -16,7 +16,10 @@ use serde::Serialize;
 use serde_json::{json, Value};
 use std::{env, fs, net::SocketAddr, path::PathBuf, sync::Arc, time::Duration};
 use tokio::task;
-use tower_http::trace::TraceLayer;
+use tower_http::{
+    services::{ServeDir, ServeFile},
+    trace::TraceLayer,
+};
 
 #[derive(Clone)]
 struct AppState {
@@ -293,6 +296,11 @@ async fn main() -> Result<(), String> {
             .map(PathBuf::from),
     };
 
+    let web_root =
+        env::var("WEB_ROOT").unwrap_or_else(|_| "/opt/arduino-led-controller/current/web".into());
+    let web_index = PathBuf::from(&web_root).join("index.html");
+    let web_service = ServeDir::new(&web_root).not_found_service(ServeFile::new(web_index));
+
     let app = Router::new()
         .route("/health/live", get(live))
         .route("/health/ready", get(ready))
@@ -319,6 +327,7 @@ async fn main() -> Result<(), String> {
         .route("/api/v1/ota/prepare", post(proxy_post))
         .route("/api/v1/server/firmware/catalog", get(firmware_catalog))
         .route("/api/v1/events/ws", get(ws_events))
+        .fallback_service(web_service)
         .layer(TraceLayer::new_for_http())
         .with_state(state);
 

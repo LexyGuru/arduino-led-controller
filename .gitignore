@@ -44,3 +44,5 @@ dist-lxc-runtime-test/
 dist-proxmox-test/
 artifacts/
 rust/target/
+web-lxc/node_modules/
+web-lxc/dist/

@@ -43,7 +43,9 @@ DEBIAN_FRONTEND=noninteractive apt-get install -y \
   build-essential \
   pkg-config \
   file \
-  python3
+  python3 \
+  nodejs \
+  npm
 
 if ! command -v cargo >/dev/null 2>&1; then
   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
@@ -53,6 +55,17 @@ fi
 
 rustc --version
 cargo --version
+node --version
+npm --version
+
+test -f "${SOURCE_ROOT}/web-lxc/package.json"
+(
+  cd "${SOURCE_ROOT}/web-lxc"
+  npm ci
+  npm run build
+)
+test -f "${SOURCE_ROOT}/web-lxc/dist/index.html"
+echo "WEB_LXC_BUILD=SUCCESS"
 
 RUSTFLAGS="-D warnings" cargo test \
   --locked \
@@ -80,8 +93,11 @@ install -d -o arduino-led -g arduino-led "$ROOT/releases" "$STATE" "$LOG"
 install -d -m 0750 "$ETC"
 
 rm -rf "$RELEASE"
-install -d "$RELEASE/bin"
+install -d "$RELEASE/bin" "$RELEASE/web"
 install -m 0755 "$BIN" "$RELEASE/bin/arduino-led-lxc-server"
+cp -R "${SOURCE_ROOT}/web-lxc/dist/." "$RELEASE/web/"
+test -f "$RELEASE/web/index.html"
+echo "WEB_LXC_INSTALL=SUCCESS"
 
 if [[ ! -f "$ETC/lxc.env" ]]; then
   install -m 0600 "${SOURCE_ROOT}/deploy/rust-lxc.env.example" "$ETC/lxc.env"
