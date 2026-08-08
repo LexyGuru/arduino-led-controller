@@ -194,7 +194,7 @@ jobs:
               test "${published_sha}" = "${expected_published_sha}"
 
               if [ "${candidate_sha}" != "${published_sha}" ]; then
-                echo "::warning::REBUILD_DRIFT_DETECTED ${name}: candidate=${candidate_sha} published=${published_sha}"
+                echo "::notice::REBUILD_DRIFT_DETECTED ${name}: candidate=${candidate_sha} published=${published_sha}"
               fi
               echo "IMMUTABLE_EXISTING_ASSET_PRESERVED=${name}"
             else
