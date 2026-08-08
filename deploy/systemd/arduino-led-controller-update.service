@@ -1,0 +1,9 @@
+[Unit]
+Description=Arduino LED Controller V5 LXC Self Update
+After=network-online.target arduino-led-controller-rust.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/arduino-led-controller-update
+Nice=10

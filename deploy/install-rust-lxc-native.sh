@@ -45,7 +45,9 @@ DEBIAN_FRONTEND=noninteractive apt-get install -y \
   file \
   python3 \
   nodejs \
-  npm
+  npm \
+  git \
+  util-linux
 
 if ! command -v cargo >/dev/null 2>&1; then
   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
@@ -119,6 +121,28 @@ ln -sfn "$RELEASE" "$ROOT/current"
 
 systemctl daemon-reload
 systemctl enable "$SERVICE"
+
+install -m 0755 "${SOURCE_ROOT}/deploy/update-rust-lxc.sh"   /usr/local/sbin/arduino-led-controller-update
+install -m 0644   "${SOURCE_ROOT}/deploy/systemd/arduino-led-controller-update.service"   /etc/systemd/system/arduino-led-controller-update.service
+install -m 0644   "${SOURCE_ROOT}/deploy/systemd/arduino-led-controller-update.timer"   /etc/systemd/system/arduino-led-controller-update.timer
+
+if [[ ! -f "$ETC/update.env" ]]; then
+  install -m 0600 "${SOURCE_ROOT}/deploy/rust-lxc-update.env.example" "$ETC/update.env"
+fi
+
+# Az első telepítés commitját rögzítjük, hogy a timer ne buildelje újra ugyanazt.
+if [[ -r /etc/arduino-led-branch ]]; then
+  INSTALLED_BRANCH="$(tr -d '[:space:]' < /etc/arduino-led-branch)"
+  INSTALLED_COMMIT="$(git ls-remote     https://github.com/LexyGuru/arduino-led-controller.git     "refs/heads/${INSTALLED_BRANCH}" | awk 'NR==1{print $1}')"
+  if [[ "$INSTALLED_COMMIT" =~ ^[0-9a-f]{40}$ ]]; then
+    printf '%s\n' "$INSTALLED_COMMIT" > "$STATE/installed-commit"
+  fi
+fi
+printf '%s\n' "$VERSION" > "$STATE/installed-version"
+
+systemctl daemon-reload
+systemctl enable --now arduino-led-controller-update.timer
+echo "LXC_SELF_UPDATE_TIMER=ENABLED"
 
 if grep -q '^ARDUINO_DEVICE_KEY=CHANGE_ME$' "$ETC/lxc.env"; then
   echo "CONFIG_REQUIRED=YES"

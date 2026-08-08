@@ -389,6 +389,20 @@ pct exec "$CTID" -- bash -lc '
   ./deploy/install-rust-lxc-native.sh
 '
 
+pct exec "$CTID" -- env ALC_CHANNEL="$CHANNEL" ALC_BRANCH="$BRANCH" bash -lc '
+set -Eeuo pipefail
+install -d -m 0755 /etc/arduino-led-controller
+cat > /etc/arduino-led-controller/update.env <<EOFUPDATE
+UPDATE_CHANNEL=${ALC_CHANNEL}
+UPDATE_BRANCH=${ALC_BRANCH}
+UPDATE_KEEP_RELEASES=3
+EOFUPDATE
+chmod 0600 /etc/arduino-led-controller/update.env
+systemctl daemon-reload
+systemctl enable --now arduino-led-controller-update.timer
+'
+say "${green}UPDATE_CHANNEL_SELECTED=${CHANNEL}:${BRANCH}${reset}"
+
 pct exec "$CTID" -- env ALC_HOST="$ARDUINO_HOST_INPUT" ALC_PORT="$ARDUINO_PORT_INPUT" ALC_PATH="$ARDUINO_PRIVATE_PATH" ALC_KEY="$ARDUINO_DEVICE_KEY_INPUT" bash -lc '
 set -Eeuo pipefail
 python3 - <<"PYCFG"

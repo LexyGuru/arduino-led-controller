@@ -1,0 +1,169 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+umask 077
+
+APP="arduino-led-controller"
+ROOT="/opt/${APP}"
+RELEASES="${ROOT}/releases"
+CURRENT="${ROOT}/current"
+STATE_DIR="/var/lib/${APP}"
+UPDATE_ENV="/etc/${APP}/update.env"
+SERVICE="arduino-led-controller-rust.service"
+LOCK="/run/${APP}-update.lock"
+REPO_URL="https://github.com/LexyGuru/arduino-led-controller.git"
+
+log(){ printf '[lxc-update] %s\n' "$*"; }
+die(){ log "HIBA: $*"; exit 1; }
+
+exec 9>"$LOCK"
+flock -n 9 || { log "Másik updater már fut; kilépés."; exit 0; }
+
+[[ -r "$UPDATE_ENV" ]] || die "Hiányzik: $UPDATE_ENV"
+# shellcheck disable=SC1090
+source "$UPDATE_ENV"
+
+: "${UPDATE_CHANNEL:?UPDATE_CHANNEL hiányzik}"
+: "${UPDATE_BRANCH:?UPDATE_BRANCH hiányzik}"
+: "${UPDATE_KEEP_RELEASES:=3}"
+
+case "$UPDATE_CHANNEL" in
+  beta) [[ "$UPDATE_BRANCH" == "next/v5-rearchitecture" ]] || die "Beta branch mismatch." ;;
+  stable) [[ "$UPDATE_BRANCH" == "main" ]] || die "Stable branch mismatch." ;;
+  *) die "Ismeretlen channel: $UPDATE_CHANNEL" ;;
+esac
+
+mkdir -p "$RELEASES" "$STATE_DIR"
+
+CURRENT_COMMIT=""
+[[ -r "${STATE_DIR}/installed-commit" ]] &&
+  CURRENT_COMMIT="$(tr -d '[:space:]' < "${STATE_DIR}/installed-commit")"
+
+REMOTE_COMMIT="$(git ls-remote "$REPO_URL" "refs/heads/${UPDATE_BRANCH}" | awk 'NR==1{print $1}')"
+[[ "$REMOTE_COMMIT" =~ ^[0-9a-f]{40}$ ]] || die "Nem sikerült a remote HEAD lekérése."
+
+log "channel=$UPDATE_CHANNEL"
+log "branch=$UPDATE_BRANCH"
+log "current=${CURRENT_COMMIT:-unknown}"
+log "remote=$REMOTE_COMMIT"
+
+if [[ "$CURRENT_COMMIT" == "$REMOTE_COMMIT" ]]; then
+  log "Nincs új frissítés."
+  exit 0
+fi
+
+WORK="$(mktemp -d /var/tmp/${APP}-update.XXXXXX)"
+trap 'rm -rf "$WORK"' EXIT
+
+log "Forrás letöltése..."
+curl -fL --retry 3 --connect-timeout 20 \
+  "https://github.com/LexyGuru/arduino-led-controller/archive/${REMOTE_COMMIT}.tar.gz" \
+  -o "${WORK}/source.tar.gz"
+
+mkdir -p "${WORK}/src"
+tar -xzf "${WORK}/source.tar.gz" -C "${WORK}/src" --strip-components=1
+SRC="${WORK}/src"
+
+test -f "${SRC}/VERSION" || die "VERSION hiányzik."
+test -f "${SRC}/web-lxc/package.json" || die "web-lxc hiányzik."
+test -f "${SRC}/rust/Cargo.toml" || die "Rust workspace hiányzik."
+
+VERSION="$(tr -d '[:space:]' < "${SRC}/VERSION")"
+RELEASE="${RELEASES}/${VERSION}-${REMOTE_COMMIT:0:12}"
+rm -rf "$RELEASE"
+
+log "React/Vite build..."
+(
+  cd "${SRC}/web-lxc"
+  npm ci
+  npm run build
+)
+test -f "${SRC}/web-lxc/dist/index.html" || die "Web build sikertelen."
+
+log "Rust test/build..."
+RUSTFLAGS="-D warnings" cargo test --locked \
+  --manifest-path "${SRC}/rust/Cargo.toml" --workspace
+
+RUSTFLAGS="-D warnings" cargo build --locked --release \
+  --manifest-path "${SRC}/rust/Cargo.toml" \
+  -p arduino-led-lxc-server
+
+BIN="${SRC}/rust/target/release/arduino-led-lxc-server"
+test -x "$BIN" || die "Rust bináris hiányzik."
+
+install -d "${RELEASE}/bin" "${RELEASE}/web"
+install -m 0755 "$BIN" "${RELEASE}/bin/arduino-led-lxc-server"
+cp -R "${SRC}/web-lxc/dist/." "${RELEASE}/web/"
+printf '%s\n' "$REMOTE_COMMIT" > "${RELEASE}/SOURCE_COMMIT"
+printf '%s\n' "$VERSION" > "${RELEASE}/VERSION"
+
+PREVIOUS=""
+[[ -L "$CURRENT" ]] && PREVIOUS="$(readlink -f "$CURRENT" || true)"
+
+log "Release aktiválása..."
+ln -sfn "$RELEASE" "${ROOT}/current.new"
+mv -Tf "${ROOT}/current.new" "$CURRENT"
+systemctl restart "$SERVICE"
+
+live=0
+for _ in $(seq 1 30); do
+  if curl -fsS http://127.0.0.1:3000/health/live >/dev/null 2>&1; then
+    live=1
+    break
+  fi
+  sleep 1
+done
+
+web=0
+if [[ "$live" == "1" ]]; then
+  for _ in $(seq 1 15); do
+    if curl -fsS http://127.0.0.1:3000/ >/dev/null 2>&1; then
+      web=1
+      break
+    fi
+    sleep 1
+  done
+fi
+
+if [[ "$live" != "1" || "$web" != "1" ]]; then
+  log "Az új release saját runtime gate-je hibás. Rollback..."
+  if [[ -n "$PREVIOUS" && -d "$PREVIOUS" ]]; then
+    ln -sfn "$PREVIOUS" "${ROOT}/current.rollback"
+    mv -Tf "${ROOT}/current.rollback" "$CURRENT"
+    systemctl restart "$SERVICE"
+    sleep 2
+    curl -fsS http://127.0.0.1:3000/health/live >/dev/null ||
+      die "Rollback után sem él a service."
+    log "ROLLBACK=SUCCESS"
+  else
+    die "Nincs előző release rollbackhoz."
+  fi
+  exit 1
+fi
+
+# Arduino readiness diagnosztika: nem rollback gate.
+if curl -fsS http://127.0.0.1:3000/health/ready >/dev/null 2>&1; then
+  log "ARDUINO_READY=YES"
+else
+  log "ARDUINO_READY=NO (a frissítés ettől még érvényes)"
+fi
+
+printf '%s\n' "$REMOTE_COMMIT" > "${STATE_DIR}/installed-commit"
+printf '%s\n' "$VERSION" > "${STATE_DIR}/installed-version"
+date -u +'%Y-%m-%dT%H:%M:%SZ' > "${STATE_DIR}/last-update-success"
+
+log "UPDATE=SUCCESS"
+log "VERSION=$VERSION"
+log "COMMIT=$REMOTE_COMMIT"
+
+mapfile -t OLD < <(
+  find "$RELEASES" -mindepth 1 -maxdepth 1 -type d -printf '%T@ %p\n' |
+    sort -nr | awk '{print $2}'
+)
+
+i=0
+for dir in "${OLD[@]}"; do
+  i=$((i+1))
+  [[ "$i" -le "$UPDATE_KEEP_RELEASES" ]] && continue
+  [[ "$(readlink -f "$CURRENT")" == "$dir" ]] && continue
+  rm -rf "$dir"
+done
