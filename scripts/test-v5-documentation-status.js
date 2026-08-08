@@ -4,7 +4,7 @@ const assert = require('assert');
 const fs = require('fs');
 const read = (path) => fs.readFileSync(path, 'utf8');
 
-assert.strictEqual(read('VERSION').trim(), '5.0.0-beta.8');
+assert.strictEqual(read('VERSION').trim(), '5.0.0-beta.9');
 
 const docs = [
   'README.md',
@@ -30,7 +30,7 @@ for (const path of docs) {
 
 const all = docs.map(read).join('\n');
 for (const marker of [
-  '5.0.0-beta.8',
+  '5.0.0-beta.9',
   '4.3.0-beta.4',
   'Direct API',
   '1.0.0',

@@ -1,3 +1,11 @@
+# 5.0.0-beta.9
+
+- Shared React frontend for desktop, mobile and LXC.
+- Full LXC firmware release selection and OTA cancel.
+- Browser schedule import/export.
+- Application 5.0.0-beta.9; firmware remains 5.0.0-beta.6.
+- README and architecture documentation updated.
+
 ## [5.0.0-beta.7] - 2026-08-06
 
 ### Alkalmazás

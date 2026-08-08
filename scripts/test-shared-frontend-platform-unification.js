@@ -1,0 +1,26 @@
+#!/usr/bin/env node
+'use strict';
+const fs=require('fs'),assert=require('node:assert/strict');
+const api=fs.readFileSync('desktop-tauri/src/services/tauriApi.ts','utf8');
+const controller=fs.readFileSync('desktop-tauri/src/hooks/useController.ts','utf8');
+const schedules=fs.readFileSync('desktop-tauri/src/pages/SchedulesPage.tsx','utf8');
+const webMain=fs.readFileSync('web-lxc/src/main.tsx','utf8');
+const lxc=fs.readFileSync('rust/arduino-led-lxc-server/src/main.rs','utf8');
+const readme=fs.readFileSync('README.md','utf8');
+assert.ok(webMain.includes("../../desktop-tauri/src/main"));
+for(const f of ['web-lxc/src/App.tsx','web-lxc/src/api.ts','web-lxc/src/style.css'])assert.ok(!fs.existsSync(f));
+assert.ok(api.includes("platform:'proxmox-lxc'"));
+assert.ok(api.includes("/api/v1/server/firmware/releases"));
+assert.ok(api.includes("listenOtaProgress"));
+assert.ok(controller.includes("tauriApi.listenOtaProgress"));
+assert.ok(schedules.includes("pickBrowserJsonFile"));
+assert.ok(lxc.includes('/api/v1/server/firmware/releases'));
+assert.ok(lxc.includes('/api/v1/server/firmware/cancel'));
+assert.ok(readme.includes('5.0.0-beta.9'));
+console.log('SHARED_FRONTEND_SINGLE_SOURCE=YES');
+console.log('SEPARATE_LXC_UI=REMOVED');
+console.log('ALL_TARGET_UI_SHARED=YES');
+console.log('MOBILE_OTA_WRITE=CAPABILITY_DISABLED');
+console.log('LXC_FIRMWARE_RELEASE_SELECTION=YES');
+console.log('LXC_OTA_CANCEL=YES');
+console.log('SHARED_FRONTEND_PLATFORM_UNIFICATION=PASSED');

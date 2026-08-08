@@ -4,10 +4,6 @@ import {
 } from 'react';
 
 import {
-  getVersion
-} from '@tauri-apps/api/app';
-
-import {
   Sidebar
 } from './components/Sidebar';
 
@@ -45,6 +41,7 @@ import {
 
 import { useI18n } from './i18n';
 import { runAudited } from './services/tauriAudit';
+import { tauriApi } from './services/tauriApi';
 
 import type {
   PageId
@@ -72,7 +69,7 @@ export default function App() {
 
   useEffect(
     () => {
-      void getVersion()
+      void tauriApi.appVersion()
         .then(
           setAppVersion
         )
@@ -84,26 +81,6 @@ export default function App() {
         );
     },
     []
-  );
-
-  useEffect(
-    () => {
-      if (
-        !controller.capabilities
-          .otaSupported &&
-        page ===
-          'firmware'
-      ) {
-        setPage(
-          'dashboard'
-        );
-      }
-    },
-    [
-      controller.capabilities
-        .otaSupported,
-      page
-    ]
   );
 
   return (
@@ -240,9 +217,7 @@ export default function App() {
             />
           )}
 
-          {controller.capabilities
-            .otaSupported &&
-          page ===
+          {page ===
             'firmware' && (
             <FirmwarePage
               firmware={

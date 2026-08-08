@@ -93,15 +93,7 @@ assert.doesNotMatch(
   /V5FirmwareBackups/
 );
 
-assert.match(
-  tauriApi,
-  /firmwareReleases:\s*\(\)\s*=>\s*invoke<FirmwareArtifact\[]>\('firmware_releases'\)/
-);
 
-assert.match(
-  tauriApi,
-  /firmwareInstallRelease:\s*\(tag:\s*string\)\s*=>\s*invoke<FirmwareStatus>\('firmware_install_release'/
-);
 
 for (const marker of [
   'createScheduleBackup',
@@ -177,6 +169,39 @@ console.log(
 console.log(
   'OK: Arduino konzol, helyi műveleti audit, Tauri auditkonzol és hálózati napló UI'
 );
+
+
+
+
+
+
+// Shared runtime adapter semantic contract.
+// Do not require `async` syntax: Promise-returning conditional adapters are valid.
+assert.ok(tauriApi.includes("firmwareReleases:():Promise<FirmwareArtifact[]>"));
+assert.ok(tauriApi.includes("isTauriRuntime()?invoke('firmware_releases'):releases()"));
+assert.ok(tauriApi.includes("/api/v1/server/firmware/releases"));
+
+assert.ok(tauriApi.includes("firmwareInstallRelease:(tag:string):Promise<FirmwareStatus>"));
+assert.ok(tauriApi.includes("invoke('firmware_install_release'"));
+assert.ok(tauriApi.includes("/api/v1/server/firmware/install"));
+
+assert.ok(tauriApi.includes("firmwareStatus:():Promise<FirmwareStatus>"));
+assert.ok(tauriApi.includes("invoke('firmware_status')"));
+assert.ok(tauriApi.includes("fwStatus()"));
+
+assert.ok(tauriApi.includes("firmwareUpdate:async():Promise<FirmwareStatus>"));
+assert.ok(tauriApi.includes("invoke('firmware_update')"));
+
+assert.ok(tauriApi.includes("firmwareCancel:async():Promise<boolean>"));
+assert.ok(tauriApi.includes("invoke('firmware_cancel')"));
+assert.ok(tauriApi.includes("/api/v1/server/firmware/cancel"));
+assert.ok(tauriApi.includes("'X-LXC-OTA-Token'"));
+
+assert.ok(tauriApi.includes("listenOtaProgress:async("));
+assert.ok(tauriApi.includes("@tauri-apps/api/event"));
+assert.ok(tauriApi.includes("'ota-progress'"));
+assert.ok(tauriApi.includes("/api/v1/server/ota/runtime"));
+
 console.log(
   'OK: API-hiba után nincs automatikus dupla firmware-indítás'
 );

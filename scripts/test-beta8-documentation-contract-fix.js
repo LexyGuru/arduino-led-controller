@@ -8,7 +8,7 @@ function assert(cond, msg) {
   }
 }
 
-const APP = '5.0.0-beta.8';
+const APP = '5.0.0-beta.9';
 const FW = '5.0.0-beta.6';
 
 const versions = JSON.parse(fs.readFileSync('release-versions.json', 'utf8'));
@@ -17,7 +17,7 @@ assert(versions.firmware === FW, 'firmware version mismatch');
 
 const docStatus = fs.readFileSync('scripts/test-v5-documentation-status.js', 'utf8');
 assert(
-  docStatus.includes("read('VERSION').trim(), '5.0.0-beta.8'"),
+  docStatus.includes("read('VERSION').trim(), '5.0.0-beta.9'"),
   'documentation status app version not migrated'
 );
 assert(
@@ -28,7 +28,7 @@ assert(
 const firmwareMeta = fs.readFileSync(
   'scripts/test-beta7-firmware-metadata-contract.js', 'utf8'
 );
-assert(firmwareMeta.includes('5.0.0-beta.8'),
+assert(firmwareMeta.includes('5.0.0-beta.9'),
   'firmware metadata application version not Beta.8');
 assert(firmwareMeta.includes('5.0.0-beta.6'),
   'firmware metadata firmware version not Beta.6');
@@ -36,7 +36,7 @@ assert(firmwareMeta.includes('5.0.0-beta.6'),
 const current = fs.readFileSync(
   'scripts/test-beta7-current-version-contract.js', 'utf8'
 );
-assert(current.includes('5.0.0-beta.8'),
+assert(current.includes('5.0.0-beta.9'),
   'current-version contract not Beta.8');
 assert(current.includes('5.0.0-beta.6'),
   'current-version firmware marker missing');

@@ -10,13 +10,13 @@
   <img src="docs/assets/v5-neon-panel-presentation.png" alt="Arduino LED Controller V5 – Neon Panel" />
 </p>
 
-Többplatformos LED-vezérlő rendszer Arduino UNO R4 WiFi és három WS2812B LED-szalag számára. A V5 elsődleges működési módja továbbra is a közvetlen Direct API v1 kapcsolat, de a Beta.8 már teljes Debian 13 Rust LXC szervert is tartalmaz React/Vite webfelülettel, automatikus frissítéssel és rollbackkel.
+Többplatformos LED-vezérlő rendszer Arduino UNO R4 WiFi és három WS2812B LED-szalag számára. A V5 elsődleges működési módja továbbra is a közvetlen Direct API v1 kapcsolat, de a Beta.9 már teljes Debian 13 Rust LXC szervert is tartalmaz React/Vite webfelülettel, automatikus frissítéssel és rollbackkel.
 
 ## Aktuális verziók és fejlesztési állapot
 
 | Elem | Verzió / állapot |
 |---|---|
-| Alkalmazás | `5.0.0-beta.8` |
+| Alkalmazás | `5.0.0-beta.9` |
 | Firmware | `5.0.0-beta.6` |
 | Direct API | `1.0.0` |
 | Beta ág | `next/v5-rearchitecture` |
@@ -29,7 +29,7 @@ Többplatformos LED-vezérlő rendszer Arduino UNO R4 WiFi és három WS2812B LE
 | Rollback | automatikus, health/web gate |
 | Megőrzött LXC release-ek | 3 |
 
-A Beta.8 a V5 desktop, Direct API, Debian 13 Rust LXC, React/Vite webfelület és az önfrissítő üzemeltetési réteg közös integrációs állapota. A hozzá tartozó Arduino firmware `5.0.0-beta.6`; a Direct API verziója `1.0.0`.
+A Beta.9 a V5 desktop, Direct API, Debian 13 Rust LXC, React/Vite webfelület és az önfrissítő üzemeltetési réteg közös integrációs állapota. A hozzá tartozó Arduino firmware `5.0.0-beta.6`; a Direct API verziója `1.0.0`.
 
 ## Fő funkciók
 
@@ -81,7 +81,7 @@ A Direct Arduino módhoz nem szükséges alkalmazás-felhasználónév vagy szer
 
 ## Debian 13 Rust LXC
 
-A Beta.8 teljes headless LXC szervert tartalmaz Debian 13-hoz. A szerver ugyanazon a `3000`-es porton szolgálja ki a React webfelületet és a Rust API-t.
+A Beta.9 teljes headless LXC szervert tartalmaz Debian 13-hoz. A szerver ugyanazon a `3000`-es porton szolgálja ki a React webfelületet és a Rust API-t.
 
 ### Alapértelmezett Proxmox profil
 
@@ -175,7 +175,7 @@ journalctl -u arduino-led-controller-update.service --no-pager -n 200
 
 ## LXC webfelület
 
-A Beta.8 LXC web UI fő nézetei:
+A Beta.9 LXC web UI fő nézetei:
 
 - Áttekintés;
 - LED vezérlés;
@@ -302,7 +302,7 @@ A README tetején lévő Beta badge-ek közvetlenül a GitHub Actions workflow s
 - [Közreműködés](CONTRIBUTING.md)
 - [Változásnapló](CHANGELOG.md)
 
-A Beta.6/Beta.7 dokumentumok történeti kiadási dokumentumok; a bennük szereplő verziószámokat nem kell Beta.8-ra átírni.
+A Beta.6/Beta.7 dokumentumok történeti kiadási dokumentumok; a bennük szereplő verziószámokat nem kell Beta.9-ra átírni.
 
 ## Biztonság
 
@@ -317,3 +317,8 @@ A `v5.0.0-beta.X` alkalmazásrelease-ek az alkalmazás- és LXC-csomagokat kezel
 ## Licenc
 
 A repository licencfeltételeit a projekt tulajdonosa határozza meg. Külső terjesztés előtt külön `LICENSE` fájl szükséges.
+
+
+## Beta.9 Shared Frontend
+
+A `5.0.0-beta.9` egyetlen kanonikus React UI-forrást használ macOS, Windows, Linux, iOS, iPadOS, Android és Proxmox/Debian LXC célokra. Részletek: `docs/SHARED_FRONTEND_ARCHITECTURE.md` és `docs/BETA9_SHARED_FRONTEND_MIGRATION.md`.

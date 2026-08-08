@@ -16,7 +16,7 @@ function assert(cond, msg) {
 }
 
 const openapi = JSON.parse(fs.readFileSync('docs/api/openapi-v2.json', 'utf8'));
-assert(openapi.info.version === '5.0.0-beta.8', 'OpenAPI must be Beta.8');
+assert(openapi.info.version === '5.0.0-beta.9', 'OpenAPI must be Beta.9');
 
 const expectedFiles = [
   'api-v2-types.ts',
@@ -28,7 +28,7 @@ const expectedFiles = [
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'beta8-openapi-sync-'));
 try {
   const result = generateOpenApiTypescript({ outputDir: tmp });
-  assert(result.version === '5.0.0-beta.8', 'generator version mismatch');
+  assert(result.version === '5.0.0-beta.9', 'generator version mismatch');
 
   for (const file of expectedFiles) {
     const generated = fs.readFileSync(path.join(tmp, file), 'utf8');
@@ -37,13 +37,13 @@ try {
 
     if (file !== 'index.ts') {
       assert(
-        committed.includes('/* OpenAPI verzió: 5.0.0-beta.8 */'),
-        `Beta.8 generated header missing: ${file}`
+        committed.includes('/* OpenAPI verzió: 5.0.0-beta.9 */'),
+        `Beta.9 generated header missing: ${file}`
       );
     }
   }
 
-  console.log('OPENAPI_VERSION=5.0.0-beta.8');
+  console.log('OPENAPI_VERSION=5.0.0-beta.9');
   console.log(`OPENAPI_OPERATIONS=${result.operations}`);
   console.log(`OPENAPI_SCHEMAS=${result.schemas}`);
   console.log('GENERATED_API_V2_FILES=DETERMINISTIC');

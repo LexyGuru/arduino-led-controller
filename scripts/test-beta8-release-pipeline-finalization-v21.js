@@ -10,29 +10,29 @@ const read = (rel) => fs.readFileSync(path.join(ROOT, rel), 'utf8');
 const json = (rel) => JSON.parse(read(rel));
 
 const versions = json('release-versions.json');
-assert.equal(versions.application, '5.0.0-beta.8');
+assert.equal(versions.application, '5.0.0-beta.9');
 assert.equal(versions.firmware, '5.0.0-beta.6');
 assert.equal(versions.directApi, '1.0.0');
 
 const stagingEnv = read('deploy/staging.env.example');
 assert.ok(stagingEnv.includes('RELEASE_CHANNEL=beta'));
 assert.ok(stagingEnv.includes('RELEASE_CANDIDATE=beta.8-gate'));
-assert.ok(stagingEnv.includes('RELEASE_TARGET_VERSION=5.0.0-beta.8'));
+assert.ok(stagingEnv.includes('RELEASE_TARGET_VERSION=5.0.0-beta.9'));
 
 const stagingInstaller = read('deploy/install-staging-service.sh');
 assert.ok(stagingInstaller.includes('upsert_env RELEASE_CHANNEL beta'));
 assert.ok(stagingInstaller.includes('upsert_env RELEASE_CANDIDATE beta.8-gate'));
-assert.ok(stagingInstaller.includes('upsert_env RELEASE_TARGET_VERSION 5.0.0-beta.8'));
+assert.ok(stagingInstaller.includes('upsert_env RELEASE_TARGET_VERSION 5.0.0-beta.9'));
 
 const installer = read('deploy/install-beta-lxc.sh');
-assert.ok(installer.includes('VERSION="${BETA_VERSION:-5.0.0-beta.8}"'));
+assert.ok(installer.includes('VERSION="${BETA_VERSION:-5.0.0-beta.9}"'));
 
 const bundle = read('deploy/build-beta-release-bundle.sh');
 assert.ok(bundle.includes("candidate: 'beta.8-gate'"));
 
 const workflow = read('.github/workflows/beta-release.yml');
 for (const marker of [
-  'EXPECTED_VERSION: 5.0.0-beta.8',
+  'EXPECTED_VERSION: 5.0.0-beta.9',
   'cp docs/v5/BETA8_INSTALLATION_GUIDE.md release-assets/',
   'cp docs/v5/BETA8_RELEASE_NOTES.md release-assets/',
   'cp docs/v5/BETA8_RELEASE_CHECKLIST.md release-assets/',

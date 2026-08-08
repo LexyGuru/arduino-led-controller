@@ -1,56 +1,56 @@
 import { invoke } from '@tauri-apps/api/core';
-import type {
-  ArduinoConsoleResponse,
-  ArduinoStatus,
-  ConnectionConfig,
-  FirmwareStatus,
-  FirmwareArtifact,
-  LedSchedule,
-  LedStrip,
-  NetworkLog,
-  RuntimeCapabilities,
-  ScheduleBackup,
-  ScheduleSaveResult,
-  ScheduleSyncSnapshot
-} from '../types';
+import { loadLxcSchedules, saveLxcSchedules } from './lxcScheduleCodec';
+import type { ArduinoConsoleResponse, ArduinoStatus, ConnectionConfig, FirmwareArtifact, FirmwareStatus, LedSchedule, LedStrip, NetworkLog, OtaProgressEvent, RuntimeCapabilities, ScheduleBackup, ScheduleSaveResult, ScheduleSyncSnapshot } from '../types';
 
-export const tauriApi = {
-  runtimeCapabilities: () => invoke<RuntimeCapabilities>('runtime_capabilities'),
-  migrateNativeCredentials: () => invoke<boolean>('migrate_native_credentials'),
-  loadConfig: () => invoke<ConnectionConfig>('load_config'),
-  saveConfig: (config: ConnectionConfig) => invoke<void>('save_config', { config }),
-  saveOtaPassword: (password: string) => invoke<void>('save_ota_password', { password }),
-  status: () => invoke<ArduinoStatus>('arduino_status'),
-  syncTimeConfig: () => invoke<ArduinoStatus>('sync_time_config'),
-  logs: (afterId = 0) => invoke<ArduinoConsoleResponse>('arduino_logs', { afterId }),
-  networkLogs: () => invoke<NetworkLog[]>('network_logs'),
-  setLed: (strip: LedStrip) => invoke('set_led', {
-    id: strip.id,
-    enabled: strip.enabled,
-    brightness: strip.brightness,
-    effect: strip.effect,
-    speed: strip.speed,
-    color: strip.color
-  }),
-  loadSchedules: () => invoke<LedSchedule[]>('load_schedules'),
-  importSchedulesFile: (path: string) => invoke<LedSchedule[]>('import_schedules_file', { path }),
-  exportSchedulesFile: (path: string, schedules: LedSchedule[]) => invoke<void>('export_schedules_file', { path, schedules }),
-  loadSchedulesFromArduino: () => invoke<ScheduleSyncSnapshot>('load_schedules_from_arduino'),
-  createScheduleBackup: (schedules: LedSchedule[], revision: number | null, checksum: string) =>
-    invoke<ScheduleBackup>('create_schedule_backup', { schedules, revision, checksum }),
-  listScheduleBackups: () => invoke<ScheduleBackup[]>('list_schedule_backups'),
-  saveSchedules: (
-    schedules: LedSchedule[],
-    expectedRevision: number | null,
-    force = false
-  ) => invoke<ScheduleSaveResult>('save_and_sync_schedules', {
-    schedules,
-    expectedRevision,
-    force
-  }),
-  firmwareReleases: () => invoke<FirmwareArtifact[]>('firmware_releases'),
-  firmwareInstallRelease: (tag: string) => invoke<FirmwareStatus>('firmware_install_release', { tag }),
-  firmwareStatus: () => invoke<FirmwareStatus>('firmware_status'),
-  firmwareUpdate: () => invoke<FirmwareStatus>('firmware_update'),
-  firmwareCancel: () => invoke<boolean>('firmware_cancel')
+const APP_VERSION='5.0.0-beta.9',CFG='alc.shared.lxc.config.v1',BACKUPS='alc.shared.lxc.schedule-backups.v1',TOKEN='alc.shared.lxc.ota-control-token';
+export const isTauriRuntime=()=>typeof globalThis!=='undefined'&&'__TAURI_INTERNALS__' in globalThis;
+
+async function json<T>(url:string,init?:RequestInit):Promise<T>{
+  const r=await fetch(url,{...init,headers:{Accept:'application/json','Content-Type':'application/json',...(init?.headers||{})}});
+  const t=await r.text();let b:any=null;if(t){try{b=JSON.parse(t)}catch{b=t}}
+  if(!r.ok){const d=b?.error||b?.message||(typeof b==='string'?b:'');const e=new Error(`${r.status} ${r.statusText}${d?`: ${d}`:''}`) as Error&{status?:number};e.status=r.status;throw e}
+  return b as T;
+}
+function config():ConnectionConfig{
+  try{const s=localStorage.getItem(CFG);if(s)return JSON.parse(s)}catch{}
+  return{profileName:'Proxmox LXC',language:'hu',protocol:location.protocol==='https:'?'https':'http',localProtocol:'http',arduinoIp:location.hostname||'lxc',arduinoPort:Number(location.port||3000),localArduinoIp:location.hostname||'lxc',localArduinoPort:Number(location.port||3000),preferLocal:true,macosLocalApiEnabled:false,otaUseApiHost:true,otaAddress:'',otaPort:65280,otaUploadMode:'auto',otaToolPath:'',otaTimeoutSeconds:180,arduinoApiPath:'/lxc-shared-runtime',arduinoApiKey:'',arduinoApiKeyConfigured:true,updateChannel:'beta',firmwareUpdateChannel:'beta',autoCheckUpdates:true,autoDownloadUpdates:false,firmwareUpdateChecks:true,timezoneId:'Europe/Vienna',timezoneAuto:true,currentUtcOffsetMinutes:60,nextTransitionEpoch:0,nextUtcOffsetMinutes:60};
+}
+function backups():ScheduleBackup[]{try{return JSON.parse(localStorage.getItem(BACKUPS)||'[]')}catch{return[]}}
+function saveBackups(x:ScheduleBackup[]){localStorage.setItem(BACKUPS,JSON.stringify(x.slice(0,20)))}
+function art(v:any):FirmwareArtifact{const version=String(v?.firmwareVersion??v?.version??v?.tag??'');return{name:String(v?.name??`Firmware ${version}`),downloadUrl:String(v?.downloadUrl??''),checksumUrl:String(v?.checksumUrl??''),firmwareVersion:version,tag:String(v?.tag??version),createdAt:v?.createdAt?String(v.createdAt):undefined,summary:v?.summary?String(v.summary):undefined,channel:String(v?.channel??'beta'),expectedFirmwareVersion:v?.expectedFirmwareVersion?String(v.expectedFirmwareVersion):undefined,metadataConflict:v?.metadataConflict?String(v.metadataConflict):undefined}}
+async function releases(){const c=config();const v=await json<any>(`/api/v1/server/firmware/releases?channel=${encodeURIComponent(c.firmwareUpdateChannel)}`);return(Array.isArray(v?.artifacts)?v.artifacts:[]).map(art)}
+function controlToken(){let v=sessionStorage.getItem(TOKEN)||'';if(!v){v=prompt('Add meg az LXC_OTA_CONTROL_TOKEN értékét. Csak ebben a munkamenetben tároljuk.')?.trim()||'';if(v)sessionStorage.setItem(TOKEN,v)}if(!v)throw new Error('LXC OTA control token szükséges.');return v}
+async function fwStatus():Promise<FirmwareStatus>{
+  const[st,cat,rt,server]=await Promise.all([json<any>('/api/v1/status'),json<any>('/api/v1/server/firmware/catalog'),json<any>('/api/v1/server/ota/runtime'),json<any>('/api/v1/server/info')]);
+  let list:FirmwareArtifact[]=[];try{list=await releases()}catch{}
+  const available=list[0]??(Array.isArray(cat?.artifacts)&&cat.artifacts[0]?art(cat.artifacts[0]):undefined),installed=String(st?.firmwareVersion??''),ok=rt?.configured===true&&rt?.controlTokenConfigured===true;
+  return{state:String(rt?.runtime?.state??'idle'),message:String(rt?.runtime?.message??'LXC OTA készenlét'),installedVersion:installed||undefined,arduinoOnline:st?.connected!==false,otaToolInstalled:true,otaPasswordConfigured:rt?.configured===true,otaConfigured:ok,otaMissingRequirements:ok?[]:[...(rt?.configured===true?[]:['ARDUINO_OTA_PASSWORD']),...(rt?.controlTokenConfigured===true?[]:['LXC_OTA_CONTROL_TOKEN'])],backupStoreConfigured:true,availableFirmware:available,firmwareLookupError:available?undefined:'Nincs firmware a kiválasztott csatornán.',otaToolPath:'native-rust-http',otaTargetAddress:String(st?.ipAddress??''),otaTargetPort:Number(st?.otaPort??cat?.otaPort??65280),updateAvailable:Boolean(available?.firmwareVersion&&available.firmwareVersion!==installed),progress:Number(rt?.runtime?.progress??0),phase:String(rt?.runtime?.phase??'Készenlét'),updateChannel:String(server?.channel??'beta'),firmwareUpdateChannel:String(server?.channel??'beta'),appCurrentVersion:String(server?.installedVersion??APP_VERSION),appUpdateAvailable:false,compatibilityStatus:'Shared Frontend / Native Rust LXC OTA'};
+}
+async function install(version:string){const tok=controlToken();try{await json('/api/v1/server/firmware/install',{method:'POST',headers:{'X-LXC-OTA-Token':tok},body:JSON.stringify({version})})}catch(e){if((e as any)?.status===401)sessionStorage.removeItem(TOKEN);throw e}return fwStatus()}
+
+export const tauriApi={
+  appVersion:async()=>isTauriRuntime()?(await import('@tauri-apps/api/app')).getVersion():APP_VERSION,
+  runtimeCapabilities:():Promise<RuntimeCapabilities>=>isTauriRuntime()?invoke('runtime_capabilities'):Promise.resolve({platform:'proxmox-lxc',mobile:false,otaSupported:true}),
+  migrateNativeCredentials:():Promise<boolean>=>isTauriRuntime()?invoke('migrate_native_credentials'):Promise.resolve(true),
+  loadConfig:():Promise<ConnectionConfig>=>isTauriRuntime()?invoke('load_config'):Promise.resolve(config()),
+  saveConfig:(c:ConnectionConfig):Promise<void>=>{if(isTauriRuntime())return invoke('save_config',{config:c});localStorage.setItem(CFG,JSON.stringify(c));return Promise.resolve()},
+  saveOtaPassword:(password:string):Promise<void>=>isTauriRuntime()?invoke('save_ota_password',{password}):Promise.reject(new Error('LXC-ben az OTA-jelszó szerveroldali titok.')),
+  status:():Promise<ArduinoStatus>=>isTauriRuntime()?invoke('arduino_status'):json('/api/v1/status'),
+  syncTimeConfig:():Promise<ArduinoStatus>=>{if(isTauriRuntime())return invoke('sync_time_config');const c=config();return json('/api/v1/time/config',{method:'PUT',body:JSON.stringify({timezoneId:c.timezoneId,timezoneAuto:c.timezoneAuto,utcOffsetMinutes:c.currentUtcOffsetMinutes,nextTransitionEpoch:c.nextTransitionEpoch,nextUtcOffsetMinutes:c.nextUtcOffsetMinutes})})},
+  logs:(afterId=0):Promise<ArduinoConsoleResponse>=>isTauriRuntime()?invoke('arduino_logs',{afterId}):json(`/api/v1/logs?afterId=${afterId}`),
+  networkLogs:():Promise<NetworkLog[]>=>isTauriRuntime()?invoke('network_logs'):Promise.resolve([]),
+  setLed:(strip:LedStrip)=>isTauriRuntime()?invoke('set_led',{id:strip.id,enabled:strip.enabled,brightness:strip.brightness,effect:strip.effect,speed:strip.speed,color:strip.color}):json(`/api/v1/leds/${strip.id}`,{method:'PUT',body:JSON.stringify({enabled:strip.enabled,brightness:strip.brightness,effect:strip.effect,speed:strip.speed,color:strip.color})}),
+  loadSchedules:():Promise<LedSchedule[]>=>isTauriRuntime()?invoke('load_schedules'):loadLxcSchedules().then(v=>v.schedules),
+  importSchedulesFile:(path:string):Promise<LedSchedule[]>=>isTauriRuntime()?invoke('import_schedules_file',{path}):Promise.reject(new Error('Web import böngésző pickerrel történik.')),
+  exportSchedulesFile:(path:string,schedules:LedSchedule[]):Promise<void>=>isTauriRuntime()?invoke('export_schedules_file',{path,schedules}):Promise.reject(new Error('Web export böngésző letöltéssel történik.')),
+  loadSchedulesFromArduino:():Promise<ScheduleSyncSnapshot>=>isTauriRuntime()?invoke('load_schedules_from_arduino'):loadLxcSchedules(),
+  createScheduleBackup:async(schedules:LedSchedule[],revision:number|null,checksum:string):Promise<ScheduleBackup>=>{if(isTauriRuntime())return invoke('create_schedule_backup',{schedules,revision,checksum});const item:ScheduleBackup={id:`lxc-${Date.now()}`,createdAt:Date.now(),count:schedules.length,revision:revision??undefined,checksum,schedules:structuredClone(schedules)};saveBackups([item,...backups()]);return item},
+  listScheduleBackups:():Promise<ScheduleBackup[]>=>isTauriRuntime()?invoke('list_schedule_backups'):Promise.resolve(backups()),
+  saveSchedules:(schedules:LedSchedule[],expectedRevision:number|null,force=false):Promise<ScheduleSaveResult>=>isTauriRuntime()?invoke('save_and_sync_schedules',{schedules,expectedRevision,force}):saveLxcSchedules(schedules,force?null:expectedRevision),
+  firmwareReleases:():Promise<FirmwareArtifact[]>=>isTauriRuntime()?invoke('firmware_releases'):releases(),
+  firmwareInstallRelease:(tag:string):Promise<FirmwareStatus>=>isTauriRuntime()?invoke('firmware_install_release',{tag}):install(tag),
+  firmwareStatus:():Promise<FirmwareStatus>=>isTauriRuntime()?invoke('firmware_status'):fwStatus(),
+  firmwareUpdate:async():Promise<FirmwareStatus>=>{if(isTauriRuntime())return invoke('firmware_update');const list=await releases();if(!list[0])throw new Error('Nincs telepíthető firmware.');return install(list[0].firmwareVersion??list[0].tag)},
+  firmwareCancel:async():Promise<boolean>=>{if(isTauriRuntime())return invoke('firmware_cancel');await json('/api/v1/server/firmware/cancel',{method:'POST',headers:{'X-LXC-OTA-Token':controlToken()},body:'{}'});return true},
+  listenOtaProgress:async(listener:(entry:OtaProgressEvent)=>void):Promise<()=>void>=>{if(isTauriRuntime()){const{listen}=await import('@tauri-apps/api/event');return listen<OtaProgressEvent>('ota-progress',e=>listener(e.payload))}let active=true,last='';const poll=async()=>{if(!active)return;try{const v=await json<any>('/api/v1/server/ota/runtime'),r=v?.runtime??{},sig=JSON.stringify([r.state,r.phase,r.message,r.progress,r.lastError]);if(sig!==last){last=sig;listener({timestamp:Date.now(),stage:String(r.phase??'OTA'),level:r.state==='error'?'error':r.state==='success'?'success':'info',message:String(r.lastError??r.message??'OTA'),progress:Number(r.progress??0)})}}catch{}if(active)setTimeout(poll,1200)};void poll();return()=>{active=false}}
 };

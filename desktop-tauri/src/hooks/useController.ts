@@ -6,10 +6,6 @@ import {
 } from 'react';
 
 import {
-  listen
-} from '@tauri-apps/api/event';
-
-import {
   tauriApi
 } from '../services/tauriApi';
 
@@ -689,19 +685,15 @@ export function useController(
         false;
 
       const unlistenPromise =
-        listen<OtaProgressEvent>(
-          'ota-progress',
+        tauriApi.listenOtaProgress(
           (
-            event
+            entry
           ) => {
             if (
               disposed
             ) {
               return;
             }
-
-            const entry =
-              event.payload;
 
             setOtaLogs(
               (

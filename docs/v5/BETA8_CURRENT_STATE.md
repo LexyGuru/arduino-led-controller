@@ -1,4 +1,4 @@
-# Beta.8 aktuális állapot
+# Beta.9 aktuális állapot
 
 Dátum: 2026-08-06
 
@@ -6,7 +6,7 @@ Dátum: 2026-08-06
 
 | Elem | Verzió |
 |---|---|
-| Desktop alkalmazás | `5.0.0-beta.8` |
+| Desktop alkalmazás | `5.0.0-beta.9` |
 | Arduino firmware | `5.0.0-beta.6` |
 | Direct API | `1.0.0` |
 | Fejlesztési ág | `feature/beta7-ui-overhaul` |
@@ -21,7 +21,7 @@ A firmware kizárólag Direct API v1 útvonalakat szolgál ki. A legacy firmware
 
 Az OTA maintenance mód az OTA előkészítésekor változatlanul hagyja az NTP UDP socketet, miközben szünetelteti a HTTP-kezelést, a schedulert, a LED-frissítést és a háttérfeladatokat.
 
-## Desktop Beta.8
+## Desktop Beta.9
 
 - Theme Engine és Design System;
 - Arctic és Midnight megjelenés;

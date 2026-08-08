@@ -3,7 +3,7 @@
 const fs=require('fs'),a=require('assert/strict');
 const r=fs.readFileSync('README.md','utf8');
 
-a.ok(r.includes('5.0.0-beta.8'));
+a.ok(r.includes('5.0.0-beta.9'));
 a.ok(r.includes('5.0.0-beta.6'));
 a.ok(r.includes('Direct API | `1.0.0`'));
 a.ok(r.includes('Debian 13 Rust LXC'));

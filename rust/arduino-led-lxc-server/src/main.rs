@@ -40,6 +40,7 @@ struct AppState {
     ota_port: u16,
     ota_control_token: Arc<String>,
     ota_busy: Arc<AtomicBool>,
+    ota_cancel: Arc<AtomicBool>,
     ota_runtime: Arc<Mutex<OtaRuntimeStatus>>,
 }
 
@@ -240,6 +241,139 @@ fn upload_native(
     Ok(body)
 }
 
+fn firmware_version_from_asset(name: &str) -> Option<String> {
+    const PREFIX: &str = "Arduino_LED_Controller_Firmware_";
+    const SUFFIX: &str = "_UNO_R4_WiFi.bin";
+    name.strip_prefix(PREFIX)
+        .and_then(|v| v.strip_suffix(SUFFIX))
+        .map(str::to_string)
+}
+
+fn github_firmware_artifacts(channel: &str) -> Result<Vec<Value>, String> {
+    let output = Command::new("curl")
+        .args([
+            "-fsSL",
+            "--retry",
+            "3",
+            "--connect-timeout",
+            "20",
+            "-H",
+            "Accept: application/vnd.github+json",
+            "-H",
+            "User-Agent: arduino-led-controller-lxc",
+            "https://api.github.com/repos/LexyGuru/arduino-led-controller/releases?per_page=100",
+        ])
+        .output()
+        .map_err(|e| format!("GitHub firmware catalog curl hiba: {e}"))?;
+    if !output.status.success() {
+        return Err(format!(
+            "GitHub firmware catalog HTTP hiba: {}",
+            String::from_utf8_lossy(&output.stderr).trim()
+        ));
+    }
+    let releases: Value = serde_json::from_slice(&output.stdout)
+        .map_err(|e| format!("GitHub releases JSON hiba: {e}"))?;
+    let list = releases
+        .as_array()
+        .ok_or_else(|| "A GitHub releases válasz nem lista.".to_string())?;
+    let want_beta = channel != "stable";
+    let mut artifacts = Vec::new();
+    for release in list {
+        if release
+            .get("draft")
+            .and_then(Value::as_bool)
+            .unwrap_or(false)
+        {
+            continue;
+        }
+        let prerelease = release
+            .get("prerelease")
+            .and_then(Value::as_bool)
+            .unwrap_or(false);
+        if want_beta != prerelease {
+            continue;
+        }
+        let assets = release
+            .get("assets")
+            .and_then(Value::as_array)
+            .cloned()
+            .unwrap_or_default();
+        for asset in &assets {
+            let Some(name) = asset.get("name").and_then(Value::as_str) else {
+                continue;
+            };
+            let Some(version) = firmware_version_from_asset(name) else {
+                continue;
+            };
+            let checksum_name = format!("{name}.sha256");
+            let checksum_url = assets
+                .iter()
+                .find(|a| a.get("name").and_then(Value::as_str) == Some(checksum_name.as_str()))
+                .and_then(|a| a.get("browser_download_url"))
+                .and_then(Value::as_str)
+                .unwrap_or_default()
+                .to_string();
+            let download_url = asset
+                .get("browser_download_url")
+                .and_then(Value::as_str)
+                .unwrap_or_default()
+                .to_string();
+            if download_url.is_empty() || checksum_url.is_empty() {
+                continue;
+            }
+            artifacts.push(json!({"name":name,"downloadUrl":download_url,"checksumUrl":checksum_url,"firmwareVersion":version,"version":version,"tag":release.get("tag_name").and_then(Value::as_str).unwrap_or(&version),"createdAt":release.get("published_at").and_then(Value::as_str),"summary":release.get("name").and_then(Value::as_str).unwrap_or("Arduino LED Controller firmware"),"channel":if prerelease{"beta"}else{"stable"},"otaPort":65280,"installMode":"native-rust-http"}));
+        }
+    }
+    artifacts.sort_by(|a, b| {
+        b.get("createdAt")
+            .and_then(Value::as_str)
+            .unwrap_or("")
+            .cmp(a.get("createdAt").and_then(Value::as_str).unwrap_or(""))
+    });
+    Ok(artifacts)
+}
+
+async fn firmware_releases(OriginalUri(uri): OriginalUri) -> ApiResult {
+    let channel = uri
+        .query()
+        .and_then(|q| {
+            q.split('&').find_map(|p| {
+                let mut x = p.splitn(2, '=');
+                match (x.next(), x.next()) {
+                    (Some("channel"), Some(v)) => Some(v.to_string()),
+                    _ => None,
+                }
+            })
+        })
+        .unwrap_or_else(|| "beta".into());
+    let c = channel.clone();
+    let result = task::spawn_blocking(move || github_firmware_artifacts(&c))
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({"error":format!("firmware worker error: {e}")})),
+            )
+        })?
+        .map_err(|e| (StatusCode::BAD_GATEWAY, Json(json!({"error":e}))))?;
+    Ok(Json(
+        json!({"source":"github-releases","channel":channel,"artifacts":result}),
+    ))
+}
+
+async fn firmware_cancel(State(state): State<AppState>, headers: HeaderMap) -> ApiResult {
+    if !ota_authorized(&headers, &state) {
+        return Err((
+            StatusCode::UNAUTHORIZED,
+            Json(json!({"error":"Érvénytelen vagy hiányzó LXC OTA control token."})),
+        ));
+    }
+    state.ota_cancel.store(true, Ordering::SeqCst);
+    Ok(Json(
+        json!({"cancelRequested":true,"message":"OTA megszakítás kérve."}),
+    ))
+}
+
 fn catalog_artifact(
     state: &AppState,
     requested: Option<&str>,
@@ -256,21 +390,42 @@ fn catalog_artifact(
         .get("artifacts")
         .and_then(Value::as_array)
         .ok_or("Nincs artifacts lista.")?;
-    let a = artifacts
-        .iter()
-        .find(|a| {
-            requested
-                .map(|wanted| {
-                    a.get("version")
-                        .and_then(Value::as_str)
-                        .map(normalize_ota_version)
-                        == Some(normalize_ota_version(wanted))
-                })
-                .unwrap_or(true)
-        })
-        .ok_or("A kért firmware nem található.")?;
+    let local = artifacts.iter().find(|a| {
+        requested
+            .map(|wanted| {
+                a.get("version")
+                    .and_then(Value::as_str)
+                    .map(normalize_ota_version)
+                    == Some(normalize_ota_version(wanted))
+            })
+            .unwrap_or(true)
+    });
+    let remote;
+    let a = if let Some(local) = local {
+        local
+    } else {
+        remote = github_firmware_artifacts("beta")?
+            .into_iter()
+            .chain(github_firmware_artifacts("stable")?)
+            .find(|a| {
+                requested
+                    .map(|wanted| {
+                        a.get("firmwareVersion")
+                            .or_else(|| a.get("version"))
+                            .and_then(Value::as_str)
+                            .map(normalize_ota_version)
+                            == Some(normalize_ota_version(wanted))
+                    })
+                    .unwrap_or(false)
+            })
+            .ok_or_else(|| {
+                "A kért firmware nem található a GitHub release-katalógusban.".to_string()
+            })?;
+        &remote
+    };
     Ok((
-        a.get("version")
+        a.get("firmwareVersion")
+            .or_else(|| a.get("version"))
             .and_then(Value::as_str)
             .ok_or("version hiányzik")?
             .to_string(),
@@ -358,6 +513,7 @@ async fn firmware_install_job(
     state: AppState,
     request: FirmwareInstallRequest,
 ) -> Result<(), String> {
+    state.ota_cancel.store(false, Ordering::SeqCst);
     let (version, url, checksum_url, catalog_port) =
         catalog_artifact(&state, request.version.as_deref())?;
     if let Ok(mut r) = state.ota_runtime.lock() {
@@ -374,6 +530,9 @@ async fn firmware_install_job(
     let firmware = task::spawn_blocking(move || download_and_verify(&url, &checksum_url))
         .await
         .map_err(|e| e.to_string())??;
+    if state.ota_cancel.load(Ordering::SeqCst) {
+        return Err("OTA megszakítva a letöltés után.".into());
+    }
 
     ota_update(
         &state,
@@ -430,6 +589,9 @@ async fn firmware_install_job(
     );
     let pass = state.ota_password.as_ref().clone();
     let addr = address.clone();
+    if state.ota_cancel.load(Ordering::SeqCst) {
+        return Err("OTA megszakítva feltöltés előtt.".into());
+    }
     task::spawn_blocking(move || upload_native(&addr, port, &pass, &firmware))
         .await
         .map_err(|e| e.to_string())??;
@@ -444,6 +606,9 @@ async fn firmware_install_job(
     let mut after = None;
     let mut installed = None;
     while started.elapsed() < Duration::from_secs(180) {
+        if state.ota_cancel.load(Ordering::SeqCst) {
+            return Err("OTA ellenőrzés megszakítva.".into());
+        }
         tokio::time::sleep(Duration::from_secs(3)).await;
         if let Ok(Json(status)) =
             direct_request(state.clone(), Method::GET, "/api/v1/status".into(), None).await
@@ -862,6 +1027,7 @@ async fn main() -> Result<(), String> {
         ota_port: env_u16("ARDUINO_OTA_PORT", 65280)?,
         ota_control_token: Arc::new(env::var("LXC_OTA_CONTROL_TOKEN").unwrap_or_default()),
         ota_busy: Arc::new(AtomicBool::new(false)),
+        ota_cancel: Arc::new(AtomicBool::new(false)),
         ota_runtime: Arc::new(Mutex::new(OtaRuntimeStatus::default())),
     };
 
@@ -897,7 +1063,9 @@ async fn main() -> Result<(), String> {
         .route("/api/v1/ota/status", get(proxy_get))
         .route("/api/v1/ota/prepare", post(proxy_post))
         .route("/api/v1/server/firmware/catalog", get(firmware_catalog))
+        .route("/api/v1/server/firmware/releases", get(firmware_releases))
         .route("/api/v1/server/ota/runtime", get(ota_runtime_status))
+        .route("/api/v1/server/firmware/cancel", post(firmware_cancel))
         .route(
             "/api/v1/server/firmware/install",
             post(firmware_install_start),

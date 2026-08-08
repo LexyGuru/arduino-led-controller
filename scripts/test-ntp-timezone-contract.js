@@ -80,7 +80,7 @@ assert.match(types, /timezoneId: string/);
 assert.match(api, /syncTimeConfig/);
 assert.match(settings, /resolvedOptions\(\)\.timeZone/);
 
-// README current-state contract: Beta.8 + dynamic GitHub Actions badges.
+// README current-state contract: Beta.9 + dynamic GitHub Actions badges.
 assert.ok(
   readme.includes(
     'firmware-beta-release.yml/badge.svg?branch=next%2Fv5-rearchitecture',
@@ -97,7 +97,7 @@ assert.ok(readme.includes('actions/workflows/firmware-beta-release.yml'));
 assert.ok(readme.includes('actions/workflows/beta-release.yml'));
 
 for (const marker of [
-  '5.0.0-beta.8',
+  '5.0.0-beta.9',
   '5.0.0-beta.6',
   'next/v5-rearchitecture',
   'Stabil ág | `main`',
@@ -107,7 +107,7 @@ for (const marker of [
 ]) {
   assert.ok(
     readme.includes(marker),
-    `README aktuális Beta.8 marker hiányzik: ${marker}`,
+    `README aktuális Beta.9 marker hiányzik: ${marker}`,
   );
 }
 

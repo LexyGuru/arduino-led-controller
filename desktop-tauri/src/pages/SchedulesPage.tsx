@@ -43,6 +43,11 @@ import type {
   ScheduleSyncState
 } from '../types';
 
+const tauriRuntime = typeof globalThis !== 'undefined' && '__TAURI_INTERNALS__' in globalThis;
+
+async function pickBrowserJsonFile():Promise<LedSchedule[]|null>{return new Promise((resolve,reject)=>{const input=document.createElement('input');input.type='file';input.accept='application/json,.json';input.onchange=async()=>{try{const file=input.files?.[0];if(!file){resolve(null);return}const value=JSON.parse(await file.text());const schedules=Array.isArray(value)?value:Array.isArray(value?.schedules)?value.schedules:null;if(!schedules)throw new Error('A JSON nem tartalmaz schedules listát.');resolve(schedules as LedSchedule[])}catch(error){reject(error)}};input.click()})}
+function downloadBrowserJson(json:string){const blob=new Blob([json],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='weekly-led-schedules.json';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url)}
+
 const dayKeys = [
   'days.1',
   'days.2',
@@ -656,6 +661,12 @@ export function SchedulesPage({
           return;
         }
 
+        if (!tauriRuntime) {
+          downloadBrowserJson(json);
+          setFileMessage(t('schedules.exportSaved',{count:draft.length,path:'weekly-led-schedules.json',bytes:json.length}));
+          return;
+        }
+
         const path =
           await save({
             title:
@@ -697,6 +708,14 @@ export function SchedulesPage({
   const importJson =
     async () => {
       try {
+        if (!tauriRuntime) {
+          const imported=await pickBrowserJsonFile();
+          if(!imported)return;
+          setDraft(imported);
+          setFileMessage(t('schedules.imported',{count:imported.length}));
+          return;
+        }
+
         const selected =
           await open({
             title:

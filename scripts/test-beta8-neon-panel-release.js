@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 const fs = require('fs');
 function assert(cond, msg) { if (!cond) { console.error(`FAIL: ${msg}`); process.exit(1); } }
-const VERSION='5.0.0-beta.8';
+const VERSION='5.0.0-beta.9';
 assert(fs.readFileSync('VERSION','utf8').trim()===VERSION,'VERSION mismatch');
 const rootPkg=JSON.parse(fs.readFileSync('package.json','utf8'));
 const rootLock=JSON.parse(fs.readFileSync('package-lock.json','utf8'));
@@ -20,11 +20,11 @@ assert(rv.firmware==='5.0.0-beta.6','firmware must remain beta.6');
 assert(rv.directApi==='1.0.0','Direct API must remain 1.0.0');
 assert(openapi.info.version===VERSION,'OpenAPI mismatch');
 const cargo=fs.readFileSync('desktop-tauri/src-tauri/Cargo.toml','utf8');
-assert(/\[package\][\s\S]*?version\s*=\s*"5\.0\.0-beta\.8"/m.test(cargo),'Cargo.toml mismatch');
+assert(/\[package\][\s\S]*?version\s*=\s*"5\.0\.0-beta\.9"/m.test(cargo),'Cargo.toml mismatch');
 const cargoLock=fs.readFileSync('desktop-tauri/src-tauri/Cargo.lock','utf8');
-assert(/\[\[package\]\]\s*\nname\s*=\s*"arduino-led-controller"\s*\nversion\s*=\s*"5\.0\.0-beta\.8"/m.test(cargoLock),'Cargo.lock mismatch');
+assert(/\[\[package\]\]\s*\nname\s*=\s*"arduino-led-controller"\s*\nversion\s*=\s*"5\.0\.0-beta\.9"/m.test(cargoLock),'Cargo.lock mismatch');
 const wf=fs.readFileSync('.github/workflows/beta-release.yml','utf8');
-assert(wf.includes('EXPECTED_VERSION: 5.0.0-beta.8'),'workflow version mismatch');
+assert(wf.includes('EXPECTED_VERSION: 5.0.0-beta.9'),'workflow version mismatch');
 assert(wf.includes('body_path: docs/v5/BETA8_RELEASE_NOTES.md'),'workflow notes mismatch');
 const notes=fs.readFileSync('docs/v5/BETA8_RELEASE_NOTES.md','utf8');
 assert(notes.includes('Neon Panel UI Stabilization'),'release title missing');
