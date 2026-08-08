@@ -73,6 +73,7 @@ dependencies = [
 name = "arduino-led-controller"
 version = "5.0.0-beta.8"
 dependencies = [
+ "arduino-led-core",
  "base64 0.22.1",
  "hex",
  "keyring",
@@ -86,6 +87,16 @@ dependencies = [
  "tauri-plugin-opener",
  "tokio",
  "zeroize",
+]
+
+[[package]]
+name = "arduino-led-core"
+version = "0.1.0"
+dependencies = [
+ "reqwest 0.12.28",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.19",
 ]
 
 [[package]]

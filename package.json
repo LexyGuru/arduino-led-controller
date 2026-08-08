@@ -166,7 +166,11 @@
     "test:beta7-legacy-branding-cleanup": "node scripts/test-beta7-legacy-branding-cleanup.js",
     "test:beta7-topbar-v5-header": "node scripts/test-beta7-topbar-v5-header.js",
     "test:beta7-keychain-single-access": "node scripts/test-beta7-keychain-single-access.js",
-    "test:beta8-neon-panel-release": "node scripts/test-beta8-neon-panel-release.js"
+    "test:beta8-neon-panel-release": "node scripts/test-beta8-neon-panel-release.js",
+    "test:rust-lxc": "npm run test:rust-lxc-shared-core && npm run test:rust-lxc-runtime-deploy && npm run test:proxmox-debian13",
+    "test:rust-lxc-shared-core": "node scripts/test-rust-lxc-shared-core.js",
+    "test:rust-lxc-runtime-deploy": "node scripts/test-rust-lxc-runtime-deploy.js",
+    "test:proxmox-debian13": "node scripts/test-proxmox-debian13-installer.js"
   },
   "engines": {
     "node": ">=20"

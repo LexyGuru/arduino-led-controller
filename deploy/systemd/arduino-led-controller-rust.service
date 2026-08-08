@@ -1,0 +1,28 @@
+[Unit]
+Description=Arduino LED Controller V5 Rust LXC Server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=arduino-led
+Group=arduino-led
+EnvironmentFile=/etc/arduino-led-controller/lxc.env
+ExecStart=/opt/arduino-led-controller/current/bin/arduino-led-lxc-server
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=20
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+ReadWritePaths=/var/lib/arduino-led-controller /var/log/arduino-led-controller
+
+[Install]
+WantedBy=multi-user.target

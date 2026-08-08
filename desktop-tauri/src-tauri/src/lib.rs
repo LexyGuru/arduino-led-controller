@@ -1,3 +1,4 @@
+use arduino_led_core::{request_json_blocking, DirectApiTarget};
 use base64::{engine::general_purpose::STANDARD as BASE64_STANDARD, Engine as _};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -595,61 +596,26 @@ fn raw_json_once(
     response_timeout: Duration,
 ) -> Result<Value, String> {
     validate_config(c)?;
-    let host = c.arduino_ip.trim();
     let request_path = protected_path(c, path)?;
     let device_key = device_key_header_value(c)?;
-    let protocol = c.protocol.trim().to_ascii_lowercase();
-    let url = format!("{protocol}://{host}:{}{request_path}", c.arduino_port);
-    let client = reqwest::blocking::Client::builder()
-        .connect_timeout(connect_timeout)
-        .timeout(response_timeout)
-        .redirect(reqwest::redirect::Policy::none())
-        .build()
-        .map_err(|e| format!("Arduino HTTP-kliens hiba: {e}"))?;
-    let method = reqwest::Method::from_bytes(method.as_bytes())
-        .map_err(|e| format!("Érvénytelen HTTP-metódus: {e}"))?;
-    let mut request = client
-        .request(method, &url)
-        .header("Accept", "application/json")
-        .header("X-Device-Key", device_key)
-        .header("Connection", "close");
-    if let Some(payload) = body {
-        request = request
-            .header("Content-Type", "application/json")
-            .json(payload);
-    }
-    let response = request
-        .send()
-        .map_err(|e| format!("Nem sikerült kapcsolódni a(z) {url} címhez. {e}"))?;
-    let status = response.status();
-    let bytes = response
-        .bytes()
-        .map_err(|e| format!("Arduino válaszolvasási hiba ({url}): {e}"))?;
-    if !status.is_success() {
-        let preview = String::from_utf8_lossy(&bytes)
-            .chars()
-            .take(240)
-            .collect::<String>();
-        return Err(format!(
-            "Arduino HTTP-válasz: {} {}. Végpont: {url}. Részlet: {preview}",
-            status.as_u16(),
-            status.canonical_reason().unwrap_or("HIBA")
-        ));
-    }
-    if bytes.is_empty() {
-        return Err(format!(
-            "Az Arduino üres HTTP-választ adott. Végpont: {url}"
-        ));
-    }
-    serde_json::from_slice(&bytes).map_err(|error| {
-        let preview = String::from_utf8_lossy(&bytes)
-            .chars()
-            .take(240)
-            .collect::<String>();
-        format!(
-            "Hibás vagy csonka Arduino JSON-válasz: {error}. Végpont: {url}. Részlet: {preview}"
-        )
-    })
+
+    let target = DirectApiTarget {
+        protocol: c.protocol.trim().to_ascii_lowercase(),
+        host: c.arduino_ip.trim().to_string(),
+        port: c.arduino_port,
+        api_path: String::new(),
+        device_key: device_key.to_string(),
+    };
+
+    request_json_blocking(
+        &target,
+        method,
+        &request_path,
+        body,
+        connect_timeout,
+        response_timeout,
+    )
+    .map_err(|error| format!("Arduino HTTP-kliens hiba: {error}"))
 }
 
 fn ota_request_allowed_while_busy(method: &str, path: &str) -> bool {

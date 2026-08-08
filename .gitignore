@@ -38,3 +38,9 @@ SD_Diagnostic/
 # Firmware secrets
 firmware/**/secrets.h
 !firmware/**/secrets.example.h
+
+dist-lxc-rust/
+dist-lxc-runtime-test/
+dist-proxmox-test/
+artifacts/
+rust/target/

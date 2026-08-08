@@ -2,7 +2,9 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 
-const rust = fs.readFileSync('desktop-tauri/src-tauri/src/lib.rs', 'utf8');
+const tauriRust = fs.readFileSync('desktop-tauri/src-tauri/src/lib.rs', 'utf8');
+const sharedRust = fs.readFileSync('rust/arduino-led-core/src/lib.rs', 'utf8');
+const rust = `${tauriRust}\n${sharedRust}`;
 const types = fs.readFileSync('desktop-tauri/src/types/index.ts', 'utf8');
 const settings = fs.readFileSync('desktop-tauri/src/pages/SettingsPage.tsx', 'utf8');
 const i18n = fs.readFileSync('desktop-tauri/src/i18n/index.tsx', 'utf8');
