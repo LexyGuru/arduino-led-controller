@@ -68,6 +68,32 @@ test -f "${SRC}/web-lxc/package.json" || die "web-lxc hiányzik."
 test -f "${SRC}/rust/Cargo.toml" || die "Rust workspace hiányzik."
 
 VERSION="$(tr -d '[:space:]' < "${SRC}/VERSION")"
+
+python3 - "${SRC}/release-versions.json" "${STATE_DIR}/firmware-catalog.json.new" <<'PYCAT'
+import json,sys
+src,dst=sys.argv[1:3]
+with open(src,encoding="utf-8") as f:
+    v=json.load(f)
+catalog={
+    "schemaVersion":1,
+    "channel":v.get("channel","beta"),
+    "source":"release-versions.json",
+    "available":True,
+    "applicationVersion":v.get("application"),
+    "firmwareVersion":v.get("firmware"),
+    "directApiVersion":v.get("directApi"),
+    "board":v.get("board"),
+    "otaPort":v.get("otaPort"),
+    "artifacts":[{"version":v.get("firmware"),"board":v.get("board"),"otaPort":v.get("otaPort"),"installMode":"desktop-system-ota"}]
+}
+with open(dst,"w",encoding="utf-8") as f:
+    json.dump(catalog,f,indent=2,ensure_ascii=False)
+    f.write("\n")
+PYCAT
+mv -f "${STATE_DIR}/firmware-catalog.json.new" "${STATE_DIR}/firmware-catalog.json"
+chmod 0644 "${STATE_DIR}/firmware-catalog.json"
+log "FIRMWARE_CATALOG=REFRESHED"
+
 RELEASE="${RELEASES}/${VERSION}-${REMOTE_COMMIT:0:12}"
 rm -rf "$RELEASE"
 

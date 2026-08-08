@@ -94,6 +94,31 @@ fi
 install -d -o arduino-led -g arduino-led "$ROOT/releases" "$STATE" "$LOG"
 install -d -m 0750 "$ETC"
 
+python3 - "${SOURCE_ROOT}/release-versions.json" "${STATE}/firmware-catalog.json" <<'PYCAT'
+import json,sys
+src,dst=sys.argv[1:3]
+with open(src,encoding="utf-8") as f:
+    v=json.load(f)
+catalog={
+    "schemaVersion":1,
+    "channel":v.get("channel","beta"),
+    "source":"release-versions.json",
+    "available":True,
+    "applicationVersion":v.get("application"),
+    "firmwareVersion":v.get("firmware"),
+    "directApiVersion":v.get("directApi"),
+    "board":v.get("board"),
+    "otaPort":v.get("otaPort"),
+    "artifacts":[{"version":v.get("firmware"),"board":v.get("board"),"otaPort":v.get("otaPort"),"installMode":"desktop-system-ota"}]
+}
+with open(dst,"w",encoding="utf-8") as f:
+    json.dump(catalog,f,indent=2,ensure_ascii=False)
+    f.write("\n")
+PYCAT
+chown arduino-led:arduino-led "${STATE}/firmware-catalog.json"
+chmod 0644 "${STATE}/firmware-catalog.json"
+echo "FIRMWARE_CATALOG_INSTALL=SUCCESS"
+
 rm -rf "$RELEASE"
 install -d "$RELEASE/bin" "$RELEASE/web"
 install -m 0755 "$BIN" "$RELEASE/bin/arduino-led-lxc-server"

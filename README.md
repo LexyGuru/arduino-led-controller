@@ -288,6 +288,7 @@ A README tetején lévő Beta badge-ek közvetlenül a GitHub Actions workflow s
 ## Dokumentáció
 
 - [Rust LXC architektúra](docs/v5/RUST_LXC_ARCHITECTURE.md)
+- [Rust LXC üzemeltetés és konfiguráció](docs/v5/RUST_LXC_OPERATIONS.md)
 - [Beta.7 UI Freeze történeti állapot](docs/v5/BETA7_UI_FREEZE.md)
 - [Beta.7 Markdown-audit](docs/v5/MARKDOWN_AUDIT_BETA7.md)
 - [Beta.6 release notes](docs/v5/BETA6_RELEASE_NOTES.md)

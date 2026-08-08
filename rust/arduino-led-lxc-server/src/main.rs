@@ -176,12 +176,25 @@ async fn firmware_catalog(State(state): State<AppState>) -> ApiResult {
         })));
     };
 
-    let bytes = fs::read(path).map_err(|error| {
-        (
-            StatusCode::SERVICE_UNAVAILABLE,
-            Json(json!({"error": format!("firmware catalog read failed: {error}")})),
-        )
-    })?;
+    let bytes = match fs::read(path) {
+        Ok(bytes) => bytes,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            return Ok(Json(json!({
+                "schemaVersion": 1,
+                "channel": "beta",
+                "source": "catalog-file-missing",
+                "available": false,
+                "path": path.display().to_string(),
+                "artifacts": []
+            })));
+        }
+        Err(error) => {
+            return Err((
+                StatusCode::SERVICE_UNAVAILABLE,
+                Json(json!({"error": format!("firmware catalog read failed: {error}")})),
+            ));
+        }
+    };
     let value: Value = serde_json::from_slice(&bytes).map_err(|error| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -189,6 +202,41 @@ async fn firmware_catalog(State(state): State<AppState>) -> ApiResult {
         )
     })?;
     Ok(Json(value))
+}
+
+async fn server_info(State(state): State<AppState>) -> Json<Value> {
+    fn read_trim(path: &str) -> Option<String> {
+        fs::read_to_string(path)
+            .ok()
+            .map(|value| value.trim().to_string())
+            .filter(|value| !value.is_empty())
+    }
+
+    let catalog_path = state
+        .firmware_catalog
+        .as_ref()
+        .map(|value| value.display().to_string());
+    let catalog_available = state
+        .firmware_catalog
+        .as_ref()
+        .map(|value| value.is_file())
+        .unwrap_or(false);
+    let web_root =
+        env::var("WEB_ROOT").unwrap_or_else(|_| "/opt/arduino-led-controller/current/web".into());
+
+    Json(json!({
+        "service": "arduino-led-lxc-server",
+        "platform": "Debian 13 / Rust Axum",
+        "configPath": "/etc/arduino-led-controller/lxc.env",
+        "updateConfigPath": "/etc/arduino-led-controller/update.env",
+        "installedVersion": read_trim("/var/lib/arduino-led-controller/installed-version"),
+        "installedCommit": read_trim("/var/lib/arduino-led-controller/installed-commit"),
+        "channel": read_trim("/etc/arduino-led-channel"),
+        "branch": read_trim("/etc/arduino-led-branch"),
+        "firmwareCatalogPath": catalog_path,
+        "firmwareCatalogAvailable": catalog_available,
+        "webRoot": web_root
+    }))
 }
 
 async fn ws_events(ws: WebSocketUpgrade, State(state): State<AppState>) -> Response {
@@ -306,8 +354,10 @@ async fn main() -> Result<(), String> {
         .route("/health/ready", get(ready))
         .route("/api/v1/status", get(proxy_get))
         .route("/api/v1/logs", get(proxy_get))
+        .route("/api/v1/logs/clear", post(proxy_post))
         .route("/api/v1/time/config", put(proxy_put))
         .route("/api/v1/leds/{id}", put(proxy_put))
+        .route("/api/v1/leds/all", post(proxy_post))
         .route("/api/v1/schedules/status", get(proxy_get))
         .route("/api/v1/schedules", get(proxy_get).delete(proxy_delete))
         .route("/api/v1/schedules/transactions", post(proxy_post))
@@ -326,6 +376,7 @@ async fn main() -> Result<(), String> {
         .route("/api/v1/ota/status", get(proxy_get))
         .route("/api/v1/ota/prepare", post(proxy_post))
         .route("/api/v1/server/firmware/catalog", get(firmware_catalog))
+        .route("/api/v1/server/info", get(server_info))
         .route("/api/v1/events/ws", get(ws_events))
         .fallback_service(web_service)
         .layer(TraceLayer::new_for_http())
