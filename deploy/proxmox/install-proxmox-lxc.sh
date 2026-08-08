@@ -331,6 +331,14 @@ pct create "$CTID" "$TEMPLATE_VOL" \
 say "${green}LXC indítása...${reset}"
 pct start "$CTID"
 
+say
+say "${bold}Root jelszó beállítása${reset}"
+say "A Debian 13 konzolhoz most kötelező root jelszót megadni."
+say "Írd be kétszer ugyanazt a jelszót:"
+pct exec "$CTID" -- passwd root
+say "${green}ROOT_PASSWORD=CONFIGURED${reset}"
+say
+
 say "Hálózat várása..."
 network_ok=0
 for _ in $(seq 1 60); do
@@ -381,6 +389,7 @@ say "CT ID:    ${CTID}"
 say "Hostname: ${HOSTNAME}"
 say "Channel:  ${CHANNEL} (${BRANCH})"
 say "OS:       Debian 13"
+say "Root login: configured"
 [[ -n "$CT_IP" ]] && say "IP:       ${CT_IP}"
 
 if [[ "$CONFIG_STATUS" == "required" ]]; then
