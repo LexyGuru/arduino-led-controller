@@ -49,11 +49,24 @@ DEBIAN_FRONTEND=noninteractive apt-get install -y \
   git \
   util-linux
 
+export HOME="${HOME:-/root}"
+export CARGO_HOME="${CARGO_HOME:-/root/.cargo}"
+export RUSTUP_HOME="${RUSTUP_HOME:-/root/.rustup}"
+export PATH="${CARGO_HOME}/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+
 if ! command -v cargo >/dev/null 2>&1; then
   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
     sh -s -- -y --profile minimal --default-toolchain stable
-  export PATH="${HOME}/.cargo/bin:${PATH}"
 fi
+
+command -v cargo >/dev/null 2>&1 || {
+  echo "cargo nem található a Rust telepítés után." >&2
+  exit 1
+}
+command -v rustc >/dev/null 2>&1 || {
+  echo "rustc nem található a Rust telepítés után." >&2
+  exit 1
+}
 
 rustc --version
 cargo --version

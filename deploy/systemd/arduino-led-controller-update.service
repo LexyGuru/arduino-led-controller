@@ -5,5 +5,9 @@ Wants=network-online.target
 
 [Service]
 Type=oneshot
+Environment=HOME=/root
+Environment=CARGO_HOME=/root/.cargo
+Environment=RUSTUP_HOME=/root/.rustup
+Environment=PATH=/root/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 ExecStart=/usr/local/sbin/arduino-led-controller-update
 Nice=10

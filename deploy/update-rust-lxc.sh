@@ -12,6 +12,14 @@ SERVICE="arduino-led-controller-rust.service"
 LOCK="/run/${APP}-update.lock"
 REPO_URL="https://github.com/LexyGuru/arduino-led-controller.git"
 
+# A native installer rustup-pal root alá telepíti a Rust toolchaint.
+# A systemd service nem örökli az interaktív shell PATH-ját, ezért az updater
+# önállóan is explicit toolchain környezetet állít be.
+export HOME="${HOME:-/root}"
+export CARGO_HOME="${CARGO_HOME:-/root/.cargo}"
+export RUSTUP_HOME="${RUSTUP_HOME:-/root/.rustup}"
+export PATH="${CARGO_HOME}/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+
 log(){ printf '[lxc-update] %s\n' "$*"; }
 die(){ log "HIBA: $*"; exit 1; }
 
@@ -33,6 +41,14 @@ case "$UPDATE_CHANNEL" in
 esac
 
 mkdir -p "$RELEASES" "$STATE_DIR"
+
+command -v cargo >/dev/null 2>&1 ||
+  die "Rust cargo nem található. Várt hely: ${CARGO_HOME}/bin/cargo"
+command -v rustc >/dev/null 2>&1 ||
+  die "Rust rustc nem található. Várt hely: ${CARGO_HOME}/bin/rustc"
+
+log "cargo=$(command -v cargo)"
+log "rustc=$(command -v rustc)"
 
 CURRENT_COMMIT=""
 [[ -r "${STATE_DIR}/installed-commit" ]] &&
