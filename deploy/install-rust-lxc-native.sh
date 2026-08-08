@@ -133,10 +133,21 @@ chmod 0644 "${STATE}/firmware-catalog.json"
 echo "FIRMWARE_CATALOG_INSTALL=SUCCESS"
 
 rm -rf "$RELEASE"
-install -d "$RELEASE/bin" "$RELEASE/web"
+install -d -m 0755 "$RELEASE" "$RELEASE/bin" "$RELEASE/web"
 install -m 0755 "$BIN" "$RELEASE/bin/arduino-led-lxc-server"
 cp -R "${SOURCE_ROOT}/web-lxc/dist/." "$RELEASE/web/"
+find "$RELEASE/web" -type d -exec chmod 0755 {} +
+find "$RELEASE/web" -type f -exec chmod 0644 {} +
 test -f "$RELEASE/web/index.html"
+runuser -u arduino-led -- test -r "$RELEASE/web/index.html" || {
+  echo "A web/index.html nem olvasható az arduino-led service user számára." >&2
+  exit 1
+}
+runuser -u arduino-led -- test -x "$RELEASE/web" || {
+  echo "A web root nem járható az arduino-led service user számára." >&2
+  exit 1
+}
+echo "WEB_LXC_PERMISSIONS=SUCCESS"
 echo "WEB_LXC_INSTALL=SUCCESS"
 
 if [[ ! -f "$ETC/lxc.env" ]]; then

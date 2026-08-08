@@ -132,11 +132,22 @@ RUSTFLAGS="-D warnings" cargo build --locked --release \
 BIN="${SRC}/rust/target/release/arduino-led-lxc-server"
 test -x "$BIN" || die "Rust bináris hiányzik."
 
-install -d "${RELEASE}/bin" "${RELEASE}/web"
+install -d -m 0755 "${RELEASE}" "${RELEASE}/bin" "${RELEASE}/web"
 install -m 0755 "$BIN" "${RELEASE}/bin/arduino-led-lxc-server"
 cp -R "${SRC}/web-lxc/dist/." "${RELEASE}/web/"
+
+find "${RELEASE}/web" -type d -exec chmod 0755 {} +
+find "${RELEASE}/web" -type f -exec chmod 0644 {} +
+test -r "${RELEASE}/web/index.html"
+runuser -u arduino-led -- test -r "${RELEASE}/web/index.html" ||
+  die "Az új web/index.html nem olvasható az arduino-led service user számára."
+runuser -u arduino-led -- test -x "${RELEASE}/web" ||
+  die "Az új web root nem járható az arduino-led service user számára."
+
 printf '%s\n' "$REMOTE_COMMIT" > "${RELEASE}/SOURCE_COMMIT"
 printf '%s\n' "$VERSION" > "${RELEASE}/VERSION"
+chmod 0644 "${RELEASE}/SOURCE_COMMIT" "${RELEASE}/VERSION"
+log "WEB_ASSET_PERMISSIONS=OK"
 
 PREVIOUS=""
 [[ -L "$CURRENT" ]] && PREVIOUS="$(readlink -f "$CURRENT" || true)"
@@ -147,27 +158,33 @@ mv -Tf "${ROOT}/current.new" "$CURRENT"
 systemctl restart "$SERVICE"
 
 live=0
+live_http="000"
 for _ in $(seq 1 30); do
-  if curl -fsS http://127.0.0.1:3000/health/live >/dev/null 2>&1; then
+  live_http="$(curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/health/live || true)"
+  if [[ "$live_http" == "200" ]]; then
     live=1
     break
   fi
   sleep 1
 done
+log "RUNTIME_GATE_LIVE=${live} HTTP=${live_http}"
 
 web=0
+web_http="000"
 if [[ "$live" == "1" ]]; then
   for _ in $(seq 1 15); do
-    if curl -fsS http://127.0.0.1:3000/ >/dev/null 2>&1; then
+    web_http="$(curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/ || true)"
+    if [[ "$web_http" == "200" ]]; then
       web=1
       break
     fi
     sleep 1
   done
 fi
+log "RUNTIME_GATE_WEB=${web} HTTP=${web_http}"
 
 if [[ "$live" != "1" || "$web" != "1" ]]; then
-  log "Az új release saját runtime gate-je hibás. Rollback..."
+  log "Az új release saját runtime gate-je hibás. LIVE=${live}/${live_http} WEB=${web}/${web_http}. Rollback..."
   if [[ -n "$PREVIOUS" && -d "$PREVIOUS" ]]; then
     ln -sfn "$PREVIOUS" "${ROOT}/current.rollback"
     mv -Tf "${ROOT}/current.rollback" "$CURRENT"
@@ -181,7 +198,6 @@ if [[ "$live" != "1" || "$web" != "1" ]]; then
   fi
   exit 1
 fi
-
 # Arduino readiness diagnosztika: nem rollback gate.
 if curl -fsS http://127.0.0.1:3000/health/ready >/dev/null 2>&1; then
   log "ARDUINO_READY=YES"
