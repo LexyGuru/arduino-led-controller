@@ -1,6 +1,20 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+# BEGIN BETA9 CURRENT RELEASE DOC GATE
+for beta9_current_doc in \
+  docs/v5/BETA9_RELEASE_CHECKLIST.md \
+  docs/v5/BETA9_INSTALLATION_GUIDE.md \
+  docs/v5/BETA9_RELEASE_NOTES.md
+do
+  if [ ! -f "${beta9_current_doc}" ]; then
+    echo "HIBA: hiányzó Beta.9 current release dokumentum: ${beta9_current_doc}" >&2
+    exit 1
+  fi
+done
+# END BETA9 CURRENT RELEASE DOC GATE
+
+
 cd "$(dirname "$0")/.."
 
 required=(

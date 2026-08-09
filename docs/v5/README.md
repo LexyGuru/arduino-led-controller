@@ -4,9 +4,9 @@
 
 - [Implementációs állapot](V5_IMPLEMENTATION_STATUS.md)
 - [Rearchitecture checklist](V5_REARCHITECTURE_CHECKLIST.md)
-- [Beta telepítés](BETA1_INSTALLATION_GUIDE.md)
-- [Beta release checklist](BETA1_RELEASE_CHECKLIST.md)
-- [Beta release notes](BETA1_RELEASE_NOTES.md)
+- [Beta telepítés](BETA9_INSTALLATION_GUIDE.md)
+- [Beta release checklist](BETA9_RELEASE_CHECKLIST.md)
+- [Beta release notes](BETA9_RELEASE_NOTES.md)
 - [Direct Arduino architektúra](V5_DIRECT_ARDUINO_ARCHITECTURE.md)
 - [Direct Arduino biztonság](V5_DIRECT_ARDUINO_SECURITY.md)
 - [Desktop API runtime](DESKTOP_API_V2_RUNTIME.md)

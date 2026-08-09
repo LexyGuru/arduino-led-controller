@@ -1,5 +1,14 @@
 # 5.0.0-beta.9
 
+## 5.0.0-beta.9
+
+- Canonical shared React desktop/LXC release documentation.
+- Beta.9-only GitHub prerelease documentation assets.
+- Rust LXC canonical runtime and transactional updater documentation.
+- Current Beta release contracts separated from historical Beta snapshot tests.
+- Historical release tests remain available via `npm run test:release-history`.
+
+
 - Shared React frontend for desktop, mobile and LXC.
 - Full LXC firmware release selection and OTA cancel.
 - Browser schedule import/export.

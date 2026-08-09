@@ -127,7 +127,7 @@ assert.match(unit, /ProtectSystem=full/);
 assert.match(unit, /PrivateTmp=true/);
 assert.match(unit, /Restart=on-failure/);
 
-const guide = read('docs/v5/BETA8_INSTALLATION_GUIDE.md');
+const guide = read('docs/v5/BETA9_INSTALLATION_GUIDE.md');
 for (const expected of [
   'Windows x86_64',
   'macOS Apple Silicon',
@@ -151,7 +151,7 @@ assert.match(guide, /nincs notarizálva/);
 assert.match(guide, /SmartScreen/);
 assert.match(guide, /unsigned\.ipa.*nincs.*aláírva/is);
 
-const notes = read('docs/v5/BETA8_RELEASE_NOTES.md');
+const notes = read('docs/v5/BETA9_RELEASE_NOTES.md');
 assert.ok(
   notes.includes(applicationVersion),
   `A release notes nem tartalmazza: ${applicationVersion}`
@@ -161,7 +161,7 @@ assert.match(notes, /main.*nem módosul/is);
 assert.match(notes, /produkciós.*10\.0\.0\.123/is);
 assert.match(notes, /SBOM/);
 
-const checklist = read('docs/v5/BETA8_RELEASE_CHECKLIST.md');
+const checklist = read('docs/v5/BETA9_RELEASE_CHECKLIST.md');
 assert.match(checklist, /Windows x86_64/);
 assert.match(checklist, /macOS Apple Silicon/);
 assert.match(checklist, /macOS Intel/);

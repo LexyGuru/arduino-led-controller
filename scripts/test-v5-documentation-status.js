@@ -19,9 +19,9 @@ const docs = [
   'CHANGELOG.md',
   'SECURITY.md',
   'CONTRIBUTING.md',
-  'docs/v5/BETA6_INSTALLATION_GUIDE.md',
-  'docs/v5/BETA6_RELEASE_NOTES.md',
-  'docs/v5/BETA6_RELEASE_CHECKLIST.md'
+  'docs/v5/BETA9_INSTALLATION_GUIDE.md',
+  'docs/v5/BETA9_RELEASE_NOTES.md',
+  'docs/v5/BETA9_RELEASE_CHECKLIST.md'
 ];
 
 for (const path of docs) {

@@ -12,6 +12,21 @@
 
 Többplatformos LED-vezérlő rendszer Arduino UNO R4 WiFi és három WS2812B LED-szalag számára. A V5 elsődleges működési módja továbbra is a közvetlen Direct API v1 kapcsolat, de a Beta.9 már teljes Debian 13 Rust LXC szervert is tartalmaz React/Vite webfelülettel, automatikus frissítéssel és rollbackkel.
 
+
+## Beta.9 release readiness
+
+**Aktuális Beta alkalmazás:** `5.0.0-beta.9`
+**Párosított firmware:** `5.0.0-beta.6`
+**Direct API:** `1.0.0`
+
+Aktuális kiadási dokumentumok:
+
+- [Beta.9 release notes](docs/v5/BETA9_RELEASE_NOTES.md)
+- [Beta.9 telepítési útmutató](docs/v5/BETA9_INSTALLATION_GUIDE.md)
+- [Beta.9 release checklist](docs/v5/BETA9_RELEASE_CHECKLIST.md)
+
+A Beta.1–Beta.8 dokumentumok történeti release-dokumentációként maradnak a repositoryban.
+
 ## Aktuális verziók és fejlesztési állapot
 
 | Elem | Verzió / állapot |
@@ -291,9 +306,6 @@ A README tetején lévő Beta badge-ek közvetlenül a GitHub Actions workflow s
 - [Rust LXC üzemeltetés és konfiguráció](docs/v5/RUST_LXC_OPERATIONS.md)
 - [Beta.7 UI Freeze történeti állapot](docs/v5/BETA7_UI_FREEZE.md)
 - [Beta.7 Markdown-audit](docs/v5/MARKDOWN_AUDIT_BETA7.md)
-- [Beta.6 release notes](docs/v5/BETA6_RELEASE_NOTES.md)
-- [Beta.6 telepítési útmutató](docs/v5/BETA6_INSTALLATION_GUIDE.md)
-- [Beta.6 release checklist](docs/v5/BETA6_RELEASE_CHECKLIST.md)
 - [Firmware áttekintés](firmware/README.md)
 - [Direct API v1](docs/firmware/DIRECT_API_V1.md)
 - [EEPROM tárolás](docs/firmware/EEPROM_STORAGE.md)
