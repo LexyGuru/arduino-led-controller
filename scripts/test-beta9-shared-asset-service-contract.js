@@ -18,6 +18,9 @@ for(const [name,text] of [['updater',updater],['installer',installer]]){
   assert.ok(text.includes('v5-icon.png'),`${name}: v5 icon gate missing`);
 }
 assert.ok(updater.includes('RUNTIME_GATE_V5_ICON='),'updater runtime asset gate missing');
+assert.ok(updater.includes('CONTROL_PLANE_RUNTIME_GATE_V5_ICON='),'control-plane asset runtime gate missing');
+assert.ok(updater.includes('CONTROL_PLANE_TRANSACTION=SUCCESS'),'control-plane transaction marker missing');
+assert.ok(updater.includes('CONTROL_PLANE_ROLLBACK=START'),'control-plane rollback contract missing');
 assert.ok(installer.includes('WEB_LXC_V5_ICON_HTTP=SUCCESS'),'installer HTTP asset gate missing');
 assert.ok(updateUnit.includes('arduino-led-controller-rust.service'),'update unit dependency mismatch');
 assert.ok(rustUnit.includes('/opt/arduino-led-controller/current/bin/arduino-led-lxc-server'),'Rust service ExecStart mismatch');
@@ -28,4 +31,5 @@ console.log('LXC_BUILD_ASSET_GATE=PASSED');
 console.log('LXC_RELEASE_ASSET_GATE=PASSED');
 console.log('LXC_HTTP_ASSET_GATE=PASSED');
 console.log('RUST_LXC_SERVICE_CONTRACT=PASSED');
+console.log('RUST_LXC_CONTROL_PLANE_TRANSACTION=PASSED');
 console.log('BETA9_SHARED_ASSET_SERVICE_CONTRACT=PASSED');

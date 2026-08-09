@@ -10,6 +10,10 @@ STATE_DIR="/var/lib/${APP}"
 UPDATE_ENV="/etc/${APP}/update.env"
 SERVICE="arduino-led-controller-rust.service"
 LOCK="/run/${APP}-update.lock"
+UPDATER_BIN="/usr/local/sbin/arduino-led-controller-update"
+RUNTIME_UNIT="/etc/systemd/system/arduino-led-controller-rust.service"
+UPDATE_UNIT="/etc/systemd/system/arduino-led-controller-update.service"
+UPDATE_TIMER="/etc/systemd/system/arduino-led-controller-update.timer"
 REPO_URL="https://github.com/LexyGuru/arduino-led-controller.git"
 
 # A native installer rustup-pal root alá telepíti a Rust toolchaint.
@@ -82,6 +86,10 @@ SRC="${WORK}/src"
 test -f "${SRC}/VERSION" || die "VERSION hiányzik."
 test -f "${SRC}/web-lxc/package.json" || die "web-lxc hiányzik."
 test -f "${SRC}/rust/Cargo.toml" || die "Rust workspace hiányzik."
+test -f "${SRC}/deploy/update-rust-lxc.sh" || die "Updater source hiányzik."
+test -f "${SRC}/deploy/systemd/arduino-led-controller-rust.service" || die "Rust service unit source hiányzik."
+test -f "${SRC}/deploy/systemd/arduino-led-controller-update.service" || die "Update service unit source hiányzik."
+test -f "${SRC}/deploy/systemd/arduino-led-controller-update.timer" || die "Update timer source hiányzik."
 
 VERSION="$(tr -d '[:space:]' < "${SRC}/VERSION")"
 LXC_ENV="/etc/${APP}/lxc.env"
@@ -236,6 +244,110 @@ if [[ "$live" != "1" || "$web" != "1" || "$asset" != "1" ]]; then
   fi
   exit 1
 fi
+# Tranzakciós control-plane propagáció csak a sikeres első alkalmazás runtime gate után.
+CONTROL_BACKUP="${WORK}/control-plane-backup"
+mkdir -p "$CONTROL_BACKUP"
+
+test -f "$RUNTIME_UNIT" || die "Telepített runtime unit hiányzik: $RUNTIME_UNIT"
+test -f "$UPDATE_UNIT" || die "Telepített update unit hiányzik: $UPDATE_UNIT"
+test -f "$UPDATE_TIMER" || die "Telepített update timer hiányzik: $UPDATE_TIMER"
+test -x "$UPDATER_BIN" || die "Telepített updater hiányzik vagy nem futtatható: $UPDATER_BIN"
+
+cp -a "$RUNTIME_UNIT" "${CONTROL_BACKUP}/runtime.service"
+cp -a "$UPDATE_UNIT" "${CONTROL_BACKUP}/update.service"
+cp -a "$UPDATE_TIMER" "${CONTROL_BACKUP}/update.timer"
+cp -a "$UPDATER_BIN" "${CONTROL_BACKUP}/updater"
+
+restore_control_plane(){
+  log "CONTROL_PLANE_ROLLBACK=START"
+  install -m 0644 "${CONTROL_BACKUP}/runtime.service" "$RUNTIME_UNIT"
+  install -m 0644 "${CONTROL_BACKUP}/update.service" "$UPDATE_UNIT"
+  install -m 0644 "${CONTROL_BACKUP}/update.timer" "$UPDATE_TIMER"
+  install -m 0755 "${CONTROL_BACKUP}/updater" "$UPDATER_BIN"
+  systemctl daemon-reload || true
+  log "CONTROL_PLANE_ROLLBACK=DONE"
+}
+
+restore_previous_release(){
+  if [[ -n "$PREVIOUS" && -d "$PREVIOUS" ]]; then
+    ln -sfn "$PREVIOUS" "${ROOT}/current.control-plane-rollback"
+    mv -Tf "${ROOT}/current.control-plane-rollback" "$CURRENT"
+    systemctl restart "$SERVICE" || true
+    sleep 2
+    curl -fsS http://127.0.0.1:3000/health/live >/dev/null ||
+      die "Control-plane rollback után sem él a service."
+    log "CONTROL_PLANE_RELEASE_ROLLBACK=SUCCESS"
+  else
+    die "Control-plane rollbackhoz nincs előző release."
+  fi
+}
+
+control_plane_fail(){
+  log "CONTROL_PLANE_TRANSACTION=FAILED: $*"
+  restore_control_plane
+  restore_previous_release
+  exit 1
+}
+
+log "Control-plane systemd unitok tranzakciós frissítése..."
+install -m 0644 "${SRC}/deploy/systemd/arduino-led-controller-rust.service" "${RUNTIME_UNIT}.new" || control_plane_fail "runtime unit staging"
+install -m 0644 "${SRC}/deploy/systemd/arduino-led-controller-update.service" "${UPDATE_UNIT}.new" || control_plane_fail "update service staging"
+install -m 0644 "${SRC}/deploy/systemd/arduino-led-controller-update.timer" "${UPDATE_TIMER}.new" || control_plane_fail "update timer staging"
+mv -f "${RUNTIME_UNIT}.new" "$RUNTIME_UNIT" || control_plane_fail "runtime unit activation"
+mv -f "${UPDATE_UNIT}.new" "$UPDATE_UNIT" || control_plane_fail "update service activation"
+mv -f "${UPDATE_TIMER}.new" "$UPDATE_TIMER" || control_plane_fail "update timer activation"
+systemctl daemon-reload || control_plane_fail "systemd daemon-reload"
+log "CONTROL_PLANE_UNITS=UPDATED"
+
+systemctl restart "$SERVICE" || control_plane_fail "runtime restart with new unit"
+cp_live=0
+cp_web=0
+cp_asset=0
+cp_live_http="000"
+cp_web_http="000"
+cp_asset_http="000"
+for _ in $(seq 1 30); do
+  cp_live_http="$(curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/health/live || true)"
+  if [[ "$cp_live_http" == "200" ]]; then
+    cp_live=1
+    break
+  fi
+  sleep 1
+done
+if [[ "$cp_live" == "1" ]]; then
+  for _ in $(seq 1 15); do
+    cp_web_http="$(curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/ || true)"
+    if [[ "$cp_web_http" == "200" ]]; then
+      cp_web=1
+      break
+    fi
+    sleep 1
+  done
+fi
+if [[ "$cp_live" == "1" && "$cp_web" == "1" ]]; then
+  for _ in $(seq 1 15); do
+    cp_asset_http="$(curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/v5-icon.png || true)"
+    if [[ "$cp_asset_http" == "200" ]]; then
+      cp_asset=1
+      break
+    fi
+    sleep 1
+  done
+fi
+log "CONTROL_PLANE_RUNTIME_GATE_LIVE=${cp_live} HTTP=${cp_live_http}"
+log "CONTROL_PLANE_RUNTIME_GATE_WEB=${cp_web} HTTP=${cp_web_http}"
+log "CONTROL_PLANE_RUNTIME_GATE_V5_ICON=${cp_asset} HTTP=${cp_asset_http}"
+
+if [[ "$cp_live" != "1" || "$cp_web" != "1" || "$cp_asset" != "1" ]]; then
+  control_plane_fail "second runtime gate LIVE=${cp_live}/${cp_live_http} WEB=${cp_web}/${cp_web_http} V5_ICON=${cp_asset}/${cp_asset_http}"
+fi
+
+install -m 0755 "${SRC}/deploy/update-rust-lxc.sh" "${UPDATER_BIN}.new" || control_plane_fail "updater staging"
+mv -f "${UPDATER_BIN}.new" "$UPDATER_BIN" || control_plane_fail "updater activation"
+systemctl enable --now arduino-led-controller-update.timer >/dev/null 2>&1 || control_plane_fail "update timer enable"
+log "CONTROL_PLANE_UPDATER=UPDATED"
+log "CONTROL_PLANE_TIMER=ENABLED"
+log "CONTROL_PLANE_TRANSACTION=SUCCESS"
 # Arduino readiness diagnosztika: nem rollback gate.
 if curl -fsS http://127.0.0.1:3000/health/ready >/dev/null 2>&1; then
   log "ARDUINO_READY=YES"

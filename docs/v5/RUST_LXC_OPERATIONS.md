@@ -97,3 +97,14 @@ feladata; az LXC web UI az OTA állapotot és kiadási metaadatokat jeleníti me
 A kanonikus frontend assetek forrása `desktop-tauri/public/`. Az LXC production webrootban a `/v5-icon.png` kötelező és HTTP 200 választ kell adjon.
 
 A fő Rust LXC runtime unit neve `arduino-led-controller-rust.service`. A legacy Node LXC `arduino-led-controller.service` külön pipeline, nem része ennek a Rust service contractnak.
+
+## Tranzakciós updater control-plane propagáció
+
+A Rust LXC updater az alkalmazás első live/web/asset runtime gate-je után
+tranzakciósan frissíti a runtime systemd unitot, az update service/timer unitokat,
+majd `systemctl daemon-reload` és service restart után egy második runtime gate-et
+futtat. Az updater saját `/usr/local/sbin/arduino-led-controller-update` példánya
+csak a második gate sikere után cserélődik le.
+
+Ha a control-plane frissítés bármely lépése vagy a második live/web/`v5-icon.png`
+gate hibázik, a korábbi unitok és az előző alkalmazásrelease visszaállnak.
