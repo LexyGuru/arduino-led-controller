@@ -133,6 +133,9 @@ rm -rf "$RELEASE"
 
 log "React/Vite build..."
 (
+  # BETA9_SHARED_FRONTEND_DEPENDENCIES
+  echo '[shared-frontend] Canonical desktop-tauri dependency-k telepítése.'
+  npm --prefix "${SRC}/desktop-tauri" ci
   cd "${SRC}/web-lxc"
   npm ci
   npm run build

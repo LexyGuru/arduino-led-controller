@@ -75,6 +75,9 @@ npm --version
 
 test -f "${SOURCE_ROOT}/web-lxc/package.json"
 (
+  # BETA9_SHARED_FRONTEND_DEPENDENCIES
+  echo '[shared-frontend] Canonical desktop-tauri dependency-k telepítése.'
+  npm --prefix "${SOURCE_ROOT}/desktop-tauri" ci
   cd "${SOURCE_ROOT}/web-lxc"
   npm ci
   npm run build
