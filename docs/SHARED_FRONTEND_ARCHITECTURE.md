@@ -15,3 +15,7 @@ Verziók:
 - Application: `5.0.0-beta.9`
 - Firmware: `5.0.0-beta.6`
 - Direct API: `1.0.0`
+
+## Canonical public assets
+
+A shared frontend kanonikus statikus asset-forrása a `desktop-tauri/public/`. A `web-lxc` Vite konfiguráció ezt használja `publicDir`-ként, ezért a `v5-icon.png` desktop és LXC buildben ugyanabból a forrásból származik.

@@ -91,3 +91,9 @@ A natív installer és az automatikus updater is a repository
 
 A firmware bináris OTA feltöltása továbbra is a Desktop/System OTA uploader
 feladata; az LXC web UI az OTA állapotot és kiadási metaadatokat jeleníti meg.
+
+## Shared web asset runtime gate
+
+A kanonikus frontend assetek forrása `desktop-tauri/public/`. Az LXC production webrootban a `/v5-icon.png` kötelező és HTTP 200 választ kell adjon.
+
+A fő Rust LXC runtime unit neve `arduino-led-controller-rust.service`. A legacy Node LXC `arduino-led-controller.service` külön pipeline, nem része ennek a Rust service contractnak.

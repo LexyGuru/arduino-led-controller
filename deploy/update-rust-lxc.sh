@@ -141,6 +141,7 @@ log "React/Vite build..."
   npm run build
 )
 test -f "${SRC}/web-lxc/dist/index.html" || die "Web build sikertelen."
+test -f "${SRC}/web-lxc/dist/v5-icon.png" || die "Web buildből hiányzik: v5-icon.png."
 
 log "Rust test/build..."
 RUSTFLAGS="-D warnings" cargo test --locked \
@@ -160,6 +161,9 @@ cp -R "${SRC}/web-lxc/dist/." "${RELEASE}/web/"
 find "${RELEASE}/web" -type d -exec chmod 0755 {} +
 find "${RELEASE}/web" -type f -exec chmod 0644 {} +
 test -r "${RELEASE}/web/index.html"
+test -r "${RELEASE}/web/v5-icon.png" || die "Release webrootból hiányzik: v5-icon.png."
+runuser -u arduino-led -- test -r "${RELEASE}/web/v5-icon.png" ||
+  die "Az új web/v5-icon.png nem olvasható az arduino-led service user számára."
 runuser -u arduino-led -- test -r "${RELEASE}/web/index.html" ||
   die "Az új web/index.html nem olvasható az arduino-led service user számára."
 runuser -u arduino-led -- test -x "${RELEASE}/web" ||
@@ -203,9 +207,22 @@ if [[ "$live" == "1" ]]; then
   done
 fi
 log "RUNTIME_GATE_WEB=${web} HTTP=${web_http}"
+asset=0
+asset_http="000"
+if [[ "$live" == "1" && "$web" == "1" ]]; then
+  for _ in $(seq 1 15); do
+    asset_http="$(curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/v5-icon.png || true)"
+    if [[ "$asset_http" == "200" ]]; then
+      asset=1
+      break
+    fi
+    sleep 1
+  done
+fi
+log "RUNTIME_GATE_V5_ICON=${asset} HTTP=${asset_http}"
 
-if [[ "$live" != "1" || "$web" != "1" ]]; then
-  log "Az új release saját runtime gate-je hibás. LIVE=${live}/${live_http} WEB=${web}/${web_http}. Rollback..."
+if [[ "$live" != "1" || "$web" != "1" || "$asset" != "1" ]]; then
+  log "Az új release saját runtime gate-je hibás. LIVE=${live}/${live_http} WEB=${web}/${web_http} V5_ICON=${asset}/${asset_http}. Rollback..."
   if [[ -n "$PREVIOUS" && -d "$PREVIOUS" ]]; then
     ln -sfn "$PREVIOUS" "${ROOT}/current.rollback"
     mv -Tf "${ROOT}/current.rollback" "$CURRENT"

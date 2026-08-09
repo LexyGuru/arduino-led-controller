@@ -83,6 +83,8 @@ test -f "${SOURCE_ROOT}/web-lxc/package.json"
   npm run build
 )
 test -f "${SOURCE_ROOT}/web-lxc/dist/index.html"
+test -f "${SOURCE_ROOT}/web-lxc/dist/v5-icon.png"
+echo "WEB_LXC_V5_ICON_BUILD=SUCCESS"
 echo "WEB_LXC_BUILD=SUCCESS"
 
 RUSTFLAGS="-D warnings" cargo test \
@@ -149,6 +151,11 @@ cp -R "${SOURCE_ROOT}/web-lxc/dist/." "$RELEASE/web/"
 find "$RELEASE/web" -type d -exec chmod 0755 {} +
 find "$RELEASE/web" -type f -exec chmod 0644 {} +
 test -f "$RELEASE/web/index.html"
+test -f "$RELEASE/web/v5-icon.png"
+runuser -u arduino-led -- test -r "$RELEASE/web/v5-icon.png" || {
+  echo "A web/v5-icon.png nem olvasható az arduino-led service user számára." >&2
+  exit 1
+}
 runuser -u arduino-led -- test -r "$RELEASE/web/index.html" || {
   echo "A web/index.html nem olvasható az arduino-led service user számára." >&2
   exit 1
@@ -226,6 +233,8 @@ fi
 systemctl restart "$SERVICE"
 sleep 2
 systemctl is-active --quiet "$SERVICE"
+curl -fsS http://127.0.0.1:3000/v5-icon.png >/dev/null
+echo "WEB_LXC_V5_ICON_HTTP=SUCCESS"
 
 echo "RUST_LXC_NATIVE_INSTALL=SUCCESS"
 echo "VERSION=$VERSION"
