@@ -2,8 +2,8 @@
 
 <!-- BEGIN BETA9 CANONICAL RUST LXC -->
 
-Alkalmazás: `5.0.0-beta.9`
-Firmware-katalógus: `5.0.0-beta.6`
+Alkalmazás: `5.0.0-beta.10`
+Firmware-katalógus: `5.0.0-beta.7`
 Direct API: `1.0.0`
 Backend: Rust + Axum
 Frontend: shared React + Vite

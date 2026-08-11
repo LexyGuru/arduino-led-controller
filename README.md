@@ -13,17 +13,17 @@
 Többplatformos LED-vezérlő rendszer Arduino UNO R4 WiFi és három WS2812B LED-szalag számára. A V5 elsődleges működési módja továbbra is a közvetlen Direct API v1 kapcsolat, de a Beta.9 már teljes Debian 13 Rust LXC szervert is tartalmaz React/Vite webfelülettel, automatikus frissítéssel és rollbackkel.
 
 
-## Beta.9 release readiness
+## Beta.10 release readiness
 
-**Aktuális Beta alkalmazás:** `5.0.0-beta.9`
-**Párosított firmware:** `5.0.0-beta.6`
+**Aktuális Beta alkalmazás:** `5.0.0-beta.10`
+**Párosított firmware:** `5.0.0-beta.7`
 **Direct API:** `1.0.0`
 
 Aktuális kiadási dokumentumok:
 
-- [Beta.9 release notes](docs/v5/BETA9_RELEASE_NOTES.md)
-- [Beta.9 telepítési útmutató](docs/v5/BETA9_INSTALLATION_GUIDE.md)
-- [Beta.9 release checklist](docs/v5/BETA9_RELEASE_CHECKLIST.md)
+- [Beta.10 release notes](docs/v5/BETA10_RELEASE_NOTES.md)
+- [Beta.10 telepítési útmutató](docs/v5/BETA10_INSTALLATION_GUIDE.md)
+- [Beta.10 release checklist](docs/v5/BETA10_RELEASE_CHECKLIST.md)
 
 A Beta.1–Beta.8 dokumentumok történeti release-dokumentációként maradnak a repositoryban.
 
@@ -31,8 +31,8 @@ A Beta.1–Beta.8 dokumentumok történeti release-dokumentációként maradnak 
 
 | Elem | Verzió / állapot |
 |---|---|
-| Alkalmazás | `5.0.0-beta.9` |
-| Firmware | `5.0.0-beta.6` |
+| Alkalmazás | `5.0.0-beta.10` |
+| Firmware | `5.0.0-beta.7` |
 | Direct API | `1.0.0` |
 | Beta ág | `next/v5-rearchitecture` |
 | Stabil ág | `main` |
@@ -44,7 +44,7 @@ A Beta.1–Beta.8 dokumentumok történeti release-dokumentációként maradnak 
 | Rollback | automatikus, health/web gate |
 | Megőrzött LXC release-ek | 3 |
 
-A Beta.9 a V5 desktop, Direct API, Debian 13 Rust LXC, React/Vite webfelület és az önfrissítő üzemeltetési réteg közös integrációs állapota. A hozzá tartozó Arduino firmware `5.0.0-beta.6`; a Direct API verziója `1.0.0`.
+A Beta.9 a V5 desktop, Direct API, Debian 13 Rust LXC, React/Vite webfelület és az önfrissítő üzemeltetési réteg közös integrációs állapota. A hozzá tartozó Arduino firmware `5.0.0-beta.7`; a Direct API verziója `1.0.0`.
 
 ## Fő funkciók
 
@@ -72,7 +72,7 @@ A Beta.9 a V5 desktop, Direct API, Debian 13 Rust LXC, React/Vite webfelület é
 ```text
                          ┌─────────────────────────────┐
                          │ Arduino UNO R4 WiFi         │
-                         │ Firmware 5.0.0-beta.6       │
+                         │ Firmware 5.0.0-beta.7       │
                          │ Direct API v1               │
                          │ X-Device-Key                │
                          └──────────────┬──────────────┘
@@ -219,7 +219,7 @@ A Logok oldalon:
 
 ## Firmware és Direct API
 
-A jelenlegi Beta firmware: `5.0.0-beta.6`. A Direct API verziója `1.0.0`.
+A jelenlegi Beta firmware: `5.0.0-beta.7`. A Direct API verziója `1.0.0`.
 
 Biztonsági tulajdonságok:
 
@@ -248,7 +248,7 @@ Az OTA-jelszó nem kerülhet forráskódba vagy konfigurációs exportba.
 
 ### Beta firmware OTA Exclusive Mode
 
-A `5.0.0-beta.6` firmware OTA alatt kizárólag a Wi-Fi kapcsolatot, az ArduinoOTA motort és a LED Matrix visszajelzést hagyja aktívan; a többi alkalmazás-alrendszer szünetel a flash-finalizálás alatt. Ha az `/api/v1/ota/prepare` után nem csatlakozik feltöltő a 30 másodperces ablakban, a firmware automatikusan kilép az Exclusive Mode-ból és visszaállítja a normál szolgáltatásokat. Az OTA folyamat nem törli és nem írja újra a schedule rekordokat.
+A `5.0.0-beta.7` firmware OTA alatt kizárólag a Wi-Fi kapcsolatot, az ArduinoOTA motort és a LED Matrix visszajelzést hagyja aktívan; a többi alkalmazás-alrendszer szünetel a flash-finalizálás alatt. Ha az `/api/v1/ota/prepare` után nem csatlakozik feltöltő a 30 másodperces ablakban, a firmware automatikusan kilép az Exclusive Mode-ból és visszaállítja a normál szolgáltatásokat. Az OTA folyamat nem törli és nem írja újra a schedule rekordokat.
 
 ## Gyors kezdés
 
@@ -333,4 +333,30 @@ A repository licencfeltételeit a projekt tulajdonosa határozza meg. Külső te
 
 ## Beta.9 Shared Frontend
 
-A `5.0.0-beta.9` egyetlen kanonikus React UI-forrást használ macOS, Windows, Linux, iOS, iPadOS, Android és Proxmox/Debian LXC célokra. Részletek: `docs/SHARED_FRONTEND_ARCHITECTURE.md` és `docs/BETA9_SHARED_FRONTEND_MIGRATION.md`.
+A `5.0.0-beta.10` egyetlen kanonikus React UI-forrást használ macOS, Windows, Linux, iOS, iPadOS, Android és Proxmox/Debian LXC célokra. Részletek: `docs/SHARED_FRONTEND_ARCHITECTURE.md` és `docs/BETA9_SHARED_FRONTEND_MIGRATION.md`.
+
+<!-- BETA9_CRITICAL_MOBILE_CLOCK_V186 -->
+### Beta.9 – critical mobile/clock hardening
+
+The shared Beta.9 frontend uses one canonical theme engine across desktop, LXC
+and mobile. Mobile connection credentials are backed by native secure stores on
+iOS and Android. Firmware schedule execution uses the corrected local clock
+reconciliation path and refreshes its authoritative NTP clock every 10 minutes
+to bound long-running clock drift. Related scheduler, credential, mobile-theme
+reachability and regression contracts are part of the canonical test chain.
+
+
+
+## Beta.10 – aktuális fejlesztési állapot
+
+- Alkalmazás: `5.0.0-beta.10`
+- Firmware: `5.0.0-beta.7`
+- Direct API: `1.0.0`
+- Branch: `next/v5-rearchitecture`
+- UNO R4 Matrix/NeoPixel stabilizálás: hardveren validálva
+- Mobil/iOS credential, theme és Xcode 27 kompatibilitási kör: beépítve
+- Arduino clock/scheduler stabilizálás: beépítve
+- Animált WS2812 effektek: átmenetileg szünetelnek az interrupt-barát backend elkészültéig
+
+Részletes kiadási jegyzet: `RELEASE_NOTES_5.0.0-beta.10.md`.
+Firmware kiadási jegyzet: `firmware/RELEASE_NOTES_5.0.0-beta.7.md`.

@@ -83,7 +83,7 @@ export function AppearanceSettings() {
 
   return (
     <section
-      className="panel settings-panel appearance-panel"
+      className="panel settings-panel appearance-panel" data-mobile-theme-parity="full"
     >
       <div className="panel-title">
         <div>

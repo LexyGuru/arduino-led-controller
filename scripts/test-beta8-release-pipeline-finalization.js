@@ -22,8 +22,8 @@ const guide = read('docs/v5/BETA8_INSTALLATION_GUIDE.md');
 const notes = read('docs/v5/BETA8_RELEASE_NOTES.md');
 const checklist = read('docs/v5/BETA8_RELEASE_CHECKLIST.md');
 
-assert.equal(versions.application, '5.0.0-beta.9');
-assert.equal(versions.firmware, '5.0.0-beta.6');
+assert.equal(versions.application, '5.0.0-beta.10');
+assert.equal(versions.firmware, '5.0.0-beta.7');
 assert.equal(versions.directApi, '1.0.0');
 
 for (const name of [
@@ -35,20 +35,20 @@ for (const name of [
 }
 
 assert.ok(!workflow.includes('cp docs/v5/BETA7_'), 'workflow still copies Beta.7 docs');
-assert.ok(workflow.includes('EXPECTED_VERSION: 5.0.0-beta.9'));
+assert.ok(workflow.includes('EXPECTED_VERSION: 5.0.0-beta.10'));
 assert.ok(workflow.includes('body_path: docs/v5/BETA8_RELEASE_NOTES.md'));
 assert.ok(workflow.includes('gh workflow run firmware-beta-release.yml'));
 
-assert.ok(installer.includes('VERSION="${BETA_VERSION:-5.0.0-beta.9}"'));
+assert.ok(installer.includes('VERSION="${BETA_VERSION:-5.0.0-beta.10}"'));
 assert.ok(staging.includes('RELEASE_CHANNEL beta'));
-assert.ok(stagingEnv.includes('RELEASE_TARGET_VERSION=5.0.0-beta.9'));
+assert.ok(stagingEnv.includes('RELEASE_TARGET_VERSION=5.0.0-beta.10'));
 assert.ok(stagingEnv.includes('RELEASE_CANDIDATE=beta.8-gate'));
-assert.ok(unit.includes('Description=Arduino LED Controller 5.0.0-beta.9 Staging'));
+assert.ok(unit.includes('Description=Arduino LED Controller 5.0.0-beta.10 Staging'));
 assert.ok(bundle.includes("candidate: 'beta.8-gate'"));
 
 assert.ok(workflowTest.includes('BETA8_RELEASE_NOTES'));
-assert.ok(assetsTest.includes("5.0.0-beta.9"));
-assert.ok(assetsTest.includes("5.0.0-beta.6"));
+assert.ok(assetsTest.includes("5.0.0-beta.10"));
+assert.ok(assetsTest.includes("5.0.0-beta.7"));
 assert.ok(assetsTest.includes("BETA8_INSTALLATION_GUIDE.md"));
 assert.ok(assetsTest.includes("BETA8_RELEASE_NOTES.md"));
 assert.ok(assetsTest.includes("BETA8_RELEASE_CHECKLIST.md"));
@@ -62,7 +62,7 @@ for (const token of [
   assert.ok(guide.includes(token), `guide missing ${token}`);
 }
 
-assert.ok(notes.includes('5.0.0-beta.9'));
+assert.ok(notes.includes('5.0.0-beta.10'));
 assert.ok(notes.includes('prerelease'));
 assert.ok(notes.includes('SBOM'));
 assert.ok(notes.includes('main'));

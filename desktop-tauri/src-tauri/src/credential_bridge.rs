@@ -67,15 +67,21 @@ fn platform_name() -> &'static str {
     {
         return "macos";
     }
-
     #[cfg(target_os = "windows")]
     {
         return "windows";
     }
-
     #[cfg(target_os = "linux")]
     {
         return "linux";
+    }
+    #[cfg(target_os = "ios")]
+    {
+        return "ios";
+    }
+    #[cfg(target_os = "android")]
+    {
+        return "android";
     }
 
     #[allow(unreachable_code)]
@@ -85,21 +91,27 @@ fn platform_name() -> &'static str {
 fn backend_name() -> &'static str {
     #[cfg(target_os = "macos")]
     {
-        return "macOS Keychain";
+        return "apple-keychain";
     }
-
     #[cfg(target_os = "windows")]
     {
-        return "Windows Credential Manager";
+        return "windows-credential-manager";
     }
-
     #[cfg(target_os = "linux")]
     {
-        return "Linux Secret Service";
+        return "linux-secret-service";
+    }
+    #[cfg(target_os = "ios")]
+    {
+        return "apple-protected-data";
+    }
+    #[cfg(target_os = "android")]
+    {
+        return "android-keystore-shared-preferences";
     }
 
     #[allow(unreachable_code)]
-    "Unsupported credential store"
+    "unsupported"
 }
 
 fn unsupported_status() -> CredentialStatus {
@@ -115,11 +127,21 @@ fn unsupported_status() -> CredentialStatus {
     }
 }
 
-#[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
+#[cfg(any(
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "linux",
+    target_os = "ios",
+    target_os = "android"
+))]
 mod desktop {
     use super::{backend_name, platform_name, CredentialStatus, ALLOWED_SERVICE};
 
+    #[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
     use keyring::{Entry, Error as KeyringError};
+
+    #[cfg(any(target_os = "ios", target_os = "android"))]
+    use keyring_core::{Entry, Error as KeyringError};
     use std::{
         collections::HashMap,
         sync::{Mutex, OnceLock},
@@ -148,7 +170,33 @@ mod desktop {
         }
     }
 
+    // MOBILE_NATIVE_CREDENTIAL_STORE_V158
+    fn ensure_platform_store() -> Result<(), String> {
+        #[cfg(target_os = "ios")]
+        {
+            use apple_native_keyring_store::protected::Store;
+            use keyring_core::set_default_store;
+            set_default_store(Store::new().map_err(|_| {
+                "CREDENTIAL_STORE_INIT_ERROR: az iOS Protected Data kulcstár nem inicializálható."
+                    .to_string()
+            })?);
+        }
+
+        #[cfg(target_os = "android")]
+        {
+            use android_native_keyring_store::Store;
+            use keyring_core::set_default_store;
+            set_default_store(Store::new().map_err(|_| {
+                "CREDENTIAL_STORE_INIT_ERROR: az Android natív kulcstár nem inicializálható."
+                    .to_string()
+            })?);
+        }
+
+        Ok(())
+    }
+
     fn create_entry(account: &str) -> Result<Entry, String> {
+        ensure_platform_store()?;
         Entry::new(ALLOWED_SERVICE, account).map_err(|_| {
             "CREDENTIAL_ENTRY_ERROR: a natív kulcstár-bejegyzés nem hozható létre.".to_string()
         })
@@ -291,7 +339,13 @@ mod desktop {
 
 pub async fn get_profile_secret(account: String) -> Result<Option<String>, String> {
     validate_scope(ALLOWED_SERVICE, &account)?;
-    #[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
+    #[cfg(any(
+        target_os = "macos",
+        target_os = "windows",
+        target_os = "linux",
+        target_os = "ios",
+        target_os = "android"
+    ))]
     {
         return desktop::get(account).await;
     }
@@ -305,7 +359,13 @@ pub async fn get_profile_secret(account: String) -> Result<Option<String>, Strin
 pub async fn set_profile_secret(account: String, secret: String) -> Result<(), String> {
     validate_scope(ALLOWED_SERVICE, &account)?;
     validate_secret(&secret)?;
-    #[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
+    #[cfg(any(
+        target_os = "macos",
+        target_os = "windows",
+        target_os = "linux",
+        target_os = "ios",
+        target_os = "android"
+    ))]
     {
         return desktop::set(account, secret).await;
     }
@@ -323,7 +383,13 @@ pub async fn credential_status(
 ) -> Result<CredentialStatus, String> {
     validate_scope(&service, &account)?;
 
-    #[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
+    #[cfg(any(
+        target_os = "macos",
+        target_os = "windows",
+        target_os = "linux",
+        target_os = "ios",
+        target_os = "android"
+    ))]
     {
         return Ok(desktop::status(account).await);
     }
@@ -336,7 +402,13 @@ pub async fn credential_status(
 pub async fn credential_get(service: String, account: String) -> Result<Option<String>, String> {
     validate_scope(&service, &account)?;
 
-    #[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
+    #[cfg(any(
+        target_os = "macos",
+        target_os = "windows",
+        target_os = "linux",
+        target_os = "ios",
+        target_os = "android"
+    ))]
     {
         return desktop::get(account).await;
     }
@@ -358,7 +430,13 @@ pub async fn credential_set(
 
     validate_secret(&secret)?;
 
-    #[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
+    #[cfg(any(
+        target_os = "macos",
+        target_os = "windows",
+        target_os = "linux",
+        target_os = "ios",
+        target_os = "android"
+    ))]
     {
         return desktop::set(account, secret).await;
     }
@@ -374,7 +452,13 @@ pub async fn credential_set(
 pub async fn credential_delete(service: String, account: String) -> Result<bool, String> {
     validate_scope(&service, &account)?;
 
-    #[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
+    #[cfg(any(
+        target_os = "macos",
+        target_os = "windows",
+        target_os = "linux",
+        target_os = "ios",
+        target_os = "android"
+    ))]
     {
         return desktop::delete(account).await;
     }

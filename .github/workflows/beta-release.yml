@@ -19,7 +19,7 @@ concurrency:
 env:
   NODE_VERSION: "24"
   EXPECTED_BRANCH: next/v5-rearchitecture
-  EXPECTED_VERSION: 5.0.0-beta.9
+  EXPECTED_VERSION: 5.0.0-beta.10
 
 jobs:
   validate:
@@ -492,11 +492,14 @@ jobs:
       - name: Add installation assets and release documentation
         run: |
           cp release-versions.json release-assets/
+          cp docs/v5/BETA10_INSTALLATION_GUIDE.md release-assets/
+          cp docs/v5/BETA10_RELEASE_NOTES.md release-assets/
+          cp docs/v5/BETA10_RELEASE_CHECKLIST.md release-assets/
+          test -f release-assets/BETA10_INSTALLATION_GUIDE.md
+          test -f release-assets/BETA10_RELEASE_NOTES.md
+          test -f release-assets/BETA10_RELEASE_CHECKLIST.md
           cp deploy/install-beta-lxc.sh release-assets/
           cp deploy/beta-lxc.env.example release-assets/
-          cp docs/v5/BETA9_INSTALLATION_GUIDE.md release-assets/
-          cp docs/v5/BETA9_RELEASE_NOTES.md release-assets/
-          cp docs/v5/BETA9_RELEASE_CHECKLIST.md release-assets/
           chmod 0755 release-assets/install-beta-lxc.sh
 
       - name: Verify expected release asset classes
@@ -513,9 +516,6 @@ jobs:
           test "$(find release-assets -maxdepth 1 -type f -name '*.bin' | wc -l | tr -d ' ')" -eq 0
           test "$(find release-assets -maxdepth 1 -type f -name '*.bin.sha256' | wc -l | tr -d ' ')" -eq 0
           test -f release-assets/release-versions.json
-          test -f release-assets/BETA9_INSTALLATION_GUIDE.md
-          test -f release-assets/BETA9_RELEASE_NOTES.md
-          test -f release-assets/BETA9_RELEASE_CHECKLIST.md
           node -e "const r=require('./release-assets/release-versions.json'); if(r.application!==process.env.EXPECTED_VERSION) process.exit(1)"
           test "$(find release-assets -maxdepth 1 -type f -name '*.tar.gz' | wc -l | tr -d ' ')" -eq 1
           find release-assets -maxdepth 1 -type f -print | sort
@@ -649,7 +649,7 @@ jobs:
           tag_name: ${{ needs.validate.outputs.tag }}
           target_commitish: ${{ github.sha }}
           name: Arduino LED Controller ${{ needs.validate.outputs.version }}
-          body_path: docs/v5/BETA9_RELEASE_NOTES.md
+          body_path: docs/v5/BETA10_RELEASE_NOTES.md
           prerelease: true
           make_latest: false
           overwrite_files: true

@@ -3,6 +3,14 @@
 
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const CURRENT_APP_VERSION = fs.readFileSync('VERSION', 'utf8').trim();
+const CURRENT_BETA_DOC_NUMBER = CURRENT_APP_VERSION.match(/-beta\.(\d+)$/)?.[1];
+assert.ok(CURRENT_BETA_DOC_NUMBER, 'Current Beta document number cannot be derived');
+const CURRENT_RELEASE_DOCS = [
+  `BETA${CURRENT_BETA_DOC_NUMBER}_INSTALLATION_GUIDE.md`,
+  `BETA${CURRENT_BETA_DOC_NUMBER}_RELEASE_NOTES.md`,
+  `BETA${CURRENT_BETA_DOC_NUMBER}_RELEASE_CHECKLIST.md`,
+];
 
 const versions = JSON.parse(
   fs.readFileSync('release-versions.json', 'utf8'),
@@ -57,9 +65,9 @@ assert.match(appWorkflow, /validate-repository\.sh/);
 assert.match(appWorkflow, /prerelease: true/);
 assert.match(appWorkflow, /make_latest: false/);
 assert.match(appWorkflow, /Enforce application-only release assets/);
-assert.match(appWorkflow, /docs\/v5\/BETA9_RELEASE_NOTES\.md/);
-assert.match(appWorkflow, /docs\/v5\/BETA9_INSTALLATION_GUIDE\.md/);
-assert.match(appWorkflow, /docs\/v5\/BETA9_RELEASE_CHECKLIST\.md/);
+assert.match(appWorkflow, /docs\/v5\/BETA10_RELEASE_NOTES\.md/);
+assert.match(appWorkflow, /docs\/v5\/BETA10_INSTALLATION_GUIDE\.md/);
+assert.match(appWorkflow, /docs\/v5\/BETA10_RELEASE_CHECKLIST\.md/);
 assert.doesNotMatch(appWorkflow, /body_path: docs\/v5\/BETA6_RELEASE_NOTES\.md/);
 assert.match(appWorkflow, /Dispatch and wait for dedicated firmware prerelease/);
 assert.match(appWorkflow, /gh workflow run firmware-beta-release\.yml/);
@@ -151,6 +159,19 @@ assert.doesNotMatch(
   appWorkflow,
   /EXPECTED_VERSION: 5\.0\.0-beta\.3/,
 );
+
+
+// WORKFLOW_CURRENT_RELEASE_DOC_DYNAMIC_GATE
+for (const doc of CURRENT_RELEASE_DOCS) {
+  assert.ok(
+    appWorkflow.includes(`cp docs/v5/${doc} release-assets/`),
+    `workflow current release-doc copy missing: ${doc}`,
+  );
+  assert.ok(
+    appWorkflow.includes(`test -f release-assets/${doc}`),
+    `workflow current release-doc verify missing: ${doc}`,
+  );
+}
 
 console.log(
   `OK: alkalmazásrelease ${versions.application}, firmware ${versions.firmware}, Direct API ${versions.directApi} dinamikus workflow contract`,

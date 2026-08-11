@@ -14,8 +14,8 @@
 #include <stdarg.h>
 #include "secrets.h"
 
-#define FIRMWARE_VERSION "5.0.0-beta.6"
-#define FIRMWARE_FEATURE "f14-direct-api-v1-only-storage-udp-ntp-dst-ota-exclusive"
+#define FIRMWARE_VERSION "5.0.0-beta.7"
+#define FIRMWARE_FEATURE "f14-direct-api-v1-only-storage-udp-ntp-dst-ota-exclusive-v191-matrix-neopixel-stable"
 #define OTA_MAINTENANCE_MODE_V1 1
 #define DIRECT_API_VERSION "1.0.0"
 #define DEVICE_NAME "arduino-led-controller"
@@ -73,7 +73,7 @@ constexpr uint32_t SCHEDULE_MAGIC = 0x53434831UL;
 constexpr uint16_t MINUTES_PER_WEEK = 10080U;
 constexpr uint32_t MANUAL_OVERRIDE_INDEFINITE = 0xFFFFFFFFUL;
 constexpr unsigned long MANUAL_OVERRIDE_UNSYNCED_MAX_MS = 15UL * 60UL * 1000UL;
-constexpr unsigned long NTP_SYNC_INTERVAL_MS = 6UL * 60UL * 60UL * 1000UL;
+constexpr unsigned long NTP_SYNC_INTERVAL_MS = 10UL * 60UL * 1000UL;
 constexpr unsigned long NTP_INITIAL_RETRY_INTERVAL_MS = 30000UL;
 constexpr unsigned long NTP_UDP_TIMEOUT_MS = 2500UL;
 constexpr uint16_t NTP_LOCAL_PORT = 2391;
@@ -273,6 +273,7 @@ StoredSchedule schedules[SCHEDULE_MAX] = {};
 bool networkSettingsStored = false, apiSettingsStored = false;
 bool schedulesStored = false, otaReady = false, otaTransferActive = false, otaExclusiveMode = false;
 bool timeSynced = false, wifiReported = false, cachedWifiConnected = false;
+bool scheduleReconcileRequested = true;
 bool pirRaw[STRIP_COUNT] = {}, pirActive[STRIP_COUNT] = {};
 bool manualOverride[STRIP_COUNT] = {}, httpTraceEnabled = false;
 IPAddress cachedWifiIp(0,0,0,0);
@@ -677,6 +678,7 @@ void loadSchedules() {
     scheduleRevision = selectedHeader.generation;
     activeScheduleSlotOffset = selectedOffset;
     schedulesStored = true;
+    scheduleReconcileRequested = true;
     logEvent("success", "A/B schedule EEPROM-bol betoltve");
     return;
   }
@@ -719,6 +721,7 @@ bool saveSchedules(uint8_t count) {
   scheduleCount = count;
   scheduleRevision = generation;
   schedulesStored = true;
+  scheduleReconcileRequested = true;
   refreshManualOverrideDeadlines();
   lastScheduleAudit = 0;
   if (timeSynced) reconcileArduinoSchedules(true);
@@ -816,6 +819,7 @@ void loadTimeSettings() {
   EEPROM.get(TIME_SETTINGS_EEPROM_OFFSET, timeSettings);
   if (timeSettingsValid(timeSettings)) {
     timeSettingsStored = true;
+    scheduleReconcileRequested = true;
     logEvent("success", "Idozona beallitas EEPROM-bol betoltve");
     return;
   }
@@ -933,10 +937,22 @@ unsigned long localClockEpoch() {
     static_cast<int64_t>(utcEpoch) + offsetSeconds
   );
 }
+
+uint32_t currentLocalEpoch() {
+  if (!timeSynced) return 0;
+  const uint32_t utcEpoch = currentClockEpoch();
+  if (!utcEpoch) return 0;
+  const int32_t offsetSeconds =
+    static_cast<int32_t>(utcOffsetMinutesForEpoch(utcEpoch)) * 60L;
+  const int64_t localEpoch = static_cast<int64_t>(utcEpoch) + offsetSeconds;
+  return localEpoch > 0 ? static_cast<uint32_t>(localEpoch) : 0;
+}
+
 bool localScheduleTime(uint8_t& day, uint8_t& hour, uint8_t& minute) {
-  if (!timeSynced) return false;
-  time_t epoch = static_cast<time_t>(localClockEpoch());
-  tm local = *gmtime(&epoch);
+  const uint32_t localEpoch = currentLocalEpoch();
+  if (!localEpoch) return false;
+  const time_t localTime = static_cast<time_t>(localEpoch);
+  const tm local = *gmtime(&localTime);
   day = local.tm_wday == 0 ? 7 : local.tm_wday;
   hour = local.tm_hour;
   minute = local.tm_min;
@@ -1192,6 +1208,7 @@ void serviceClockSync(bool force = false) {
   lastClockEpoch = epoch;
   lastClockMillis = now;
   timeSynced = true;
+  scheduleReconcileRequested = true;
   refreshAutonomousTimezoneState(epoch, true);
   ntpSuccessCount++;
   ntpLastSuccessAt = now;
@@ -1207,15 +1224,19 @@ void serviceClockSync(bool force = false) {
   }
 }
 void runArduinoSchedules() {
+  const uint32_t localEpoch = currentLocalEpoch();
+  if (!localEpoch) return;
+
   uint8_t day, hour, minute;
   if (!localScheduleTime(day, hour, minute)) return;
-  uint32_t key = currentClockMinuteKey();
-  if (key != lastScheduleMinute) {
-    lastScheduleMinute = key;
-    reconcileArduinoSchedules(true);
-  } else {
-    reconcileArduinoSchedules(false);
-  }
+
+  const uint32_t localMinuteKey = localEpoch / 60UL;
+  const bool newMinute = localMinuteKey != lastScheduleMinute;
+  if (newMinute) lastScheduleMinute = localMinuteKey;
+
+  const bool forceCheck = scheduleReconcileRequested;
+  scheduleReconcileRequested = false;
+  reconcileArduinoSchedules(forceCheck || newMinute);
 }
 
 void buildDeviceIdentity() {
@@ -1453,7 +1474,13 @@ void render(uint8_t i) {
   strip[i].show();
 }
 void renderAll(bool force) {
-  if (!force && millis() - lastFrame < EFFECT_FRAME) return;
+  // V191 stabilization:
+  // Do not perform background WS2812 transmissions from loop().
+  // Explicit API/schedule/restore paths already call renderAll(true),
+  // so static/off state changes remain immediate.
+  // Animated effects are intentionally paused until a non-blocking
+  // UNO R4 output backend is introduced.
+  if (!force) return;
   lastFrame = millis();
   for (uint8_t i = 0; i < STRIP_COUNT; i++) render(i);
 }
@@ -1669,8 +1696,8 @@ bool buildStatusJson(size_t& bodyLength, uint32_t requestId) {
   uint8_t clockDay = 0, clockHour = 0, clockMinute = 0;
   bool localClockAvailable = localScheduleTime(clockDay, clockHour, clockMinute);
   appendFormat(b,
-    "\"clockEpoch\":%lu,\"clockDay\":%u,\"clockHour\":%u,\"clockMinute\":%u,",
-    currentClockEpoch(), clockDay, clockHour, clockMinute);
+    "\"clockEpoch\":%lu,\"clockUtcEpoch\":%lu,\"clockLocalEpoch\":%lu,\"clockDay\":%u,\"clockHour\":%u,\"clockMinute\":%u,",
+    currentClockEpoch(), currentClockEpoch(), currentLocalEpoch(), clockDay, clockHour, clockMinute);
   appendFormat(b,
     "\"clockLocalAvailable\":%s,\"ntpAttemptCount\":%lu,\"ntpFailureCount\":%lu,",
     localClockAvailable ? "true" : "false", ntpAttemptCount, ntpFailureCount);
@@ -1691,7 +1718,8 @@ bool buildStatusJson(size_t& bodyLength, uint32_t requestId) {
     ntpLastServer[0] ? ntpLastServer : "",
     timeSettingsStored ? "true" : "false");
   appendFormat(b,
-    "\"schedulerLastRunAgeSeconds\":%lu,\"schedulerLastAppliedAgeSeconds\":%lu,",
+    "\"schedulerReconcilePending\":%s,\"schedulerLastRunAgeSeconds\":%lu,\"schedulerLastAppliedAgeSeconds\":%lu,",
+    scheduleReconcileRequested ? "true" : "false",
     schedulerLastRunAt ? (millis() - schedulerLastRunAt) / 1000UL : 0,
     schedulerLastAppliedAt ? (millis() - schedulerLastAppliedAt) / 1000UL : 0);
   appendFormat(b,
@@ -2248,6 +2276,7 @@ bool commitScheduleTransaction() {
   scheduleRevision = scheduleTransactionGeneration;
   activeScheduleSlotOffset = scheduleTransactionSlotOffset;
   schedulesStored = true;
+  scheduleReconcileRequested = true;
   scheduleTransactionActive = false;
   refreshManualOverrideDeadlines();
   return true;

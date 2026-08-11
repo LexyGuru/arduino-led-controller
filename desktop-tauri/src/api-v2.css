@@ -497,3 +497,29 @@
     overflow-x: hidden;
   }
 }
+
+/* MOBILE_SETTINGS_THEME_NAV_V186 */
+@media (max-width: 800px) {
+  .sidebar nav {
+    width: 100%;
+    justify-content: stretch;
+    overflow-x: hidden;
+  }
+
+  .sidebar nav button {
+    flex: 1 1 0;
+    min-width: 0;
+    max-width: none;
+  }
+}
+
+@media (max-width: 540px) {
+  .sidebar nav {
+    overflow-x: hidden;
+  }
+
+  .sidebar nav button {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+}

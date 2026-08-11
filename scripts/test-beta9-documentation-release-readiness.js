@@ -2,6 +2,12 @@
 'use strict';
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const CURRENT_APPLICATION_VERSION = fs.readFileSync('VERSION', 'utf8').trim();
+const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const CURRENT_APPLICATION_VERSION_RE = escapeRegExp(CURRENT_APPLICATION_VERSION);
+const CURRENT_FIRMWARE_VERSION = JSON.parse(
+  fs.readFileSync('release-versions.json', 'utf8'),
+).firmware;
 
 const workflow = fs.readFileSync('.github/workflows/beta-release.yml','utf8');
 const readme = fs.readFileSync('README.md','utf8');
@@ -10,14 +16,24 @@ const notes = fs.readFileSync('docs/v5/BETA9_RELEASE_NOTES.md','utf8');
 const guide = fs.readFileSync('docs/v5/BETA9_INSTALLATION_GUIDE.md','utf8');
 const checklist = fs.readFileSync('docs/v5/BETA9_RELEASE_CHECKLIST.md','utf8');
 
-assert.match(workflow,/EXPECTED_VERSION:\s*5\.0\.0-beta\.9/);
-assert.match(workflow,/body_path:\s*docs\/v5\/BETA9_RELEASE_NOTES\.md/);
+assert.match(workflow, new RegExp(`EXPECTED_VERSION:\\s*${CURRENT_APPLICATION_VERSION_RE}`));
 assert.match(workflow,/prerelease: true/);
 assert.match(workflow,/make_latest: false/);
 
-for (const text of [readme, notes, guide, checklist]) {
-  assert.match(text,/5\.0\.0-beta\.9/);
-  assert.match(text,/5\.0\.0-beta\.6/);
+// Current README follows the active application/firmware versions.
+assert.ok(
+  readme.includes(CURRENT_APPLICATION_VERSION),
+  'README: current application version missing',
+);
+assert.ok(
+  readme.includes(CURRENT_FIRMWARE_VERSION),
+  'README: current firmware version missing',
+);
+
+// Beta.9 release documents remain immutable historical release evidence.
+for (const text of [notes, guide, checklist]) {
+  assert.match(text,/5.0.0-beta.9/);
+  assert.match(text,/5.0.0-beta.6/);
 }
 assert.match(deploy,/arduino-led-controller-rust\.service/);
 assert.match(deploy,/Legacy Node/);

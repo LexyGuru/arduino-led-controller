@@ -97,8 +97,8 @@ assert.ok(readme.includes('actions/workflows/firmware-beta-release.yml'));
 assert.ok(readme.includes('actions/workflows/beta-release.yml'));
 
 for (const marker of [
-  '5.0.0-beta.9',
-  '5.0.0-beta.6',
+  '5.0.0-beta.10',
+  '5.0.0-beta.7',
   'next/v5-rearchitecture',
   'Stabil ág | `main`',
   'Debian 13 Rust LXC',

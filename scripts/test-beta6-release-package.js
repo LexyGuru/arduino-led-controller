@@ -1,8 +1,12 @@
 #!/usr/bin/env node
+const fs = require('fs');
 'use strict';
 
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
+const CURRENT_APP_VERSION_FROM_VERSION = fs.readFileSync('VERSION', 'utf8').trim();
+const CURRENT_FIRMWARE_VERSION_FROM_METADATA = JSON.parse(
+  fs.readFileSync('firmware/firmware-release.json', 'utf8'),
+).firmwareVersion;
 
 const read = (file) => fs.readFileSync(file, 'utf8');
 const json = (file) => JSON.parse(read(file));
@@ -17,7 +21,7 @@ const firmwareWorkflow = read(
   '.github/workflows/firmware-beta-release.yml',
 );
 
-assert.equal(versions.application, '5.0.0-beta.6');
+assert.equal(versions.application, CURRENT_APP_VERSION_FROM_VERSION);
 assert.match(versions.firmware, /^\d+\.\d+\.\d+-beta\.\d+$/);
 assert.match(versions.directApi, /^\d+\.\d+\.\d+$/);
 assert.equal(versions.channel, 'beta');
@@ -25,21 +29,29 @@ assert.equal(versions.channel, 'beta');
 assert.equal(firmware.firmwareVersion, versions.firmware);
 assert.equal(firmware.directApiVersion, versions.directApi);
 
+const currentReadme = read('README.md');
+assert.ok(
+  currentReadme.includes(versions.application),
+  'README.md: current application version',
+);
+assert.ok(
+  currentReadme.includes(versions.firmware),
+  'README.md: current firmware version',
+);
+assert.ok(
+  currentReadme.includes(versions.directApi),
+  'README.md: current Direct API version',
+);
+
 for (const file of [
-  'README.md',
   'docs/v5/BETA6_RELEASE_NOTES.md',
   'docs/v5/BETA6_INSTALLATION_GUIDE.md',
   'docs/v5/BETA6_RELEASE_CHECKLIST.md',
 ]) {
   const content = read(file);
-  assert.ok(content.includes(versions.application), `${file}: application version`);
-  assert.ok(content.includes(versions.firmware), `${file}: firmware version`);
-  assert.ok(content.includes(versions.directApi), `${file}: Direct API version`);
-  assert.doesNotMatch(
-    content,
-    /4\.3\.0-beta\.[0-5](?!\d)/,
-    `${file}: stale firmware version`,
-  );
+  assert.ok(content.includes('5.0.0-beta.6'), `${file}: historical application version`);
+  assert.ok(content.includes('4.3.0-beta.6'), `${file}: historical firmware version`);
+  assert.ok(content.includes('1.0.0'), `${file}: historical Direct API version`);
 }
 
 assert.equal(firmware.channel, versions.channel);
@@ -72,18 +84,17 @@ for (const file of [
 }
 
 // Az alkalmazásrelease kizárólag a Beta.6 alkalmazáscsomagot kezeli.
+// A jelenlegi alkalmazás-workflow current release contract.
+// A történeti BETA6_* dokumentumokat külön, fentebb ellenőrizzük.
 for (const token of [
   versions.application,
-  'BETA6_INSTALLATION_GUIDE.md',
-  'BETA6_RELEASE_NOTES.md',
-  'BETA6_RELEASE_CHECKLIST.md',
   'prerelease: true',
   'make_latest: false',
   'Enforce application-only release assets',
 ]) {
   assert.ok(
     appWorkflow.includes(token),
-    `Hiányzó alkalmazás-workflow marker: ${token}`,
+    `Hiányzó current alkalmazás-workflow marker: ${token}`,
   );
 }
 

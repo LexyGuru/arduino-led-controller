@@ -4,7 +4,7 @@ const assert = require('assert');
 const fs = require('fs');
 const read = (path) => fs.readFileSync(path, 'utf8');
 
-assert.strictEqual(read('VERSION').trim(), '5.0.0-beta.9');
+assert.strictEqual(read('VERSION').trim(), '5.0.0-beta.10');
 
 const docs = [
   'README.md',
@@ -19,9 +19,9 @@ const docs = [
   'CHANGELOG.md',
   'SECURITY.md',
   'CONTRIBUTING.md',
-  'docs/v5/BETA9_INSTALLATION_GUIDE.md',
-  'docs/v5/BETA9_RELEASE_NOTES.md',
-  'docs/v5/BETA9_RELEASE_CHECKLIST.md'
+  'docs/v5/BETA10_INSTALLATION_GUIDE.md',
+  'docs/v5/BETA10_RELEASE_NOTES.md',
+  'docs/v5/BETA10_RELEASE_CHECKLIST.md'
 ];
 
 for (const path of docs) {
@@ -30,7 +30,7 @@ for (const path of docs) {
 
 const all = docs.map(read).join('\n');
 for (const marker of [
-  '5.0.0-beta.9',
+  '5.0.0-beta.10',
   '4.3.0-beta.4',
   'Direct API',
   '1.0.0',
