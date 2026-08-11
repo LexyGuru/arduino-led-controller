@@ -19,6 +19,7 @@ const secrets = read(
 );
 const serverClient = read('server/arduino/arduino-client.js');
 const desktopRust = read('desktop-tauri/src-tauri/src/lib.rs');
+const sharedRustCore = read('rust/arduino-led-core/src/lib.rs');
 
 assert.match(versions.firmware, /^\d+\.\d+\.\d+-beta\.\d+$/);
 assert.equal(release.firmwareVersion, versions.firmware);
@@ -52,9 +53,13 @@ assert.match(
 );
 assert.match(secrets, /API_ALLOW_QUERY_KEY_FALLBACK 0/);
 assert.match(serverClient, /X-Device-Key/i);
-assert.match(desktopRust, /X-Device-Key/i);
+assert.match(sharedRustCore, /X-Device-Key/i);
+assert.match(sharedRustCore, /header\("X-Device-Key",\s*target\.device_key\.trim\(\)\)/);
+assert.match(desktopRust, /request_json_blocking/);
+assert.match(desktopRust, /DirectApiTarget/);
 assert.doesNotMatch(serverClient, /[?&]k=/);
 assert.doesNotMatch(desktopRust, /[?&]k=/);
+assert.doesNotMatch(sharedRustCore, /[?&]k=/);
 assert.match(firmware, /PRIVATE_PATH_NOT_FOUND/);
 assert.match(firmware, /X-Request-Id/);
 
@@ -67,6 +72,6 @@ console.log(
 console.log(
   'OK: duplikált/hiányzó/hibás fejléc külön hibakódot kap',
 );
-console.log('OK: Node és Tauri nem használ query-kulcsot');
+console.log('OK: Node, Tauri és shared Rust core nem használ query-kulcsot');
 console.log('OK: aktív firmware query fallbackje kikapcsolva');
 console.log('OK: privát útvonalhiba nem néma TCP-close');
