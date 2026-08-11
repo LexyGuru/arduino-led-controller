@@ -360,3 +360,39 @@ reachability and regression contracts are part of the canonical test chain.
 
 Részletes kiadási jegyzet: `RELEASE_NOTES_5.0.0-beta.10.md`.
 Firmware kiadási jegyzet: `firmware/RELEASE_NOTES_5.0.0-beta.7.md`.
+
+## V5 Platform Icon System
+
+The V5 desktop identity uses four canonical application icon masters:
+
+| Channel | Light appearance | Dark appearance |
+| --- | --- | --- |
+| Stable | Stable Light | Stable Dark |
+| Beta | Beta Light | Beta Dark |
+
+The Beta artwork intentionally uses a large `BETA` badge so the channel remains
+recognizable at Dock/Finder sizes.
+
+### Automatic macOS icon selection
+
+The active icon is selected from two independent signals:
+
+1. **Application version** — versions containing `beta` use the Beta artwork;
+   other versions use Stable artwork.
+2. **Mac local time** — 07:00–18:59 uses the Light/day master; 19:00–06:59
+   uses the Dark/night master.
+
+The Tauri frontend synchronizes the icon on startup and rechecks the Mac's
+local time once per minute. A system-theme change is also used as an extra
+resync trigger. The macOS backend applies the selected artwork to the Dock
+icon through AppKit.
+
+```text
+Stable + Light -> Stable Light
+Stable + Dark  -> Stable Dark
+Beta   + Light -> Beta Light
+Beta   + Dark  -> Beta Dark
+```
+
+The generated Tauri platform icon set remains the startup/fallback icon. Mobile
+and non-macOS platforms keep their normal generated icon assets.

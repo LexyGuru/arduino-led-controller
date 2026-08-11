@@ -33,6 +33,8 @@ import type {
   OtaProgressEvent
 } from '../types';
 
+import { V5BetaBadge } from '../components/v5/V5BetaBadge';
+
 interface FirmwarePageProps {
   firmware: FirmwareStatus | null;
   busy: boolean;
@@ -150,6 +152,8 @@ export function FirmwarePage({
   const [releaseCatalog, setReleaseCatalog] = useState<FirmwareArtifact[]>([]);
   const [catalogError, setCatalogError] = useState('');
   const [pendingInstallVersion, setPendingInstallVersion] = useState<string | null>(null);
+  const externalFirmwareInputRef = useRef<HTMLInputElement | null>(null);
+  const [externalFirmwareBusy, setExternalFirmwareBusy] = useState(false);
   const firmwareCatalog = deduplicateFirmwareCatalog(releaseCatalog);
   const latestCatalogVersion = firmwareCatalog[0]?.firmwareVersion ?? firmwareCatalog[0]?.tag;
 
@@ -325,7 +329,10 @@ export function FirmwarePage({
           <strong>
             {t('firmware.channelValue',{app:firmware?.updateChannel ?? t('common.unknown'),firmware:firmware?.firmwareUpdateChannel ?? t('common.unknown')})}
             {' · '}
-            {firmware?.appCurrentVersion ?? 'ismeretlen'}
+            <span style={{ display: 'inline-flex', alignItems: 'center', flexWrap: 'wrap' }}>
+              {firmware?.appCurrentVersion ?? 'ismeretlen'}
+              <V5BetaBadge version={firmware?.appCurrentVersion} compact />
+            </span>
           </strong>
         </article>
 
@@ -590,6 +597,82 @@ export function FirmwarePage({
             )
           )}
         </div>
+      </section>
+
+      <section className="panel">
+        <div className="panel-title">
+          <div>
+            <p className="eyebrow">{t('firmware.externalEyebrow')}</p>
+            <h2>{t('firmware.externalTitle')}</h2>
+          </div>
+          <UploadCloud />
+        </div>
+
+        <p className="muted">{t('firmware.externalHelp')}</p>
+
+        <input
+          ref={externalFirmwareInputRef}
+          type="file"
+          accept=".bin,application/octet-stream"
+          style={{ display: 'none' }}
+          onChange={(event) => {
+            const input = event.currentTarget;
+            const file = input.files?.[0];
+            input.value = '';
+
+            if (!file) return;
+
+            if (!file.name.toLowerCase().endsWith('.bin')) {
+              setCatalogError(t('firmware.externalBinOnly'));
+              return;
+            }
+
+            if (file.size < 1024 || file.size > 2 * 1024 * 1024) {
+              setCatalogError(t('firmware.externalSizeInvalid'));
+              return;
+            }
+
+            if (!window.confirm(
+              t('firmware.externalConfirm', {
+                name: file.name,
+                size: file.size
+              })
+            )) {
+              return;
+            }
+
+            void (async () => {
+              try {
+                setExternalFirmwareBusy(true);
+                setCatalogError('');
+                const bytes = Array.from(
+                  new Uint8Array(await file.arrayBuffer())
+                );
+                await tauriApi.firmwareInstallExternal(file.name, bytes);
+                await state.refresh({ forceCheck: true });
+              } catch (error) {
+                setCatalogError(
+                  t('firmware.externalError', {
+                    error: String(error)
+                  })
+                );
+              } finally {
+                setExternalFirmwareBusy(false);
+              }
+            })();
+          }}
+        />
+
+        <button
+          className="secondary"
+          disabled={state.busy || externalFirmwareBusy}
+          onClick={() => externalFirmwareInputRef.current?.click()}
+        >
+          <UploadCloud size={17} />
+          {externalFirmwareBusy
+            ? t('firmware.externalInstalling')
+            : t('firmware.externalChoose')}
+        </button>
       </section>
 
       <section className="panel v5-firmware-backups">

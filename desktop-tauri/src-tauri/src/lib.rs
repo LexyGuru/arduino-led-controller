@@ -2105,6 +2105,77 @@ async fn confirm_restart(
     ))
 }
 
+#[cfg(target_os = "macos")]
+const V5_MACOS_STABLE_DARK_ICON: &[u8] =
+    include_bytes!("../icons/runtime/v5-stable-dark.png");
+#[cfg(target_os = "macos")]
+const V5_MACOS_STABLE_LIGHT_ICON: &[u8] =
+    include_bytes!("../icons/runtime/v5-stable-light.png");
+#[cfg(target_os = "macos")]
+const V5_MACOS_BETA_DARK_ICON: &[u8] =
+    include_bytes!("../icons/runtime/v5-beta-dark.png");
+#[cfg(target_os = "macos")]
+const V5_MACOS_BETA_LIGHT_ICON: &[u8] =
+    include_bytes!("../icons/runtime/v5-beta-light.png");
+
+#[tauri::command]
+fn macos_sync_app_icon(
+    app: tauri::AppHandle,
+    theme: String,
+) -> Result<String, String> {
+    #[cfg(target_os = "macos")]
+    {
+        use objc2::{AnyThread, MainThreadMarker};
+        use objc2_app_kit::{NSApplication, NSImage};
+        use objc2_foundation::NSString;
+
+        let normalized_theme =
+            if theme.eq_ignore_ascii_case("dark") { "dark" } else { "light" };
+        let version = app.package_info().version.to_string();
+        let is_beta = version.to_ascii_lowercase().contains("beta");
+
+        let (variant, bytes): (&str, &'static [u8]) =
+            match (is_beta, normalized_theme) {
+                (true, "dark") => ("beta-dark", V5_MACOS_BETA_DARK_ICON),
+                (true, _) => ("beta-light", V5_MACOS_BETA_LIGHT_ICON),
+                (false, "dark") => ("stable-dark", V5_MACOS_STABLE_DARK_ICON),
+                (false, _) => ("stable-light", V5_MACOS_STABLE_LIGHT_ICON),
+            };
+
+        let path = std::env::temp_dir()
+            .join(format!("arduino-led-controller-v5-{variant}.png"));
+        std::fs::write(&path, bytes)
+            .map_err(|e| format!("macOS app icon cache write failed: {e}"))?;
+        let path_string = path.to_string_lossy().to_string();
+
+        app.run_on_main_thread(move || {
+            let Some(mtm) = MainThreadMarker::new() else {
+                return;
+            };
+            let ns_path = NSString::from_str(&path_string);
+            let image = NSImage::initWithContentsOfFile(
+                NSImage::alloc(),
+                &ns_path,
+            );
+            if let Some(image) = image {
+                let ns_app = NSApplication::sharedApplication(mtm);
+                unsafe {
+                    ns_app.setApplicationIconImage(Some(&image));
+                }
+            }
+        })
+        .map_err(|e| format!("macOS main-thread icon update failed: {e}"))?;
+
+        Ok(variant.to_string())
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = (app, theme);
+        Ok("unsupported-platform".to_string())
+    }
+}
+
 #[tauri::command]
 fn runtime_capabilities() -> RuntimeCapabilities {
     let mobile = cfg!(any(target_os = "android", target_os = "ios"));
@@ -2124,7 +2195,7 @@ fn runtime_capabilities() -> RuntimeCapabilities {
     RuntimeCapabilities {
         platform: platform.into(),
         mobile,
-        ota_supported: !mobile,
+        ota_supported: true,
     }
 }
 
@@ -2208,6 +2279,10 @@ async fn save_config(
         config.prefer_local = false;
         config.ota_use_api_host = false;
     }
+    if cfg!(any(target_os = "android", target_os = "ios")) {
+        config.ota_upload_mode = "auto".into();
+        config.ota_tool_path.clear();
+    }
     validate_config(&config)?;
     if cfg!(any(target_os = "android", target_os = "ios")) {
         fs::write(
@@ -2254,11 +2329,7 @@ async fn save_config(
 
 #[tauri::command]
 async fn save_ota_password(state: State<'_, AppState>, password: String) -> Result<(), String> {
-    if cfg!(any(target_os = "android", target_os = "ios")) {
-        return Err(
-            "Mobilplatformon az OTA-jelszó mentése és a firmware-frissítés le van tiltva.".into(),
-        );
-    }
+
     let config = state
         .config
         .lock()
@@ -2608,13 +2679,7 @@ async fn firmware_status(
         ..Default::default()
     };
 
-    if cfg!(any(target_os = "android", target_os = "ios")) {
-        status.state = "unsupported".into();
-        status.message = "Mobilalkalmazásból firmware-frissítés nem indítható. Használj Windows, macOS vagy Linux gépet.".into();
-        status.ota_tool_installed = false;
-        status.ota_tool_error = Some("OTA mobilplatformon letiltva".into());
-        return Ok(status);
-    }
+
 
     let terminal_mode_result = use_terminal_ota(&app, &config);
     let terminal_mode = matches!(&terminal_mode_result, Ok(true));
@@ -3236,14 +3301,360 @@ async fn firmware_update_inner(
     Ok(final_status)
 }
 
+async fn firmware_install_external_inner(
+    app: &AppHandle,
+    state: &AppState,
+    file_name: &str,
+    firmware: Vec<u8>,
+) -> Result<FirmwareStatus, String> {
+    state.ota_in_progress.store(true, Ordering::SeqCst);
+    state.ota_cancel_requested.store(false, Ordering::SeqCst);
+    ensure_not_cancelled(state)?;
+
+    let safe_name = safe_firmware_filename(file_name);
+    if !file_name.to_ascii_lowercase().ends_with(".bin") {
+        return Err("Kizárólag .bin firmware-fájl tölthető fel.".into());
+    }
+    if firmware.len() < 1024 {
+        return Err("A kiválasztott firmware túl kicsi vagy sérült.".into());
+    }
+    if firmware.len() > 2 * 1024 * 1024 {
+        return Err("A kiválasztott firmware meghaladja a 2 MiB biztonsági korlátot.".into());
+    }
+
+    emit_ota_progress(
+        app,
+        "Külső firmware",
+        "info",
+        format!("Külső firmware előkészítése: {safe_name} • {} bájt", firmware.len()),
+        Some(1),
+    );
+
+    let config = state
+        .config
+        .lock()
+        .map_err(|_| "Beállítás zárolva".to_string())?
+        .clone();
+
+    let password = read_profile_ota_password(&config).await?;
+    if password.is_empty() {
+        return Err("Hiányzik az OTA-jelszó.".into());
+    }
+
+    let terminal_mode = use_terminal_ota(app, &config)?;
+    let ota_engine_label = if terminal_mode {
+        let tool = find_ota_tool(app, &config)
+            .ok_or("A Terminal OTA módhoz nem található arduinoOTA.")?;
+        format!("macOS Terminal + arduinoOTA ({})", tool.to_string_lossy())
+    } else {
+        "Beépített Rust HTTP OTA-motor".to_string()
+    };
+
+    ensure_not_cancelled(state)?;
+    let status_json = get_json(state, "/api/v1/status")
+        .await
+        .map_err(|error| format!("Külső OTA indítás előtt nem olvasható az Arduino státusza: {error}"))?;
+
+    let boot_id_before = status_json
+        .get("bootId")
+        .and_then(Value::as_str)
+        .map(str::to_string);
+    let schedule_revision_before =
+        status_json.get("scheduleRevision").and_then(Value::as_u64);
+    let schedule_checksum_before = status_json
+        .get("scheduleChecksum")
+        .and_then(Value::as_str)
+        .map(str::to_string);
+    let installed_before = status_json
+        .get("firmwareVersion")
+        .and_then(Value::as_str)
+        .map(str::to_string);
+
+    let (ota_address, ota_port) =
+        ota_target_from_status(&config, &status_json, terminal_mode)?;
+
+    emit_ota_progress(
+        app,
+        "Arduino",
+        "success",
+        format!(
+            "Arduino elérhető. Telepített: {} • OTA cél: {}:{} • {}",
+            installed_before.clone().unwrap_or_else(|| "ismeretlen".into()),
+            ota_address,
+            ota_port,
+            ota_engine_label
+        ),
+        Some(10),
+    );
+
+    ensure_not_cancelled(state)?;
+    let actual = hex::encode(Sha256::digest(&firmware));
+    let binary_path = firmware_dir(app)?.join(format!("external-{safe_name}"));
+    fs::write(&binary_path, &firmware)
+        .map_err(|error| format!("A külső firmware nem menthető ideiglenesen: {error}"))?;
+
+    let persisted = fs::read(&binary_path)
+        .map_err(|error| format!("A helyben mentett külső firmware nem olvasható vissza: {error}"))?;
+    let persisted_hash = hex::encode(Sha256::digest(&persisted));
+    if persisted.len() != firmware.len() || persisted_hash != actual {
+        return Err(format!(
+            "A külső firmware cache/readback ellenőrzése sikertelen. Forrás: {} bájt / {}, cache: {} bájt / {}.",
+            firmware.len(),
+            actual,
+            persisted.len(),
+            persisted_hash
+        ));
+    }
+
+    if let Ok(mut current) = state.firmware_status.lock() {
+        current.state = "uploading".into();
+        current.phase = Some("Külső firmware".into());
+        current.progress = Some(25);
+        current.message = format!("Külső BIN ellenőrizve: {safe_name}");
+        current.cache_path = Some(binary_path.to_string_lossy().to_string());
+        current.cache_sha256 = Some(actual.clone());
+        current.boot_id_before = boot_id_before.clone();
+        current.schedule_revision_before = schedule_revision_before;
+        current.schedule_checksum_before = schedule_checksum_before.clone();
+        current.ota_target_address = Some(ota_address.clone());
+        current.ota_target_port = Some(ota_port);
+        current.ota_tool_installed = true;
+        current.ota_tool_path = Some(ota_engine_label.clone());
+        current.ota_tool_error = None;
+    }
+
+    emit_ota_progress(
+        app,
+        "Ellenőrzés",
+        "success",
+        format!("Külső BIN SHA-256 és cache/readback rendben: {actual}"),
+        Some(35),
+    );
+
+    let firmware_feature = status_json
+        .get("firmwareFeature")
+        .and_then(Value::as_str)
+        .unwrap_or("");
+    let installed_normalized = installed_before.as_deref().map(normalize_version);
+
+    if firmware_feature == "ota-diagnostics"
+        && installed_normalized.as_deref() == Some("4.1.15")
+    {
+        emit_ota_progress(
+            app,
+            "Arduino",
+            "info",
+            "A 4.1.15 ismert listener hibája miatt az API-s OTA prepare lépés kihagyva.",
+            Some(45),
+        );
+    } else {
+        match post_json(state, "/api/v1/ota/prepare", None).await {
+            Ok(value) if value.get("success").and_then(Value::as_bool) == Some(true) => {
+                emit_ota_progress(
+                    app,
+                    "Arduino",
+                    "success",
+                    "OTA-listener előkészítve.",
+                    Some(48),
+                );
+                tokio::time::sleep(Duration::from_millis(1200)).await;
+            }
+            Ok(value) => emit_ota_progress(
+                app,
+                "Arduino",
+                "info",
+                format!("Az OTA prepare nem igazolta az előkészítést: {value}"),
+                Some(46),
+            ),
+            Err(error) => emit_ota_progress(
+                app,
+                "Arduino",
+                "info",
+                format!("Az OTA prepare nem érhető el; folytatás a futó listenerrel: {error}"),
+                Some(46),
+            ),
+        }
+    }
+
+    ensure_not_cancelled(state)?;
+    state.ota_in_progress.store(true, Ordering::SeqCst);
+
+    emit_ota_progress(
+        app,
+        "Feltöltés",
+        "info",
+        format!(
+            "Külső firmware OTA feltöltése: {}:{} • {} • {} bájt",
+            ota_address,
+            ota_port,
+            ota_engine_label,
+            firmware.len()
+        ),
+        Some(52),
+    );
+
+    if terminal_mode {
+        upload_firmware_in_terminal(
+            app,
+            &config,
+            &ota_address,
+            ota_port,
+            &password,
+            &binary_path,
+        )
+        .await?;
+    } else {
+        upload_firmware_native(
+            app,
+            Arc::clone(&state.arduino_request_lock),
+            &ota_address,
+            ota_port,
+            &password,
+            firmware,
+            config.ota_timeout_seconds,
+        )
+        .await?;
+    }
+
+    if let Ok(mut current) = state.firmware_status.lock() {
+        current.state = "restarting".into();
+        current.phase = Some("Újraindítás".into());
+        current.progress = Some(92);
+        current.message = "Az Arduino alkalmazza a külső firmware-t és újraindul…".into();
+    }
+
+    ensure_not_cancelled(state)?;
+    let installed_after_restart = confirm_restart(app, state, None).await?;
+
+    ensure_not_cancelled(state)?;
+    let after_status = get_json(state, "/api/v1/status")
+        .await
+        .map_err(|error| format!("A külső OTA utáni persistence ellenőrzés sikertelen: {error}"))?;
+
+    let boot_id_after = after_status
+        .get("bootId")
+        .and_then(Value::as_str)
+        .map(str::to_string);
+    let schedule_revision_after =
+        after_status.get("scheduleRevision").and_then(Value::as_u64);
+    let schedule_checksum_after = after_status
+        .get("scheduleChecksum")
+        .and_then(Value::as_str)
+        .map(str::to_string);
+
+    if schedule_revision_before != schedule_revision_after
+        || schedule_checksum_before != schedule_checksum_after
+    {
+        return Err(format!(
+            "A külső OTA után az időzítések persistence ellenőrzése eltérést talált. Revision: {:?} -> {:?}, checksum: {:?} -> {:?}.",
+            schedule_revision_before,
+            schedule_revision_after,
+            schedule_checksum_before,
+            schedule_checksum_after
+        ));
+    }
+
+    let boot_id_changed = boot_id_before.is_some() && boot_id_before != boot_id_after;
+    if boot_id_before.is_some() && !boot_id_changed {
+        return Err(format!(
+            "KÜLSŐ OTA SIKERTELEN: a Boot ID nem változott. Előtte: {:?}, utána: {:?}.",
+            boot_id_before,
+            boot_id_after
+        ));
+    }
+
+    state.ota_in_progress.store(false, Ordering::SeqCst);
+
+    emit_ota_progress(
+        app,
+        "Persistence",
+        "success",
+        "Külső firmware: reboot, Boot ID és schedule persistence ellenőrzés sikeres.",
+        Some(100),
+    );
+
+    let final_status = FirmwareStatus {
+        state: "success".into(),
+        message: format!(
+            "Külső firmware sikeresen telepítve: {} • SHA-256 {}",
+            installed_after_restart
+                .clone()
+                .unwrap_or_else(|| "ismeretlen verzió".into()),
+            actual
+        ),
+        installed_version: installed_after_restart,
+        arduino_online: true,
+        ota_tool_installed: true,
+        ota_password_configured: true,
+        ota_configured: true,
+        ota_missing_requirements: Vec::new(),
+        backup_store_configured: schedule_backups_dir(app).is_ok(),
+        available_firmware: None,
+        firmware_lookup_error: None,
+        ota_tool_path: Some(ota_engine_label),
+        ota_tool_error: None,
+        ota_target_address: Some(ota_address),
+        ota_target_port: Some(ota_port),
+        update_available: false,
+        progress: Some(100),
+        phase: Some("Kész".into()),
+        update_channel: config.update_channel.clone(),
+        firmware_update_channel: config.firmware_update_channel.clone(),
+        app_current_version: env!("CARGO_PKG_VERSION").into(),
+        available_app: latest_app_release(&config).await.ok(),
+        app_update_available: false,
+        compatibility_status: Some(
+            "Külső BIN: SHA-256 + cache/readback + OTA + reboot + schedule persistence PASS."
+                .into(),
+        ),
+        cache_path: Some(binary_path.to_string_lossy().to_string()),
+        cache_sha256: Some(actual),
+        boot_id_before,
+        boot_id_after,
+        schedule_revision_before,
+        schedule_revision_after,
+        schedule_checksum_before,
+        schedule_checksum_after,
+        cancelled: false,
+    };
+
+    *state
+        .firmware_status
+        .lock()
+        .map_err(|_| "Firmware állapot zárolva".to_string())? = final_status.clone();
+
+    Ok(final_status)
+}
+
+#[tauri::command]
+async fn firmware_install_external(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    file_name: String,
+    firmware: Vec<u8>,
+) -> Result<FirmwareStatus, String> {
+    match firmware_install_external_inner(&app, &state, file_name.trim(), firmware).await {
+        Ok(status) => Ok(status),
+        Err(error) => {
+            state.ota_in_progress.store(false, Ordering::SeqCst);
+            emit_ota_progress(&app, "Hiba", "error", error.clone(), None);
+            if let Ok(mut current) = state.firmware_status.lock() {
+                current.state = "error".into();
+                current.phase = Some("Hiba".into());
+                current.message = error.clone();
+                current.cancelled = error.starts_with("OTA_CANCELLED:");
+            }
+            Err(error)
+        }
+    }
+}
+
 #[tauri::command]
 async fn firmware_update(
     app: AppHandle,
     state: State<'_, AppState>,
 ) -> Result<FirmwareStatus, String> {
-    if cfg!(any(target_os = "android", target_os = "ios")) {
-        return Err("Mobilalkalmazásból firmware-frissítés nem indítható. Használj Windows, macOS vagy Linux gépet.".into());
-    }
+
     match firmware_update_inner(&app, &state, None).await {
         Ok(status) => Ok(status),
         Err(error) => {
@@ -3266,9 +3677,7 @@ async fn firmware_install_release(
     state: State<'_, AppState>,
     tag: String,
 ) -> Result<FirmwareStatus, String> {
-    if cfg!(any(target_os = "android", target_os = "ios")) {
-        return Err("Mobilalkalmazásból firmware-frissítés nem indítható.".into());
-    }
+
     match firmware_update_inner(&app, &state, Some(tag.trim())).await {
         Ok(status) => Ok(status),
         Err(error) => {
@@ -3287,11 +3696,7 @@ async fn firmware_install_release(
 
 #[tauri::command]
 fn firmware_cancel(state: State<'_, AppState>) -> Result<bool, String> {
-    if cfg!(any(target_os = "android", target_os = "ios")) {
-        return Err(
-            "Mobilalkalmazásban nincs OTA-művelet, ezért megszakítás sem indítható.".into(),
-        );
-    }
+
     if !state.ota_in_progress.load(Ordering::SeqCst) {
         return Ok(false);
     }
@@ -3465,6 +3870,8 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+
+            macos_sync_app_icon,
             runtime_capabilities,
             load_config,
             migrate_native_credentials,
@@ -3484,6 +3891,7 @@ pub fn run() {
             list_schedule_backups,
             firmware_releases,
             firmware_install_release,
+            firmware_install_external,
             firmware_status,
             firmware_update,
             firmware_cancel,

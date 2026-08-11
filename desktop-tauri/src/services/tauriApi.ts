@@ -49,6 +49,7 @@ export const tauriApi={
   saveSchedules:(schedules:LedSchedule[],expectedRevision:number|null,force=false):Promise<ScheduleSaveResult>=>isTauriRuntime()?invoke('save_and_sync_schedules',{schedules,expectedRevision,force}):saveLxcSchedules(schedules,force?null:expectedRevision),
   firmwareReleases:():Promise<FirmwareArtifact[]>=>isTauriRuntime()?invoke('firmware_releases'):releases(),
   firmwareInstallRelease:(tag:string):Promise<FirmwareStatus>=>isTauriRuntime()?invoke('firmware_install_release',{tag}):install(tag),
+  firmwareInstallExternal:(fileName:string,firmware:number[]):Promise<FirmwareStatus>=>isTauriRuntime()?invoke('firmware_install_external',{fileName,firmware}):Promise.reject(new Error('Külső firmware feltöltés a natív desktop/mobil alkalmazásban használható.')),
   firmwareStatus:():Promise<FirmwareStatus>=>isTauriRuntime()?invoke('firmware_status'):fwStatus(),
   firmwareUpdate:async():Promise<FirmwareStatus>=>{if(isTauriRuntime())return invoke('firmware_update');const list=await releases();if(!list[0])throw new Error('Nincs telepíthető firmware.');return install(list[0].firmwareVersion??list[0].tag)},
   firmwareCancel:async():Promise<boolean>=>{if(isTauriRuntime())return invoke('firmware_cancel');await json('/api/v1/server/firmware/cancel',{method:'POST',headers:{'X-LXC-OTA-Token':controlToken()},body:'{}'});return true},
