@@ -38,6 +38,9 @@ const firmwareWorkflow = fs.readFileSync(
   '.github/workflows/firmware-beta-release.yml',
   'utf8',
 );
+const packageJson = JSON.parse(
+  fs.readFileSync('package.json', 'utf8'),
+);
 
 const escapeRegex = (value) =>
   value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -69,6 +72,21 @@ assert.match(appWorkflow, /next\/v5-rearchitecture/);
 assert.match(appWorkflow, /workflow_dispatch:/);
 assert.doesNotMatch(appWorkflow, /\n  push:/);
 assert.match(appWorkflow, /npm test/);
+assert.match(
+  appWorkflow,
+  /npm run test:beta-installation-assets/,
+  'Beta release workflow must use the maintained npm installation-assets contract alias',
+);
+assert.doesNotMatch(
+  appWorkflow,
+  /node scripts\/test-beta-installation-assets\.js/,
+  'Deleted physical beta installation-assets test must never be invoked directly',
+);
+assert.equal(
+  packageJson.scripts['test:beta-installation-assets'],
+  'node scripts/test-v55-current-release-contract-v334.js && node scripts/test-v55-staging-runtime-normalization-v334.js',
+  'Beta installation-assets npm alias must point to the maintained V5.5 contracts',
+);
 assert.match(appWorkflow, /validate-repository\.sh/);
 assert.match(appWorkflow, /prerelease: true/);
 assert.match(appWorkflow, /make_latest: false/);

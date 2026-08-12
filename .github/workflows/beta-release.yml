@@ -101,7 +101,7 @@ jobs:
       - name: Verify Beta distribution contracts
         run: |
           node scripts/test-beta-release-workflow.js
-          node scripts/test-beta-installation-assets.js
+          npm run test:beta-installation-assets
 
       - name: Run full Node regression suite
         run: npm test
