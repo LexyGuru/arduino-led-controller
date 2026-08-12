@@ -12,8 +12,14 @@ import {
 } from './components/Topbar';
 
 import {
+  BottomNav
+} from './components/BottomNav';
+
+import {
   useController
 } from './hooks/useController';
+
+import { useAppUpdateCenter } from './hooks/useAppUpdateCenter';
 
 import {
   DashboardPage
@@ -66,6 +72,12 @@ export default function App() {
   const controller =
     useController(page);
 
+  const appUpdate =
+    useAppUpdateCenter({
+      updateChannel: controller.config.updateChannel,
+      autoCheckUpdates: controller.config.autoCheckUpdates
+    });
+
 
   useEffect(
     () => {
@@ -84,7 +96,7 @@ export default function App() {
   );
 
   return (
-    <div className="app-shell">
+    <div className="app-shell core-ui-v15">
       <Sidebar
         page={page}
         onChange={setPage}
@@ -99,6 +111,8 @@ export default function App() {
           controller.capabilities
             .otaSupported
         }
+        updateAvailable={appUpdate.updateAvailable}
+        latestAppVersion={appUpdate.latestVersion ?? undefined}
       />
       <div className="content-shell">
         <Topbar
@@ -120,7 +134,7 @@ export default function App() {
                 .refresh()
           }
         />
-        <main className="content">
+        <main className="content" data-page={page}>
           {page ===
             'dashboard' && (
             <DashboardPage
@@ -305,10 +319,12 @@ export default function App() {
                 controller
                   .setOtaPassword
               }
+              appUpdate={appUpdate}
             />
           )}
         </main>
       </div>
+      <BottomNav page={page} onChange={setPage} />
     </div>
   );
 }

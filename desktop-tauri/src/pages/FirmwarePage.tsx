@@ -214,8 +214,8 @@ export function FirmwarePage({
   );
 
   return (
-    <div className="page">
-      <div className="page-heading">
+    <div className="page v55-firmware-page">
+      <div className="page-heading v55-management-heading">
         <div>
           <p className="eyebrow">
             V5 ARDUINO OTA
@@ -278,7 +278,7 @@ export function FirmwarePage({
         </section>
       )}
 
-      <section className="stats-grid">
+      <section className="stats-grid v55-firmware-stats">
         <article className="stat-card">
           <small>
             {t('firmware.installed')}
