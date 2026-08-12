@@ -4,12 +4,20 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const CURRENT_APP_VERSION = fs.readFileSync('VERSION', 'utf8').trim();
-const CURRENT_BETA_DOC_NUMBER = CURRENT_APP_VERSION.match(/-beta\.(\d+)$/)?.[1];
-assert.ok(CURRENT_BETA_DOC_NUMBER, 'Current Beta document number cannot be derived');
+const CURRENT_APP_MATCH = CURRENT_APP_VERSION.match(
+  /^(\d+)\.(\d+)\.(\d+)-beta\.(\d+)$/,
+);
+assert.ok(CURRENT_APP_MATCH, 'Current Beta product version cannot be derived');
+const [, CURRENT_MAJOR, CURRENT_MINOR, , CURRENT_BETA_DOC_NUMBER] =
+  CURRENT_APP_MATCH;
+const CURRENT_RELEASE_DOC_PREFIX =
+  CURRENT_MAJOR === '5' && CURRENT_MINOR === '0'
+    ? `BETA${CURRENT_BETA_DOC_NUMBER}`
+    : `V${CURRENT_MAJOR}${CURRENT_MINOR}_BETA${CURRENT_BETA_DOC_NUMBER}`;
 const CURRENT_RELEASE_DOCS = [
-  `BETA${CURRENT_BETA_DOC_NUMBER}_INSTALLATION_GUIDE.md`,
-  `BETA${CURRENT_BETA_DOC_NUMBER}_RELEASE_NOTES.md`,
-  `BETA${CURRENT_BETA_DOC_NUMBER}_RELEASE_CHECKLIST.md`,
+  `${CURRENT_RELEASE_DOC_PREFIX}_INSTALLATION_GUIDE.md`,
+  `${CURRENT_RELEASE_DOC_PREFIX}_RELEASE_NOTES.md`,
+  `${CURRENT_RELEASE_DOC_PREFIX}_RELEASE_CHECKLIST.md`,
 ];
 
 const versions = JSON.parse(
@@ -65,9 +73,12 @@ assert.match(appWorkflow, /validate-repository\.sh/);
 assert.match(appWorkflow, /prerelease: true/);
 assert.match(appWorkflow, /make_latest: false/);
 assert.match(appWorkflow, /Enforce application-only release assets/);
-assert.match(appWorkflow, /docs\/v5\/BETA10_RELEASE_NOTES\.md/);
-assert.match(appWorkflow, /docs\/v5\/BETA10_INSTALLATION_GUIDE\.md/);
-assert.match(appWorkflow, /docs\/v5\/BETA10_RELEASE_CHECKLIST\.md/);
+assert.match(appWorkflow, /doc_prefix:/);
+assert.match(appWorkflow, /needs\.validate\.outputs\.doc_prefix/);
+assert.match(
+  appWorkflow,
+  /body_path: docs\/v5\/\$\{\{ needs\.validate\.outputs\.doc_prefix \}\}_RELEASE_NOTES\.md/,
+);
 assert.doesNotMatch(appWorkflow, /body_path: docs\/v5\/BETA6_RELEASE_NOTES\.md/);
 assert.match(appWorkflow, /Dispatch and wait for dedicated firmware prerelease/);
 assert.match(appWorkflow, /gh workflow run firmware-beta-release\.yml/);
@@ -164,12 +175,22 @@ assert.doesNotMatch(
 // WORKFLOW_CURRENT_RELEASE_DOC_DYNAMIC_GATE
 for (const doc of CURRENT_RELEASE_DOCS) {
   assert.ok(
-    appWorkflow.includes(`cp docs/v5/${doc} release-assets/`),
-    `workflow current release-doc copy missing: ${doc}`,
+    fs.existsSync(`docs/v5/${doc}`),
+    `current release document missing: ${doc}`,
+  );
+}
+for (const kind of [
+  'INSTALLATION_GUIDE',
+  'RELEASE_NOTES',
+  'RELEASE_CHECKLIST',
+]) {
+  assert.ok(
+    appWorkflow.includes(`docs/v5/\${DOC_PREFIX}_${kind}.md`),
+    `workflow dynamic release-doc copy missing: ${kind}`,
   );
   assert.ok(
-    appWorkflow.includes(`test -f release-assets/${doc}`),
-    `workflow current release-doc verify missing: ${doc}`,
+    appWorkflow.includes(`release-assets/\${DOC_PREFIX}_${kind}.md`),
+    `workflow dynamic release-doc verify missing: ${kind}`,
   );
 }
 

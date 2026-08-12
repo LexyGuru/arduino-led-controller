@@ -1258,9 +1258,15 @@ async fn latest_app_release(config: &Config) -> Result<AppUpdateArtifact, String
     let releases = github_releases().await?;
     let release = releases
         .iter()
-        .find(|release| {
+        .filter(|release| {
             release_matches_channel(release, config.update_channel.trim())
                 && app_asset_for_platform(release).is_some()
+        })
+        .max_by(|left, right| {
+            compare_app_versions(
+                &normalize_version(&left.tag_name),
+                &normalize_version(&right.tag_name),
+            )
         })
         .ok_or_else(|| {
             format!(
@@ -1290,6 +1296,66 @@ fn ensure_not_cancelled(state: &AppState) -> Result<(), String> {
 
 fn normalize_version(value: &str) -> String {
     value.trim().trim_start_matches('v').to_ascii_lowercase()
+}
+
+fn compare_app_versions(left: &str, right: &str) -> std::cmp::Ordering {
+    fn parse(value: &str) -> (Vec<u64>, Option<(u8, u64, String)>) {
+        let normalized = normalize_version(value);
+        let (core, prerelease) = normalized
+            .split_once('-')
+            .map(|(core, pre)| (core, Some(pre)))
+            .unwrap_or((normalized.as_str(), None));
+
+        let core = core
+            .split('.')
+            .map(|part| part.parse::<u64>().unwrap_or(0))
+            .collect::<Vec<_>>();
+
+        let prerelease = prerelease.map(|pre| {
+            let mut label = String::new();
+            let mut digits = String::new();
+            for ch in pre.chars() {
+                if ch.is_ascii_alphabetic() && digits.is_empty() {
+                    label.push(ch);
+                } else if ch.is_ascii_digit() {
+                    digits.push(ch);
+                }
+            }
+            let rank = match label.as_str() {
+                "alpha" => 0,
+                "beta" => 1,
+                "rc" => 2,
+                _ => 3,
+            };
+            (rank, digits.parse::<u64>().unwrap_or(0), label)
+        });
+
+        (core, prerelease)
+    }
+
+    let (left_core, left_pre) = parse(left);
+    let (right_core, right_pre) = parse(right);
+    let length = left_core.len().max(right_core.len());
+
+    for index in 0..length {
+        let left_part = *left_core.get(index).unwrap_or(&0);
+        let right_part = *right_core.get(index).unwrap_or(&0);
+        match left_part.cmp(&right_part) {
+            std::cmp::Ordering::Equal => {}
+            order => return order,
+        }
+    }
+
+    match (left_pre, right_pre) {
+        (None, None) => std::cmp::Ordering::Equal,
+        (None, Some(_)) => std::cmp::Ordering::Greater,
+        (Some(_), None) => std::cmp::Ordering::Less,
+        (Some((lr, ln, ll)), Some((rr, rn, rl))) => {
+            lr.cmp(&rr)
+                .then_with(|| ln.cmp(&rn))
+                .then_with(|| ll.cmp(&rl))
+        }
+    }
 }
 
 fn safe_firmware_filename(name: &str) -> String {
@@ -2775,8 +2841,8 @@ async fn firmware_status(
 
     match latest_app_release(&config).await {
         Ok(app_release) => {
-            status.app_update_available = normalize_version(env!("CARGO_PKG_VERSION"))
-                != normalize_version(&app_release.version);
+            status.app_update_available =
+                compare_app_versions(&app_release.version, env!("CARGO_PKG_VERSION")).is_gt();
             status.available_app = Some(app_release);
         }
         Err(error) => {

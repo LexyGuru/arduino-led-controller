@@ -6,7 +6,7 @@ const fs = require("node:fs");
 const versions = JSON.parse(fs.readFileSync("release-versions.json", "utf8"));
 const release = JSON.parse(fs.readFileSync("firmware/firmware-release.json", "utf8"));
 
-assert.equal(versions.application, "5.0.0-beta.10");
+assert.equal(versions.application, "5.5.0-beta.1");
 assert.equal(versions.firmware, "5.0.0-beta.7");
 assert.equal(versions.directApi, "1.0.0");
 assert.equal(release.firmwareVersion, "5.0.0-beta.7");

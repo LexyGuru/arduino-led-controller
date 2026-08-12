@@ -16,7 +16,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-[[ "${VERSION}" =~ ^5\.0\.0-beta\.[0-9]+$ ]] || {
+[[ "${VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+-beta\.[0-9]+$ ]] || {
   echo "HIBA: a Beta LXC csomaghoz beta verzió szükséges: ${VERSION}" >&2
   exit 1
 }
@@ -36,6 +36,8 @@ node - \
   "${NAME}" <<'NODE'
 const fs = require('fs');
 const [file, version, commit, name] = process.argv.slice(2);
+const betaNumber = version.match(/-beta\.(\d+)$/)?.[1];
+if (!betaNumber) throw new Error(`Invalid Beta version: ${version}`);
 fs.writeFileSync(file, `${JSON.stringify({
   schemaVersion: 2,
   name,
@@ -43,7 +45,7 @@ fs.writeFileSync(file, `${JSON.stringify({
   commit,
   channel: 'beta',
   phase: 'staging',
-  candidate: 'beta.8-gate',
+  candidate: `beta.${betaNumber}-gate`,
   createdAt: new Date().toISOString(),
   nodeMajorMinimum: 20,
   installRoot: '/opt/arduino-led-controller-staging',

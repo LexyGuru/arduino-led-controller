@@ -16,7 +16,6 @@ import { V5ConnectionWarning } from '../components/v5/V5ConnectionWarning';
 import { V5DataSourceBadge } from '../components/v5/V5DataSourceBadge';
 import { useTauriAudit } from '../hooks/useTauriAudit';
 import { useV5Dashboard } from '../hooks/useV5Dashboard';
-import { useV5Logs } from '../hooks/useV5Logs';
 import { useI18n } from '../i18n';
 import type {
   ArduinoStatus,
@@ -27,6 +26,7 @@ import { buildDashboardStatistics } from '../utils/v55Statistics';
 
 const dayKeys = ['days.1','days.2','days.3','days.4','days.5','days.6','days.7'];
 const effectKeys = ['effects.0','effects.1','effects.2','effects.3','effects.4'];
+const EMPTY_NETWORK_LOGS: Parameters<typeof buildDashboardStatistics>[3] = [];
 
 function formatUptime(seconds: number | undefined) {
   if (seconds == null) return '—';
@@ -111,12 +111,6 @@ export function DashboardPage({
   const { t } = useI18n();
   const dashboard = useV5Dashboard(legacyStatus, legacySchedules);
   const audit = useTauriAudit();
-  const logs = useV5Logs({
-    legacyArduino: [],
-    legacyNetwork: [],
-    legacyError: null
-  });
-
   const status = dashboard.status;
   const schedules = dashboard.schedules;
   const clock = arduinoClock(status);
@@ -132,7 +126,7 @@ export function DashboardPage({
     status,
     schedules,
     audit.entries,
-    logs.networkLogs
+    EMPTY_NETWORK_LOGS
   );
 
   const utcOffset = status?.utcOffsetMinutes;

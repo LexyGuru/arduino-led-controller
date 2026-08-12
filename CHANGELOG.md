@@ -1,3 +1,37 @@
+# 5.5.0-beta.1
+
+## V5.5 — Next Generation UI & Shared Runtime — 2026-08-12
+
+### Theme Engine 2.0
+- Teljes preset galéria, v1 → v2 migráció, glass/glow/motion és perzisztált megjelenés.
+
+### Core UI 1.5
+- Új reszponzív Sidebar, Topbar és mobil BottomNav alkalmazáshéj.
+
+### Dashboard 2.0 / Statistics 1.0
+- Valós runtime snapshotok, schedule összesítések és audit-alapú aktivitás.
+- Nincs szintetikus/fake history.
+
+### Activity & Logs 2.0
+- Egységes Arduino/audit/network log szűrés és export.
+
+### Management UI 2.0
+- Újratervezett Firmware, Schedules és Settings felületek.
+
+### App Update Center 1.0
+- Stable/beta csatorna, manuális ellenőrzés, 6 órás automatikus check és külön error state.
+
+### Shared Desktop / Mobile / LXC Runtime
+- Közös React frontend forrás minden célplatformhoz.
+- LXC runtime isolation: natív Tauri core/window API csak valódi Tauri runtime-ban aktiválódik.
+- Javítva a `window.__TAURI_INTERNALS__.metadata` böngészős startup crash.
+
+### Verziók
+- Application: `5.5.0-beta.1`
+- Firmware: `5.0.0-beta.7`
+- Direct API: `1.0.0`
+- Stable baseline: `5.0.0`
+
 # 5.0.0-beta.9
 
 ## 5.0.0-beta.9

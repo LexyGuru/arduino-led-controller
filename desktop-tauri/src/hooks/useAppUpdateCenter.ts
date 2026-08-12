@@ -126,19 +126,28 @@ export function useAppUpdateCenter(
         artifact?.tag?.trim() ||
         null;
 
+      const semanticComparison =
+        latest &&
+        current !== '…'
+          ? compareVersions(latest, current)
+          : null;
+
       const available =
-        status.appUpdateAvailable === true ||
-        Boolean(
-          latest &&
-          current !== '…' &&
-          compareVersions(latest, current) > 0
-        );
+        semanticComparison !== null
+          ? semanticComparison > 0
+          : status.appUpdateAvailable === true;
+
+      const displayedLatest =
+        semanticComparison !== null &&
+        semanticComparison <= 0
+          ? current
+          : latest;
 
       const now = Date.now();
       setCurrentVersion(current);
-      setLatestVersion(latest);
-      setDownloadUrl(artifact?.downloadUrl || null);
-      setReleaseUrl(artifact?.releaseUrl || null);
+      setLatestVersion(displayedLatest);
+      setDownloadUrl(available ? artifact?.downloadUrl || null : null);
+      setReleaseUrl(available ? artifact?.releaseUrl || null : null);
       setCheckedAt(now);
       storeLastCheck(now);
       setPhase(available ? 'available' : 'current');

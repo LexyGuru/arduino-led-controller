@@ -1,4 +1,4 @@
-name: V5 Beta release
+name: V5.5 Beta release
 
 on:
   workflow_dispatch:
@@ -13,13 +13,13 @@ permissions:
   contents: read
 
 concurrency:
-  group: v5-beta-release-${{ github.ref }}
+  group: v55-beta-release-${{ github.ref }}
   cancel-in-progress: false
 
 env:
   NODE_VERSION: "24"
   EXPECTED_BRANCH: next/v5-rearchitecture
-  EXPECTED_VERSION: 5.0.0-beta.10
+  EXPECTED_VERSION: 5.5.0-beta.1
 
 jobs:
   validate:
@@ -28,6 +28,7 @@ jobs:
     outputs:
       version: ${{ steps.version.outputs.version }}
       tag: ${{ steps.version.outputs.tag }}
+      doc_prefix: ${{ steps.version.outputs.doc_prefix }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
@@ -68,6 +69,24 @@ jobs:
           }
           echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
           echo "tag=v${VERSION}" >> "${GITHUB_OUTPUT}"
+
+          if [[ "${VERSION}" =~ ^([0-9]+)\.([0-9]+)\.[0-9]+-beta\.([0-9]+)$ ]]; then
+            MAJOR="${BASH_REMATCH[1]}"
+            MINOR="${BASH_REMATCH[2]}"
+            BETA_NUMBER="${BASH_REMATCH[3]}"
+          else
+            echo "::error::Nem támogatott Beta verzióformátum: ${VERSION}"
+            exit 1
+          fi
+
+          if [ "${MAJOR}" = "5" ] && [ "${MINOR}" = "0" ]; then
+            DOC_PREFIX="BETA${BETA_NUMBER}"
+          else
+            DOC_PREFIX="V${MAJOR}${MINOR}_BETA${BETA_NUMBER}"
+          fi
+
+          echo "doc_prefix=${DOC_PREFIX}" >> "${GITHUB_OUTPUT}"
+          echo "Release documentation prefix: ${DOC_PREFIX}"
 
       - name: Install root dependencies
         run: npm ci --no-audit --no-fund
@@ -490,14 +509,17 @@ jobs:
           merge-multiple: true
 
       - name: Add installation assets and release documentation
+        env:
+          DOC_PREFIX: ${{ needs.validate.outputs.doc_prefix }}
         run: |
+          set -euo pipefail
           cp release-versions.json release-assets/
-          cp docs/v5/BETA10_INSTALLATION_GUIDE.md release-assets/
-          cp docs/v5/BETA10_RELEASE_NOTES.md release-assets/
-          cp docs/v5/BETA10_RELEASE_CHECKLIST.md release-assets/
-          test -f release-assets/BETA10_INSTALLATION_GUIDE.md
-          test -f release-assets/BETA10_RELEASE_NOTES.md
-          test -f release-assets/BETA10_RELEASE_CHECKLIST.md
+          cp "docs/v5/${DOC_PREFIX}_INSTALLATION_GUIDE.md" release-assets/
+          cp "docs/v5/${DOC_PREFIX}_RELEASE_NOTES.md" release-assets/
+          cp "docs/v5/${DOC_PREFIX}_RELEASE_CHECKLIST.md" release-assets/
+          test -f "release-assets/${DOC_PREFIX}_INSTALLATION_GUIDE.md"
+          test -f "release-assets/${DOC_PREFIX}_RELEASE_NOTES.md"
+          test -f "release-assets/${DOC_PREFIX}_RELEASE_CHECKLIST.md"
           cp deploy/install-beta-lxc.sh release-assets/
           cp deploy/beta-lxc.env.example release-assets/
           chmod 0755 release-assets/install-beta-lxc.sh
@@ -621,7 +643,7 @@ jobs:
         run: |
           set -euo pipefail
           if find release-assets -maxdepth 1 -type f \( -name 'Arduino_LED_Controller_Firmware_*' -o -name 'firmware-release.json' -o -name 'firmware-catalog.json' \) | grep -q .; then
-            echo "::error::Firmware asset nem kerülhet v5.0.0-beta.X alkalmazásrelease-be."
+            echo "::error::Firmware asset nem kerülhet az alkalmazás Beta prerelease-be."
             exit 1
           fi
 
@@ -649,7 +671,7 @@ jobs:
           tag_name: ${{ needs.validate.outputs.tag }}
           target_commitish: ${{ github.sha }}
           name: Arduino LED Controller ${{ needs.validate.outputs.version }}
-          body_path: docs/v5/BETA10_RELEASE_NOTES.md
+          body_path: docs/v5/${{ needs.validate.outputs.doc_prefix }}_RELEASE_NOTES.md
           prerelease: true
           make_latest: false
           overwrite_files: true

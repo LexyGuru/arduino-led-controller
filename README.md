@@ -1,4 +1,4 @@
-# Arduino LED Controller V5
+# Arduino LED Controller V5.5
 
 > *Direct Arduino Control & Automation*
 
@@ -10,28 +10,29 @@
   <img src="docs/assets/v5-neon-panel-presentation.png" alt="Arduino LED Controller V5 – Neon Panel" />
 </p>
 
-Többplatformos LED-vezérlő rendszer Arduino UNO R4 WiFi és három WS2812B LED-szalag számára. A V5 elsődleges működési módja továbbra is a közvetlen Direct API v1 kapcsolat, de a Beta.9 már teljes Debian 13 Rust LXC szervert is tartalmaz React/Vite webfelülettel, automatikus frissítéssel és rollbackkel.
+Többplatformos LED-vezérlő rendszer Arduino UNO R4 WiFi és három WS2812B LED-szalag számára. A V5.5 új alkalmazásgeneráció: a Direct API v1 architektúrát megtartva Theme Engine 2.0, Core UI 1.5, Dashboard 2.0, Statistics 1.0, Activity & Logs 2.0, Management UI 2.0 és App Update Center került be, egységes shared React felülettel desktopon, mobilon és Debian 13 Rust LXC-ben. A V5 elsődleges működési módja továbbra is a közvetlen Direct API v1 kapcsolat, de a Beta.9 már teljes Debian 13 Rust LXC szervert is tartalmaz React/Vite webfelülettel, automatikus frissítéssel és rollbackkel.
 
 
-## Beta.10 release readiness
+## V5.5 Beta.1 release readiness
 
-**Aktuális Beta alkalmazás:** `5.0.0-beta.10`
+**Aktuális Beta alkalmazás:** `5.5.0-beta.1`
 **Párosított firmware:** `5.0.0-beta.7`
 **Direct API:** `1.0.0`
 
 Aktuális kiadási dokumentumok:
 
-- [Beta.10 release notes](docs/v5/BETA10_RELEASE_NOTES.md)
-- [Beta.10 telepítési útmutató](docs/v5/BETA10_INSTALLATION_GUIDE.md)
-- [Beta.10 release checklist](docs/v5/BETA10_RELEASE_CHECKLIST.md)
+- [V5.5 Beta.1 release notes](docs/v5/V55_BETA1_RELEASE_NOTES.md)
+- [V5.5 Beta.1 telepítési útmutató](docs/v5/V55_BETA1_INSTALLATION_GUIDE.md)
+- [V5.5 Beta.1 release checklist](docs/v5/V55_BETA1_RELEASE_CHECKLIST.md)
+- [V5.5 Beta.1 release state](docs/v5/V55_BETA1_RELEASE_STATE.md)
 
-A Beta.1–Beta.8 dokumentumok történeti release-dokumentációként maradnak a repositoryban.
+A V5.0 Beta.1–Beta.10 dokumentumok történeti release-dokumentációként maradnak a repositoryban.
 
 ## Aktuális verziók és fejlesztési állapot
 
 | Elem | Verzió / állapot |
 |---|---|
-| Alkalmazás | `5.0.0-beta.10` |
+| Alkalmazás | `5.5.0-beta.1` |
 | Firmware | `5.0.0-beta.7` |
 | Direct API | `1.0.0` |
 | Beta ág | `next/v5-rearchitecture` |
@@ -44,7 +45,7 @@ A Beta.1–Beta.8 dokumentumok történeti release-dokumentációként maradnak 
 | Rollback | automatikus, health/web gate |
 | Megőrzött LXC release-ek | 3 |
 
-A Beta.9 a V5 desktop, Direct API, Debian 13 Rust LXC, React/Vite webfelület és az önfrissítő üzemeltetési réteg közös integrációs állapota. A hozzá tartozó Arduino firmware `5.0.0-beta.7`; a Direct API verziója `1.0.0`.
+A V5.5 Beta.1 a következő generációs UI és shared runtime közös integrációs állapota. A desktop, mobil és LXC ugyanazt a shared React UI-forrást használja; a hozzá tartozó Arduino firmware `5.0.0-beta.7`, a Direct API verziója `1.0.0`.
 
 ## Fő funkciók
 
@@ -59,7 +60,13 @@ A Beta.9 a V5 desktop, Direct API, Debian 13 Rust LXC, React/Vite webfelület é
 - stable/beta firmware-katalógus csatornahelyes szűréssel;
 - megszakítható OTA, SHA-256 ellenőrzés és reboot utáni állapotkapu;
 - magyar, angol és német desktop felület;
-- System / Light / Dark mód és V5 témarendszer;
+- Theme Engine 2.0 teljes preset galériával és perzisztált megjelenési beállításokkal;
+- Core UI 1.5 reszponzív Sidebar / Topbar / mobil BottomNav alkalmazáshéj;
+- Dashboard 2.0 valós eszköz-, schedule-, audit- és aktivitási adatokkal;
+- Statistics 1.0 szintetikus/fake history nélkül;
+- Activity & Logs 2.0 egységes szűréssel és exporttal;
+- Management UI 2.0 Firmware / Schedules / Settings felületekkel;
+- App Update Center stable/beta csatornával és 6 órás automatikus ellenőrzéssel;
 - helyi műveleti audit és Tauri auditkonzol;
 - macOS Keychain, Windows Credential Manager és Linux Secret Service támogatás;
 - Debian 13 Rust LXC szerver;
@@ -96,7 +103,7 @@ A Direct Arduino módhoz nem szükséges alkalmazás-felhasználónév vagy szer
 
 ## Debian 13 Rust LXC
 
-A Beta.9 teljes headless LXC szervert tartalmaz Debian 13-hoz. A szerver ugyanazon a `3000`-es porton szolgálja ki a React webfelületet és a Rust API-t.
+A V5.5 Beta.1 teljes headless LXC szervert tartalmaz Debian 13-hoz. A szerver ugyanazon a `3000`-es porton szolgálja ki a React webfelületet és a Rust API-t.
 
 ### Alapértelmezett Proxmox profil
 
@@ -190,7 +197,7 @@ journalctl -u arduino-led-controller-update.service --no-pager -n 200
 
 ## LXC webfelület
 
-A Beta.9 LXC web UI fő nézetei:
+A V5.5 Beta.1 LXC web UI fő nézetei:
 
 - Áttekintés;
 - LED vezérlés;
@@ -199,11 +206,11 @@ A Beta.9 LXC web UI fő nézetei:
 - Firmware;
 - Rendszer.
 
-A React frontend nem használ Tauri IPC-t. A böngésző ugyanazon az originen keresztül éri el az Axum `/api/v1/*` route-jait.
+A React frontend közös forrású a Tauri felülettel, de LXC/browser runtime-ban a natív Tauri core/window API-k runtime guard mögött maradnak. Így a böngésző nem igényel `window.__TAURI_INTERNALS__` objektumot, és ugyanazon az originen keresztül éri el az Axum `/api/v1/*` route-jait. Ez a V5.5 LXC runtime isolation contract része.
 
 ## Megjelenés és audit
 
-A V5 Theme Engine központi design tokeneket és perzisztált megjelenési beállításokat használ:
+A V5.5 Theme Engine 2.0 központi design tokeneket és perzisztált megjelenési beállításokat használ:
 
 - rendszer szerinti, világos és sötét mód;
 - Arctic és Midnight téma;
@@ -333,7 +340,7 @@ A repository licencfeltételeit a projekt tulajdonosa határozza meg. Külső te
 
 ## Beta.9 Shared Frontend
 
-A `5.0.0-beta.10` egyetlen kanonikus React UI-forrást használ macOS, Windows, Linux, iOS, iPadOS, Android és Proxmox/Debian LXC célokra. Részletek: `docs/SHARED_FRONTEND_ARCHITECTURE.md` és `docs/BETA9_SHARED_FRONTEND_MIGRATION.md`.
+A `5.5.0-beta.1` egyetlen kanonikus React UI-forrást használ macOS, Windows, Linux, iOS, iPadOS, Android és Proxmox/Debian LXC célokra. Részletek: `docs/SHARED_FRONTEND_ARCHITECTURE.md` és `docs/BETA9_SHARED_FRONTEND_MIGRATION.md`.
 
 <!-- BETA9_CRITICAL_MOBILE_CLOCK_V186 -->
 ### Beta.9 – critical mobile/clock hardening
@@ -349,7 +356,7 @@ reachability and regression contracts are part of the canonical test chain.
 
 ## Beta.10 – aktuális fejlesztési állapot
 
-- Alkalmazás: `5.0.0-beta.10`
+- Alkalmazás: `5.5.0-beta.1`
 - Firmware: `5.0.0-beta.7`
 - Direct API: `1.0.0`
 - Branch: `next/v5-rearchitecture`
@@ -358,7 +365,7 @@ reachability and regression contracts are part of the canonical test chain.
 - Arduino clock/scheduler stabilizálás: beépítve
 - Animált WS2812 effektek: átmenetileg szünetelnek az interrupt-barát backend elkészültéig
 
-Részletes kiadási jegyzet: `RELEASE_NOTES_5.0.0-beta.10.md`.
+Részletes kiadási jegyzet: `RELEASE_NOTES_5.5.0-beta.1.md`.
 Firmware kiadási jegyzet: `firmware/RELEASE_NOTES_5.0.0-beta.7.md`.
 
 ## V5 Platform Icon System
