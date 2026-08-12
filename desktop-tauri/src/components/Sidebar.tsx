@@ -1,5 +1,3 @@
-import { getCurrentWindow } from '@tauri-apps/api/window';
-import { invoke } from '@tauri-apps/api/core';
 import { useEffect } from 'react';
 import { CalendarClock, Cpu, Gauge, Lightbulb, ScrollText, Settings } from 'lucide-react';
 import { useI18n } from '../i18n';
@@ -12,12 +10,18 @@ export function Sidebar({page,onChange,appVersion,firmwareVersion,otaSupported}:
 
   // V5_MACOS_DYNAMIC_ICON_SYNC
   useEffect(() => {
+    const tauriRuntime =
+      typeof globalThis !== 'undefined' &&
+      '__TAURI_INTERNALS__' in globalThis;
+
+    if (!tauriRuntime) {
+      return undefined;
+    }
+
     let disposed = false;
     let unlisten: (() => void) | undefined;
 
     // V5_DAY_NIGHT_ICON_POLICY
-    // "Nappali" and "éjszakai" are intentionally based on the Mac's local
-    // wall-clock time, independent of the app's own Light/Dark UI theme.
     const currentDayNightIconTheme = (): 'light' | 'dark' => {
       const hour = new Date().getHours();
       return hour >= 7 && hour < 19 ? 'light' : 'dark';
@@ -26,38 +30,37 @@ export function Sidebar({page,onChange,appVersion,firmwareVersion,otaSupported}:
     const syncDayNightIcon = async () => {
       if (disposed) return;
       try {
+        const { invoke } = await import('@tauri-apps/api/core');
+        if (disposed) return;
         await invoke<string>('macos_sync_app_icon', {
           theme: currentDayNightIconTheme()
         });
       } catch {
-        // Non-macOS platforms and transient dev startup states are harmless.
+        // Non-macOS Tauri targets and transient startup states are harmless.
       }
     };
 
-    // Apply the correct day/night icon immediately at app startup.
+    const installThemeListener = async () => {
+      try {
+        const { getCurrentWindow } = await import('@tauri-apps/api/window');
+        if (disposed) return;
+        const stop = await getCurrentWindow().onThemeChanged(() => {
+          void syncDayNightIcon();
+        });
+        if (disposed) stop();
+        else unlisten = stop;
+      } catch {
+        // Native theme listener is optional.
+      }
+    };
+
     void syncDayNightIcon();
 
-    // Re-check once per minute so the icon flips at the 07:00 / 19:00
-    // boundary without restarting the application.
     const timer = window.setInterval(() => {
       void syncDayNightIcon();
     }, 60_000);
 
-    // Keep the native system-theme event as an extra resync trigger. The
-    // selection itself still comes from the local day/night clock policy.
-    const currentWindow = getCurrentWindow();
-    void currentWindow
-      .onThemeChanged(() => {
-        void syncDayNightIcon();
-      })
-      .then((stop) => {
-        if (disposed) {
-          stop();
-        } else {
-          unlisten = stop;
-        }
-      })
-      .catch(() => undefined);
+    void installThemeListener();
 
     return () => {
       disposed = true;
