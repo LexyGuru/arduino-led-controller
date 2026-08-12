@@ -8,11 +8,18 @@ const path = require('node:path');
 const root = path.resolve(__dirname, '..');
 const read = (p) => fs.readFileSync(path.join(root, p), 'utf8');
 const json = (p) => JSON.parse(read(p));
+const exists = (p) => fs.existsSync(path.join(root, p));
+const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 const version = read('VERSION').trim();
-const rv = json('release-versions.json');
+const m = version.match(/^(\d+)\.(\d+)\.(\d+)-beta\.(\d+)$/);
+assert.ok(m, `Unsupported current Beta version: ${version}`);
+const [, major, minor, , betaNumber] = m;
+const docPrefix = major === '5' && minor === '0'
+  ? `BETA${betaNumber}`
+  : `V${major}${minor}_BETA${betaNumber}`;
 
-assert.equal(version, '5.5.0-beta.1');
+const rv = json('release-versions.json');
 assert.equal(rv.application, version);
 assert.equal(rv.firmware, '5.0.0-beta.7');
 
@@ -30,7 +37,7 @@ for (const p of [
   'desktop-tauri/package-lock.json',
   'web-lxc/package-lock.json'
 ]) {
-  if (!fs.existsSync(path.join(root, p))) continue;
+  if (!exists(p)) continue;
   const lock = json(p);
   assert.equal(lock.version, version, p);
   if (lock.packages && lock.packages['']) {
@@ -38,51 +45,48 @@ for (const p of [
   }
 }
 
+const versionPattern = escapeRegex(version);
+
 const cargoToml = read('desktop-tauri/src-tauri/Cargo.toml');
 const packageStart = cargoToml.indexOf('[package]');
 assert.notEqual(packageStart, -1, 'Cargo.toml [package] section missing');
 const packageTail = cargoToml.slice(packageStart);
 const nextSection = packageTail.slice(1).search(/\n\[[^\]]+\]/);
-const packageSection = nextSection >= 0
-  ? packageTail.slice(0, nextSection + 1)
-  : packageTail;
-assert.match(packageSection, /^version\s*=\s*"5\.5\.0-beta\.1"\s*$/m);
+const packageSection = nextSection >= 0 ? packageTail.slice(0, nextSection + 1) : packageTail;
+assert.match(packageSection, new RegExp(`^version\\s*=\\s*"${versionPattern}"\\s*$`, 'm'));
 
 const cargoLock = read('desktop-tauri/src-tauri/Cargo.lock');
 assert.match(
   cargoLock,
-  /\[\[package\]\]\s*\nname\s*=\s*"arduino-led-controller"\s*\nversion\s*=\s*"5\.5\.0-beta\.1"/
+  new RegExp(`\\[\\[package\\]\\]\\s*\\nname\\s*=\\s*"arduino-led-controller"\\s*\\nversion\\s*=\\s*"${versionPattern}"`)
 );
 
 assert.equal(json('docs/api/openapi-v2.json').info.version, version);
 assert.match(
   read('desktop-tauri/src/services/tauriApi.ts'),
-  /APP_VERSION\s*=\s*['"]5\.5\.0-beta\.1['"]/
+  new RegExp(`APP_VERSION\\s*=\\s*['"]${versionPattern}['"]`)
 );
 
 const workflow = read('.github/workflows/beta-release.yml');
-assert.match(workflow, /EXPECTED_VERSION:\s*5\.5\.0-beta\.1/);
+assert.match(workflow, new RegExp(`EXPECTED_VERSION:\\s*${versionPattern}`));
 assert.match(workflow, /prerelease:\s*true/);
 assert.match(workflow, /make_latest:\s*false/);
 assert.ok(workflow.includes('doc_prefix'));
 assert.ok(
-  workflow.includes(
-    'body_path: docs/v5/${{ needs.validate.outputs.doc_prefix }}_RELEASE_NOTES.md'
-  ),
-  'Current release body_path must use dynamic V5.5 doc_prefix'
+  workflow.includes('body_path: docs/v5/${{ needs.validate.outputs.doc_prefix }}_RELEASE_NOTES.md'),
+  'Current release body_path must use dynamic doc_prefix'
 );
 
 for (const p of [
-  'RELEASE_NOTES_5.5.0-beta.1.md',
-  'docs/v5/V55_BETA1_RELEASE_NOTES.md',
-  'docs/v5/V55_BETA1_INSTALLATION_GUIDE.md',
-  'docs/v5/V55_BETA1_RELEASE_CHECKLIST.md',
-  'docs/v5/V55_BETA1_RELEASE_STATE.md'
+  `RELEASE_NOTES_${version}.md`,
+  `docs/v5/${docPrefix}_RELEASE_NOTES.md`,
+  `docs/v5/${docPrefix}_INSTALLATION_GUIDE.md`,
+  `docs/v5/${docPrefix}_RELEASE_CHECKLIST.md`
 ]) {
-  assert.ok(fs.existsSync(path.join(root, p)), `Missing current release document: ${p}`);
+  assert.ok(exists(p), `Missing current release document: ${p}`);
 }
 
-const notes = read('docs/v5/V55_BETA1_RELEASE_NOTES.md');
+const notes = read(`docs/v5/${docPrefix}_RELEASE_NOTES.md`);
 assert.ok(notes.includes(version));
 assert.ok(/main/i.test(notes));
 assert.ok(/not modified|nem módosul/i.test(notes));
@@ -96,6 +100,6 @@ assert.ok(
   'Firmware source/release manifest mismatch'
 );
 
-console.log('V55_BETA1_CANONICAL_VERSION_SURFACES=PASSED');
-console.log('V55_BETA1_WORKFLOW_DOC_CONTRACT=PASSED');
-console.log('V55_BETA1_FIRMWARE_IMMUTABILITY_PAIRING=PASSED');
+console.log(`V55_CURRENT_CANONICAL_VERSION_SURFACES=PASSED:${version}`);
+console.log(`V55_CURRENT_WORKFLOW_DOC_CONTRACT=PASSED:${docPrefix}`);
+console.log('V55_CURRENT_FIRMWARE_IMMUTABILITY_PAIRING=PASSED');

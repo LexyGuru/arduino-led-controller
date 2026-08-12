@@ -1,5 +1,5 @@
 [Unit]
-Description=Arduino LED Controller 5.5.0-beta.1 Staging
+Description=Arduino LED Controller 5.5.0-beta.2 Staging
 After=network-online.target
 Wants=network-online.target
 

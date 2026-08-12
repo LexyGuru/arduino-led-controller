@@ -15,7 +15,7 @@ Többplatformos LED-vezérlő rendszer Arduino UNO R4 WiFi és három WS2812B LE
 
 ## V5.5 Beta.1 release readiness
 
-**Aktuális Beta alkalmazás:** `5.5.0-beta.1`
+**Aktuális Beta alkalmazás:** `5.5.0-beta.2`
 **Párosított firmware:** `5.0.0-beta.7`
 **Direct API:** `1.0.0`
 
@@ -32,7 +32,7 @@ A V5.0 Beta.1–Beta.10 dokumentumok történeti release-dokumentációként mar
 
 | Elem | Verzió / állapot |
 |---|---|
-| Alkalmazás | `5.5.0-beta.1` |
+| Alkalmazás | `5.5.0-beta.2` |
 | Firmware | `5.0.0-beta.7` |
 | Direct API | `1.0.0` |
 | Beta ág | `next/v5-rearchitecture` |
@@ -340,7 +340,7 @@ A repository licencfeltételeit a projekt tulajdonosa határozza meg. Külső te
 
 ## Beta.9 Shared Frontend
 
-A `5.5.0-beta.1` egyetlen kanonikus React UI-forrást használ macOS, Windows, Linux, iOS, iPadOS, Android és Proxmox/Debian LXC célokra. Részletek: `docs/SHARED_FRONTEND_ARCHITECTURE.md` és `docs/BETA9_SHARED_FRONTEND_MIGRATION.md`.
+A `5.5.0-beta.2` egyetlen kanonikus React UI-forrást használ macOS, Windows, Linux, iOS, iPadOS, Android és Proxmox/Debian LXC célokra. Részletek: `docs/SHARED_FRONTEND_ARCHITECTURE.md` és `docs/BETA9_SHARED_FRONTEND_MIGRATION.md`.
 
 <!-- BETA9_CRITICAL_MOBILE_CLOCK_V186 -->
 ### Beta.9 – critical mobile/clock hardening
@@ -356,7 +356,7 @@ reachability and regression contracts are part of the canonical test chain.
 
 ## Beta.10 – aktuális fejlesztési állapot
 
-- Alkalmazás: `5.5.0-beta.1`
+- Alkalmazás: `5.5.0-beta.2`
 - Firmware: `5.0.0-beta.7`
 - Direct API: `1.0.0`
 - Branch: `next/v5-rearchitecture`
@@ -365,7 +365,7 @@ reachability and regression contracts are part of the canonical test chain.
 - Arduino clock/scheduler stabilizálás: beépítve
 - Animált WS2812 effektek: átmenetileg szünetelnek az interrupt-barát backend elkészültéig
 
-Részletes kiadási jegyzet: `RELEASE_NOTES_5.5.0-beta.1.md`.
+Részletes kiadási jegyzet: `RELEASE_NOTES_5.5.0-beta.2.md`.
 Firmware kiadási jegyzet: `firmware/RELEASE_NOTES_5.0.0-beta.7.md`.
 
 ## V5 Platform Icon System

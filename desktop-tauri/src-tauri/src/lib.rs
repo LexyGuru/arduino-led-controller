@@ -1903,13 +1903,17 @@ async fn upload_firmware_native(
         // ez könnyebben látszik Connection refused hibaként. Az első elutasítás
         // ezért nem végleges OTA-hiba: rövid, korlátozott újrapróbálkozási ablakot
         // adunk a listenernek. A firmware küldése csak létrejött TCP-kapcsolat után indul.
-        const OTA_CONNECT_ATTEMPTS: u8 = 12;
-        const OTA_CONNECT_RETRY_DELAY: Duration = Duration::from_millis(750);
+        const OTA_LISTENER_STARTUP_TIMEOUT: Duration = Duration::from_secs(120);
+        const OTA_CONNECT_RETRY_DELAY: Duration = Duration::from_secs(1);
         const OTA_CONNECT_TIMEOUT: Duration = Duration::from_secs(3);
 
+        let connect_started = Instant::now();
+        let mut attempt: u32 = 0;
         let mut stream = None;
         let mut last_error = String::new();
-        'connect_attempts: for attempt in 1..=OTA_CONNECT_ATTEMPTS {
+
+        'connect_attempts: loop {
+            attempt += 1;
             for socket in &addresses {
                 match TcpStream::connect_timeout(socket, OTA_CONNECT_TIMEOUT) {
                     Ok(value) => {
@@ -1920,7 +1924,8 @@ async fn upload_firmware_native(
                                 "Kapcsolat",
                                 "success",
                                 format!(
-                                    "Az OTA-listener elérhető lett a(z) {attempt}. próbálkozásra: {socket}"
+                                    "Az OTA-listener elérhető lett a(z) {attempt}. próbálkozásra, {} másodperc után: {socket}",
+                                    connect_started.elapsed().as_secs()
                                 ),
                                 Some(53),
                             );
@@ -1931,23 +1936,29 @@ async fn upload_firmware_native(
                 }
             }
 
-            if attempt < OTA_CONNECT_ATTEMPTS {
-                emit_ota_progress(
-                    &app,
-                    "Kapcsolat",
-                    "info",
-                    format!(
-                        "Az OTA-listener még nem fogad kapcsolatot ({attempt}/{OTA_CONNECT_ATTEMPTS}). Rövid várakozás után újrapróbálom: {last_error}"
-                    ),
-                    Some(52),
-                );
-                std::thread::sleep(OTA_CONNECT_RETRY_DELAY);
+            let elapsed = connect_started.elapsed();
+            if elapsed >= OTA_LISTENER_STARTUP_TIMEOUT {
+                break;
             }
+
+            emit_ota_progress(
+                &app,
+                "Kapcsolat",
+                "info",
+                format!(
+                    "Az OTA-listener még nem áll készen. Várakozás az Arduino előkészítésére: {} / {} másodperc. Következő próba rövidesen. Részlet: {last_error}",
+                    elapsed.as_secs(),
+                    OTA_LISTENER_STARTUP_TIMEOUT.as_secs()
+                ),
+                Some(52),
+            );
+            std::thread::sleep(OTA_CONNECT_RETRY_DELAY);
         }
 
         let mut stream = stream.ok_or_else(|| {
             format!(
-                "A Tauri beépített OTA-kliense {OTA_CONNECT_ATTEMPTS} próbálkozás után sem tudott kapcsolódni a(z) {address}:{port} címhez. Utolsó hiba: {last_error}"
+                "A Tauri beépített OTA-kliense {} másodperc várakozás után sem tudott kapcsolódni a(z) {address}:{port} címhez. Utolsó hiba: {last_error}",
+                OTA_LISTENER_STARTUP_TIMEOUT.as_secs()
             )
         })?;
         stream.set_nodelay(true).ok();

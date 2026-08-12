@@ -49,11 +49,11 @@ function compareVersions(left, right) {
   return pa.number - pb.number;
 }
 
-assert.ok(compareVersions('5.5.0-beta.1', '5.0.0-beta.10') > 0);
-assert.ok(compareVersions('5.0.0-beta.10', '5.5.0-beta.1') < 0);
-assert.ok(compareVersions('5.5.0-beta.2', '5.5.0-beta.1') > 0);
+assert.ok(compareVersions('5.5.0-beta.2', '5.0.0-beta.10') > 0);
+assert.ok(compareVersions('5.0.0-beta.10', '5.5.0-beta.2') < 0);
+assert.ok(compareVersions('5.5.0-beta.2', '5.5.0-beta.2') > 0);
 assert.ok(compareVersions('5.5.0', '5.5.0-beta.99') > 0);
-assert.equal(compareVersions('v5.5.0-beta.1', '5.5.0-beta.1'), 0);
+assert.equal(compareVersions('v5.5.0-beta.2', '5.5.0-beta.2'), 0);
 
 assert.ok(rust.includes('fn compare_app_versions('));
 assert.ok(rust.includes('.max_by(|left, right|'));

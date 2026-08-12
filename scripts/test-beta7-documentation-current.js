@@ -13,7 +13,7 @@ const audit = read('docs/v5/MARKDOWN_AUDIT_BETA7.md');
 
 // A fő README már a jelenlegi Beta.8 integrációs állapotot dokumentálja.
 for (const marker of [
-  '5.5.0-beta.1',
+  '5.5.0-beta.2',
   '5.0.0-beta.7',
   'Direct API',
   'next/v5-rearchitecture',

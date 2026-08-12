@@ -4,12 +4,12 @@ const staging = fs.readFileSync('.github/workflows/tauri-artifact-build.yml', 'u
 function requireMatch(value, regex, label) {
   if (!regex.test(value)) throw new Error(`Missing contract: ${label}`);
 }
-requireMatch(lib, /OTA_CONNECT_ATTEMPTS:\s*u8\s*=\s*12/, 'bounded OTA connect retry count');
-requireMatch(lib, /OTA_CONNECT_RETRY_DELAY:\s*Duration\s*=\s*Duration::from_millis\(750\)/, 'retry delay');
-requireMatch(lib, /for attempt in 1\.\.=OTA_CONNECT_ATTEMPTS/, 'OTA listener retry loop');
+requireMatch(lib, /OTA_LISTENER_STARTUP_TIMEOUT:\s*Duration\s*=\s*Duration::from_secs\(120\)/, '120 second OTA listener startup window');
+requireMatch(lib, /OTA_CONNECT_RETRY_DELAY:\s*Duration\s*=\s*Duration::from_secs\(1\)/, 'one second retry delay');
+requireMatch(lib, /'connect_attempts: loop/, 'time based OTA listener retry loop');
 requireMatch(lib, /std::thread::sleep\(OTA_CONNECT_RETRY_DELAY\)/, 'retry wait');
 requireMatch(lib, /CONFIRM_TIMEOUT:\s*Duration\s*=\s*Duration::from_secs\(180\)/, 'existing post-flash restart confirmation');
-requireMatch(lib, /A Tauri beépített OTA-kliense \{OTA_CONNECT_ATTEMPTS\} próbálkozás után sem tudott kapcsolódni/, 'final failure after retries');
+requireMatch(lib, /A Tauri beépített OTA-kliense \{\} másodperc várakozás után sem tudott kapcsolódni/, 'failure only after startup timeout');
 requireMatch(staging, /push:[\s\S]*next\/v5-rearchitecture/, 'NEXT push trigger');
 requireMatch(staging, /build-android:/, 'Android staging job');
 requireMatch(staging, /name:\s*Android APK and AAB/, 'proven Android job identity');

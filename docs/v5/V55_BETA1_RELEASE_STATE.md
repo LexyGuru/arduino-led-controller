@@ -1,8 +1,8 @@
-# V5.5 Beta.1 Release State — 5.5.0-beta.1
+# V5.5 Beta.1 Release State — 5.5.0-beta.2
 
 Status: **TEST CANDIDATE**
 
-Application: `5.5.0-beta.1`
+Application: `5.5.0-beta.2`
 Firmware: `5.0.0-beta.7`
 Direct API: `1.0.0`
 
@@ -18,6 +18,6 @@ Direct API: `1.0.0`
 - shared desktop/mobile/LXC frontend
 - LXC native Tauri runtime isolation
 
-The previous `5.0.0-beta.x` documentation remains historical. V5.5 starts at `5.5.0-beta.1`.
+The previous `5.0.0-beta.x` documentation remains historical. V5.5 starts at `5.5.0-beta.2`.
 
 Promotion requires automated validation and manual approval before commit/push.
