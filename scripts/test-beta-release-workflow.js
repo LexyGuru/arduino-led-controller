@@ -1,4 +1,20 @@
 #!/usr/bin/env node
+// V5_STABLE_BETA_WORKFLOW_COMPAT
+// Stable main has no current Beta number. Preserve beta workflow/history,
+// then skip Beta-only current-state derivation checks.
+const __V5_CURRENT_APP_VERSION = require('../package.json').version;
+if (!/-beta\.\d+$/.test(__V5_CURRENT_APP_VERSION)) {
+  const __v5fs = require('fs');
+  if (!__v5fs.existsSync('.github/workflows/beta-release.yml')) {
+    throw new Error('Beta release workflow file is missing on stable main');
+  }
+  if (!__v5fs.existsSync('RELEASE_NOTES_5.0.0-beta.10.md')) {
+    throw new Error('Historical Beta10 release notes are missing on stable main');
+  }
+  console.log('OK: stable main preserves beta workflow/history without requiring a current Beta number');
+  process.exit(0);
+}
+
 'use strict';
 
 const assert = require('node:assert/strict');

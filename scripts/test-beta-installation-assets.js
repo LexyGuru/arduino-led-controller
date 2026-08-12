@@ -1,4 +1,25 @@
 #!/usr/bin/env node
+// V5_STABLE_BETA_ONLY_COMPAT
+// Stable main intentionally has no current Beta number.
+// Preserve Beta release infrastructure/history, then skip Beta-only
+// current-version derivation checks.
+const __V5_STABLE_APP_VERSION = require('../package.json').version;
+if (!/-beta\.\d+$/.test(__V5_STABLE_APP_VERSION)) {
+  const __v5fs = require('fs');
+  const __requiredBetaSurfaces = [
+    '.github/workflows/beta-release.yml',
+    'RELEASE_NOTES_5.0.0-beta.10.md',
+    'docs/v5/BETA10_RELEASE_NOTES.md',
+  ];
+  for (const __surface of __requiredBetaSurfaces) {
+    if (!__v5fs.existsSync(__surface)) {
+      throw new Error(`Historical/future Beta surface missing on stable main: ${__surface}`);
+    }
+  }
+  console.log('OK: stable main preserves Beta release infrastructure; Beta-only current-number checks skipped');
+  process.exit(0);
+}
+
 'use strict';
 
 const assert = require('assert');

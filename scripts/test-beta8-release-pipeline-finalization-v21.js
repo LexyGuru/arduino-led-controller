@@ -4,13 +4,14 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const CURRENT_APP_VERSION = require('../package.json').version;
 
 const ROOT = path.resolve(__dirname, '..');
 const read = (rel) => fs.readFileSync(path.join(ROOT, rel), 'utf8');
 const json = (rel) => JSON.parse(read(rel));
 
 const versions = json('release-versions.json');
-assert.equal(versions.application, '5.0.0-beta.10');
+assert.equal(versions.application, CURRENT_APP_VERSION);
 assert.equal(versions.firmware, '5.0.0-beta.7');
 assert.equal(versions.directApi, '1.0.0');
 

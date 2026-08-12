@@ -4,6 +4,7 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const CURRENT_APP_VERSION = require('../package.json').version;
 
 const ROOT = path.resolve(__dirname, '..');
 const read = (rel) => fs.readFileSync(path.join(ROOT, rel), 'utf8');
@@ -22,7 +23,7 @@ const guide = read('docs/v5/BETA8_INSTALLATION_GUIDE.md');
 const notes = read('docs/v5/BETA8_RELEASE_NOTES.md');
 const checklist = read('docs/v5/BETA8_RELEASE_CHECKLIST.md');
 
-assert.equal(versions.application, '5.0.0-beta.10');
+assert.equal(versions.application, CURRENT_APP_VERSION);
 assert.equal(versions.firmware, '5.0.0-beta.7');
 assert.equal(versions.directApi, '1.0.0');
 
@@ -47,7 +48,7 @@ assert.ok(unit.includes('Description=Arduino LED Controller 5.0.0-beta.10 Stagin
 assert.ok(bundle.includes("candidate: 'beta.8-gate'"));
 
 assert.ok(workflowTest.includes('BETA8_RELEASE_NOTES'));
-assert.ok(assetsTest.includes("5.0.0-beta.10"));
+assert.ok(assetsTest.includes(CURRENT_APP_VERSION));
 assert.ok(assetsTest.includes("5.0.0-beta.7"));
 assert.ok(assetsTest.includes("BETA8_INSTALLATION_GUIDE.md"));
 assert.ok(assetsTest.includes("BETA8_RELEASE_NOTES.md"));
@@ -62,7 +63,7 @@ for (const token of [
   assert.ok(guide.includes(token), `guide missing ${token}`);
 }
 
-assert.ok(notes.includes('5.0.0-beta.10'));
+assert.ok(notes.includes(CURRENT_APP_VERSION));
 assert.ok(notes.includes('prerelease'));
 assert.ok(notes.includes('SBOM'));
 assert.ok(notes.includes('main'));

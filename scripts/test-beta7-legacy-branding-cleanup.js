@@ -46,8 +46,8 @@ assert(hits.length === 0, `legacy user-facing branding remains:\n${hits.join('\n
 const sidebar = fs.readFileSync('desktop-tauri/src/components/Sidebar.tsx', 'utf8');
 assert(
   sidebar.includes('Arduino LED Controller V5') ||
-  sidebar.includes('Direct Arduino Control & Automation') ||
-  fs.readFileSync('README.md', 'utf8').includes('Direct Arduino Control & Automation'),
+  sidebar.includes('Közvetlen Arduino-vezérlés és automatizálás') ||
+  fs.readFileSync('README.md', 'utf8').includes('Közvetlen Arduino-vezérlés és automatizálás'),
   'new V5 branding/subtitle not found in expected UI/docs'
 );
 

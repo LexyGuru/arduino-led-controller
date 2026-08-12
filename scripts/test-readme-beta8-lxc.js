@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 'use strict';
 const fs=require('fs'),a=require('assert/strict');
+const CURRENT_APP_VERSION = require('../package.json').version;
 const r=fs.readFileSync('README.md','utf8');
 
-a.ok(r.includes('5.0.0-beta.10'));
+a.ok(r.includes(CURRENT_APP_VERSION));
 a.ok(r.includes('5.0.0-beta.7'));
 a.ok(r.includes('Direct API | `1.0.0`'));
 a.ok(r.includes('Debian 13 Rust LXC'));

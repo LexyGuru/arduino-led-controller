@@ -1,10 +1,15 @@
 # Arduino LED Controller V5
 
-> *Direct Arduino Control & Automation*
+<!-- V5_STABLE_RELEASE_STATUS -->
+> **Aktuális stabil alkalmazás:** `v5.0.0`
+> **Állapot:** V5 Stable / Final
+> A `main` ág a stabil alkalmazásvonal. A Beta fejlesztések a `next/v5-rearchitecture` ágon folytatódnak.
 
-[![Firmware build](https://github.com/LexyGuru/arduino-led-controller/actions/workflows/firmware-build.yml/badge.svg?branch=next%2Fv5-rearchitecture)](https://github.com/LexyGuru/arduino-led-controller/actions/workflows/firmware-build.yml)
-[![Firmware Beta release](https://github.com/LexyGuru/arduino-led-controller/actions/workflows/firmware-beta-release.yml/badge.svg?branch=next%2Fv5-rearchitecture)](https://github.com/LexyGuru/arduino-led-controller/actions/workflows/firmware-beta-release.yml)
-[![V5 Beta release](https://github.com/LexyGuru/arduino-led-controller/actions/workflows/beta-release.yml/badge.svg?branch=next%2Fv5-rearchitecture)](https://github.com/LexyGuru/arduino-led-controller/actions/workflows/beta-release.yml)
+
+> *Közvetlen Arduino-vezérlés és automatizálás*
+
+[![Main firmware build](https://github.com/LexyGuru/arduino-led-controller/actions/workflows/firmware-build.yml/badge.svg?branch=main)](https://github.com/LexyGuru/arduino-led-controller/actions/workflows/firmware-build.yml)
+
 
 <p align="center">
   <img src="docs/assets/v5-neon-panel-presentation.png" alt="Arduino LED Controller V5 – Neon Panel" />
@@ -13,13 +18,13 @@
 Többplatformos LED-vezérlő rendszer Arduino UNO R4 WiFi és három WS2812B LED-szalag számára. A V5 elsődleges működési módja továbbra is a közvetlen Direct API v1 kapcsolat, de a Beta.9 már teljes Debian 13 Rust LXC szervert is tartalmaz React/Vite webfelülettel, automatikus frissítéssel és rollbackkel.
 
 
-## Beta.10 release readiness
+## Beta.10 – történeti / next ág release állapot
 
-**Aktuális Beta alkalmazás:** `5.0.0-beta.10`
+**Utolsó validált Beta alkalmazás a `next/v5-rearchitecture` ágon:** `5.0.0-beta.10`
 **Párosított firmware:** `5.0.0-beta.7`
 **Direct API:** `1.0.0`
 
-Aktuális kiadási dokumentumok:
+Beta.10 kiadási dokumentumok:
 
 - [Beta.10 release notes](docs/v5/BETA10_RELEASE_NOTES.md)
 - [Beta.10 telepítési útmutató](docs/v5/BETA10_INSTALLATION_GUIDE.md)
@@ -27,11 +32,14 @@ Aktuális kiadási dokumentumok:
 
 A Beta.1–Beta.8 dokumentumok történeti release-dokumentációként maradnak a repositoryban.
 
-## Aktuális verziók és fejlesztési állapot
+A Beta.10 dokumentumok szintén a `next/v5-rearchitecture` utolsó validált prerelease állapotát dokumentálják; a `main` aktuális alkalmazásverziója `5.0.0`.
+
+## Aktuális stable verziók és fejlesztési állapot
 
 | Elem | Verzió / állapot |
 |---|---|
-| Alkalmazás | `5.0.0-beta.10` |
+| Stabil alkalmazás | `5.0.0` |
+| Utolsó validált Beta alkalmazás | `5.0.0-beta.10` |
 | Firmware | `5.0.0-beta.7` |
 | Direct API | `1.0.0` |
 | Beta ág | `next/v5-rearchitecture` |
@@ -298,7 +306,15 @@ npm run test:rust-lxc
 - `.github/workflows/beta-release.yml`: teljes V5 alkalmazás prerelease.
 - A prerelease nem jelölhető latest stabil kiadásnak.
 
-A README tetején lévő Beta badge-ek közvetlenül a GitHub Actions workflow státuszát használják. Sikeres workflow esetén a GitHub státuszbadge sikeres állapotot, hibánál sikertelen állapotot jelez.
+A README tetején csak a `main` ág firmware build státusza látható. A Beta/next workflow-k külön, az alábbi blokkban jelennek meg, hogy ne legyenek összekeverhetők a stable main állapotával.
+
+### Beta / next ág workflow állapota
+
+[![Firmware build](https://github.com/LexyGuru/arduino-led-controller/actions/workflows/firmware-build.yml/badge.svg?branch=next%2Fv5-rearchitecture)](https://github.com/LexyGuru/arduino-led-controller/actions/workflows/firmware-build.yml)
+[![Firmware Beta release](https://github.com/LexyGuru/arduino-led-controller/actions/workflows/firmware-beta-release.yml/badge.svg?branch=next%2Fv5-rearchitecture)](https://github.com/LexyGuru/arduino-led-controller/actions/workflows/firmware-beta-release.yml)
+[![V5 Beta release](https://github.com/LexyGuru/arduino-led-controller/actions/workflows/beta-release.yml/badge.svg?branch=next%2Fv5-rearchitecture)](https://github.com/LexyGuru/arduino-led-controller/actions/workflows/beta-release.yml)
+
+Ezek a badge-ek kizárólag a `next/v5-rearchitecture` Beta fejlesztési ág workflow-állapotát mutatják; nem a stable `main` kiadás státuszjelzői.
 
 ## Dokumentáció
 
@@ -333,7 +349,7 @@ A repository licencfeltételeit a projekt tulajdonosa határozza meg. Külső te
 
 ## Beta.9 Shared Frontend
 
-A `5.0.0-beta.10` egyetlen kanonikus React UI-forrást használ macOS, Windows, Linux, iOS, iPadOS, Android és Proxmox/Debian LXC célokra. Részletek: `docs/SHARED_FRONTEND_ARCHITECTURE.md` és `docs/BETA9_SHARED_FRONTEND_MIGRATION.md`.
+A Beta.10-ben bevezetett közös frontend egyetlen kanonikus React UI-forrást használ macOS, Windows, Linux, iOS, iPadOS, Android és Proxmox/Debian LXC célokra. Részletek: `docs/SHARED_FRONTEND_ARCHITECTURE.md` és `docs/BETA9_SHARED_FRONTEND_MIGRATION.md`.
 
 <!-- BETA9_CRITICAL_MOBILE_CLOCK_V186 -->
 ### Beta.9 – critical mobile/clock hardening
@@ -347,9 +363,9 @@ reachability and regression contracts are part of the canonical test chain.
 
 
 
-## Beta.10 – aktuális fejlesztési állapot
+## Beta.10 – történeti next ág fejlesztési állapot
 
-- Alkalmazás: `5.0.0-beta.10`
+- Utolsó validált Beta alkalmazás: `5.0.0-beta.10`
 - Firmware: `5.0.0-beta.7`
 - Direct API: `1.0.0`
 - Branch: `next/v5-rearchitecture`

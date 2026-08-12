@@ -2,6 +2,7 @@
 
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const CURRENT_APP_VERSION = require('../package.json').version;
 
 const read = (file) => fs.readFileSync(file, 'utf8');
 
@@ -13,7 +14,7 @@ const audit = read('docs/v5/MARKDOWN_AUDIT_BETA7.md');
 
 // A fő README már a jelenlegi Beta.8 integrációs állapotot dokumentálja.
 for (const marker of [
-  '5.0.0-beta.10',
+  CURRENT_APP_VERSION,
   '5.0.0-beta.7',
   'Direct API',
   'next/v5-rearchitecture',

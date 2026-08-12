@@ -3,6 +3,7 @@
 
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const CURRENT_APP_VERSION = require('../package.json').version;
 
 const fw = fs.readFileSync(
   'firmware/ArduinoLedController/ArduinoLedController.ino',
@@ -97,7 +98,7 @@ assert.ok(readme.includes('actions/workflows/firmware-beta-release.yml'));
 assert.ok(readme.includes('actions/workflows/beta-release.yml'));
 
 for (const marker of [
-  '5.0.0-beta.10',
+  CURRENT_APP_VERSION,
   '5.0.0-beta.7',
   'next/v5-rearchitecture',
   'Stabil ág | `main`',

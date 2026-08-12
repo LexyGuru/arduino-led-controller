@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 const fs = require('fs');
+const CURRENT_APP_VERSION = require('../package.json').version;
 function assert(cond, msg) { if (!cond) { console.error(`FAIL: ${msg}`); process.exit(1); } }
-const VERSION='5.0.0-beta.10';
+const VERSION=CURRENT_APP_VERSION;
 assert(fs.readFileSync('VERSION','utf8').trim()===VERSION,'VERSION mismatch');
 const rootPkg=JSON.parse(fs.readFileSync('package.json','utf8'));
 const rootLock=JSON.parse(fs.readFileSync('package-lock.json','utf8'));
@@ -38,7 +39,7 @@ const sidebar=fs.readFileSync('desktop-tauri/src/components/Sidebar.tsx','utf8')
 assert(sidebar.includes('/v5-icon.png'),'sidebar icon missing');
 const topbar=fs.readFileSync('desktop-tauri/src/components/Topbar.tsx','utf8');
 assert(topbar.includes('Arduino LED Controller V5'),'topbar title missing');
-assert(topbar.includes('Direct Arduino Control & Automation'),'topbar subtitle missing');
+assert(topbar.includes('Közvetlen Arduino-vezérlés és automatizálás'),'topbar subtitle missing');
 const api=fs.readFileSync('desktop-tauri/src/api/create-desktop-api.ts','utf8');
 assert(api.includes('allowPersistentBearer !== true'),'keychain guard missing');
 const rust=fs.readFileSync('desktop-tauri/src-tauri/src/lib.rs','utf8');

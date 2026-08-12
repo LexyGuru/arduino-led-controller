@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 const fs = require('fs');
+const CURRENT_APP_VERSION = require('../package.json').version;
 
 function assert(cond, msg) {
   if (!cond) {
@@ -8,7 +9,7 @@ function assert(cond, msg) {
   }
 }
 
-const APP = '5.0.0-beta.10';
+const APP = CURRENT_APP_VERSION;
 const FW = '5.0.0-beta.7';
 
 const versions = JSON.parse(fs.readFileSync('release-versions.json', 'utf8'));
@@ -17,7 +18,7 @@ assert(versions.firmware === FW, 'firmware version mismatch');
 
 const docStatus = fs.readFileSync('scripts/test-v5-documentation-status.js', 'utf8');
 assert(
-  docStatus.includes("read('VERSION').trim(), '5.0.0-beta.10'"),
+  docStatus.includes("read('VERSION').trim(), CURRENT_APP_VERSION"),
   'documentation status app version not migrated'
 );
 assert(
@@ -28,7 +29,7 @@ assert(
 const firmwareMeta = fs.readFileSync(
   'scripts/test-beta7-firmware-metadata-contract.js', 'utf8'
 );
-assert(firmwareMeta.includes('5.0.0-beta.10'),
+assert(firmwareMeta.includes(CURRENT_APP_VERSION),
   'firmware metadata application version not Beta.8');
 assert(firmwareMeta.includes('5.0.0-beta.7'),
   'firmware metadata firmware version not Beta.6');
@@ -36,7 +37,7 @@ assert(firmwareMeta.includes('5.0.0-beta.7'),
 const current = fs.readFileSync(
   'scripts/test-beta7-current-version-contract.js', 'utf8'
 );
-assert(current.includes('5.0.0-beta.10'),
+assert(current.includes(CURRENT_APP_VERSION),
   'current-version contract not Beta.8');
 assert(current.includes('5.0.0-beta.7'),
   'current-version firmware marker missing');
