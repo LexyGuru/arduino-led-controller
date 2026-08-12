@@ -1014,7 +1014,6 @@ export function useController(
         config
       );
 
-      await tauriApi.syncTimeConfig();
 
       if (
         capabilities.otaSupported &&
@@ -1028,6 +1027,7 @@ export function useController(
           ''
         );
       }
+      await tauriApi.syncTimeConfig();
     };
 
   const resetAfterConnectionChange =

@@ -2290,18 +2290,6 @@ async fn migrate_native_credentials(
         .map_err(|_| "Beállítás zárolva".to_string())?
         .clone();
     let mut changed = false;
-    if cfg!(any(target_os = "android", target_os = "ios")) {
-        fs::write(
-            config_path(&app)?,
-            serde_json::to_vec_pretty(&config).map_err(|e| e.to_string())?,
-        )
-        .map_err(|e| e.to_string())?;
-        *state
-            .config
-            .lock()
-            .map_err(|_| "Beállítás zárolva".to_string())? = config;
-        return Ok(false);
-    }
     if !config.arduino_api_key.trim().is_empty() {
         credential_bridge::set_profile_secret(
             profile_account(&config, "device-key"),
@@ -2350,21 +2338,6 @@ async fn save_config(
         config.ota_tool_path.clear();
     }
     validate_config(&config)?;
-    if cfg!(any(target_os = "android", target_os = "ios")) {
-        fs::write(
-            config_path(&app)?,
-            serde_json::to_vec_pretty(&config).map_err(|e| e.to_string())?,
-        )
-        .map_err(|e| e.to_string())?;
-        *state
-            .config
-            .lock()
-            .map_err(|_| "Beállítás zárolva".to_string())? = config;
-        if let Ok(mut cached) = state.last_known_local_ip.lock() {
-            *cached = None;
-        }
-        return Ok(());
-    }
     if !config.arduino_api_key.trim().is_empty() {
         credential_bridge::set_profile_secret(
             profile_account(&config, "device-key"),
