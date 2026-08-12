@@ -1892,20 +1892,63 @@ async fn upload_firmware_native(
 
         let addresses = (address.as_str(), port)
             .to_socket_addrs()
-            .map_err(|error| format!("Az OTA-cím nem oldható fel: {error}"))?;
+            .map_err(|error| format!("Az OTA-cím nem oldható fel: {error}"))?
+            .collect::<Vec<_>>();
+        if addresses.is_empty() {
+            return Err(format!("Az OTA-cím nem adott használható socket címet: {address}:{port}"));
+        }
+
+        // A /api/v1/ota/prepare sikeres válasza és az OTA TCP-listener tényleges
+        // bind/listen állapota között UNO R4 WiFi-n rövid késleltetés lehet. Mobilon
+        // ez könnyebben látszik Connection refused hibaként. Az első elutasítás
+        // ezért nem végleges OTA-hiba: rövid, korlátozott újrapróbálkozási ablakot
+        // adunk a listenernek. A firmware küldése csak létrejött TCP-kapcsolat után indul.
+        const OTA_CONNECT_ATTEMPTS: u8 = 12;
+        const OTA_CONNECT_RETRY_DELAY: Duration = Duration::from_millis(750);
+        const OTA_CONNECT_TIMEOUT: Duration = Duration::from_secs(3);
+
         let mut stream = None;
         let mut last_error = String::new();
-        for socket in addresses {
-            match TcpStream::connect_timeout(&socket, Duration::from_secs(6)) {
-                Ok(value) => {
-                    stream = Some(value);
-                    break;
+        'connect_attempts: for attempt in 1..=OTA_CONNECT_ATTEMPTS {
+            for socket in &addresses {
+                match TcpStream::connect_timeout(socket, OTA_CONNECT_TIMEOUT) {
+                    Ok(value) => {
+                        stream = Some(value);
+                        if attempt > 1 {
+                            emit_ota_progress(
+                                &app,
+                                "Kapcsolat",
+                                "success",
+                                format!(
+                                    "Az OTA-listener elérhető lett a(z) {attempt}. próbálkozásra: {socket}"
+                                ),
+                                Some(53),
+                            );
+                        }
+                        break 'connect_attempts;
+                    }
+                    Err(error) => last_error = format!("{socket}: {error}"),
                 }
-                Err(error) => last_error = format!("{socket}: {error}"),
+            }
+
+            if attempt < OTA_CONNECT_ATTEMPTS {
+                emit_ota_progress(
+                    &app,
+                    "Kapcsolat",
+                    "info",
+                    format!(
+                        "Az OTA-listener még nem fogad kapcsolatot ({attempt}/{OTA_CONNECT_ATTEMPTS}). Rövid várakozás után újrapróbálom: {last_error}"
+                    ),
+                    Some(52),
+                );
+                std::thread::sleep(OTA_CONNECT_RETRY_DELAY);
             }
         }
+
         let mut stream = stream.ok_or_else(|| {
-            format!("A Tauri beépített OTA-kliense nem tudott kapcsolódni a(z) {address}:{port} címhez. {last_error}")
+            format!(
+                "A Tauri beépített OTA-kliense {OTA_CONNECT_ATTEMPTS} próbálkozás után sem tudott kapcsolódni a(z) {address}:{port} címhez. Utolsó hiba: {last_error}"
+            )
         })?;
         stream.set_nodelay(true).ok();
         let ota_timeout =
