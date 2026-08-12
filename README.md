@@ -9,6 +9,7 @@
 > *Közvetlen Arduino-vezérlés és automatizálás*
 
 [![Main firmware build](https://github.com/LexyGuru/arduino-led-controller/actions/workflows/firmware-build.yml/badge.svg?branch=main)](https://github.com/LexyGuru/arduino-led-controller/actions/workflows/firmware-build.yml)
+[![V5 Stable release](https://github.com/LexyGuru/arduino-led-controller/actions/workflows/tauri-desktop.yml/badge.svg?branch=main)](https://github.com/LexyGuru/arduino-led-controller/actions/workflows/tauri-desktop.yml)
 
 
 <p align="center">
