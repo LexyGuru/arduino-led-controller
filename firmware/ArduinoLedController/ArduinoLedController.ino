@@ -87,7 +87,7 @@ constexpr unsigned long NTP_VALID_EPOCH_MIN = 1700000000UL;
 constexpr uint8_t HTTP_CLIENTS_PER_LOOP = 1;
 constexpr uint8_t LOG_CAPACITY = 12;
 constexpr uint8_t CONSOLE_LOGS_PER_RESPONSE = 8;
-constexpr size_t HTTP_BODY_BUFFER_SIZE = 2560;
+constexpr size_t HTTP_BODY_BUFFER_SIZE = 3072;
 constexpr size_t HTTP_RESPONSE_HEADER_SIZE = 192;
 constexpr size_t HTTP_WRITE_CHUNK_SIZE = 512;
 constexpr unsigned long HTTP_WRITE_INTER_CHUNK_DELAY_MS = 1UL;
@@ -195,7 +195,7 @@ static_assert(sizeof(StoredLed) == 8, "StoredLed EEPROM layout changed");
 static_assert(sizeof(StoredSchedule) == 27, "StoredSchedule EEPROM layout changed");
 static_assert(sizeof(ScheduleHeader) == 10, "ScheduleHeader EEPROM layout changed");
 static_assert(LOG_CAPACITY <= 32, "F14.1 RAM log capacity is too large");
-static_assert(HTTP_BODY_BUFFER_SIZE <= 2560, "F14.1 HTTP buffer is too large");
+static_assert(HTTP_BODY_BUFFER_SIZE <= 3072, "F14.1 HTTP buffer is too large");
 static_assert(HTTP_WRITE_CHUNK_SIZE <= 512, "UNO R4 WiFi response chunk is too large");
 struct FixedBuffer {
   char* data;
