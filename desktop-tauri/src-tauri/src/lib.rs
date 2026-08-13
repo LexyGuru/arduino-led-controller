@@ -2037,8 +2037,14 @@ Connection: close\r\n\r\n"
             Some(89),
         );
 
+        // A teljes firmware body már ki lett írva és flush-olva.
+        // UNO R4 WiFi-n a flash/reboot megkezdődhet azelőtt, hogy a kliens
+        // teljes OTA HTTP-választ kapna. A post-body socket lezárása ezért
+        // nem önmagában OTA-hiba: a normál /api/v1/status életjel, verzió,
+        // Boot ID és persistence ellenőrzés dönti el a végeredményt.
         let mut response = Vec::with_capacity(512);
         let mut buffer = [0u8; 512];
+        let mut response_transport_error: Option<String> = None;
         loop {
             match stream.read(&mut buffer) {
                 Ok(0) => break,
@@ -2049,26 +2055,44 @@ Connection: close\r\n\r\n"
                     }
                 }
                 Err(error) if error.kind() == ErrorKind::Interrupted => continue,
-                Err(error)
-                    if error.kind() == ErrorKind::TimedOut
-                        || error.kind() == ErrorKind::WouldBlock
-                        || error.kind() == ErrorKind::ConnectionReset
-                        || error.kind() == ErrorKind::ConnectionAborted
-                        || error.kind() == ErrorKind::UnexpectedEof =>
-                {
-                    if response.is_empty() {
-                        return Err(format!("Az Arduino nem küldött OTA HTTP-választ: {error}"));
-                    }
+                Err(error) => {
+                    response_transport_error = Some(error.to_string());
                     break;
                 }
-                Err(error) => return Err(format!("Az Arduino OTA-válasza nem olvasható: {error}")),
             }
         }
+
         if response.is_empty() {
-            return Err("Az Arduino üres OTA-választ adott.".into());
+            let detail = response_transport_error
+                .as_deref()
+                .unwrap_or("a kapcsolat HTTP-válasz nélkül lezárult");
+            emit_ota_progress(
+                &app,
+                "Feltöltés",
+                "info",
+                format!(
+                    "A teljes BIN elküldve, de az OTA socket nem adott végleges HTTP-visszaigazolást ({detail}). Ez reboot közben megengedett; a sikerességet most a normál Arduino API életjelével ellenőrzöm."
+                ),
+                Some(91),
+            );
+            return Ok("OTA_HTTP_CONFIRMATION_PENDING_API_VERIFICATION".to_string());
         }
 
-        let (status_code, response_text) = parse_ota_http_response(&response)?;
+        let (status_code, response_text) = match parse_ota_http_response(&response) {
+            Ok(parsed) => parsed,
+            Err(error) => {
+                emit_ota_progress(
+                    &app,
+                    "Feltöltés",
+                    "info",
+                    format!(
+                        "A teljes BIN elküldve, de az OTA HTTP-válasz nem volt teljesen értelmezhető ({error}). Ez reboot közben megengedett; a sikerességet most a normál Arduino API életjelével ellenőrzöm."
+                    ),
+                    Some(91),
+                );
+                return Ok("OTA_HTTP_CONFIRMATION_PENDING_API_VERIFICATION".to_string());
+            }
+        };
         if status_code != 200 {
             let explanation = match status_code {
                 401 => "Az OTA-jelszó hibás.",
