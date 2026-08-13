@@ -35,6 +35,33 @@ const tauriAvailable =
   '__TAURI_INTERNALS__' in
     globalThis;
 
+
+const writeDiagnosticLog = (
+  level: string, category: string, event: string, message: string,
+  fields?: Record<string, unknown>
+) => {
+  if (!tauriAvailable) return;
+  void invoke('diagnostic_log_event', { level, category, event, message, fields: fields ?? null }).catch(() => {});
+};
+
+writeDiagnosticLog('info', 'app', 'APP_START', 'Arduino LED Controller frontend started.', {
+  userAgent: navigator.userAgent,
+  language: navigator.language
+});
+
+globalThis.addEventListener('error', (event) => {
+  writeDiagnosticLog('error', 'errors', 'FRONTEND_ERROR', event.message || 'Unhandled frontend error', {
+    filename: event.filename, line: event.lineno, column: event.colno
+  });
+});
+
+globalThis.addEventListener('unhandledrejection', (event) => {
+  const reason = event.reason instanceof Error
+    ? `${event.reason.name}: ${event.reason.message}`
+    : String(event.reason ?? 'Unknown unhandled rejection');
+  writeDiagnosticLog('error', 'errors', 'UNHANDLED_REJECTION', reason);
+});
+
 const persistentBearerEnabled =
   tauriAvailable &&
   String(

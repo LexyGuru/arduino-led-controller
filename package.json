@@ -1,6 +1,6 @@
 {
   "name": "arduino-led-controller",
-  "version": "5.5.0-beta.2",
+  "version": "5.5.0-beta.3",
   "private": true,
   "description": "Arduino UNO R4 WiFi LED controller and weekly scheduler",
   "main": "server2_final.js",
@@ -217,7 +217,12 @@
     "test:v55-beta2-hotfix-v356": "node scripts/test-v55-beta2-hotfix-contract-v356.js",
     "test:mobile-ota-api-confirmation-v360": "node scripts/test-mobile-ota-api-confirmation-v360.js",
     "test:mobile-ota-5s-to-180s-api-gate-v366": "node scripts/test-mobile-ota-5s-to-180s-api-gate-v366.js",
-    "test:mobile-ota-transfer-api-state-machine-v372": "node scripts/test-mobile-ota-transfer-api-state-machine-v372.js"
+    "test:mobile-ota-transfer-api-state-machine-v372": "node scripts/test-mobile-ota-transfer-api-state-machine-v372.js",
+    "test:firmware-beta8-boot-generation-size-v376": "node scripts/test-firmware-beta8-boot-generation-size-v376.js",
+    "test:multi-platform-logging-v388": "node scripts/test-multi-platform-logging-v388.js",
+    "test:beta3-lxc-firmware-catalog-v393": "node scripts/test-beta3-lxc-firmware-catalog-v393.js",
+    "test:beta3-dialog-confirm-v394": "node scripts/test-beta3-dialog-confirm-permission-v394.js",
+    "test:beta3-ota-classification-v397": "node scripts/test-beta3-ota-same-version-classification-v397.js"
   },
   "engines": {
     "node": ">=20"

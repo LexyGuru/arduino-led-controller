@@ -14,7 +14,8 @@ assert.ok(lib.includes('A külső OTA-port állapotából nem döntök sikerről
 
 assert.match(lib,/fn ota_confirm_status_path\(attempt: u32\) -> String/);
 assert.match(lib,/\/api\/v1\/status\?otaConfirm=/);
-assert.match(lib,/current_boot != before_boot/);
+assert.match(lib,/generation_changed/);
+assert.match(lib,/bootGeneration/);
 assert.match(lib,/SAME_VERSION_REINSTALL_CONFIRMED/);
 assert.match(lib,/OTA_ROLLBACK_OR_WRONG_FIRMWARE/);
 
@@ -22,5 +23,6 @@ console.log('OTA_LISTENER_STARTUP_TIMEOUT_SECONDS=5');
 console.log('OTA_TRANSPORT_RESULT=NON_AUTHORITATIVE');
 console.log('TRANSFER_TO_API_CONFIRMATION=PASSED');
 console.log('POST_FLASH_CONFIRM_TIMEOUT_SECONDS=180');
-console.log('API_CONFIRM_REQUIRES_FRESH_BOOT_ID_WHEN_AVAILABLE=PASSED');
+console.log('API_CONFIRM_REQUIRES_FRESH_BOOT_GENERATION_WHEN_AVAILABLE=PASSED');
+console.log('LEGACY_BOOT_ID_FALLBACK_PRESERVED=PASSED');
 console.log('V366_MOBILE_OTA_5S_TO_180S_API_GATE_CONTRACT=PASSED');

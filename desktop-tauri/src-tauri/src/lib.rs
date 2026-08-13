@@ -18,6 +18,7 @@ use std::{
 use tauri::{AppHandle, Emitter, Manager, State};
 
 mod credential_bridge;
+mod diagnostic_logging;
 
 const ARDUINO_CONNECT_TIMEOUT: Duration = Duration::from_secs(5);
 const ARDUINO_RESPONSE_TIMEOUT: Duration = Duration::from_secs(30);
@@ -370,11 +371,13 @@ fn emit_ota_progress(
     message: impl Into<String>,
     progress: Option<u8>,
 ) {
+    let message = message.into();
+    diagnostic_logging::log_ota_progress(app, stage, level, &message, progress);
     let payload = OtaProgressEvent {
         timestamp: unix_millis(),
         stage: stage.to_string(),
         level: level.to_string(),
-        message: message.into(),
+        message,
         progress,
     };
     let _ = app.emit("ota-progress", payload);
@@ -2060,6 +2063,7 @@ async fn confirm_restart(
     expected: Option<String>,
     installed_before: Option<&str>,
     boot_id_before: Option<&str>,
+    boot_generation_before: Option<u64>,
 ) -> Result<Value, String> {
     const CONFIRM_TIMEOUT: Duration = Duration::from_secs(180);
     const POLL_INTERVAL: Duration = Duration::from_secs(3);
@@ -2068,20 +2072,20 @@ async fn confirm_restart(
     let mut attempt: u32 = 0;
     let mut last_seen_version: Option<String> = None;
     let mut last_seen_boot_id: Option<String> = None;
+    let mut last_seen_boot_generation: Option<u64> = None;
     let mut last_error: Option<String> = None;
 
     emit_ota_progress(
         app,
         "API ellenőrzés",
         "info",
-        "OTA transport lezárva. Legfeljebb 3 percig kizárólag a friss Direct API /api/v1/status életjelet, Boot ID-t, firmware-verziót és persistence állapotot ellenőrzöm…",
+        "OTA transport lezárva. Legfeljebb 3 percig kizárólag friss Direct API státuszt ellenőrzök. A bootGeneration az elsődleges reboot-bizonyíték; a Boot ID csak régi firmware fallback.",
         Some(92),
     );
 
     while started.elapsed() < CONFIRM_TIMEOUT {
         tokio::time::sleep(POLL_INTERVAL).await;
         attempt += 1;
-
         let elapsed = started.elapsed().as_secs().min(CONFIRM_TIMEOUT.as_secs());
         let progress = 92_u8
             .saturating_add(((elapsed * 7) / CONFIRM_TIMEOUT.as_secs()) as u8)
@@ -2089,164 +2093,114 @@ async fn confirm_restart(
         let status_path = ota_confirm_status_path(attempt);
 
         emit_ota_progress(
-            app,
-            "API ellenőrzés",
-            "info",
-            format!(
-                "Direct API életjel: {}. próba • eltelt {} / {} másodperc…",
-                attempt,
-                elapsed,
-                CONFIRM_TIMEOUT.as_secs()
-            ),
+            app, "API ellenőrzés", "info",
+            format!("Direct API életjel: {}. próba • eltelt {} / {} másodperc…",
+                attempt, elapsed, CONFIRM_TIMEOUT.as_secs()),
             Some(progress),
         );
 
         match get_json(state, &status_path).await {
-            Ok(status) => {
+            Ok(value) => {
+                let version = value.get("firmwareVersion").and_then(Value::as_str).map(str::to_string);
+                let boot_id = value.get("bootId").and_then(Value::as_str).map(str::to_string);
+                let boot_generation = value.get("bootGeneration").and_then(Value::as_u64);
+
+                last_seen_version = version.clone();
+                last_seen_boot_id = boot_id.clone();
+                last_seen_boot_generation = boot_generation;
                 last_error = None;
-                let installed = status
-                    .get("firmwareVersion")
-                    .and_then(Value::as_str)
-                    .map(str::to_string);
-                let boot_id_now = status
-                    .get("bootId")
-                    .and_then(Value::as_str)
-                    .map(str::to_string);
 
-                last_seen_version = installed.clone();
-                last_seen_boot_id = boot_id_now.clone();
+                let version_matches = expected.as_deref().map(|wanted| {
+                    version.as_deref()
+                        .map(|seen| normalize_version(seen) == normalize_version(wanted))
+                        .unwrap_or(false)
+                }).unwrap_or(true);
 
-                if let Some(before_boot) = boot_id_before {
-                    match boot_id_now.as_deref() {
-                        Some(current_boot) if current_boot != before_boot => {
-                            if let Some(wanted) = expected.as_deref() {
-                                match installed.as_deref() {
-                                    Some(actual)
-                                        if normalize_version(actual) == normalize_version(wanted) =>
-                                    {
-                                        let same_version_reinstall = installed_before
-                                            .map(normalize_version)
-                                            .is_some_and(|before| before == normalize_version(actual));
-                                        let classification = if same_version_reinstall {
-                                            "SAME_VERSION_REINSTALL_CONFIRMED"
-                                        } else {
-                                            "NEW_FIRMWARE_BOOT_CONFIRMED"
-                                        };
-                                        emit_ota_progress(
-                                            app,
-                                            "Ellenőrzés",
-                                            "success",
-                                            format!(
-                                                "{classification}: friss API-életjel érkezett, a Boot ID megváltozott ({before_boot} -> {current_boot}), és a várt firmware fut: {actual}."
-                                            ),
-                                            Some(100),
-                                        );
-                                        return Ok(status);
-                                    }
-                                    Some(actual) => {
-                                        return Err(format!(
-                                            "OTA_ROLLBACK_OR_WRONG_FIRMWARE: az Arduino új Boot ID-val visszatért ({before_boot} -> {current_boot}), de a várt {wanted} helyett {actual} fut."
-                                        ));
-                                    }
-                                    None => {
-                                        last_error = Some(
-                                            "Az új Boot ID már látszik, de a firmwareVersion hiányzik az API-válaszból.".into()
-                                        );
-                                    }
-                                }
-                            } else if let Some(actual) = installed.as_deref() {
-                                let same_version_reinstall = installed_before
-                                    .map(normalize_version)
-                                    .is_some_and(|before| before == normalize_version(actual));
-                                let classification = if same_version_reinstall {
-                                    "SAME_VERSION_REINSTALL_CONFIRMED"
-                                } else {
-                                    "NEW_EXTERNAL_FIRMWARE_BOOT_CONFIRMED"
-                                };
-                                emit_ota_progress(
-                                    app,
-                                    "Ellenőrzés",
-                                    "success",
-                                    format!(
-                                        "{classification}: a Direct API új Boot ID-val visszatért ({before_boot} -> {current_boot}), telepített firmware: {actual}."
-                                    ),
-                                    Some(100),
-                                );
-                                return Ok(status);
-                            }
-                        }
-                        Some(current_boot) => {
-                            emit_ota_progress(
-                                app,
-                                "Ellenőrzés",
-                                "info",
-                                format!(
-                                    "Friss API-életjel érkezett, de a Boot ID még nem változott ({current_boot}). Ez még nem bizonyít rebootot; folytatom az ellenőrzést."
-                                ),
-                                Some(progress),
-                            );
-                        }
-                        None => {
-                            last_error = Some(
-                                "A Direct API válasz elérhető, de a bootId mező hiányzik.".into()
-                            );
-                        }
+                let generation_changed = boot_generation_before
+                    .zip(boot_generation)
+                    .map(|(before, after)| before != after)
+                    .unwrap_or(false);
+                let boot_id_changed = boot_id_before
+                    .zip(boot_id.as_deref())
+                    .map(|(before, after)| before != after)
+                    .unwrap_or(false);
+
+                if !version_matches {
+                    if generation_changed || boot_id_changed {
+                        return Err(format!(
+                            "OTA_ROLLBACK_OR_WRONG_FIRMWARE: reboot történt, de a várt firmware nem fut. Várt: {:?}, kapott: {:?}, bootGeneration: {:?} -> {:?}, Boot ID: {:?} -> {:?}.",
+                            expected, version, boot_generation_before, boot_generation, boot_id_before, boot_id
+                        ));
                     }
-                } else {
-                    match (&expected, &installed) {
-                        (Some(wanted), Some(actual))
-                            if normalize_version(wanted) == normalize_version(actual) =>
-                        {
-                            emit_ota_progress(
-                                app,
-                                "Ellenőrzés",
-                                "success",
-                                format!(
-                                    "NO_PREUPDATE_BOOT_ID_FALLBACK: a Direct API visszatért és a várt firmware fut: {actual}. Indulás előtti Boot ID nem állt rendelkezésre."
-                                ),
-                                Some(100),
-                            );
-                            return Ok(status);
-                        }
-                        (None, Some(actual)) => {
-                            emit_ota_progress(
-                                app,
-                                "Ellenőrzés",
-                                "success",
-                                format!(
-                                    "NO_PREUPDATE_BOOT_ID_FALLBACK: a Direct API visszatért, telepített firmware: {actual}."
-                                ),
-                                Some(100),
-                            );
-                            return Ok(status);
-                        }
-                        (Some(wanted), Some(actual)) => {
-                            last_error = Some(format!(
-                                "A Direct API elérhető, de a firmware még {actual}; várt: {wanted}."
-                            ));
-                        }
-                        _ => {
-                            last_error = Some(
-                                "A Direct API elérhető, de nincs használható firmwareVersion.".into()
-                            );
-                        }
+                    continue;
+                }
+
+                if let Some(before_generation) = boot_generation_before {
+                    if generation_changed {
+                        let marker = match (installed_before, version.as_deref()) {
+                            (Some(before), Some(actual))
+                                if normalize_version(before) == normalize_version(actual) =>
+                            {
+                                "SAME_VERSION_REINSTALL_CONFIRMED"
+                            }
+                            _ => "NEW_FIRMWARE_BOOT_CONFIRMED",
+                        };
+                        emit_ota_progress(
+                            app, "Ellenőrzés", "success",
+                            format!("{marker}: bootGeneration {} -> {}, firmware: {}.",
+                                before_generation,
+                                boot_generation.unwrap_or_default(),
+                                version.clone().unwrap_or_else(|| "ismeretlen".into())),
+                            Some(97),
+                        );
+                        return Ok(value);
+                    }
+                    emit_ota_progress(
+                        app, "Ellenőrzés", "info",
+                        format!("Friss API-életjel érkezett, de a bootGeneration még nem változott ({before_generation}). Folytatom az ellenőrzést."),
+                        Some(progress),
+                    );
+                    continue;
+                }
+
+                if let (Some(before), Some(wanted)) = (installed_before, expected.as_deref()) {
+                    if normalize_version(before) != normalize_version(wanted) {
+                        emit_ota_progress(
+                            app, "Ellenőrzés", "success",
+                            format!("NEW_FIRMWARE_VERSION_TRANSITION_CONFIRMED: {} -> {}. Az előző firmware még nem adott bootGeneration mezőt; az új verzió aktív státusza bizonyítja a sikeres migrációt.",
+                                before, version.clone().unwrap_or_else(|| wanted.to_string())),
+                            Some(97),
+                        );
+                        return Ok(value);
                     }
                 }
+
+                if boot_id_before.is_some() && boot_id_changed {
+                    emit_ota_progress(
+                        app, "Ellenőrzés", "success",
+                        "LEGACY_BOOT_ID_FALLBACK_CONFIRMED: a firmware még nem támogat bootGeneration mezőt, ezért a megváltozott Boot ID igazolja a rebootot.",
+                        Some(97),
+                    );
+                    return Ok(value);
+                }
+
+                emit_ota_progress(
+                    app, "Ellenőrzés", "info",
+                    "A firmware-verzió megfelelő, de bootGeneration előérték nélkül a reboot még nem bizonyítható. Folytatom az ellenőrzést.",
+                    Some(progress),
+                );
             }
-            Err(error) => {
-                last_error = Some(error);
-            }
+            Err(error) => last_error = Some(error),
         }
     }
 
-    let expected_text = expected.unwrap_or_else(|| "ismeretlen".into());
-    let last_seen_text = last_seen_version.unwrap_or_else(|| "nem érkezett verzió".into());
-    let last_boot_text = last_seen_boot_id.unwrap_or_else(|| "nem érkezett Boot ID".into());
-    let last_error_text =
-        last_error.unwrap_or_else(|| "nem érkezett további hálózati hiba".into());
-
     Err(format!(
-        "Az OTA API-ellenőrzési idő lejárt: az Arduino 3 percen belül nem igazolta a reboot + firmware állapotot. Várt firmware: {expected_text}. Utoljára látott verzió: {last_seen_text}. Utoljára látott Boot ID: {last_boot_text}. Utolsó API állapot: {last_error_text}."
+        "OTA API_CONFIRMATION időtúllépés {} másodperc után. Utolsó firmware: {:?}, Boot ID: {:?}, bootGeneration: {:?}, utolsó API-hiba: {:?}.",
+        CONFIRM_TIMEOUT.as_secs(),
+        last_seen_version,
+        last_seen_boot_id,
+        last_seen_boot_generation,
+        last_error
     ))
 }
 
@@ -3031,6 +2985,9 @@ async fn firmware_update_inner(
         .get("bootId")
         .and_then(Value::as_str)
         .map(str::to_string);
+    let boot_generation_before = status_json
+        .get("bootGeneration")
+        .and_then(Value::as_u64);
     let schedule_revision_before = status_json.get("scheduleRevision").and_then(Value::as_u64);
     let schedule_checksum_before = status_json
         .get("scheduleChecksum")
@@ -3338,6 +3295,7 @@ async fn firmware_update_inner(
         artifact.firmware_version.clone(),
         installed.as_deref(),
         boot_id_before.as_deref(),
+        boot_generation_before,
     )
     .await?;
     let installed_after_restart = after_status
@@ -3354,7 +3312,6 @@ async fn firmware_update_inner(
         .get("scheduleChecksum")
         .and_then(Value::as_str)
         .map(str::to_string);
-    let boot_id_changed = boot_id_before.is_some() && boot_id_before != boot_id_after;
     if schedule_revision_before != schedule_revision_after
         || schedule_checksum_before != schedule_checksum_after
     {
@@ -3363,21 +3320,11 @@ async fn firmware_update_inner(
             schedule_revision_before, schedule_revision_after, schedule_checksum_before, schedule_checksum_after
         ));
     }
-    if boot_id_before.is_some() && !boot_id_changed {
-        return Err(format!(
-            "OTA SIKERTELEN: a várt firmware-verzió elérhető, de a Boot ID nem változott. Boot ID előtte: {:?}, utána: {:?}. Az újraindítás és a flash alkalmazása nem igazolható.",
-            boot_id_before, boot_id_after
-        ));
-    }
     emit_ota_progress(
         app,
         "Persistence",
         "success",
-        if boot_id_changed {
-            "Boot ID megváltozott, a firmware-verzió és a schedule revision/checksum megmaradása igazolt."
-        } else {
-            "A firmware és a schedule persistence ellenőrzése sikeres; indulás előtti Boot ID nem állt rendelkezésre."
-        },
+        "A firmware telepítését az API-confirmation state machine igazolta; a schedule revision/checksum persistence ellenőrzése sikeres.",
         Some(98),
     );
     state.ota_in_progress.store(false, Ordering::SeqCst);
@@ -3487,6 +3434,9 @@ async fn firmware_install_external_inner(
         .get("bootId")
         .and_then(Value::as_str)
         .map(str::to_string);
+    let boot_generation_before = status_json
+        .get("bootGeneration")
+        .and_then(Value::as_u64);
     let schedule_revision_before =
         status_json.get("scheduleRevision").and_then(Value::as_u64);
     let schedule_checksum_before = status_json
@@ -3666,6 +3616,7 @@ async fn firmware_install_external_inner(
         None,
         installed_before.as_deref(),
         boot_id_before.as_deref(),
+        boot_generation_before,
     )
     .await?;
     let installed_after_restart = after_status
@@ -3697,14 +3648,6 @@ async fn firmware_install_external_inner(
         ));
     }
 
-    let boot_id_changed = boot_id_before.is_some() && boot_id_before != boot_id_after;
-    if boot_id_before.is_some() && !boot_id_changed {
-        return Err(format!(
-            "KÜLSŐ OTA SIKERTELEN: a Boot ID nem változott. Előtte: {:?}, utána: {:?}.",
-            boot_id_before,
-            boot_id_after
-        ));
-    }
 
     state.ota_in_progress.store(false, Ordering::SeqCst);
 
@@ -4006,6 +3949,8 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            diagnostic_logging::diagnostic_log_event,
+            diagnostic_logging::diagnostic_log_paths,
 
             macos_sync_app_icon,
             runtime_capabilities,
