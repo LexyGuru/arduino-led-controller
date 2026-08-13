@@ -1,15 +1,43 @@
 const fs = require('fs');
 const lib = fs.readFileSync('desktop-tauri/src-tauri/src/lib.rs', 'utf8');
 const staging = fs.readFileSync('.github/workflows/tauri-artifact-build.yml', 'utf8');
+
 function requireMatch(value, regex, label) {
   if (!regex.test(value)) throw new Error(`Missing contract: ${label}`);
 }
-requireMatch(lib, /OTA_LISTENER_STARTUP_TIMEOUT:\s*Duration\s*=\s*Duration::from_secs\(120\)/, '120 second OTA listener startup window');
-requireMatch(lib, /OTA_CONNECT_RETRY_DELAY:\s*Duration\s*=\s*Duration::from_secs\(1\)/, 'one second retry delay');
+
+requireMatch(
+  lib,
+  /OTA_LISTENER_STARTUP_TIMEOUT:\s*Duration\s*=\s*Duration::from_secs\(5\)/,
+  'strict five second OTA listener startup window',
+);
+requireMatch(
+  lib,
+  /OTA_CONNECT_RETRY_DELAY:\s*Duration\s*=\s*Duration::from_secs\(1\)/,
+  'one second nominal retry delay',
+);
 requireMatch(lib, /'connect_attempts: loop/, 'time based OTA listener retry loop');
-requireMatch(lib, /std::thread::sleep\(OTA_CONNECT_RETRY_DELAY\)/, 'retry wait');
-requireMatch(lib, /CONFIRM_TIMEOUT:\s*Duration\s*=\s*Duration::from_secs\(180\)/, 'existing post-flash restart confirmation');
-requireMatch(lib, /A Tauri beépített OTA-kliense \{\} másodperc várakozás után sem tudott kapcsolódni/, 'failure only after startup timeout');
+requireMatch(
+  lib,
+  /let connect_timeout = OTA_CONNECT_TIMEOUT\.min\(remaining\);/,
+  'connect timeout capped to remaining startup window',
+);
+requireMatch(
+  lib,
+  /std::thread::sleep\(OTA_CONNECT_RETRY_DELAY\.min\(remaining\)\);/,
+  'retry wait capped to remaining startup window',
+);
+requireMatch(
+  lib,
+  /OTA_LISTENER_TIMEOUT_PENDING_API_VERIFICATION/,
+  'listener timeout hands off to API verification',
+);
+requireMatch(
+  lib,
+  /CONFIRM_TIMEOUT:\s*Duration\s*=\s*Duration::from_secs\(180\)/,
+  'post-flash API restart confirmation',
+);
+
 requireMatch(staging, /push:[\s\S]*next\/v5-rearchitecture/, 'NEXT push trigger');
 requireMatch(staging, /build-android:/, 'Android staging job');
 requireMatch(staging, /name:\s*Android APK and AAB/, 'proven Android job identity');
@@ -22,10 +50,13 @@ requireMatch(staging, /targets:\s*aarch64-apple-ios/, 'iOS Rust target');
 requireMatch(staging, /npx tauri ios init --ci/, 'iOS init');
 requireMatch(staging, /npx tauri ios build --ci --no-sign/, 'unsigned iOS build');
 requireMatch(staging, /arduino-led-controller-ios-ipados-staging/, 'iOS artifact');
+
 if (/Publish GitHub prerelease/.test(staging) || /gh release/.test(staging)) {
   throw new Error('Staging workflow must not publish a GitHub release');
 }
+
 console.log('OTA_LISTENER_STARTUP_RETRY_CONTRACT=PASSED');
+console.log('OTA_LISTENER_TIMEOUT_TO_API_CONFIRMATION=PASSED');
 console.log('POST_FLASH_RESTART_CONFIRMATION=PRESERVED');
 console.log('NEXT_PUSH_ANDROID_STAGING_ARTIFACT=PASSED');
 console.log('NEXT_PUSH_IOS_IPADOS_STAGING_ARTIFACT=PASSED');

@@ -18,12 +18,12 @@ const workflow = fs.readFileSync('.github/workflows/beta-release.yml', 'utf8');
 if (!/EXPECTED_VERSION:\s*5\.5\.0-beta\.2/.test(workflow)) throw new Error('beta-release EXPECTED_VERSION mismatch');
 
 const lib = fs.readFileSync('desktop-tauri/src-tauri/src/lib.rs', 'utf8');
-if (!/OTA_LISTENER_STARTUP_TIMEOUT:\s*Duration\s*=\s*Duration::from_secs\(120\)/.test(lib)) throw new Error('120s OTA listener timeout missing');
+if (!/OTA_LISTENER_STARTUP_TIMEOUT:\s*Duration\s*=\s*Duration::from_secs\(5\)/.test(lib)) throw new Error('5s OTA listener timeout missing');
 if (!/CONFIRM_TIMEOUT:\s*Duration\s*=\s*Duration::from_secs\(180\)/.test(lib)) throw new Error('180s post-flash confirmation missing');
 if (/OTA_CONNECT_ATTEMPTS/.test(lib)) throw new Error('old attempt-count OTA startup policy remains');
 
 console.log('APP_VERSION=5.5.0-beta.2');
-console.log('OTA_LISTENER_STARTUP_TIMEOUT_SECONDS=120');
+console.log('OTA_LISTENER_STARTUP_TIMEOUT_SECONDS=5');
 console.log('POST_FLASH_CONFIRM_TIMEOUT_SECONDS=180');
 console.log('BETA_RELEASE_EXPECTED_VERSION_SYNC=PASSED');
 console.log('V55_BETA2_HOTFIX_CONTRACT_V356=PASSED');

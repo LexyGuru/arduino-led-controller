@@ -42,9 +42,13 @@ assert.match(freeze, /Event Bus/);
 assert.match(audit, /Auditált tracked Markdown fájlok/);
 assert.match(audit, /történeti/);
 
-// A fő README-ben a történeti Beta.7 dokumentumokra mutató linkek megmaradhatnak.
-assert.match(readme, /Beta\.7 UI Freeze történeti állapot/);
-assert.match(readme, /Beta\.7 Markdown-audit/);
+// A történeti Beta.7 dokumentumoknak meg kell maradniuk és történetiként
+// konzisztensnek kell lenniük, de a fő README-nek nem kötelező egyenként
+// linkelnie minden korábbi Beta.7 dokumentumot. A README aktuális állapotot
+// mutat; a történeti dokumentumok létezését és tartalmát fent közvetlenül
+// ellenőrizzük.
+assert.ok(fs.existsSync('docs/v5/BETA7_UI_FREEZE.md'));
+assert.ok(fs.existsSync('docs/v5/MARKDOWN_AUDIT_BETA7.md'));
 
 console.log(
   'OK: Beta.8 README aktuális; Beta.7 freeze/audit dokumentáció történetiként megőrizve'

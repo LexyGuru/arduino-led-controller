@@ -4,7 +4,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const lib = fs.readFileSync('desktop-tauri/src-tauri/src/lib.rs', 'utf8');
 
-assert.match(lib, /OTA_LISTENER_STARTUP_TIMEOUT:\s*Duration\s*=\s*Duration::from_secs\(120\)/);
+assert.match(lib, /OTA_LISTENER_STARTUP_TIMEOUT:\s*Duration\s*=\s*Duration::from_secs\(5\)/);
 assert.match(lib, /CONFIRM_TIMEOUT:\s*Duration\s*=\s*Duration::from_secs\(180\)/);
 
 const flushAt = lib.indexOf('A firmware-küldés lezárása sikertelen');
@@ -24,12 +24,12 @@ const externalStart = lib.indexOf('async fn firmware_install_external_inner(');
 const official = lib.slice(officialStart, externalStart);
 assert.match(official, /upload_firmware_native\(/);
 assert.match(official, /upload_result\?;/);
-assert.match(official, /confirm_restart\(app,\s*state,\s*artifact\.firmware_version\.clone\(\)\)\.await\?/s);
-assert.ok(official.indexOf('upload_result?;') < official.indexOf('confirm_restart(app, state, artifact.firmware_version.clone()).await?'));
+assert.match(official, /confirm_restart\(app,\s*state,\s*artifact\.firmware_version\.clone\(\),\s*boot_id_before\.as_deref\(\)\)\.await\?/s);
+assert.ok(official.indexOf('upload_result?;') < official.indexOf('confirm_restart(app, state, artifact.firmware_version.clone(), boot_id_before.as_deref()).await?'));
 
 const external = lib.slice(externalStart);
 assert.match(external, /upload_firmware_native\(/);
-assert.match(external, /confirm_restart\(app,\s*state,\s*None\)\.await\?/s);
+assert.match(external, /confirm_restart\(app,\s*state,\s*None,\s*boot_id_before\.as_deref\(\)\)\.await\?/s);
 
 const confirmStart = lib.indexOf('async fn confirm_restart(');
 const confirmTail = lib.slice(confirmStart, confirmStart + 7000);

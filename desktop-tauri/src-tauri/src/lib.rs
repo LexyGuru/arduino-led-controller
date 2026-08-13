@@ -1903,7 +1903,7 @@ async fn upload_firmware_native(
         // ez könnyebben látszik Connection refused hibaként. Az első elutasítás
         // ezért nem végleges OTA-hiba: rövid, korlátozott újrapróbálkozási ablakot
         // adunk a listenernek. A firmware küldése csak létrejött TCP-kapcsolat után indul.
-        const OTA_LISTENER_STARTUP_TIMEOUT: Duration = Duration::from_secs(120);
+        const OTA_LISTENER_STARTUP_TIMEOUT: Duration = Duration::from_secs(5);
         const OTA_CONNECT_RETRY_DELAY: Duration = Duration::from_secs(1);
         const OTA_CONNECT_TIMEOUT: Duration = Duration::from_secs(3);
 
@@ -1915,7 +1915,14 @@ async fn upload_firmware_native(
         'connect_attempts: loop {
             attempt += 1;
             for socket in &addresses {
-                match TcpStream::connect_timeout(socket, OTA_CONNECT_TIMEOUT) {
+                let elapsed = connect_started.elapsed();
+                if elapsed >= OTA_LISTENER_STARTUP_TIMEOUT {
+                    break 'connect_attempts;
+                }
+                let remaining = OTA_LISTENER_STARTUP_TIMEOUT - elapsed;
+                let connect_timeout = OTA_CONNECT_TIMEOUT.min(remaining);
+
+                match TcpStream::connect_timeout(socket, connect_timeout) {
                     Ok(value) => {
                         stream = Some(value);
                         if attempt > 1 {
@@ -1952,15 +1959,23 @@ async fn upload_firmware_native(
                 ),
                 Some(52),
             );
-            std::thread::sleep(OTA_CONNECT_RETRY_DELAY);
+            let remaining = OTA_LISTENER_STARTUP_TIMEOUT - elapsed;
+            std::thread::sleep(OTA_CONNECT_RETRY_DELAY.min(remaining));
         }
 
-        let mut stream = stream.ok_or_else(|| {
-            format!(
-                "A Tauri beépített OTA-kliense {} másodperc várakozás után sem tudott kapcsolódni a(z) {address}:{port} címhez. Utolsó hiba: {last_error}",
-                OTA_LISTENER_STARTUP_TIMEOUT.as_secs()
-            )
-        })?;
+        let Some(mut stream) = stream else {
+            emit_ota_progress(
+                &app,
+                "Kapcsolat",
+                "info",
+                format!(
+                    "Az OTA-listener {} másodperc alatt nem vált elérhetővé a(z) {address}:{port} címen. Nem zárom le az OTA folyamatot: továbblépek a 180 másodperces Direct API életjel / firmware / reboot ellenőrzésre. Utolsó listener hiba: {last_error}",
+                    OTA_LISTENER_STARTUP_TIMEOUT.as_secs()
+                ),
+                Some(52),
+            );
+            return Ok("OTA_LISTENER_TIMEOUT_PENDING_API_VERIFICATION".to_string());
+        };
         stream.set_nodelay(true).ok();
         let ota_timeout =
             Duration::from_secs(normalized_ota_timeout_seconds(timeout_seconds));
@@ -2130,6 +2145,7 @@ async fn confirm_restart(
     app: &AppHandle,
     state: &AppState,
     expected: Option<String>,
+    boot_id_before: Option<&str>,
 ) -> Result<Option<String>, String> {
     const CONFIRM_TIMEOUT: Duration = Duration::from_secs(180);
     const POLL_INTERVAL: Duration = Duration::from_secs(3);
@@ -2176,10 +2192,17 @@ async fn confirm_restart(
                     .get("firmwareVersion")
                     .and_then(Value::as_str)
                     .map(str::to_string);
+                let boot_id_now = status
+                    .get("bootId")
+                    .and_then(Value::as_str);
+                let reboot_confirmed = boot_id_before
+                    .map(|before| boot_id_now.is_some_and(|current| current != before))
+                    .unwrap_or(true);
 
                 match (&expected, &installed) {
                     (Some(wanted), Some(actual))
-                        if normalize_version(wanted) == normalize_version(actual) =>
+                        if normalize_version(wanted) == normalize_version(actual)
+                            && reboot_confirmed =>
                     {
                         emit_ota_progress(
                             app,
@@ -2192,12 +2215,12 @@ async fn confirm_restart(
                         );
                         return Ok(installed.clone());
                     }
-                    (None, Some(actual)) => {
+                    (None, Some(actual)) if reboot_confirmed => {
                         emit_ota_progress(
                             app,
                             "Ellenőrzés",
                             "success",
-                            format!("Az Arduino visszatért, telepített firmware: {actual}."),
+                            format!("Az Arduino visszatért új Boot ID-val, telepített firmware: {actual}."),
                             Some(100),
                         );
                         return Ok(installed.clone());
@@ -3329,7 +3352,7 @@ async fn firmware_update_inner(
 
     ensure_not_cancelled(state)?;
     let installed_after_restart =
-        confirm_restart(app, state, artifact.firmware_version.clone()).await?;
+        confirm_restart(app, state, artifact.firmware_version.clone(), boot_id_before.as_deref()).await?;
     ensure_not_cancelled(state)?;
     let after_status = get_json(state, "/api/v1/status")
         .await
@@ -3641,7 +3664,7 @@ async fn firmware_install_external_inner(
     }
 
     ensure_not_cancelled(state)?;
-    let installed_after_restart = confirm_restart(app, state, None).await?;
+    let installed_after_restart = confirm_restart(app, state, None, boot_id_before.as_deref()).await?;
 
     ensure_not_cancelled(state)?;
     let after_status = get_json(state, "/api/v1/status")
