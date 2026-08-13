@@ -5,7 +5,7 @@ use serde_json::Value;
 use sha2::{Digest, Sha256};
 use std::{
     fs,
-    io::{ErrorKind, Read, Write},
+    io::Write,
     net::{Ipv4Addr, TcpStream, ToSocketAddrs},
     path::{Path, PathBuf},
     process::Command,
@@ -1842,24 +1842,6 @@ async fn upload_firmware_in_terminal(
     Err("A Terminal + arduinoOTA feltöltési mód csak macOS-en használható.".into())
 }
 
-fn parse_ota_http_response(response: &[u8]) -> Result<(u16, String), String> {
-    let split = response
-        .windows(4)
-        .position(|part| part == b"\r\n\r\n")
-        .ok_or_else(|| "Az Arduino OTA-válaszából hiányzik a HTTP fejléc vége.".to_string())?;
-    let headers = String::from_utf8_lossy(&response[..split]);
-    let status_line = headers.lines().next().unwrap_or_default();
-    let status_code = status_line
-        .split_whitespace()
-        .nth(1)
-        .and_then(|value| value.parse::<u16>().ok())
-        .ok_or_else(|| format!("Érvénytelen Arduino OTA HTTP-státusz: {status_line}"))?;
-    let body = String::from_utf8_lossy(&response[split + 4..])
-        .trim()
-        .to_string();
-    Ok((status_code, body))
-}
-
 async fn upload_firmware_native(
     app: &AppHandle,
     request_lock: Arc<Mutex<()>>,
@@ -1969,12 +1951,12 @@ async fn upload_firmware_native(
                 "Kapcsolat",
                 "info",
                 format!(
-                    "Az OTA-listener {} másodperc alatt nem vált elérhetővé a(z) {address}:{port} címen. Nem zárom le az OTA folyamatot: továbblépek a 180 másodperces Direct API életjel / firmware / reboot ellenőrzésre. Utolsó listener hiba: {last_error}",
+                    "Az OTA transport {} másodperc alatt nem adott megbízható listener-visszajelzést a(z) {address}:{port} címen. A külső OTA-port állapotából nem döntök sikerről vagy hibáról; innentől a Direct API reboot/Boot ID/firmware ellenőrzése a mérvadó. Utolsó transport hiba: {last_error}",
                     OTA_LISTENER_STARTUP_TIMEOUT.as_secs()
                 ),
                 Some(52),
             );
-            return Ok("OTA_LISTENER_TIMEOUT_PENDING_API_VERIFICATION".to_string());
+            return Ok("OTA_TRANSPORT_UNCONFIRMED_API_CONFIRMATION".to_string());
         };
         stream.set_nodelay(true).ok();
         let ota_timeout =
@@ -2047,119 +2029,52 @@ Connection: close\r\n\r\n"
         emit_ota_progress(
             &app,
             "Feltöltés",
-            "info",
-            "A teljes bináris elküldve; várakozás az Arduino HTTP-válaszára…",
-            Some(89),
-        );
-
-        // A teljes firmware body már ki lett írva és flush-olva.
-        // UNO R4 WiFi-n a flash/reboot megkezdődhet azelőtt, hogy a kliens
-        // teljes OTA HTTP-választ kapna. A post-body socket lezárása ezért
-        // nem önmagában OTA-hiba: a normál /api/v1/status életjel, verzió,
-        // Boot ID és persistence ellenőrzés dönti el a végeredményt.
-        let mut response = Vec::with_capacity(512);
-        let mut buffer = [0u8; 512];
-        let mut response_transport_error: Option<String> = None;
-        loop {
-            match stream.read(&mut buffer) {
-                Ok(0) => break,
-                Ok(length) => {
-                    response.extend_from_slice(&buffer[..length]);
-                    if response.len() > 8192 {
-                        return Err("Az Arduino OTA-válasza váratlanul túl nagy.".into());
-                    }
-                }
-                Err(error) if error.kind() == ErrorKind::Interrupted => continue,
-                Err(error) => {
-                    response_transport_error = Some(error.to_string());
-                    break;
-                }
-            }
-        }
-
-        if response.is_empty() {
-            let detail = response_transport_error
-                .as_deref()
-                .unwrap_or("a kapcsolat HTTP-válasz nélkül lezárult");
-            emit_ota_progress(
-                &app,
-                "Feltöltés",
-                "info",
-                format!(
-                    "A teljes BIN elküldve, de az OTA socket nem adott végleges HTTP-visszaigazolást ({detail}). Ez reboot közben megengedett; a sikerességet most a normál Arduino API életjelével ellenőrzöm."
-                ),
-                Some(91),
-            );
-            return Ok("OTA_HTTP_CONFIRMATION_PENDING_API_VERIFICATION".to_string());
-        }
-
-        let (status_code, response_text) = match parse_ota_http_response(&response) {
-            Ok(parsed) => parsed,
-            Err(error) => {
-                emit_ota_progress(
-                    &app,
-                    "Feltöltés",
-                    "info",
-                    format!(
-                        "A teljes BIN elküldve, de az OTA HTTP-válasz nem volt teljesen értelmezhető ({error}). Ez reboot közben megengedett; a sikerességet most a normál Arduino API életjelével ellenőrzöm."
-                    ),
-                    Some(91),
-                );
-                return Ok("OTA_HTTP_CONFIRMATION_PENDING_API_VERIFICATION".to_string());
-            }
-        };
-        if status_code != 200 {
-            let explanation = match status_code {
-                401 => "Az OTA-jelszó hibás.",
-                404 => "Az Arduino OTA /sketch végpontja nem található.",
-                413 => "A firmware nagyobb, mint az Arduino OTA-tárhelye.",
-                414 => "A firmware mérete nem egyezik a Content-Length értékével.",
-                500 => "Az Arduino nem tudta megnyitni az ideiglenes firmware-tárhelyet.",
-                _ => "Az Arduino elutasította az OTA-feltöltést.",
-            };
-            return Err(format!(
-                "{explanation} HTTP {status_code} {}",
-                if response_text.is_empty() { "" } else { response_text.as_str() }
-            )
-            .trim()
-            .to_string());
-        }
-
-        emit_ota_progress(
-            &app,
-            "Feltöltés",
             "success",
-            format!(
-                "Az Arduino elfogadta a teljes firmware-t ({total} bájt). Válasz: {}",
-                if response_text.is_empty() { "HTTP 200 OK" } else { response_text.as_str() }
-            ),
+            "A teljes BIN transport-szinten elküldve és flush-olva. A 65280-as OTA kapcsolatot lezárom; innentől kizárólag a Direct API /api/v1/status ellenőrzés dönt a végeredményről.",
             Some(91),
         );
-        Ok(response_text)
+
+        // TRANSFER -> API_CONFIRMATION state boundary.
+        // A BIN teljes write + flush után a külső OTA-port többé nem mérvadó:
+        // nem várunk HTTP 200-ra, socket close-ra vagy további 65280-as eseményre.
+        // A rebootot, Boot ID-t, firmware-verziót és persistence-t kizárólag
+        // a normál Direct API igazolja.
+        drop(stream);
+        Ok("OTA_TRANSFER_COMPLETE_API_CONFIRMATION".to_string())
     })
     .await
     .map_err(|error| format!("A beépített OTA háttérfeladat megszakadt: {error}"))?
+}
+
+fn ota_confirm_status_path(attempt: u32) -> String {
+    let nonce = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis();
+    format!("/api/v1/status?otaConfirm={attempt}-{nonce}")
 }
 
 async fn confirm_restart(
     app: &AppHandle,
     state: &AppState,
     expected: Option<String>,
+    installed_before: Option<&str>,
     boot_id_before: Option<&str>,
-) -> Result<Option<String>, String> {
+) -> Result<Value, String> {
     const CONFIRM_TIMEOUT: Duration = Duration::from_secs(180);
     const POLL_INTERVAL: Duration = Duration::from_secs(3);
 
     let started = Instant::now();
     let mut attempt: u32 = 0;
     let mut last_seen_version: Option<String> = None;
+    let mut last_seen_boot_id: Option<String> = None;
     let mut last_error: Option<String> = None;
 
     emit_ota_progress(
         app,
-        "Újraindítás",
+        "API ellenőrzés",
         "info",
-        "Az Arduino alkalmazza a firmware-t. Legfeljebb 3 percig, 3 másodpercenként ellenőrzöm az életjelet és a telepített verziót…",
+        "OTA transport lezárva. Legfeljebb 3 percig kizárólag a friss Direct API /api/v1/status életjelet, Boot ID-t, firmware-verziót és persistence állapotot ellenőrzöm…",
         Some(92),
     );
 
@@ -2171,13 +2086,14 @@ async fn confirm_restart(
         let progress = 92_u8
             .saturating_add(((elapsed * 7) / CONFIRM_TIMEOUT.as_secs()) as u8)
             .min(99);
+        let status_path = ota_confirm_status_path(attempt);
 
         emit_ota_progress(
             app,
-            "Újraindítás",
+            "API ellenőrzés",
             "info",
             format!(
-                "Arduino életjel ellenőrzése: {}. próba • eltelt {} / {} másodperc…",
+                "Direct API életjel: {}. próba • eltelt {} / {} másodperc…",
                 attempt,
                 elapsed,
                 CONFIRM_TIMEOUT.as_secs()
@@ -2185,7 +2101,7 @@ async fn confirm_restart(
             Some(progress),
         );
 
-        match get_json(state, "/api/v1/status").await {
+        match get_json(state, &status_path).await {
             Ok(status) => {
                 last_error = None;
                 let installed = status
@@ -2194,81 +2110,143 @@ async fn confirm_restart(
                     .map(str::to_string);
                 let boot_id_now = status
                     .get("bootId")
-                    .and_then(Value::as_str);
-                let reboot_confirmed = boot_id_before
-                    .map(|before| boot_id_now.is_some_and(|current| current != before))
-                    .unwrap_or(true);
+                    .and_then(Value::as_str)
+                    .map(str::to_string);
 
-                match (&expected, &installed) {
-                    (Some(wanted), Some(actual))
-                        if normalize_version(wanted) == normalize_version(actual)
-                            && reboot_confirmed =>
-                    {
-                        emit_ota_progress(
-                            app,
-                            "Ellenőrzés",
-                            "success",
-                            format!(
-                                "Az Arduino visszatért és a várt firmware fut: {actual}. OTA sikeres."
-                            ),
-                            Some(100),
-                        );
-                        return Ok(installed.clone());
+                last_seen_version = installed.clone();
+                last_seen_boot_id = boot_id_now.clone();
+
+                if let Some(before_boot) = boot_id_before {
+                    match boot_id_now.as_deref() {
+                        Some(current_boot) if current_boot != before_boot => {
+                            if let Some(wanted) = expected.as_deref() {
+                                match installed.as_deref() {
+                                    Some(actual)
+                                        if normalize_version(actual) == normalize_version(wanted) =>
+                                    {
+                                        let same_version_reinstall = installed_before
+                                            .map(normalize_version)
+                                            .is_some_and(|before| before == normalize_version(actual));
+                                        let classification = if same_version_reinstall {
+                                            "SAME_VERSION_REINSTALL_CONFIRMED"
+                                        } else {
+                                            "NEW_FIRMWARE_BOOT_CONFIRMED"
+                                        };
+                                        emit_ota_progress(
+                                            app,
+                                            "Ellenőrzés",
+                                            "success",
+                                            format!(
+                                                "{classification}: friss API-életjel érkezett, a Boot ID megváltozott ({before_boot} -> {current_boot}), és a várt firmware fut: {actual}."
+                                            ),
+                                            Some(100),
+                                        );
+                                        return Ok(status);
+                                    }
+                                    Some(actual) => {
+                                        return Err(format!(
+                                            "OTA_ROLLBACK_OR_WRONG_FIRMWARE: az Arduino új Boot ID-val visszatért ({before_boot} -> {current_boot}), de a várt {wanted} helyett {actual} fut."
+                                        ));
+                                    }
+                                    None => {
+                                        last_error = Some(
+                                            "Az új Boot ID már látszik, de a firmwareVersion hiányzik az API-válaszból.".into()
+                                        );
+                                    }
+                                }
+                            } else if let Some(actual) = installed.as_deref() {
+                                let same_version_reinstall = installed_before
+                                    .map(normalize_version)
+                                    .is_some_and(|before| before == normalize_version(actual));
+                                let classification = if same_version_reinstall {
+                                    "SAME_VERSION_REINSTALL_CONFIRMED"
+                                } else {
+                                    "NEW_EXTERNAL_FIRMWARE_BOOT_CONFIRMED"
+                                };
+                                emit_ota_progress(
+                                    app,
+                                    "Ellenőrzés",
+                                    "success",
+                                    format!(
+                                        "{classification}: a Direct API új Boot ID-val visszatért ({before_boot} -> {current_boot}), telepített firmware: {actual}."
+                                    ),
+                                    Some(100),
+                                );
+                                return Ok(status);
+                            }
+                        }
+                        Some(current_boot) => {
+                            emit_ota_progress(
+                                app,
+                                "Ellenőrzés",
+                                "info",
+                                format!(
+                                    "Friss API-életjel érkezett, de a Boot ID még nem változott ({current_boot}). Ez még nem bizonyít rebootot; folytatom az ellenőrzést."
+                                ),
+                                Some(progress),
+                            );
+                        }
+                        None => {
+                            last_error = Some(
+                                "A Direct API válasz elérhető, de a bootId mező hiányzik.".into()
+                            );
+                        }
                     }
-                    (None, Some(actual)) if reboot_confirmed => {
-                        emit_ota_progress(
-                            app,
-                            "Ellenőrzés",
-                            "success",
-                            format!("Az Arduino visszatért új Boot ID-val, telepített firmware: {actual}."),
-                            Some(100),
-                        );
-                        return Ok(installed.clone());
-                    }
-                    (Some(wanted), Some(actual)) => {
-                        last_seen_version = Some(actual.clone());
-                        emit_ota_progress(
-                            app,
-                            "Ellenőrzés",
-                            "info",
-                            format!(
-                                "Életjel érkezett, de az Arduino még {actual} verziót jelent; várt verzió: {wanted}. Folytatom az ellenőrzést."
-                            ),
-                            Some(progress),
-                        );
-                    }
-                    _ => {
-                        emit_ota_progress(
-                            app,
-                            "Ellenőrzés",
-                            "info",
-                            "Az Arduino válaszol, de a firmware-verzió még nem olvasható. Folytatom az ellenőrzést.",
-                            Some(progress),
-                        );
+                } else {
+                    match (&expected, &installed) {
+                        (Some(wanted), Some(actual))
+                            if normalize_version(wanted) == normalize_version(actual) =>
+                        {
+                            emit_ota_progress(
+                                app,
+                                "Ellenőrzés",
+                                "success",
+                                format!(
+                                    "NO_PREUPDATE_BOOT_ID_FALLBACK: a Direct API visszatért és a várt firmware fut: {actual}. Indulás előtti Boot ID nem állt rendelkezésre."
+                                ),
+                                Some(100),
+                            );
+                            return Ok(status);
+                        }
+                        (None, Some(actual)) => {
+                            emit_ota_progress(
+                                app,
+                                "Ellenőrzés",
+                                "success",
+                                format!(
+                                    "NO_PREUPDATE_BOOT_ID_FALLBACK: a Direct API visszatért, telepített firmware: {actual}."
+                                ),
+                                Some(100),
+                            );
+                            return Ok(status);
+                        }
+                        (Some(wanted), Some(actual)) => {
+                            last_error = Some(format!(
+                                "A Direct API elérhető, de a firmware még {actual}; várt: {wanted}."
+                            ));
+                        }
+                        _ => {
+                            last_error = Some(
+                                "A Direct API elérhető, de nincs használható firmwareVersion.".into()
+                            );
+                        }
                     }
                 }
             }
             Err(error) => {
-                last_error = Some(error.clone());
-                emit_ota_progress(
-                    app,
-                    "Újraindítás",
-                    "info",
-                    format!(
-                        "Az Arduino még nem elérhető ({elapsed} / {} mp). Ez a flash és az újraindítás alatt normális. Részlet: {error}",
-                        CONFIRM_TIMEOUT.as_secs()
-                    ),
-                    Some(progress),
-                );
+                last_error = Some(error);
             }
         }
     }
 
     let expected_text = expected.unwrap_or_else(|| "ismeretlen".into());
     let last_seen_text = last_seen_version.unwrap_or_else(|| "nem érkezett verzió".into());
-    let last_error_text = last_error.unwrap_or_else(|| "nem érkezett további hálózati hiba".into());
+    let last_boot_text = last_seen_boot_id.unwrap_or_else(|| "nem érkezett Boot ID".into());
+    let last_error_text =
+        last_error.unwrap_or_else(|| "nem érkezett további hálózati hiba".into());
+
     Err(format!(
-        "Az OTA ellenőrzési idő lejárt: az Arduino 3 percen belül nem igazolta a(z) {expected_text} firmware-t. Utoljára látott verzió: {last_seen_text}. Utolsó kapcsolati állapot: {last_error_text}."
+        "Az OTA API-ellenőrzési idő lejárt: az Arduino 3 percen belül nem igazolta a reboot + firmware állapotot. Várt firmware: {expected_text}. Utoljára látott verzió: {last_seen_text}. Utoljára látott Boot ID: {last_boot_text}. Utolsó API állapot: {last_error_text}."
     ))
 }
 
@@ -3330,7 +3308,7 @@ async fn firmware_update_inner(
         )
         .await
     };
-    upload_result?;
+    let transfer_result = upload_result?;
 
     {
         let mut current = state
@@ -3338,25 +3316,35 @@ async fn firmware_update_inner(
             .lock()
             .map_err(|_| "Firmware állapot zárolva".to_string())?;
         current.state = "restarting".into();
-        current.phase = Some("Újraindítás".into());
+        current.phase = Some("API ellenőrzés".into());
         current.progress = Some(92);
-        current.message = "Az Arduino alkalmazza a firmware-t és újraindul…".into();
+        current.message =
+            "OTA transport lezárva; innentől kizárólag a Direct API igazolja a telepítést.".into();
     }
     emit_ota_progress(
         app,
-        "Újraindítás",
+        "API ellenőrzés",
         "info",
-        "A teljes bináris átadva. Várakozás az Arduino újraindulására és az új verzió visszajelzésére…",
+        format!(
+            "TRANSFER -> API_CONFIRMATION. A külső OTA-port többé nem mérvadó. Transport eredmény: {transfer_result}"
+        ),
         Some(92),
     );
 
     ensure_not_cancelled(state)?;
-    let installed_after_restart =
-        confirm_restart(app, state, artifact.firmware_version.clone(), boot_id_before.as_deref()).await?;
+    let after_status = confirm_restart(
+        app,
+        state,
+        artifact.firmware_version.clone(),
+        installed.as_deref(),
+        boot_id_before.as_deref(),
+    )
+    .await?;
+    let installed_after_restart = after_status
+        .get("firmwareVersion")
+        .and_then(Value::as_str)
+        .map(str::to_string);
     ensure_not_cancelled(state)?;
-    let after_status = get_json(state, "/api/v1/status")
-        .await
-        .map_err(|error| format!("Az OTA utáni persistence ellenőrzés sikertelen: {error}"))?;
     let boot_id_after = after_status
         .get("bootId")
         .and_then(Value::as_str)
@@ -3663,14 +3651,29 @@ async fn firmware_install_external_inner(
         current.message = "Az Arduino alkalmazza a külső firmware-t és újraindul…".into();
     }
 
-    ensure_not_cancelled(state)?;
-    let installed_after_restart = confirm_restart(app, state, None, boot_id_before.as_deref()).await?;
+    emit_ota_progress(
+        app,
+        "API ellenőrzés",
+        "info",
+        "TRANSFER -> API_CONFIRMATION. A külső OTA-port többé nem mérvadó; a Direct API reboot/Boot ID/firmware állapota dönt.",
+        Some(92),
+    );
 
     ensure_not_cancelled(state)?;
-    let after_status = get_json(state, "/api/v1/status")
-        .await
-        .map_err(|error| format!("A külső OTA utáni persistence ellenőrzés sikertelen: {error}"))?;
+    let after_status = confirm_restart(
+        app,
+        state,
+        None,
+        installed_before.as_deref(),
+        boot_id_before.as_deref(),
+    )
+    .await?;
+    let installed_after_restart = after_status
+        .get("firmwareVersion")
+        .and_then(Value::as_str)
+        .map(str::to_string);
 
+    ensure_not_cancelled(state)?;
     let boot_id_after = after_status
         .get("bootId")
         .and_then(Value::as_str)
@@ -3928,13 +3931,6 @@ mod tests {
         assert_ne!(normalized, legacy_payload);
     }
 
-    #[test]
-    fn native_ota_http_response_is_parsed() {
-        let response = b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\nOK";
-        let (status, body) = parse_ota_http_response(response).expect("érvényes OTA-válasz");
-        assert_eq!(status, 200);
-        assert_eq!(body, "OK");
-    }
 
     #[test]
     fn native_ota_auth_header_matches_arduino_library() {

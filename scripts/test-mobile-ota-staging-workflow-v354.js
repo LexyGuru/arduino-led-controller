@@ -29,8 +29,8 @@ requireMatch(
 );
 requireMatch(
   lib,
-  /OTA_LISTENER_TIMEOUT_PENDING_API_VERIFICATION/,
-  'listener timeout hands off to API verification',
+  /OTA_TRANSPORT_UNCONFIRMED_API_CONFIRMATION/,
+  'transport observation hands off to API verification',
 );
 requireMatch(
   lib,
