@@ -21,12 +21,12 @@ Arduino továbbra is önálló **Direct API v1** végpontként működik.
 
 ## Aktuális kiadás
 
-> **Jelenlegi fejlesztési kiadás: Arduino LED Controller V5.5 Beta.2**
+> **Jelenlegi fejlesztési kiadás: Arduino LED Controller V5.5 Beta.3**
 
 | Komponens | Aktuális verzió / állapot |
 |---|---|
-| Alkalmazás | **`5.5.0-beta.2`** |
-| Firmware | **`5.0.0-beta.7`** |
+| Alkalmazás | **`5.5.0-beta.3`** |
+| Firmware | **`5.0.0-beta.8`** |
 | Direct API | **`1.0.0`** |
 | Beta ág | **`next/v5-rearchitecture`** |
 | Stabil alkalmazás | **`5.0.0`** |
@@ -36,18 +36,18 @@ Arduino továbbra is önálló **Direct API v1** végpontként működik.
 | LXC rendszer | Debian 13 |
 | LXC web/API port | `3000` |
 
-A **V5.5 Beta.2** GitHub prerelease a V5.5 alkalmazás-, mobil- és LXC-vonal
+A **V5.5 Beta.3** GitHub prerelease a V5.5 alkalmazás-, mobil- és LXC-vonal
 aktuális integrációs állapota. A firmware külön verziózott komponens, ezért az
-alkalmazás `5.5.0-beta.2` és a firmware `5.0.0-beta.7` verziószáma szándékosan
+alkalmazás `5.5.0-beta.3` és a firmware `5.0.0-beta.8` verziószáma szándékosan
 eltér.
 
 ### Aktuális kiadási dokumentumok
 
-- [V5.5 Beta.2 release notes](docs/v5/V55_BETA2_RELEASE_NOTES.md)
-- [V5.5 Beta.2 telepítési útmutató](docs/v5/V55_BETA2_INSTALLATION_GUIDE.md)
-- [V5.5 Beta.2 release checklist](docs/v5/V55_BETA2_RELEASE_CHECKLIST.md)
-- [Részletes gyökér release notes](RELEASE_NOTES_5.5.0-beta.2.md)
-- [Firmware 5.0.0-beta.7 release notes](firmware/RELEASE_NOTES_5.0.0-beta.7.md)
+- [V5.5 Beta.3 release notes](docs/v5/V55_BETA3_RELEASE_NOTES.md)
+- [V5.5 Beta.3 telepítési útmutató](docs/v5/V55_BETA3_INSTALLATION_GUIDE.md)
+- [V5.5 Beta.3 release checklist](docs/v5/V55_BETA3_RELEASE_CHECKLIST.md)
+- [Részletes gyökér release notes](RELEASE_NOTES_5.5.0-beta.3.md)
+- [Firmware 5.0.0-beta.8 release notes](firmware/RELEASE_NOTES_5.0.0-beta.8.md)
 
 A korábbi Beta dokumentumok történeti állapotként maradnak a repositoryban;
 nem az aktuális verzió leírásai.
@@ -114,7 +114,7 @@ nem az aktuális verzió leírásai.
 ```text
                          ┌─────────────────────────────┐
                          │ Arduino UNO R4 WiFi         │
-                         │ Firmware 5.0.0-beta.7       │
+                         │ Firmware 5.0.0-beta.8       │
                          │ Direct API v1 / X-Device-Key│
                          └──────────────┬──────────────┘
                                         │
@@ -180,7 +180,7 @@ firmwareVersion + Boot ID + schedule persistence
 SUCCESS
 ```
 
-A firmware `5.0.0-beta.7` OTA Exclusive Mode alatt kizárólag a Wi-Fi
+A firmware `5.0.0-beta.8` OTA Exclusive Mode alatt kizárólag a Wi-Fi
 kapcsolatot, az ArduinoOTA motort és a LED Matrix visszajelzést hagyja aktívan.
 A schedule storage-ot az OTA folyamat nem törli és nem írja újra.
 
@@ -319,9 +319,9 @@ A Beta release **prerelease**, és nem jelölhető latest stabil kiadásnak.
 
 ### Aktuális
 
-- [V5.5 Beta.2 release notes](docs/v5/V55_BETA2_RELEASE_NOTES.md)
-- [V5.5 Beta.2 telepítési útmutató](docs/v5/V55_BETA2_INSTALLATION_GUIDE.md)
-- [V5.5 Beta.2 release checklist](docs/v5/V55_BETA2_RELEASE_CHECKLIST.md)
+- [V5.5 Beta.3 release notes](docs/v5/V55_BETA3_RELEASE_NOTES.md)
+- [V5.5 Beta.3 telepítési útmutató](docs/v5/V55_BETA3_INSTALLATION_GUIDE.md)
+- [V5.5 Beta.3 release checklist](docs/v5/V55_BETA3_RELEASE_CHECKLIST.md)
 - [Rust LXC architektúra](docs/v5/RUST_LXC_ARCHITECTURE.md)
 - [Rust LXC üzemeltetés](docs/v5/RUST_LXC_OPERATIONS.md)
 - [Shared frontend architektúra](docs/SHARED_FRONTEND_ARCHITECTURE.md)
@@ -337,7 +337,7 @@ A Beta release **prerelease**, és nem jelölhető latest stabil kiadásnak.
 
 A korábbi V5.0 Beta és V5.5 Beta.1 dokumentumok a repositoryban maradnak
 release-történetként. A bennük szereplő verziószámok nem az aktuális
-`5.5.0-beta.2` állapotot jelentik.
+`5.5.0-beta.3` állapotot jelentik.
 
 ---
 

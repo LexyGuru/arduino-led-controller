@@ -75,7 +75,7 @@ async function main() {
     assets: [
       {
         name:
-          'arduino-led-controller.ino.bin',
+          'Arduino_LED_Controller_Firmware_5.0.0_UNO_R4_WiFi.bin',
         browser_download_url:
           'https://github.com/example/firmware.bin',
         digest:
@@ -83,7 +83,7 @@ async function main() {
       },
       {
         name:
-          'arduino-led-controller.ino.bin.sha256',
+          'Arduino_LED_Controller_Firmware_5.0.0_UNO_R4_WiFi.bin.sha256',
         browser_download_url:
           'https://github.com/example/firmware.sha256'
       }

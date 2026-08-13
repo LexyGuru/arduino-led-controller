@@ -12,7 +12,7 @@ const rust = read('desktop-tauri/src-tauri/src/lib.rs');
 const schedules = read('desktop-tauri/src/pages/SchedulesPage.tsx');
 const firmwarePage = read('desktop-tauri/src/pages/FirmwarePage.tsx');
 
-assert.equal(rv.firmware, '5.0.0-beta.7');
+assert.match(rv.firmware, /^\d+\.\d+\.\d+-beta\.\d+$/);
 assert.ok(
   fw.includes(`#define FIRMWARE_VERSION "${rv.firmware}"`),
   'Firmware source/release manifest mismatch'

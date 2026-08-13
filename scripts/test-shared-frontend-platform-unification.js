@@ -16,7 +16,7 @@ assert.ok(controller.includes("tauriApi.listenOtaProgress"));
 assert.ok(schedules.includes("pickBrowserJsonFile"));
 assert.ok(lxc.includes('/api/v1/server/firmware/releases'));
 assert.ok(lxc.includes('/api/v1/server/firmware/cancel'));
-assert.ok(readme.includes('5.5.0-beta.2'));
+assert.ok(readme.includes('5.5.0-beta.3'));
 console.log('SHARED_FRONTEND_SINGLE_SOURCE=YES');
 console.log('SEPARATE_LXC_UI=REMOVED');
 console.log('ALL_TARGET_UI_SHARED=YES');

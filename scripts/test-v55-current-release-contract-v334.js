@@ -21,7 +21,7 @@ const docPrefix = major === '5' && minor === '0'
 
 const rv = json('release-versions.json');
 assert.equal(rv.application, version);
-assert.equal(rv.firmware, '5.0.0-beta.7');
+assert.match(rv.firmware, /^\d+\.\d+\.\d+-beta\.\d+$/);
 
 for (const p of [
   'package.json',

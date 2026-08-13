@@ -69,15 +69,15 @@ for (const token of [
 ]) assert.ok(profile.includes(token), `Hiányzó profil-szerződés: ${token}`);
 
 for (const token of [
-  'base == "/api/v1/status" && method == "GET"',
-  'base == "/api/v1/logs" && method == "GET"',
-  'base.startsWith("/api/v1/leds/")',
-  'base == "/api/v1/schedules" && method == "GET"',
-  'base == "/api/v1/schedules/transactions" && method == "POST"',
-  'action=="chunks"&&method=="PUT"',
-  'action=="commit"&&method=="POST"',
-  'base == "/api/v1/ota/prepare" && method == "POST"',
-  'base == "/api/v1/ota/status" && method == "GET"'
+  'pathEquals(base, "/api/v1/status") && pathEquals(method, "GET")',
+  'pathEquals(base, "/api/v1/logs") && pathEquals(method, "GET")',
+  'pathStartsWith(base, LED_PREFIX)',
+  'pathEquals(base, "/api/v1/schedules") && pathEquals(method, "GET")',
+  'pathEquals(base, "/api/v1/schedules/transactions") && pathEquals(method, "POST")',
+  'pathEquals(action, "chunks") && pathEquals(method, "PUT")',
+  'pathEquals(action, "commit") && pathEquals(method, "POST")',
+  'pathEquals(base, "/api/v1/ota/prepare") && pathEquals(method, "POST")',
+  'pathEquals(base, "/api/v1/ota/status") && pathEquals(method, "GET")'
 ]) assert.ok(firmware.includes(token), `A firmware nem támogatja: ${token}`);
 
 assert.ok(!rust.includes('"/api/console/logs?after='));

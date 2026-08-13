@@ -97,8 +97,8 @@ assert.ok(readme.includes('actions/workflows/firmware-beta-release.yml'));
 assert.ok(readme.includes('actions/workflows/beta-release.yml'));
 
 for (const marker of [
-  '5.5.0-beta.2',
-  '5.0.0-beta.7',
+  '5.5.0-beta.3',
+  '5.0.0-beta.8',
   'next/v5-rearchitecture',
   'Stabil ág | `main`',
   'Debian 13 Rust LXC',
@@ -228,13 +228,23 @@ assert.ok(!fw.includes('"America/New_York"'));
 
 for (const file of [
   'README.md',
+  'docs/v5/BETA8_CURRENT_STATE.md',
+]) {
+  const content = fs.readFileSync(file, 'utf8');
+  assert.ok(
+    content.includes(versions.firmware),
+    `${file}: current firmware version mismatch`,
+  );
+}
+
+for (const file of [
   'docs/v5/BETA7_CURRENT_STATE.md',
   'docs/v5/BETA7_UI_FREEZE.md',
 ]) {
   const content = fs.readFileSync(file, 'utf8');
   assert.ok(
-    content.includes(versions.firmware),
-    `${file}: current Beta.7 firmware version mismatch`,
+    content.includes('5.0.0-beta.6'),
+    `${file}: historical Beta.7 firmware pairing changed`,
   );
 }
 

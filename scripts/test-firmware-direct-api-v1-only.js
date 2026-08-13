@@ -36,7 +36,7 @@ for (const endpoint of [
 }
 
 assert.match(fw, /DIRECT_API_V1_REQUIRED/);
-assert.match(fw, /if \(!base\.startsWith\("\/api\/v1\/"\)\)/);
+assert.match(fw, /if \(!pathStartsWith\(base, "\/api\/v1\/"\)\)/);
 assert.match(fw, /return routeV1\(c, method, base, query, body, requestId\);/);
 assert.match(fw, /Teljes Direct API v1 status URL/);
 assert.match(fw, /\[cmd\] Direct v1:/);

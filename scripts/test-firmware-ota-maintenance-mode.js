@@ -24,7 +24,7 @@ assert.doesNotMatch(started,/showOtaIndicator|logEvent|stopNtpUdpService|EEPROM|
 const before=body("void otaBeforeApply()","void otaTransferError");
 assert.match(before,/showMatrix\(MATRIX_OK\)/);
 assert.doesNotMatch(before,/showOtaIndicator|logEvent|EEPROM|WiFi|ntpUdp|server|strip\[|schedule/i);
-const prepare=body("bool prepareOtaService()","float effectScale");
+const prepare=body("bool prepareOtaService()","uint16_t effectScaleQ8");
 assert.match(prepare,/enterOtaExclusiveMode\(\)/);
 assert.doesNotMatch(prepare,/showOtaIndicator|logEvent|clearSchedule|saveSchedule|EEPROM/);
 const log=body("void logEvent(const char* type, const char* message)","void consoleLine");

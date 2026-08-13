@@ -1,15 +1,15 @@
-# Beta.9 aktuális állapot
+# V5.5 Beta.3 aktuális állapot
 
-Dátum: 2026-08-06
+Dátum: 2026-08-13
 
 ## Verziópárosítás
 
 | Elem | Verzió |
 |---|---|
-| Desktop alkalmazás | `5.5.0-beta.2` |
-| Arduino firmware | `5.0.0-beta.7` |
+| Desktop alkalmazás | `5.5.0-beta.3` |
+| Arduino firmware | `5.0.0-beta.8` |
 | Direct API | `1.0.0` |
-| Fejlesztési ág | `feature/beta7-ui-overhaul` |
+| Fejlesztési ág | `next/v5-rearchitecture` |
 
 ## Firmware-állapot
 
@@ -21,7 +21,7 @@ A firmware kizárólag Direct API v1 útvonalakat szolgál ki. A legacy firmware
 
 Az OTA maintenance mód az OTA előkészítésekor változatlanul hagyja az NTP UDP socketet, miközben szünetelteti a HTTP-kezelést, a schedulert, a LED-frissítést és a háttérfeladatokat.
 
-## Desktop Beta.9
+## Desktop V5.5 Beta.3
 
 - Theme Engine és Design System;
 - Arctic és Midnight megjelenés;
@@ -36,7 +36,7 @@ Az OTA maintenance mód az OTA előkészítésekor változatlanul hagyja az NTP 
 
 Ez integrációs tesztcommit. Tag és GitHub Release még nem készül.
 
-## Firmware 5.0.0-beta.7 OTA Exclusive Mode
+## Firmware 5.0.0-beta.8 OTA Exclusive Mode
 
 Az `/api/v1/ota/prepare` után a firmware kizárólag a Wi-Fi kapcsolatot, az ArduinoOTA poll ciklust és a LED Matrix OTA-visszajelzését tartja aktívan. Az NTP UDP socket leáll, a NeoPixel frissítés leáll, a RAM-log írás némított, és a fő loop nem futtat HTTP-, scheduler-, EEPROM-, NTP-, LED- vagy egyéb háttérfeladatot az OTA ablak alatt. Hiba vagy előkészítési timeout után a normál szolgáltatások visszaállnak.
 
@@ -44,6 +44,6 @@ A production regression gate garantálja, hogy a prepare timeout feldolgozása a
 
 ## Aktuális release-verziók
 
-- Alkalmazás: `5.5.0-beta.2`
-- Firmware: `5.0.0-beta.7`
+- Alkalmazás: `5.5.0-beta.3`
+- Firmware: `5.0.0-beta.8`
 - Direct API: `1.0.0`

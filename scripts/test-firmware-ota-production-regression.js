@@ -4,9 +4,9 @@ const fw=fs.readFileSync("firmware/ArduinoLedController/ArduinoLedController.ino
 const versions=JSON.parse(fs.readFileSync("release-versions.json","utf8"));
 const meta=JSON.parse(fs.readFileSync("firmware/firmware-release.json","utf8"));
 const otaDoc=fs.readFileSync("docs/firmware/OTA_UPDATE.md","utf8");
-assert.equal(versions.firmware,"5.0.0-beta.7");
-assert.equal(meta.firmwareVersion,"5.0.0-beta.7");
-assert.ok(fw.includes('#define FIRMWARE_VERSION "5.0.0-beta.7"'));
+assert.match(versions.firmware,/^\d+\.\d+\.\d+-beta\.\d+$/);
+assert.equal(meta.firmwareVersion,versions.firmware);
+assert.ok(fw.includes('#define FIRMWARE_VERSION "5.0.0-beta.8"'));
 assert.ok(fw.includes('#define OTA_MAINTENANCE_MODE_V1 1'));
 const loop=fw.slice(fw.indexOf("void loop() {"));
 assert.ok(loop.indexOf("updateOtaVisualState()") < loop.indexOf("if (otaExclusiveMode || otaTransferActive) return;"));
