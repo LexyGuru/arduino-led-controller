@@ -8,6 +8,7 @@ const read = (path) => fs.readFileSync(path, 'utf8');
 
 const app = read('desktop-tauri/src/App.tsx');
 const sidebar = read('desktop-tauri/src/components/Sidebar.tsx');
+const themeProvider = read('desktop-tauri/src/design-system/ThemeProvider.tsx');
 const topbar = read('desktop-tauri/src/components/Topbar.tsx');
 const bottom = read('desktop-tauri/src/components/BottomNav.tsx');
 const css = read('desktop-tauri/src/core-ui-v1.5.css');
@@ -21,7 +22,9 @@ assert.match(app, /data-page=\{page\}/);
 
 assert.match(sidebar, /core-sidebar/);
 assert.match(sidebar, /aria-current/);
-assert.match(sidebar, /macos_sync_app_icon/);
+assert.doesNotMatch(sidebar, /macos_sync_app_icon/);
+assert.match(themeProvider, /macos_sync_app_icon/);
+assert.match(themeProvider, /theme:\s*resolvedMode/);
 assert.match(sidebar, /V5BetaBadge/);
 for (const id of ['dashboard','leds','schedules','firmware','logs','settings']) {
   assert.match(sidebar, new RegExp(`id:'${id}'`), `legacy compact nav id compatibility: ${id}`);

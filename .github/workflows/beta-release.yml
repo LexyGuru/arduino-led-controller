@@ -289,6 +289,9 @@ jobs:
           test -f src-tauri/gen/android/gradlew
           chmod +x src-tauri/gen/android/gradlew
 
+      - name: Generate V5 Android launcher icons
+        run: bash ../scripts/generate-v5-mobile-icons.sh
+
       - name: Configure Android release signing when available
         id: signing
         env:
@@ -434,6 +437,9 @@ jobs:
           if [ ! -d src-tauri/gen/apple ]; then
             npx tauri ios init --ci
           fi
+
+      - name: Generate V5 iOS and iPadOS app icons
+        run: bash ../scripts/generate-v5-mobile-icons.sh
 
       - name: Build unsigned IPA
         run: npx tauri ios build --ci --no-sign

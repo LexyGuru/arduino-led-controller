@@ -49,6 +49,27 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     ? detectedMode
     : appearance.mode;
 
+  // V417_MACOS_DOCK_ICON_FOLLOWS_RESOLVED_MODE
+  useEffect(() => {
+    const tauriRuntime =
+      typeof globalThis !== 'undefined' &&
+      '__TAURI_INTERNALS__' in globalThis;
+
+    if (!tauriRuntime) return;
+
+    let disposed = false;
+    void import('@tauri-apps/api/core')
+      .then(({ invoke }) => {
+        if (disposed) return undefined;
+        return invoke<string>('macos_sync_app_icon', { theme: resolvedMode });
+      })
+      .catch(() => undefined);
+
+    return () => {
+      disposed = true;
+    };
+  }, [resolvedMode]);
+
   useEffect(() => {
     saveAppearance(appearance);
     const root = document.documentElement;

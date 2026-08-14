@@ -6,7 +6,6 @@ import {
   ScrollText,
   Settings
 } from 'lucide-react';
-import { useEffect } from 'react';
 import { useI18n } from '../i18n';
 import type { PageId } from '../types';
 import { V5BetaBadge } from './v5/V5BetaBadge';
@@ -44,67 +43,6 @@ export function Sidebar({
 }: SidebarProps) {
   const { t } = useI18n();
 
-  useEffect(() => {
-    const tauriRuntime =
-      typeof globalThis !== 'undefined' &&
-      '__TAURI_INTERNALS__' in globalThis;
-
-    if (!tauriRuntime) {
-      return undefined;
-    }
-
-    let disposed = false;
-    let unlisten: (() => void) | undefined;
-
-    // V5_DAY_NIGHT_ICON_POLICY
-    const currentDayNightIconTheme = (): 'light' | 'dark' => {
-      const hour = new Date().getHours();
-      return hour >= 7 && hour < 19 ? 'light' : 'dark';
-    };
-
-    const syncDayNightIcon = async () => {
-      if (disposed) return;
-      try {
-        const { invoke } = await import('@tauri-apps/api/core');
-        if (disposed) return;
-        await invoke<string>('macos_sync_app_icon', {
-          theme: currentDayNightIconTheme()
-        });
-      } catch {
-        // Non-macOS Tauri targets and transient startup states are harmless.
-      }
-    };
-
-    const installThemeListener = async () => {
-      try {
-        const { getCurrentWindow } = await import('@tauri-apps/api/window');
-        if (disposed) return;
-
-        const stop = await getCurrentWindow().onThemeChanged(() => {
-          void syncDayNightIcon();
-        });
-
-        if (disposed) stop();
-        else unlisten = stop;
-      } catch {
-        // Native theme listener is optional.
-      }
-    };
-
-    void syncDayNightIcon();
-
-    const timer = window.setInterval(() => {
-      void syncDayNightIcon();
-    }, 60_000);
-
-    void installThemeListener();
-
-    return () => {
-      disposed = true;
-      window.clearInterval(timer);
-      unlisten?.();
-    };
-  }, [appVersion]);
 
   return (
     <aside className="sidebar core-sidebar">
