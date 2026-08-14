@@ -1,29 +1,23 @@
-# V5.5 Beta.1 Release Notes — 5.5.0-beta.1
+# Arduino LED Controller V5.5.1 Beta.1 – Release Notes
 
-This is a GitHub **prerelease** from `next/v5-rearchitecture`; stable `main` is not modified by the Beta release workflow.
-
-Application: `5.5.0-beta.1`
-Firmware: `5.0.0-beta.7`
+Alkalmazás: `5.5.1-beta.1`
+Firmware: `5.0.0-beta.8`
 Direct API: `1.0.0`
 
-## V5.5 generation
+## Fő változások
 
-- Theme Engine 2.0
-- Core UI 1.5
-- Dashboard 2.0
-- Statistics 1.0
-- Activity & Logs 2.0
-- Management UI 2.0
-- App Update Center 1.0
-- shared React frontend for desktop, mobile and LXC
-- LXC native Tauri runtime isolation
+- macOS Dock ikon közvetlenül a Theme Engine 2.0 feloldott Light/Dark állapotát követi;
+- Android clean-build launcher ikon generálás;
+- iOS/iPadOS Light és Dark AppIcon appearance támogatás;
+- App Update Center 1.0 továbbra is stable/beta csatorna szerint működik;
+- OpenAPI `info.version` és generált TypeScript kliens egységesen `5.5.1-beta.1`;
+- LXC asset és shared runtime contract változatlan;
+- release/current-version tesztlánc teljes verziósurface auditja.
 
-## Release integrity
+## Firmware
 
-The application prerelease contains application/mobile/LXC artifacts only. Arduino UNO R4 WiFi firmware is handled by the dedicated firmware prerelease workflow.
+A firmware `5.0.0-beta.8` és nem módosul ebben az alkalmazáskiadásban.
 
-Release evidence includes `SHA256SUMS`, `SBOM.cdx.json`, `PROVENANCE.json` and `SECRET-SCAN.json`.
+## Branch policy
 
-The production Arduino target `10.0.0.123` remains blocked by default in staging.
-
-V5.5 starts at `5.5.0-beta.1`, above stable application `5.0.0`.
+A kiadás kizárólag a `next/v5-rearchitecture` ágat érinti. A `main` ág not modified / nem módosul.

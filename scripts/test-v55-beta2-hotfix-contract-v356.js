@@ -1,7 +1,7 @@
 const fs = require('fs');
 
 const expected = fs.readFileSync('VERSION', 'utf8').trim();
-if (!/^5\.5\.0-beta\.\d+$/.test(expected)) {
+if (!/^5\.5\.\d+-beta\.\d+$/.test(expected)) {
   throw new Error(`Unsupported V5.5 Beta version: ${expected}`);
 }
 

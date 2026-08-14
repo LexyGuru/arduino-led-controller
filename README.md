@@ -21,11 +21,11 @@ Arduino továbbra is önálló **Direct API v1** végpontként működik.
 
 ## Aktuális kiadás
 
-> **Jelenlegi fejlesztési kiadás: Arduino LED Controller V5.5 Beta.3**
+> **Jelenlegi fejlesztési kiadás: Arduino LED Controller V5.5.1 Beta.1**
 
 | Komponens | Aktuális verzió / állapot |
 |---|---|
-| Alkalmazás | **`5.5.0-beta.3`** |
+| Alkalmazás | **`5.5.1-beta.1`** |
 | Firmware | **`5.0.0-beta.8`** |
 | Direct API | **`1.0.0`** |
 | Beta ág | **`next/v5-rearchitecture`** |
@@ -36,12 +36,19 @@ Arduino továbbra is önálló **Direct API v1** végpontként működik.
 | LXC rendszer | Debian 13 |
 | LXC web/API port | `3000` |
 
-A **V5.5 Beta.3** GitHub prerelease a V5.5 alkalmazás-, mobil- és LXC-vonal
+A **V5.5.1 Beta.1** fejlesztési állapot a V5.5 alkalmazás-, mobil- és LXC-vonal
 aktuális integrációs állapota. A firmware külön verziózott komponens, ezért az
-alkalmazás `5.5.0-beta.3` és a firmware `5.0.0-beta.8` verziószáma szándékosan
+alkalmazás `5.5.1-beta.1` és a firmware `5.0.0-beta.8` verziószáma szándékosan
 eltér.
 
 ### Aktuális kiadási dokumentumok
+
+- [V5.5.1 Beta.1 release notes](docs/v5/V55_BETA1_RELEASE_NOTES.md)
+- [V5.5.1 Beta.1 telepítési útmutató](docs/v5/V55_BETA1_INSTALLATION_GUIDE.md)
+- [V5.5.1 Beta.1 release checklist](docs/v5/V55_BETA1_RELEASE_CHECKLIST.md)
+- [Részletes gyökér release notes](RELEASE_NOTES_5.5.1-beta.1.md)
+
+#### Korábbi V5.5 Beta.3 kiadási dokumentumok
 
 - [V5.5 Beta.3 release notes](docs/v5/V55_BETA3_RELEASE_NOTES.md)
 - [V5.5 Beta.3 telepítési útmutató](docs/v5/V55_BETA3_INSTALLATION_GUIDE.md)

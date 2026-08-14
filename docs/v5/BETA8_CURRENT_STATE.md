@@ -1,4 +1,4 @@
-# V5.5 Beta.3 aktuális állapot
+# V5.5.1 Beta.1 aktuális állapot
 
 Dátum: 2026-08-13
 
@@ -6,7 +6,7 @@ Dátum: 2026-08-13
 
 | Elem | Verzió |
 |---|---|
-| Desktop alkalmazás | `5.5.0-beta.3` |
+| Desktop alkalmazás | `5.5.1-beta.1` |
 | Arduino firmware | `5.0.0-beta.8` |
 | Direct API | `1.0.0` |
 | Fejlesztési ág | `next/v5-rearchitecture` |
@@ -21,7 +21,7 @@ A firmware kizárólag Direct API v1 útvonalakat szolgál ki. A legacy firmware
 
 Az OTA maintenance mód az OTA előkészítésekor változatlanul hagyja az NTP UDP socketet, miközben szünetelteti a HTTP-kezelést, a schedulert, a LED-frissítést és a háttérfeladatokat.
 
-## Desktop V5.5 Beta.3
+## Desktop V5.5.1 Beta.1
 
 - Theme Engine és Design System;
 - Arctic és Midnight megjelenés;
@@ -44,6 +44,6 @@ A production regression gate garantálja, hogy a prepare timeout feldolgozása a
 
 ## Aktuális release-verziók
 
-- Alkalmazás: `5.5.0-beta.3`
+- Alkalmazás: `5.5.1-beta.1`
 - Firmware: `5.0.0-beta.8`
 - Direct API: `1.0.0`
