@@ -147,6 +147,12 @@ export default function App() {
               scheduleSync={
                 controller.scheduleSync
               }
+              connectionHealth={
+                controller.connectionHealth
+              }
+              networkLogs={
+                controller.networkLogs
+              }
               busy={
                 controller.busy
               }
@@ -281,6 +287,12 @@ export default function App() {
               }
               error={
                 controller.consoleError
+              }
+              status={
+                controller.status
+              }
+              connectionHealth={
+                controller.connectionHealth
               }
             />
           )}

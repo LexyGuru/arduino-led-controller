@@ -26,7 +26,7 @@ A script az `X-Device-Key` értéket rejtetten bekéri.
 
 1. Készíts `before` snapshotot.
 2. A fejlesztői alkalmazás Firmware nézetében válaszd az external BIN telepítést.
-3. Válaszd a V386 által készített `Arduino_LED_Controller_Firmware_5.0.0-beta.8_UNO_R4_WiFi.bin` fájlt.
+3. Válaszd a V386 által készített `Arduino_LED_Controller_Firmware_5.0.0-beta.9_UNO_R4_WiFi.bin` fájlt.
 4. Várd meg az OTA eredményt.
 5. Készíts `after-transition` snapshotot.
 6. Futtasd:
@@ -37,7 +37,7 @@ A script az `X-Device-Key` értéket rejtetten bekéri.
 
 Elfogadási feltétel:
 
-- az új firmware `5.0.0-beta.8`;
+- az új firmware `5.0.0-beta.9`;
 - az API válaszban van pozitív `bootGeneration`;
 - schedule revision/checksum nem változik váratlanul.
 

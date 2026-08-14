@@ -27,6 +27,9 @@ import { tauriApi } from '../services/tauriApi';
 
 import { useI18n } from '../i18n';
 
+import { localizeOtaMessage, localizeOtaStage } from '../utils/firmwareOtaLocalization';
+import { localizeFirmwareRuntimeMessage } from '../utils/firmwareLocalization';
+
 import type {
   FirmwareArtifact,
   FirmwareStatus,
@@ -102,17 +105,13 @@ function deduplicateFirmwareCatalog(items: FirmwareArtifact[]) {
   );
 }
 
-function logTime(timestamp: number) {
-  return new Date(
-    timestamp
-  ).toLocaleTimeString(
-    'hu-HU',
-    {
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit'
-    }
-  );
+function logTime(timestamp: number, language: 'hu' | 'en' | 'de') {
+  const locale = language === 'de' ? 'de-DE' : language === 'en' ? 'en-US' : 'hu-HU';
+  return new Date(timestamp).toLocaleTimeString(locale, {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  });
 }
 
 export function FirmwarePage({
@@ -134,6 +133,7 @@ export function FirmwarePage({
     directCancel
 }: FirmwarePageProps) {
   const { t, language } = useI18n();
+  const locale = language === 'de' ? 'de-DE' : language === 'en' ? 'en-US' : 'hu-HU';
   const state =
     useV5Firmware({
       legacyFirmware,
@@ -171,6 +171,24 @@ export function FirmwarePage({
   const available =
     firmware
       ?.availableFirmware;
+  const installedFirmwareVersion = firmware?.installedVersion;
+  const availableFirmwareVersion = available?.firmwareVersion ?? available?.tag;
+  const availableVersionComparison =
+    availableFirmwareVersion && installedFirmwareVersion
+      ? compareVersions(availableFirmwareVersion, installedFirmwareVersion)
+      : 0;
+  const hasNewerFirmware = availableVersionComparison > 0;
+  const availableIsOlderThanInstalled = availableVersionComparison < 0;
+  const firmwareHeadline = availableIsOlderThanInstalled
+    ? t('firmware.catalogOlderThanInstalled', {
+        catalog: availableFirmwareVersion ?? t('common.unknown'),
+        installed: installedFirmwareVersion ?? t('common.unknown')
+      })
+    : firmware?.message ?? t('firmware.clickCheck');
+  const compatibilityHeadline = availableIsOlderThanInstalled
+    ? t('firmware.noNewerFirmware')
+    : firmware?.compatibilityStatus ?? t('firmware.compatNotRun');
+
 
   const otaConfigured =
     firmware?.otaConfigured === true;
@@ -286,13 +304,13 @@ export function FirmwarePage({
           <strong>
             {firmware
               ?.installedVersion ??
-            'Ismeretlen'}
+            t('common.unknown')}
           </strong>
         </article>
 
         <article className="stat-card">
           <small>
-            {t('firmware.available')}
+            {availableIsOlderThanInstalled ? t('firmware.catalogLatest') : t('firmware.available')}
           </small>
           <strong>
             {available
@@ -330,7 +348,7 @@ export function FirmwarePage({
             {t('firmware.channelValue',{app:firmware?.updateChannel ?? t('common.unknown'),firmware:firmware?.firmwareUpdateChannel ?? t('common.unknown')})}
             {' · '}
             <span style={{ display: 'inline-flex', alignItems: 'center', flexWrap: 'wrap' }}>
-              {firmware?.appCurrentVersion ?? 'ismeretlen'}
+              {firmware?.appCurrentVersion ?? t('common.unknown')}
               <V5BetaBadge version={firmware?.appCurrentVersion} compact />
             </span>
           </strong>
@@ -355,8 +373,7 @@ export function FirmwarePage({
 
         <div>
           <h3>
-            {firmware?.message ??
-            t('firmware.clickCheck')}
+            {firmwareHeadline}
           </h3>
 
           <p>
@@ -370,8 +387,8 @@ export function FirmwarePage({
             {' '}
             {firmware
               ?.arduinoOnline
-              ? 'online'
-              : 'offline'}
+              ? t('common.online')
+              : t('common.offline')}
           </p>
 
           <p>
@@ -388,7 +405,7 @@ export function FirmwarePage({
           </p>
 
           <p>
-            {firmware?.compatibilityStatus ?? t('firmware.compatNotRun')}
+            {compatibilityHeadline}
           </p>
           {!otaConfigured && otaMissingRequirements.length > 0 && (
             <div className="console-warning">
@@ -416,8 +433,8 @@ export function FirmwarePage({
               state.busy ||
               !otaConfigured ||
               !available ||
-              !firmware
-                ?.arduinoOnline
+              !hasNewerFirmware ||
+              !firmware?.arduinoOnline
             }
           >
             <UploadCloud
@@ -496,7 +513,7 @@ export function FirmwarePage({
                       size={15}
                     />
                   )}
-            {state.stage}
+            {localizeOtaStage(state.stage, language)}
           </div>
         </div>
 
@@ -512,10 +529,9 @@ export function FirmwarePage({
             </strong>
 
             <span>
-              {lastLog
-                ?.message ??
-              firmware?.message ??
-              t('firmware.logPlaceholder')}
+              {lastLog?.message
+                ? localizeOtaMessage(lastLog.message, language)
+                : firmwareHeadline}
             </span>
           </div>
 
@@ -529,9 +545,7 @@ export function FirmwarePage({
 
         <div
           className="ota-progress-track"
-          aria-label={
-            `OTA folyamat ${state.progress}%`
-          }
+          aria-label={t('firmware.otaProgressAria', { progress: Math.round(state.progress) })}
         >
           <div
             style={{
@@ -573,15 +587,13 @@ export function FirmwarePage({
                   }
                 >
                   <time>
-                    {logTime(
-                      entry.timestamp
-                    )}
+                    {logTime(entry.timestamp, language)}
                   </time>
                   <b>
-                    {entry.stage}
+                    {localizeOtaStage(entry.stage, language)}
                   </b>
                   <span>
-                    {entry.message}
+                    {localizeOtaMessage(entry.message, language)}
                   </span>
                   <code>
                     {typeof entry

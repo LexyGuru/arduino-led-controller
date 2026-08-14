@@ -24,8 +24,8 @@ assert.match(lib, /NEW_FIRMWARE_VERSION_TRANSITION_CONFIRMED/);
 assert.match(lib, /LEGACY_BOOT_ID_FALLBACK_CONFIRMED/);
 assert.match(lib, /OTA_ROLLBACK_OR_WRONG_FIRMWARE/);
 
-assert.strictEqual(versions.application, "5.5.1-beta.1");
-assert.strictEqual(versions.firmware, "5.0.0-beta.8");
+assert.strictEqual(versions.application, "5.5.1-beta.2");
+assert.strictEqual(versions.firmware, "5.0.0-beta.9");
 assert.strictEqual(versions.directApi, "1.0.0");
 
 console.log("FIRMWARE_BETA8_VERSION=PASSED");

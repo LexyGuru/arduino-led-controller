@@ -22,6 +22,7 @@ import './core-ui-v1.5.css';
 import './v55-dashboard-stats-logs.css';
 import './v55-management-ui.css';
 import './v55-app-update-center.css';
+import './v551-beta2-reliability.css';
 import './api-v2.css';
 import './dashboard-led-api-v2.css';
 import './schedule-firmware-logs-api-v2.css';

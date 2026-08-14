@@ -3795,9 +3795,78 @@ fn firmware_cancel(state: State<'_, AppState>) -> Result<bool, String> {
     Ok(true)
 }
 
+
+fn validated_export_target(path: &Path, kind: &str) -> Result<(), String> {
+    if !matches!(kind, "zip" | "log") {
+        return Err(format!("Nem támogatott export formátum: {kind}"));
+    }
+    let file_name = path.file_name().and_then(|v| v.to_str())
+        .ok_or_else(|| "Az export célfájl neve érvénytelen.".to_string())?;
+    if file_name.trim().is_empty() {
+        return Err("Az export célfájl neve üres.".into());
+    }
+    let extension = path.extension().and_then(|v| v.to_str()).unwrap_or("").to_ascii_lowercase();
+    if extension != kind {
+        return Err(format!("Az export fájlkiterjesztése nem egyezik a formátummal: .{extension} != .{kind}"));
+    }
+    let parent = path.parent().ok_or_else(|| "Az export célkönyvtára nem állapítható meg.".to_string())?;
+    if !parent.is_dir() {
+        return Err(format!("Az export célkönyvtára nem létezik: {}", parent.to_string_lossy()));
+    }
+    Ok(())
+}
+
+#[tauri::command]
+fn write_export_file(path: String, bytes: Vec<u8>, kind: String) -> Result<String, String> {
+    const MAX_EXPORT_BYTES: usize = 16 * 1024 * 1024;
+    if bytes.is_empty() {
+        return Err("Az export fájl üres; mentés megszakítva.".into());
+    }
+    if bytes.len() > MAX_EXPORT_BYTES {
+        return Err(format!("Az export túl nagy: {} bájt. Maximum: {} bájt.", bytes.len(), MAX_EXPORT_BYTES));
+    }
+    let target = PathBuf::from(path.trim());
+    validated_export_target(&target, kind.trim())?;
+    let temporary = target.with_extension(format!("{}.part", kind.trim()));
+    fs::write(&temporary, &bytes).map_err(|error| {
+        let _ = fs::remove_file(&temporary);
+        format!("Az export ideiglenes fájlja nem írható: {error}")
+    })?;
+    if target.exists() {
+        fs::remove_file(&target).map_err(|error| {
+            let _ = fs::remove_file(&temporary);
+            format!("A meglévő export fájl nem cserélhető le: {error}")
+        })?;
+    }
+    fs::rename(&temporary, &target).map_err(|error| {
+        let _ = fs::remove_file(&temporary);
+        format!("Az export fájl nem aktiválható: {error}")
+    })?;
+    let persisted_len = fs::metadata(&target)
+        .map_err(|error| format!("Az export fájl nem ellenőrizhető: {error}"))?.len() as usize;
+    if persisted_len != bytes.len() {
+        return Err(format!("Az export readback mérete eltér. Várt: {} bájt, fájl: {} bájt.", bytes.len(), persisted_len));
+    }
+    Ok(target.to_string_lossy().to_string())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn native_export_target_validation_accepts_matching_extensions() {
+        let root = std::env::temp_dir();
+        assert!(validated_export_target(&root.join("diagnostics.zip"), "zip").is_ok());
+        assert!(validated_export_target(&root.join("activity.log"), "log").is_ok());
+    }
+
+    #[test]
+    fn native_export_target_validation_rejects_mismatch() {
+        let root = std::env::temp_dir();
+        assert!(validated_export_target(&root.join("diagnostics.log"), "zip").is_err());
+        assert!(validated_export_target(&root.join("diagnostics.zip"), "exe").is_err());
+    }
 
     #[test]
     fn console_object_is_normalized() {
@@ -3951,6 +4020,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             diagnostic_logging::diagnostic_log_event,
             diagnostic_logging::diagnostic_log_paths,
+            write_export_file,
 
             macos_sync_app_icon,
             runtime_capabilities,

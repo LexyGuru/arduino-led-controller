@@ -14,7 +14,7 @@
 #include <stdarg.h>
 #include "secrets.h"
 
-#define FIRMWARE_VERSION "5.0.0-beta.8"
+#define FIRMWARE_VERSION "5.0.0-beta.9"
 #define FIRMWARE_FEATURE "f14-direct-api-v1-only-storage-udp-ntp-dst-ota-exclusive-v191-matrix-neopixel-stable-bootgen-sizeopt"
 #define OTA_MAINTENANCE_MODE_V1 1
 #define DIRECT_API_VERSION "1.0.0"
@@ -415,8 +415,27 @@ void logEvent(const char* type, const char* message) {
   if (otaExclusiveMode) return;
   storeConsoleLine(type, message, true);
 }
+void logCode(const char* type, const char* code) {
+  logEvent(type, code);
+}
+void logCodef(const char* type, const char* code, const char* format, ...) {
+  char message[80];
+  int prefix = snprintf(message, sizeof(message), "%s", code);
+  if (prefix < 0 || static_cast<size_t>(prefix) >= sizeof(message)) return;
+  if (format && format[0]) {
+    size_t used = static_cast<size_t>(prefix);
+    if (used + 1 >= sizeof(message)) return;
+    message[used++] = ':';
+    message[used] = 0;
+    va_list args;
+    va_start(args, format);
+    vsnprintf(message + used, sizeof(message) - used, format, args);
+    va_end(args);
+  }
+  logEvent(type, message);
+}
 void consoleLine(const char* message) {
-  storeConsoleLine("console", message, false);
+  Serial.println(message);
 }
 void clearRamLogs() { logStart = 0; logSize = 0; }
 
@@ -609,14 +628,14 @@ void loadPersistentConfig() {
     apiSettingsStored = apiSettingsValid(apiSettings);
     if (networkSettingsStored && apiSettingsStored && saveConfigAb()) {
       legacyStorageMigrated = true;
-      logEvent("success", "Legacy konfiguracio A/B storage-ba migralva");
+      logCode("success", "X1001");
     }
   }
   deviceKeyFingerprint = apiSettingsStored ? fnv1aText(apiSettings.sharedSecret) : 0;
-  logEvent(networkSettingsStored && apiSettingsStored ? "success" : "error",
-    networkSettingsStored && apiSettingsStored
-      ? "A/B WiFi, OTA es API konfiguracio betoltve"
-      : "Nincs ervenyes konfiguracio");
+  if (networkSettingsStored && apiSettingsStored)
+    logCode("success", "X1002");
+  else
+    logCode("error", "X1003");
 }
 
 uint32_t settingsChecksum(const NetworkSettings& s) {
@@ -675,16 +694,16 @@ void loadNetworkSettings() {
     strcmp(networkSettings.otaPassword, OTA_PASSWORD));
   if (compiled && (!stored || differs)) {
     saveCompiledNetworkSettings();
-    logEvent("success", "WiFi es OTA beallitas EEPROM-be mentve");
+    logCode("success", "X1101");
   } else if (stored) {
     networkSettingsStored = true;
-    logEvent("success", "WiFi es OTA beallitas EEPROM-bol betoltve");
+    logCode("success", "X1102");
   } else {
     memset(&networkSettings, 0, sizeof(networkSettings));
     copyText(networkSettings.ssid, sizeof(networkSettings.ssid), WIFI_SSID);
     copyText(networkSettings.password, sizeof(networkSettings.password), WIFI_PASSWORD);
     copyText(networkSettings.otaPassword, sizeof(networkSettings.otaPassword), OTA_PASSWORD);
-    logEvent("error", "Nincs ervenyes WiFi beallitas; USB-s feltoltes kell");
+    logCode("error", "X1103");
   }
 }
 void saveCompiledApiSettings() {
@@ -706,14 +725,14 @@ void loadApiSettings() {
     strcmp(apiSettings.sharedSecret, API_SHARED_SECRET));
   if (compiled && (!stored || differs)) {
     saveCompiledApiSettings();
-    logEvent("success", "Vedett API beallitas EEPROM-be mentve");
+    logCode("success", "X1201");
   } else if (stored) {
     apiSettingsStored = true;
     deviceKeyFingerprint = fnv1aText(apiSettings.sharedSecret);
-    logEvent("success", "Vedett API beallitas EEPROM-bol betoltve");
+    logCode("success", "X1202");
   } else {
     memset(&apiSettings, 0, sizeof(apiSettings));
-    logEvent("error", "Vedett API nincs beallitva; USB-s feltoltes kell");
+    logCode("error", "X1203");
   }
 }
 
@@ -740,7 +759,7 @@ void loadSchedules() {
     activeScheduleSlotOffset = selectedOffset;
     schedulesStored = true;
     scheduleReconcileRequested = true;
-    logEvent("success", "A/B schedule EEPROM-bol betoltve");
+    logCode("success", "X1301");
     return;
   }
   ScheduleHeader legacy = {};
@@ -753,7 +772,7 @@ void loadSchedules() {
       scheduleRevision = 0;
       if (saveSchedules(scheduleCount)) {
         legacyStorageMigrated = true;
-        logEvent("success", "Legacy schedule A/B storage-ba migralva");
+        logCode("success", "X1302");
         return;
       }
     }
@@ -762,7 +781,7 @@ void loadSchedules() {
   scheduleCount = 0;
   scheduleRevision = 0;
   schedulesStored = false;
-  logEvent("warn", "Nincs ervenyes schedule; ures allapot indul");
+  logCode("warn", "X1303");
 }
 void reconcileArduinoSchedules(bool force);
 
@@ -786,7 +805,7 @@ bool saveSchedules(uint8_t count) {
   refreshManualOverrideDeadlines();
   lastScheduleAudit = 0;
   if (timeSynced) reconcileArduinoSchedules(true);
-  logEvent("success", "Schedule A/B slotba mentve es visszaellenorizve");
+  logCode("success", "X1304");
   return true;
 }
 int hexValue(char v) {
@@ -884,7 +903,7 @@ void loadTimeSettings() {
   if (timeSettingsValid(timeSettings)) {
     timeSettingsStored = true;
     scheduleReconcileRequested = true;
-    logEvent("success", "Idozona beallitas EEPROM-bol betoltve");
+    logCode("success", "X1401");
     return;
   }
   memset(&timeSettings, 0, sizeof(timeSettings));
@@ -895,7 +914,7 @@ void loadTimeSettings() {
   timeSettings.nextTransitionEpoch = 0;
   timeSettings.nextUtcOffsetMinutes = 60;
   saveTimeSettings();
-  logEvent("warn", "Idozona alapertelmezett: Europe/Vienna");
+  logCodef("warn", "X1402", "%s", "Europe/Vienna");
 }
 int64_t daysFromCivil(int year, unsigned month, unsigned day) {
   year -= month <= 2;
@@ -980,7 +999,7 @@ void refreshAutonomousTimezoneState(unsigned long epoch, bool persist) {
   timeSettings.nextUtcOffsetMinutes = nextOffset;
   if (changed && persist) {
     saveTimeSettings();
-    logEvent("info", "Idozona es DST szabaly autonom modon frissitve");
+    logCode("info", "X1403");
   }
 }
 int16_t utcOffsetMinutesForEpoch(unsigned long epoch) {
@@ -1186,7 +1205,7 @@ void reconcileArduinoSchedules(bool force = false) {
       manualOverride[led] = false;
       manualOverrideUntilMinute[led] = 0;
       manualOverrideFallbackUntilMillis[led] = 0;
-      logEvent("info", "Kezi LED felulbiralas lejart");
+      logCode("info", "X3001");
     }
     int16_t selected = -1;
     int32_t selectedRelative = -MINUTES_PER_WEEK - 1;
@@ -1220,7 +1239,7 @@ void reconcileArduinoSchedules(bool force = false) {
   if (changed) {
     renderAll(true);
     schedulerLastAppliedAt = now;
-    logEvent("info", "LED allapot schedule alapjan egyeztetve");
+    logCode("info", "X3002");
   }
 }
 
@@ -1262,8 +1281,7 @@ void serviceClockSync(bool force = false) {
     ntpFailureCount++;
     ntpLastFailureAt = now;
     if (!timeSynced || ntpFailureCount == 1 || ntpFailureCount % 10 == 0) {
-      logEvent("warn",
-        "NTP ido lekerese sikertelen minden szerverrol; ujraprobalas");
+      logCode("warn", "X2101");
     }
     return;
   }
@@ -1278,10 +1296,7 @@ void serviceClockSync(bool force = false) {
   ntpLastSuccessAt = now;
 
   if (first) {
-    logEvent("success",
-      usedUdpFallback
-        ? "UDP NTP ido szinkronizalva"
-        : "WiFi.getTime ido szinkronizalva");
+    logCode("success", usedUdpFallback ? "X2102" : "X2103");
     refreshManualOverrideDeadlines();
     lastScheduleMinute = 0xFFFFFFFFUL;
     reconcileArduinoSchedules(true);
@@ -1339,7 +1354,7 @@ void connectWifi() {
   if (wifiHasAddress()) return;
   if (!networkSettingsStored) { showMatrix(MATRIX_ERROR); return; }
   showMatrix(MATRIX_WIFI);
-  logEvent("info", "WiFi kapcsolodas inditva");
+  logCode("info", "X2001");
   WiFi.begin(networkSettings.ssid, networkSettings.password);
 }
 void printConnectionBlock() {
@@ -1398,13 +1413,10 @@ void reportWifiConnected() {
   if (!wifiHasAddress() || wifiReported) return;
   wifiReported = true;
   showMatrix(MATRIX_OK);
-  char ip[16], message[128];
+  char ip[16];
   ipToText(cachedWifiIp, ip, sizeof(ip));
-  snprintf(message, sizeof(message),
-    "WiFi kesz: %s, jel: %ld dBm, HTTP: %u, OTA: %u",
+  logCodef("success", "X2002", "%s:%ld:%u:%u",
     ip, cachedWifiRssi, HTTP_API_PORT, OTA_UPLOAD_PORT);
-  logEvent("success", message);
-  printConnectionBlock();
 }
 
 bool otaPrepareModeActive() {
@@ -1457,10 +1469,8 @@ void otaTransferError(int code, const char*) {
   otaLastErrorAt = millis();
   otaErrorIndicatorUntil = millis() + OTA_ERROR_INDICATOR_TIME;
   leaveOtaExclusiveMode();
-  char message[96];
-  snprintf(message, sizeof(message), "OTA hiba: %d - piros jelzes %lu mp", code,
+  logCodef("error", "X5003", "%d:%lu", code,
     OTA_ERROR_INDICATOR_TIME / 1000UL);
-  logEvent("error", message);
   showMatrix(MATRIX_ERROR);
 }
 void startOta() {
@@ -1472,11 +1482,9 @@ void startOta() {
   ArduinoOTA.begin(otaIp, DEVICE_NAME, networkSettings.otaPassword,
     InternalStorage);
   otaReady = true;
-  char ip[16], message[112];
+  char ip[16];
   ipToText(otaIp, ip, sizeof(ip));
-  snprintf(message, sizeof(message), "OTA fogado aktiv: %s:%u", ip,
-    OTA_UPLOAD_PORT);
-  logEvent("success", message);
+  logCodef("success", "X5001", "%s:%u", ip, OTA_UPLOAD_PORT);
 }
 bool prepareOtaService() {
   if (!wifiHasAddress()) return false;
@@ -1745,7 +1753,7 @@ void finalizeHttpAudit(HttpRequestContext& r) {
 void updateHttpTraceTimeout() {
   if (httpTraceEnabled && millis() - httpTraceStartedAt >= HTTP_TRACE_MAX_TIME) {
     httpTraceEnabled = false;
-    logEvent("info", "HTTP trace automatikusan kikapcsolva 10 perc utan");
+    logCode("info", "X4001");
   }
 }
 
@@ -3004,7 +3012,7 @@ void processPendingRemoteReboot() {
   if (!remoteRebootPending) return;
   if (static_cast<long>(millis() - remoteRebootAt) < 0) return;
   remoteRebootPending = false;
-  logEvent("cmd", "Tavoli API ujrainditas vegrehajtasa");
+  logCode("cmd", "X6001");
   rebootDevice();
 }
 void rebootDevice() {
@@ -3030,10 +3038,10 @@ void executeSerialCommand(const char* command) {
   else if (!strcmp(command, "http trace on")) {
     httpTraceEnabled = true;
     httpTraceStartedAt = millis();
-    logEvent("info", "HTTP trace bekapcsolva, maximum 10 percre");
+    logCode("info", "X4002");
   } else if (!strcmp(command, "http trace off")) {
     httpTraceEnabled = false;
-    logEvent("info", "HTTP trace kikapcsolva");
+    logCode("info", "X4003");
   } else if (!strcmp(command, "profile show")) printProfileShow();
   else if (!strcmp(command, "profile export secrets")) exportSecretProfile();
   else if (!strcmp(command, "eeprom status")) printEepromStatus();
@@ -3091,22 +3099,17 @@ void setup() {
 #endif
   matrix.begin();
   showMatrix(MATRIX_BOOT);
-  logEvent("success", "Arduino LED Controller indul");
-  char info[160];
-  snprintf(info, sizeof(info), "Firmware: %s | Arduino UNO R4 WiFi",
-    FIRMWARE_VERSION);
-  logEvent("info", info);
-  snprintf(info, sizeof(info), "Build: %s %s | funkcio: %s",
-    __DATE__, __TIME__, FIRMWARE_FEATURE);
-  logEvent("info", info);
+  logCode("success", "X0001");
+  logCodef("info", "X0002", "%s", FIRMWARE_VERSION);
+  logCodef("info", "X0003", "%s", FIRMWARE_FEATURE);
   loadPersistentConfig();
   loadTimeSettings();
   loadSchedules();
   connectWifi();
   startNtpUdpService();
   server.begin();
-  logEvent("success", "HTTP szerver elinditva a 80/TCP porton");
-  logEvent("info", "Serial diagnosztika aktiv; parancslista: help");
+  logCodef("success", "X0004", "%u", HTTP_API_PORT);
+  logCode("info", "X0005");
 }
 void loop() {
   if (wifiHasAddress()) {

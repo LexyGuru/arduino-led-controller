@@ -7,6 +7,7 @@ import {
 import {
   AlertTriangle,
   CheckCircle2,
+  CopyPlus,
   Database,
   Download,
   RefreshCw,
@@ -263,6 +264,18 @@ export function SchedulesPage({
   ] =
     useState(false);
 
+  const [
+    copySourceDay,
+    setCopySourceDay
+  ] =
+    useState(1);
+
+  const [
+    copyTargetDays,
+    setCopyTargetDays
+  ] =
+    useState<number[]>([2]);
+
   const dirty =
     scheduleFingerprint(
       draft
@@ -378,6 +391,112 @@ export function SchedulesPage({
         ),
       [draft, t]
     );
+
+  const copyDaySchedules =
+    () => {
+      const source =
+        draft.filter(
+          (item) =>
+            item.day ===
+            copySourceDay
+        );
+
+      if (
+        !source.length ||
+        !copyTargetDays.length
+      ) {
+        setFileMessage(
+          t('beta2.schedule.empty')
+        );
+        return;
+      }
+
+      const targetSet =
+        new Set(
+          copyTargetDays.filter(
+            (day) =>
+              day !==
+              copySourceDay
+          )
+        );
+
+      if (!targetSet.size) {
+        setFileMessage(
+          t('beta2.schedule.sameDayOnly')
+        );
+        return;
+      }
+
+      const sourceTimes =
+        new Set(
+          source.map(
+            (item) =>
+              item.time
+          )
+        );
+
+      setDraft(
+        (current) => {
+          const remaining =
+            current.filter(
+              (item) =>
+                !(
+                  targetSet.has(
+                    item.day
+                  ) &&
+                  sourceTimes.has(
+                    item.time
+                  )
+                )
+            );
+
+          const copied =
+            [...targetSet]
+              .flatMap(
+                (day) =>
+                  source.map(
+                    (item) => ({
+                      ...item,
+                      id:
+                        crypto.randomUUID(),
+                      day,
+                      leds:
+                        item.leds.map(
+                          (led) => ({
+                            ...led,
+                            color:
+                              [...led.color] as [
+                                number,
+                                number,
+                                number
+                              ]
+                          })
+                        )
+                    })
+                  )
+              );
+
+          return [
+            ...remaining,
+            ...copied
+          ].sort(
+            (
+              left,
+              right
+            ) =>
+              left.day -
+                right.day ||
+              left.time.localeCompare(
+                right.time
+              )
+          );
+        }
+      );
+
+      setFileMessage(
+        `${t('beta2.schedule.copied',{source:source.length,targets:targetSet.size})} ${t('beta2.schedule.saveHint')}`
+      );
+    };
 
   const setFormLed = (
     id: number,
@@ -928,6 +1047,85 @@ export function SchedulesPage({
             </p>
           </div>
         )}
+      </section>
+
+      <section className="panel beta2-schedule-copy">
+        <div className="panel-title">
+          <div>
+            <p className="eyebrow">{t('beta2.schedule.eyebrow')}</p>
+            <h2>{t('beta2.schedule.title')}</h2>
+          </div>
+          <CopyPlus />
+        </div>
+
+        <div className="beta2-copy-grid">
+          <label>
+            {t('beta2.schedule.sourceDay')}
+            <select
+              value={copySourceDay}
+              onChange={(event) =>
+                setCopySourceDay(
+                  Number(event.target.value)
+                )
+              }
+            >
+              {dayKeys.map((key, index) => (
+                <option key={key} value={index + 1}>
+                  {t(key)}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <div>
+            <span className="muted">{t('beta2.schedule.targetDays')}</span>
+            <div className="beta2-copy-targets">
+              {dayShortKeys.map((key, index) => {
+                const day = index + 1;
+                const active = copyTargetDays.includes(day);
+
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    className={active ? 'secondary active' : 'secondary'}
+                    disabled={day === copySourceDay}
+                    onClick={() =>
+                      setCopyTargetDays(
+                        (current) =>
+                          current.includes(day)
+                            ? current.filter((value) => value !== day)
+                            : [...current, day].sort()
+                      )
+                    }
+                  >
+                    {t(key)}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="beta2-copy-preview">
+            {t('beta2.schedule.preview',{
+              source: draft.filter((item) => item.day === copySourceDay).length,
+              targets: copyTargetDays.filter((day) => day !== copySourceDay).length
+            })}
+          </div>
+
+          <button
+            type="button"
+            className="secondary"
+            disabled={
+              state.busy ||
+              !draft.some((item) => item.day === copySourceDay)
+            }
+            onClick={copyDaySchedules}
+          >
+            <CopyPlus size={17} />
+            {t('beta2.schedule.copy')}
+          </button>
+        </div>
       </section>
 
       {conflict && (

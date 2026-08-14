@@ -9,6 +9,7 @@
     "core:default",
     "opener:default",
     "dialog:default",
+    "dialog:allow-save",
     "dialog:allow-message",
     "dialog:allow-confirm"
   ],

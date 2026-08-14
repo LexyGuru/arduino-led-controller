@@ -97,8 +97,8 @@ assert.ok(readme.includes('actions/workflows/firmware-beta-release.yml'));
 assert.ok(readme.includes('actions/workflows/beta-release.yml'));
 
 for (const marker of [
-  '5.5.1-beta.1',
-  '5.0.0-beta.8',
+  '5.5.1-beta.2',
+  '5.0.0-beta.9',
   'next/v5-rearchitecture',
   'Stabil ág | `main`',
   'Debian 13 Rust LXC',
@@ -228,7 +228,7 @@ assert.ok(!fw.includes('"America/New_York"'));
 
 for (const file of [
   'README.md',
-  'docs/v5/BETA8_CURRENT_STATE.md',
+  'docs/v5/CURRENT_STATE.md',
 ]) {
   const content = fs.readFileSync(file, 'utf8');
   assert.ok(

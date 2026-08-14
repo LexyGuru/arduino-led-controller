@@ -31,6 +31,91 @@ type Preset =
   | 'rainbow'
   | 'breathe';
 
+export type V5SceneId =
+  | 'relax'
+  | 'movie'
+  | 'gaming'
+  | 'party'
+  | 'all-off';
+
+function sceneCommands(
+  strips: LedStrip[],
+  scene: V5SceneId
+): LedStrip[] {
+  const defaults =
+    strips.length
+      ? strips
+      : [1, 2, 3].map((id) => ({
+          id,
+          enabled: false,
+          brightness: 0,
+          effect: 0,
+          speed: 50,
+          color: [0, 0, 0] as [number, number, number]
+        }));
+
+  return defaults.map((strip) => {
+    if (scene === 'all-off') {
+      return {
+        ...strip,
+        enabled: false,
+        brightness: 0,
+        effect: 0
+      };
+    }
+
+    if (scene === 'relax') {
+      return {
+        ...strip,
+        enabled: true,
+        brightness: 70,
+        effect: 2,
+        speed: 24,
+        color: [80, 120, 255] as [number, number, number]
+      };
+    }
+
+    if (scene === 'movie') {
+      return {
+        ...strip,
+        enabled: strip.id !== 2,
+        brightness: strip.id === 1 ? 28 : 18,
+        effect: 0,
+        speed: 20,
+        color:
+          strip.id === 1
+            ? [255, 70, 30] as [number, number, number]
+            : [20, 20, 110] as [number, number, number]
+      };
+    }
+
+    if (scene === 'gaming') {
+      return {
+        ...strip,
+        enabled: true,
+        brightness: 145,
+        effect: strip.id === 2 ? 3 : 2,
+        speed: 55,
+        color:
+          strip.id === 1
+            ? [0, 180, 255] as [number, number, number]
+            : strip.id === 2
+              ? [255, 0, 180] as [number, number, number]
+              : [90, 0, 255] as [number, number, number]
+      };
+    }
+
+    return {
+      ...strip,
+      enabled: true,
+      brightness: 210,
+      effect: 3,
+      speed: 72,
+      color: [255, 255, 255] as [number, number, number]
+    };
+  });
+}
+
 function isLedEvent(
   event: unknown
 ) {
@@ -337,6 +422,70 @@ export function useV5Leds({
       ]
     );
 
+  const applyScene =
+    useCallback(
+      async (
+        scene: V5SceneId
+      ) => {
+        const commands =
+          sceneCommands(
+            strips,
+            scene
+          );
+
+        if (directFallback) {
+          for (const strip of commands) {
+            directUpdate(strip);
+          }
+
+          setLastResult(
+            translate('beta2.scene.directResult',{scene})
+          );
+
+          return;
+        }
+
+        setBusy(true);
+        setError(null);
+        setApiStrips(commands);
+
+        try {
+          await api.led.updateMany(
+            commands.map(
+              (strip) => ({
+                id: strip.id,
+                command:
+                  ledCommand(strip)
+              })
+            )
+          );
+
+          setLastResult(
+            translate('beta2.scene.apiResult',{scene})
+          );
+
+          await refresh();
+        } catch (
+          requestError
+        ) {
+          setError(
+            readApiError(
+              requestError
+            )
+          );
+        } finally {
+          setBusy(false);
+        }
+      },
+      [
+        api,
+        directFallback,
+        directUpdate,
+        refresh,
+        strips
+      ]
+    );
+
   const stop =
     useCallback(
       async () => {
@@ -469,6 +618,7 @@ export function useV5Leds({
     refresh,
     update,
     runPreset,
+    applyScene,
     stop,
     allOn,
     reset

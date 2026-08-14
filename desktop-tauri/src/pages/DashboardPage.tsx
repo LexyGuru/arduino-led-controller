@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { ActivityTimeline } from '../components/v55/ActivityTimeline';
 import { StatisticsPanel } from '../components/v55/StatisticsPanel';
+import { DeviceHealthPanel } from '../components/v55/DeviceHealthPanel';
 import { V5ConnectionWarning } from '../components/v5/V5ConnectionWarning';
 import { V5DataSourceBadge } from '../components/v5/V5DataSourceBadge';
 import { useTauriAudit } from '../hooks/useTauriAudit';
@@ -19,7 +20,9 @@ import { useV5Dashboard } from '../hooks/useV5Dashboard';
 import { useI18n } from '../i18n';
 import type {
   ArduinoStatus,
+  ConnectionHealthState,
   LedSchedule,
+  NetworkLog,
   ScheduleSyncState
 } from '../types';
 import { buildDashboardStatistics } from '../utils/v55Statistics';
@@ -99,12 +102,16 @@ export function DashboardPage({
   status: legacyStatus,
   schedules: legacySchedules,
   scheduleSync,
+  connectionHealth,
+  networkLogs,
   busy,
   onSyncTime
 }: {
   status: ArduinoStatus | null;
   schedules: LedSchedule[];
   scheduleSync: ScheduleSyncState;
+  connectionHealth: ConnectionHealthState;
+  networkLogs: NetworkLog[];
   busy: boolean;
   onSyncTime: () => Promise<void>;
 }) {
@@ -219,6 +226,13 @@ export function DashboardPage({
           <small>{t('dashboard.timeouts')}: {status?.http?.timeouts ?? '—'}</small>
         </article>
       </section>
+
+      <DeviceHealthPanel
+        health={connectionHealth}
+        status={status}
+        networkErrorCount={networkLogs.filter((entry) => !entry.ok).length}
+        onRetry={() => void dashboard.refresh()}
+      />
 
       <StatisticsPanel stats={stats} />
 

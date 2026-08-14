@@ -1,0 +1,149 @@
+.beta2-health-panel {
+  display: grid;
+  gap: 18px;
+}
+
+.beta2-health-panel.healthy {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--success, #2dd4bf) 28%, transparent);
+}
+
+.beta2-health-panel.recovering {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--warning, #f59e0b) 32%, transparent);
+}
+
+.beta2-health-panel.offline {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--danger, #ef4444) 28%, transparent);
+}
+
+.beta2-health-state {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.beta2-health-state strong {
+  font-size: 1.05rem;
+  letter-spacing: .08em;
+}
+
+.beta2-health-state span {
+  color: var(--text-muted);
+}
+
+.beta2-health-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.beta2-health-grid > div,
+.beta2-scene-actions,
+.beta2-schedule-copy {
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--panel) 88%, transparent);
+  border-radius: 14px;
+}
+
+.beta2-health-grid > div {
+  padding: 12px;
+  display: grid;
+  gap: 7px;
+}
+
+.beta2-health-grid span {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  color: var(--text-muted);
+  font-size: .78rem;
+}
+
+.beta2-health-grid strong {
+  font-size: 1rem;
+}
+
+.beta2-scene-panel {
+  display: grid;
+  gap: 14px;
+}
+
+.beta2-scene-actions {
+  padding: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+
+.beta2-scene-actions button {
+  min-width: 112px;
+}
+
+.beta2-schedule-copy {
+  padding: 14px;
+  display: grid;
+  gap: 12px;
+}
+
+.beta2-copy-grid {
+  display: grid;
+  grid-template-columns: minmax(150px, .6fr) 1fr auto;
+  gap: 12px;
+  align-items: end;
+}
+
+.beta2-copy-targets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.beta2-copy-targets button.active {
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.beta2-health-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.beta2-health-actions > div {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.beta2-health-actions span {
+  color: var(--text-muted);
+  font-size: .78rem;
+}
+
+.beta2-health-actions code {
+  max-width: min(720px, 70vw);
+  overflow-wrap: anywhere;
+}
+
+.beta2-copy-preview {
+  color: var(--text-muted);
+  font-size: .84rem;
+  align-self: center;
+}
+
+@media (max-width: 1000px) {
+  .beta2-health-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .beta2-copy-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .beta2-health-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

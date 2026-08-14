@@ -1,7 +1,7 @@
 # Multi-Platform Diagnostics & Logging v1
 
 **Application:** `5.5.0-beta.3`
-**Firmware:** `5.0.0-beta.8`
+**Firmware:** `5.0.0-beta.9`
 **Direct API:** `1.0.0`
 
 ## Scope
@@ -31,4 +31,4 @@ Device Key, OTA password, Authorization/Bearer token, API key, token/secret/pass
 
 ## Verziók
 
-`Application=5.5.0-beta.3`, `Firmware=5.0.0-beta.8`, `Direct API=1.0.0`.
+`Application=5.5.0-beta.3`, `Firmware=5.0.0-beta.9`, `Direct API=1.0.0`.

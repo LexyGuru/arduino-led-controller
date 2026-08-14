@@ -10,12 +10,25 @@ import {
   Trash2
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { invoke } from '@tauri-apps/api/core';
+import { save } from '@tauri-apps/plugin-dialog';
 import { V5DataSourceBadge } from '../components/v5/V5DataSourceBadge';
 import { V5LogToolbar } from '../components/v5/V5LogToolbar';
 import { useTauriAudit } from '../hooks/useTauriAudit';
 import { useV5Logs } from '../hooks/useV5Logs';
 import { useI18n } from '../i18n';
-import type { ArduinoLog, NetworkLog } from '../types';
+import type {
+  ArduinoLog,
+  ArduinoStatus,
+  ConnectionHealthState,
+  NetworkLog
+} from '../types';
+import { createDiagnosticsZip } from '../utils/diagnosticsZip';
+import {
+  localizeAuditMessage,
+  localizeNetworkMessage
+} from '../utils/logLocalization';
+import { localizeFirmwareEventMessage } from '../utils/firmwareEventCodes';
 
 type LevelFilter = 'all' | 'info' | 'action' | 'success' | 'warning' | 'error';
 type SourceFilter = 'all' | 'arduino' | 'audit' | 'network';
@@ -23,24 +36,37 @@ type SourceFilter = 'all' | 'arduino' | 'audit' | 'network';
 const match = (value: unknown, query: string) =>
   !query || String(value || '').toLowerCase().includes(query.toLowerCase());
 
-function downloadText(name: string, text: string) {
-  const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
-  anchor.href = url;
-  anchor.download = name;
-  anchor.click();
-  URL.revokeObjectURL(url);
+async function saveNativeExport(
+  name: string,
+  bytes: Uint8Array,
+  kind: 'zip' | 'log'
+) {
+  const path = await save({
+    defaultPath: name,
+    filters: [{ name: kind.toUpperCase(), extensions: [kind] }]
+  });
+
+  if (!path) return null;
+
+  return invoke<string>('write_export_file', {
+    path,
+    bytes: Array.from(bytes),
+    kind
+  });
 }
 
 export function LogsPage({
   arduino,
   network,
-  error
+  error,
+  status,
+  connectionHealth
 }: {
   arduino: ArduinoLog[];
   network: NetworkLog[];
   error?: string | null;
+  status: ArduinoStatus | null;
+  connectionHealth: ConnectionHealthState;
 }) {
   const { t, language } = useI18n();
   const state = useV5Logs({
@@ -63,7 +89,7 @@ export function LogsPage({
       sortTime: Date.parse(item.timestamp) || 0,
       level: item.type === 'error' ? 'error' : 'info',
       source: 'arduino',
-      message: item.message
+      message: localizeFirmwareEventMessage(item.message, t)
     }));
 
     const auditRows = local.entries.map((item) => ({
@@ -72,7 +98,7 @@ export function LogsPage({
       sortTime: item.timestamp,
       level: item.level,
       source: 'audit',
-      message: `${item.source} · ${item.message}`
+      message: `${item.source} · ${localizeAuditMessage(item, t)}`
     }));
 
     const networkRows = state.networkLogs.map((item, index) => ({
@@ -81,7 +107,7 @@ export function LogsPage({
       sortTime: item.timestamp * 1000,
       level: item.ok ? 'info' : 'error',
       source: 'network',
-      message: `${item.endpoint} · ${item.message}`
+      message: `${item.endpoint} · ${localizeNetworkMessage(item.message, t)}`
     }));
 
     return [...consoleRows, ...auditRows, ...networkRows]
@@ -90,17 +116,95 @@ export function LogsPage({
       .filter((item) => source === 'all' || item.source === source)
       .filter((item) => match(`${item.level} ${item.source} ${item.message}`, query))
       .slice(0, 500);
-  }, [level, local.entries, query, source, state.consoleLogs, state.networkLogs]);
+  }, [language, level, local.entries, query, source, state.consoleLogs, state.networkLogs]);
 
   const visibleRows = paused ? unified.slice(0, 100) : unified;
 
-  const exportLogs = () => {
+  const exportDiagnostics =
+    async () => {
+      const createdAt =
+        new Date().toISOString();
+
+      const summary =
+        JSON.stringify(
+          {
+            schemaVersion: 1,
+            createdAt,
+            status,
+            connectionHealth,
+            counts: {
+              arduino:
+                state.consoleLogs.length,
+              audit:
+                local.entries.length,
+              network:
+                state.networkLogs.length
+            }
+          },
+          null,
+          2
+        );
+
+      const arduinoText =
+        state.consoleLogs
+          .map(
+            (item) =>
+              `${item.timestamp}\t${item.type}\t${item.message}`
+          )
+          .join('\n');
+
+      const networkText =
+        state.networkLogs
+          .map(
+            (item) =>
+              `${item.timestamp}\t${item.ok ? 'OK' : 'ERROR'}\t${item.endpoint}\t${item.message}`
+          )
+          .join('\n');
+
+      const auditText =
+        local.entries
+          .map(
+            (item) =>
+              `${new Date(item.timestamp).toISOString()}\t${item.level}\t${item.source}\t${item.message}`
+          )
+          .join('\n');
+
+      const bytes =
+        createDiagnosticsZip([
+          {
+            name: 'diagnostics.json',
+            content: summary
+          },
+          {
+            name: 'arduino.log',
+            content: arduinoText
+          },
+          {
+            name: 'network.log',
+            content: networkText
+          },
+          {
+            name: 'audit.log',
+            content: auditText
+          }
+        ]);
+
+      await saveNativeExport(
+        `arduino-led-controller-diagnostics-${Date.now()}.zip`,
+        bytes,
+        'zip'
+      );
+    };
+
+  const exportLogs = async () => {
     const lines = unified.map((item) =>
       `${item.timestamp}\t${item.level}\t${item.source}\t${item.message}`
     );
-    downloadText(
+
+    await saveNativeExport(
       `arduino-led-controller-activity-${Date.now()}.log`,
-      lines.join('\n')
+      new TextEncoder().encode(lines.join('\n')),
+      'log'
     );
   };
 
@@ -156,9 +260,23 @@ export function LogsPage({
             {paused ? <Play size={16}/> : <Pause size={16}/>}
             {t(paused ? 'logs2.resume' : 'logs2.pause')}
           </button>
-          <button className="secondary" onClick={exportLogs}>
+          <button
+            className="secondary"
+            onClick={() => void exportLogs().catch((error) =>
+              console.error('Log export failed', error)
+            )}
+          >
             <Download size={16}/>
             {t('logs2.export')}
+          </button>
+          <button
+            className="secondary"
+            onClick={() => void exportDiagnostics().catch((error) =>
+              console.error('Diagnostics export failed', error)
+            )}
+          >
+            <Download size={16}/>
+            {t('beta2.diagnostics.export')}
           </button>
           <button
             className="secondary danger"
@@ -175,7 +293,7 @@ export function LogsPage({
 
       {state.error && (
         <p className="console-warning">
-          {state.error.code}: {state.error.message}
+          {state.error.code}: {localizeNetworkMessage(state.error.message, t)}
         </p>
       )}
 
@@ -185,19 +303,19 @@ export function LogsPage({
           <strong>{visibleRows.length}</strong>
         </article>
         <article>
-          <span>Arduino</span>
+          <span>{t('logs.summary.arduino')}</span>
           <strong>{state.consoleLogs.length}</strong>
         </article>
         <article>
-          <span>Audit</span>
+          <span>{t('logs.summary.audit')}</span>
           <strong>{local.entries.length}</strong>
         </article>
         <article>
-          <span>Network</span>
+          <span>{t('logs.summary.network')}</span>
           <strong>{state.networkLogs.length}</strong>
         </article>
         <article>
-          <span>Error</span>
+          <span>{t('logs.summary.error')}</span>
           <strong className="bad">
             {unified.filter((item) => item.level === 'error').length}
           </strong>
@@ -238,7 +356,7 @@ export function LogsPage({
           <article className="panel">
             <div className="panel-title">
               <div>
-                <p className="eyebrow">ARDUINO</p>
+                <p className="eyebrow">{t('logs.summary.arduino')}</p>
                 <h2>{t('logs.consoleCache')}</h2>
               </div>
               <RadioTower />
@@ -248,7 +366,7 @@ export function LogsPage({
                 <div key={item.id || `${item.timestamp}-${index}`}>
                   <time>{item.timestamp || '—'}</time>
                   <b>{(item.type || 'info').toUpperCase()}</b>
-                  <span>{item.message || ''}</span>
+                  <span>{localizeFirmwareEventMessage(item.message, t)}</span>
                 </div>
               ))}
             </div>
@@ -273,7 +391,7 @@ export function LogsPage({
                     })}
                   </time>
                   <b>{item.source}</b>
-                  <span>{item.message}</span>
+                  <span>{localizeAuditMessage(item, t)}</span>
                 </div>
               ))}
             </div>

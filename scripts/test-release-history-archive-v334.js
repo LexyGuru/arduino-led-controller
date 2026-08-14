@@ -9,7 +9,7 @@ const read = (p) => fs.readFileSync(p, 'utf8');
 const history = [
   ['docs/v5/BETA3_RELEASE_NOTES.md', '5.0.0-beta.3'],
   ['docs/v5/BETA4_RELEASE_NOTES.md', '5.0.0-beta.4'],
-  ['docs/v5/BETA8_RELEASE_NOTES.md', '5.0.0-beta.8'],
+  ['docs/v5/BETA8_RELEASE_NOTES.md', '5.0.0-beta.9'],
   ['docs/v5/BETA9_RELEASE_NOTES.md', '5.0.0-beta.9'],
   ['docs/v5/BETA10_RELEASE_NOTES.md', '5.0.0-beta.10']
 ];

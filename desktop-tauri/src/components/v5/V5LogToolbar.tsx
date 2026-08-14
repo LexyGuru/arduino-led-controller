@@ -3,6 +3,8 @@ import {
   Trash2
 } from 'lucide-react';
 
+import { useI18n } from '../../i18n';
+
 export function V5LogToolbar({
   query,
   onQuery,
@@ -16,6 +18,8 @@ export function V5LogToolbar({
   apiAvailable: boolean;
   onClear: () => void;
 }) {
+  const { t } = useI18n();
+
   return (
     <div className="v5-log-toolbar">
       <label>
@@ -24,7 +28,7 @@ export function V5LogToolbar({
         <input
           value={query}
           onChange={(event) => onQuery(event.target.value)}
-          placeholder="Szűrés üzenetre, témára, útvonalra…"
+          placeholder={t('logs.toolbar.searchPlaceholder')}
         />
       </label>
 
@@ -34,7 +38,7 @@ export function V5LogToolbar({
         onClick={() => {
           if (
             globalThis.confirm(
-              'Biztosan törlöd az Arduino konzolt?'
+              t('logs.toolbar.clearConfirm')
             )
           ) {
             onClear();
@@ -42,7 +46,7 @@ export function V5LogToolbar({
         }}
       >
         <Trash2 size={16} />
-        Arduino konzol törlése
+        {t('logs.toolbar.clearArduino')}
       </button>
     </div>
   );

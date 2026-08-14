@@ -1,40 +1,16 @@
-# V5.5 Beta.2 Release Checklist — 5.5.0-beta.2
+# V5.5.1 Beta.2 – Release Checklist
 
-## Application artifacts
-
-- [ ] Windows x86_64
-- [ ] macOS Apple Silicon
-- [ ] macOS Intel
-- [ ] Linux x86_64 AppImage
-- [ ] Linux x86_64 DEB
-- [ ] Android APK/AAB
-- [ ] iPhone és iPad unsigned IPA
-- [ ] LXC / Debian szerver
-
-## Firmware separation
-
-- [ ] Arduino UNO R4 WiFi firmware remains a dedicated prerelease
-- [ ] application release contains no firmware `.bin`
-
-## V5.5 contracts
-
-- [ ] Theme Engine 2.0
-- [ ] Core UI 1.5
-- [ ] Dashboard 2.0 / Statistics 1.0
-- [ ] Activity & Logs 2.0
-- [ ] Management UI 2.0
-- [ ] App Update Center 1.0
-- [ ] LXC runtime isolation
-
-## Validation
-
-- [ ] Teljes alkalmazási staging
-- [ ] full `npm test`
-- [ ] repository validation
-- [ ] desktop build
-- [ ] LXC build
-- [ ] Rust check/test
-- [ ] SHA256SUMS
-- [ ] SBOM.cdx.json
-- [ ] PROVENANCE.json
-- [ ] SECRET-SCAN.json
+- [x] alkalmazás `5.5.1-beta.2`
+- [x] firmware `5.0.0-beta.9`
+- [x] Direct API `1.0.0`
+- [x] Beta.2 semantic/i18n contract
+- [x] TypeScript
+- [x] teljes npm regression
+- [x] repository validation
+- [x] Rust tests/check
+- [x] Event Code Protocol v1
+- [x] külső BIN OTA hardverteszt
+- [x] bootGeneration + persistence
+- [x] firmware catalog downgrade guard
+- [x] HU/EN/DE OTA runtime display
+- [x] main változatlan

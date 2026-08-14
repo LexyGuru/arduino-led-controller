@@ -1,9 +1,9 @@
-# Firmware 5.0.0-beta.8
+# Firmware 5.0.0-beta.9
 
 ## Állapot
 
 - Alkalmazás: `5.5.0-beta.2`
-- Firmware: `5.0.0-beta.8`
+- Firmware: `5.0.0-beta.9`
 - Direct API: `1.0.0`
 - Célhardver: Arduino UNO R4 WiFi
 - Fejlesztési ág: `next/v5-rearchitecture`
@@ -49,7 +49,7 @@ bootGeneration nem változott
 Régi firmware esetén, amely még nem ad `bootGeneration` mezőt, a Boot ID
 legacy fallbackként megmarad.
 
-A `5.0.0-beta.7 -> 5.0.0-beta.8` első migráció külön kezelhető: mivel a régi
+A `5.0.0-beta.7 -> 5.0.0-beta.9` első migráció külön kezelhető: mivel a régi
 firmware még nem biztosít bootGeneration előértéket, a várt új firmware-verzió
 aktív Direct API státusza igazolja a verzióátmenetet.
 
@@ -89,10 +89,10 @@ telemetriaként, de ez már nem egy második success/failure gate.
 
 ## Kiadás előtti kötelező runtime teszt
 
-1. `5.0.0-beta.7 -> 5.0.0-beta.8` OTA.
+1. `5.0.0-beta.7 -> 5.0.0-beta.9` OTA.
 2. `/api/v1/status` válaszban `bootGeneration` jelenléte.
 3. Normál reboot után `bootGeneration` változása.
-4. `5.0.0-beta.8 -> 5.0.0-beta.8` ugyanazon BIN újratelepítése.
+4. `5.0.0-beta.9 -> 5.0.0-beta.9` ugyanazon BIN újratelepítése.
 5. Same-version reinstall csak változott `bootGeneration` mellett fogadható el.
 6. Schedule revision/checksum persistence ellenőrzése.
 7. Desktop és mobil OTA flow későbbi fizikai ellenőrzése.

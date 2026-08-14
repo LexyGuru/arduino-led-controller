@@ -12,6 +12,20 @@ export interface RuntimeCapabilities {
   otaSupported: boolean;
 }
 
+export interface ConnectionHealthState {
+  state:
+    | 'healthy'
+    | 'recovering'
+    | 'offline'
+    | 'unconfigured';
+  consecutiveFailures: number;
+  lastSuccessAt: number | null;
+  lastFailureAt: number | null;
+  nextRetryAt: number | null;
+  pollIntervalMs: number;
+  lastError: string | null;
+}
+
 export interface ConnectionConfig {
   profileName: string;
   language: 'hu' | 'en' | 'de';
