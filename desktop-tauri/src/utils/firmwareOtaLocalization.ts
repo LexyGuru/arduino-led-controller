@@ -1,4 +1,4 @@
-import type { AppLanguage } from '../i18n';
+import type { AppLanguage } from '../i18n/runtime';
 
 const stageTranslations: Record<AppLanguage, Record<string, string>> = {
   hu: {},

@@ -7,7 +7,7 @@ const read = (p) => fs.readFileSync(p, 'utf8');
 const schedules = read('desktop-tauri/src/pages/SchedulesPage.tsx');
 const dashboard = read('desktop-tauri/src/pages/DashboardPage.tsx');
 const firmware = read('desktop-tauri/src/pages/FirmwarePage.tsx');
-const i18n = read('desktop-tauri/src/i18n/index.tsx');
+const i18n = read('desktop-tauri/src/i18n/runtime.ts');
 
 for (const token of [
   'const dayKeys',

@@ -21,7 +21,7 @@ import {
   normalizeEvents
 } from '../services/v5LogModels.mjs';
 
-import { translate } from '../i18n';
+import { translate } from '../i18n/runtime';
 
 import type {
   ArduinoLog,

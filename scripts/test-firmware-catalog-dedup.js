@@ -4,7 +4,7 @@ const assert = require('assert');
 const fs = require('fs');
 const read = (file) => fs.readFileSync(file, 'utf8');
 const page = fs.readFileSync('desktop-tauri/src/pages/FirmwarePage.tsx','utf8');
-const i18n = fs.readFileSync('desktop-tauri/src/i18n/index.tsx','utf8');
+const i18n = fs.readFileSync('desktop-tauri/src/i18n/runtime.ts','utf8');
 const types = fs.readFileSync('desktop-tauri/src/types/index.ts','utf8');
 const rust = read('desktop-tauri/src-tauri/src/lib.rs');
 assert.match(page, /function deduplicateFirmwareCatalog/);

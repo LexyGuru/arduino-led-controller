@@ -20,7 +20,7 @@ import {
   shouldUseDirectFallback
 } from '../services/v5LedModels.mjs';
 
-import { translate } from '../i18n';
+import { translate } from '../i18n/runtime';
 
 import type {
   LedStrip

@@ -9,7 +9,7 @@ import {
   tauriApi
 } from '../services/tauriApi';
 
-import { translate } from '../i18n';
+import { translate } from '../i18n/runtime';
 
 import type {
   ArduinoLog,

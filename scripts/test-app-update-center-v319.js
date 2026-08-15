@@ -11,7 +11,7 @@ const hook=read('desktop-tauri/src/hooks/useAppUpdateCenter.ts');
 const component=read('desktop-tauri/src/components/v55/AppUpdateCenter.tsx');
 const css=read('desktop-tauri/src/v55-app-update-center.css');
 const main=read('desktop-tauri/src/main.tsx');
-const i18n=read('desktop-tauri/src/i18n/index.tsx');
+const i18n=read('desktop-tauri/src/i18n/runtime.ts');
 
 for(const marker of [
   'tauriApi.appVersion()',

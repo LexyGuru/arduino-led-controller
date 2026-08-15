@@ -6,7 +6,7 @@ const path = require('path');
 const root = path.resolve(__dirname, '..');
 const read = p => fs.readFileSync(path.join(root,p),'utf8');
 const controller = read('desktop-tauri/src/hooks/useController.ts');
-const i18n = read('desktop-tauri/src/i18n/index.tsx');
+const i18n = read('desktop-tauri/src/i18n/runtime.ts');
 const schedules = read('desktop-tauri/src/pages/SchedulesPage.tsx');
 const styles = read('desktop-tauri/src/styles.css');
 const apiCss = read('desktop-tauri/src/api-v2.css');

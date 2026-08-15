@@ -1,0 +1,80 @@
+.beta3-update-center{display:grid;gap:14px}
+.beta3-update-center-compact{padding-bottom:16px}
+.beta3-update-center-title{align-items:flex-start;margin-bottom:0}
+.beta3-update-subtitle{max-width:760px;margin:5px 0 0;opacity:.72}
+.beta3-update-check{white-space:nowrap}
+.beta3-update-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.beta3-update-card{display:grid;align-content:start;gap:11px;min-width:0;padding:14px;border:1px solid var(--border);border-radius:var(--radius-lg);background:var(--surface-muted)}
+.beta3-update-card-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.beta3-update-card-head strong{font-size:.98rem}
+.beta3-update-channel{padding:3px 8px;border:1px solid var(--border);border-radius:999px;font-size:.72rem;font-weight:700;opacity:.78}
+.beta3-version-pair{display:grid;grid-template-columns:1fr auto 1fr;align-items:end;gap:9px}
+.beta3-version-pair>div{display:grid;gap:2px;min-width:0}
+.beta3-version-pair>div:last-child{text-align:right}
+.beta3-version-pair small{opacity:.62}
+.beta3-version-pair b{overflow-wrap:anywhere}
+.beta3-version-pair>span{opacity:.4;padding-bottom:1px}
+.beta3-update-relation,.beta3-readiness-statuses span{display:inline-flex;align-items:center;gap:6px}
+.beta3-update-relation{width:fit-content;font-weight:700;font-size:.88rem}
+.beta3-update-relation.newer{color:var(--success)}
+.beta3-update-relation.older{color:var(--danger)}
+.beta3-readiness-line{display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px;padding-top:2px}
+.beta3-readiness-label{font-weight:700;opacity:.62}
+.beta3-readiness-statuses{display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px}
+.beta3-readiness-statuses span{font-size:.76rem;font-weight:700}
+.beta3-readiness-statuses .ready{color:var(--success)}
+.beta3-readiness-statuses .missing{color:var(--danger)}
+.beta3-readiness-dot{width:7px;height:7px;flex:0 0 7px;border-radius:999px;background:currentColor}
+.beta3-update-action{width:fit-content;min-height:34px}
+.beta3-update-note{margin:0}
+.beta3-firmware-support-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+@media(max-width:820px){.beta3-update-grid,.beta3-firmware-support-grid{grid-template-columns:1fr}.beta3-update-center-title{gap:10px}.beta3-update-check{width:100%;justify-content:center}}
+
+
+/* Beta.3 firmware status + bounded restore catalog */
+.v55-firmware-page .firmware-status-summary{
+  margin:.2rem 0 .65rem;
+  font-weight:700;
+  color:var(--ds-text-secondary);
+}
+.v55-firmware-page .v5-firmware-catalog-scroll{
+  max-height:min(58vh,560px);
+  overflow-y:auto;
+  overflow-x:hidden;
+  overscroll-behavior:contain;
+  scrollbar-gutter:stable;
+  padding-right:8px;
+  scroll-padding-block:10px;
+  outline:none;
+}
+.v55-firmware-page .v5-firmware-catalog-scroll:focus-visible{
+  box-shadow:0 0 0 2px color-mix(in srgb,var(--ds-accent) 42%,transparent);
+  border-radius:var(--ds-radius-medium);
+}
+.v55-firmware-page .v5-firmware-catalog-scroll>article{
+  scroll-margin-block:8px;
+}
+@media(max-width:820px){
+  .v55-firmware-page .v5-firmware-catalog-scroll{
+    max-height:min(62vh,520px);
+    padding-right:5px;
+  }
+}
+
+/* Beta.3 OTA2 operations UX */
+.beta3-ota2-operation{display:grid;gap:14px}
+.beta3-ota2-operation.is-critical{border-color:color-mix(in srgb,var(--ds-warning) 55%,var(--ds-border))}
+.beta3-ota2-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.beta3-ota2-summary>div{display:grid;gap:4px;min-width:0}
+.beta3-ota2-summary span,.beta3-ota2-history small{color:var(--ds-text-muted);font-size:12px}
+.beta3-ota2-summary strong,.beta3-ota2-summary code{overflow:hidden;text-overflow:ellipsis}
+.beta3-ota2-progress{height:8px;overflow:hidden;border-radius:999px;background:color-mix(in srgb,var(--ds-border) 72%,transparent)}
+.beta3-ota2-progress>div{height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--ds-accent),var(--ds-accent-hover));transition:width 180ms ease}
+.beta3-ota2-blockers{display:grid;gap:6px}
+.beta3-ota2-blockers strong,.beta3-ota2-history-title{display:flex;align-items:center;gap:7px}
+.beta3-ota2-blockers ul{margin:0;padding-left:22px}
+.beta3-ota2-cancel-row{display:flex;align-items:center;min-height:36px}
+.beta3-ota2-history{display:grid;gap:5px;padding-top:4px}
+.beta3-ota2-history-row{display:grid;grid-template-columns:72px minmax(0,1fr) 48px;gap:8px;align-items:center;font-size:12px}
+.beta3-ota2-history-row small{text-align:right}
+@media(max-width:760px){.beta3-ota2-summary{grid-template-columns:1fr}}

@@ -25,6 +25,20 @@ import {
 
 import { tauriApi } from '../services/tauriApi';
 
+import { runUpdateCenterCheckBoth } from '../utils/updateCenterRefreshOrchestrator.mjs';
+import {
+  createOta2LiveInstallController
+} from '../utils/ota2LiveInstallController.mjs';
+import {
+  createOta2RuntimeState
+} from '../utils/ota2RuntimeState.mjs';
+
+import { Ota2OperationPanel } from '../components/v55/Ota2OperationPanel';
+import { isOta2CancelSafe, OTA2_UX_CODES } from '../utils/ota2UxModel.mjs';
+import { runAudited } from '../services/tauriAudit';
+
+import { createOta2RecoveryCoordinator } from '../utils/ota2Recovery.mjs';
+
 import { useI18n } from '../i18n';
 
 import { localizeOtaMessage, localizeOtaStage } from '../utils/firmwareOtaLocalization';
@@ -37,6 +51,7 @@ import type {
 } from '../types';
 
 import { V5BetaBadge } from '../components/v5/V5BetaBadge';
+import { UpdateCenterPanel } from '../components/v55/UpdateCenterPanel';
 
 interface FirmwarePageProps {
   firmware: FirmwareStatus | null;
@@ -152,6 +167,14 @@ export function FirmwarePage({
   const [releaseCatalog, setReleaseCatalog] = useState<FirmwareArtifact[]>([]);
   const [catalogError, setCatalogError] = useState('');
   const [pendingInstallVersion, setPendingInstallVersion] = useState<string | null>(null);
+  const [ota2Runtime, setOta2Runtime] = useState(
+    createOta2RuntimeState()
+  );
+  const [ota2Result, setOta2Result] = useState<any>(null);
+  const [ota2Installing, setOta2Installing] = useState(false);
+  const [ota2SelectedMode, setOta2SelectedMode] = useState<
+    'update' | 'reinstall' | 'restore' | null
+  >(null);
   const externalFirmwareInputRef = useRef<HTMLInputElement | null>(null);
   const [externalFirmwareBusy, setExternalFirmwareBusy] = useState(false);
   const firmwareCatalog = deduplicateFirmwareCatalog(releaseCatalog);
@@ -164,6 +187,85 @@ export function FirmwarePage({
     } catch (error) {
       setCatalogError(String(error));
     }
+  };
+
+  const checkBoth = async () => {
+    await runUpdateCenterCheckBoth({
+      refreshStatus: () =>
+        state.refresh({
+          forceCheck: true
+        }),
+      refreshFirmwareCatalog:
+        refreshCatalog
+    });
+  };
+  const installCatalogItem = async (
+    item: FirmwareArtifact,
+    version: string,
+    mode: 'update' | 'reinstall' | 'restore'
+  ) => {
+    setOta2Runtime(createOta2RuntimeState());
+    setOta2Result(null);
+    setOta2SelectedMode(mode);
+    setOta2Installing(true);
+
+    const recovery = createOta2RecoveryCoordinator({
+
+      loadSchedules: tauriApi.loadSchedulesFromArduino,
+
+      createScheduleBackup: tauriApi.createScheduleBackup
+
+    });
+
+
+    const controller = createOta2LiveInstallController({
+      firmwareInstallRelease: tauriApi.firmwareInstallRelease,
+      firmwareStatus: tauriApi.firmwareStatus,
+      subscribeProgress: tauriApi.listenOtaProgress,
+      createBackup: () => recovery.prepare()
+    });
+
+    try {
+      const result = await runAudited(
+        {
+          source: 'ota',
+          action: `ota.catalog.${mode}`,
+          message: t('beta3.ota2.audit.start', {
+            mode: t(`beta3.ota2.mode.${mode}`),
+            version
+          }),
+          successMessage: t('beta3.ota2.audit.success', { version })
+        },
+        async () => {
+          const value = await controller.install({
+            firmware,
+            artifact: item,
+            version,
+            onRuntime: setOta2Runtime
+          });
+          if (!value.ok) {
+            const error = new Error(`OTA2 ${value.code}`) as Error & { ota2Result?: unknown };
+            error.ota2Result = value;
+            throw error;
+          }
+          return value;
+        }
+      );
+      setOta2Result(result);
+    } catch (error) {
+      const carried = (error as Error & { ota2Result?: unknown }).ota2Result;
+      setOta2Result(carried ?? { ok: false, code: OTA2_UX_CODES.UI_OPERATION_FAILED });
+    } finally {
+      setOta2Installing(false);
+      await state.refresh({ forceCheck: true });
+      await refreshCatalog();
+    }
+  };
+
+  const cancelOta2 = async () => {
+    if (!ota2Installing || !isOta2CancelSafe(ota2Runtime.stage)) return;
+    await state.cancel();
+    setOta2Result({ ok: false, code: OTA2_UX_CODES.CANCEL_REQUESTED });
   };
 
   useEffect(() => { void refreshCatalog(); }, [firmware?.firmwareUpdateChannel]);
@@ -254,11 +356,7 @@ export function FirmwarePage({
             className="secondary"
             onClick={
               () =>
-                void state
-                  .refresh({
-                    forceCheck:
-                      true
-                  })
+                void checkBoth()
             }
             disabled={
               state.busy
@@ -296,70 +394,26 @@ export function FirmwarePage({
         </section>
       )}
 
-      <section className="stats-grid v55-firmware-stats">
+      <UpdateCenterPanel firmware={firmware} busy={state.busy || ota2Installing}
+        onCheck={
+          () =>
+            void checkBoth()
+        }
+        onInstallFirmware={() => { void state.startUpdate(); }}
+      />
+
+      <section className="stats-grid beta3-firmware-support-grid">
         <article className="stat-card">
-          <small>
-            {t('firmware.installed')}
-          </small>
-          <strong>
-            {firmware
-              ?.installedVersion ??
-            t('common.unknown')}
-          </strong>
+          <small>{t('firmware.otaTarget')}</small>
+          <strong>{otaTarget}</strong>
         </article>
 
         <article className="stat-card">
-          <small>
-            {availableIsOlderThanInstalled ? t('firmware.catalogLatest') : t('firmware.available')}
-          </small>
-          <strong>
-            {available
-              ?.firmwareVersion ??
-            available?.tag ??
-            t('common.noData')}
-          </strong>
-        </article>
-
-        <article className="stat-card">
-          <small>
-            {t('firmware.backupService')}
-          </small>
+          <small>{t('firmware.backupService')}</small>
           <strong>
             {firmware?.backupStoreConfigured
               ? t('common.active')
               : t('common.unavailable')}
-          </strong>
-        </article>
-
-        <article className="stat-card">
-          <small>
-            {t('firmware.otaTarget')}
-          </small>
-          <strong>
-            {otaTarget}
-          </strong>
-        </article>
-
-        <article className="stat-card">
-          <small>
-            {t('firmware.appChannel')}
-          </small>
-          <strong>
-            {t('firmware.channelValue',{app:firmware?.updateChannel ?? t('common.unknown'),firmware:firmware?.firmwareUpdateChannel ?? t('common.unknown')})}
-            {' · '}
-            <span style={{ display: 'inline-flex', alignItems: 'center', flexWrap: 'wrap' }}>
-              {firmware?.appCurrentVersion ?? t('common.unknown')}
-              <V5BetaBadge version={firmware?.appCurrentVersion} compact />
-            </span>
-          </strong>
-        </article>
-
-        <article className="stat-card">
-          <small>
-            {t('firmware.availableApp')}
-          </small>
-          <strong>
-            {firmware?.availableApp?.tag ?? t('common.noData')}
           </strong>
         </article>
       </section>
@@ -373,8 +427,12 @@ export function FirmwarePage({
 
         <div>
           <h3>
-            {firmwareHeadline}
+            {t('firmware.statusTitle')}
           </h3>
+
+          <p className="firmware-status-summary">
+            {firmwareHeadline}
+          </p>
 
           <p>
             OTA:
@@ -687,6 +745,14 @@ export function FirmwarePage({
         </button>
       </section>
 
+      <Ota2OperationPanel
+        runtime={ota2Runtime}
+        result={ota2Result}
+        mode={ota2SelectedMode}
+        installing={ota2Installing}
+        onCancel={() => void cancelOta2()}
+      />
+
       <section className="panel v5-firmware-backups">
         <div className="panel-title">
           <div>
@@ -697,7 +763,12 @@ export function FirmwarePage({
         </div>
         <p className="muted">{t('firmware.catalogHelp')}</p>
         {catalogError && <p className="console-warning">{catalogError}</p>}
-        <div className="v5-backup-list">
+        <div
+          className="v5-backup-list v5-firmware-catalog-scroll"
+          role="region"
+          aria-label={t('firmware.catalogScrollLabel')}
+          tabIndex={0}
+        >
           {firmwareCatalog.length === 0 ? <p className="muted">{t('firmware.noCatalog')}</p> : firmwareCatalog.map((item) => {
             const version = item.firmwareVersion ?? item.tag;
             const installed = version === firmware?.installedVersion;
@@ -742,7 +813,7 @@ export function FirmwarePage({
                 </div>
                 <button
                   className="secondary"
-                  disabled={state.busy || Boolean(item.metadataConflict)}
+                  disabled={state.busy || ota2Installing || Boolean(item.metadataConflict)}
                   onClick={() => {
                     if (pendingInstallVersion !== version) {
                       setPendingInstallVersion(version);
@@ -750,8 +821,15 @@ export function FirmwarePage({
                     }
                     setPendingInstallVersion(null);
                     void (async () => {
-                      await tauriApi.firmwareInstallRelease(version);
-                      await state.refresh({ forceCheck: true });
+                      await installCatalogItem(
+                        item,
+                        version,
+                        installed
+                          ? 'reinstall'
+                          : rollback
+                            ? 'restore'
+                            : 'update'
+                      );
                     })();
                   }}
                 >

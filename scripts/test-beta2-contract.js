@@ -16,7 +16,7 @@ const files = {
   main: read('desktop-tauri/src/main.tsx'),
   css: read('desktop-tauri/src/v551-beta2-reliability.css'),
   zip: read('desktop-tauri/src/utils/diagnosticsZip.ts'),
-  i18n: read('desktop-tauri/src/i18n/index.tsx'),
+  i18n: read('desktop-tauri/src/i18n/runtime.ts'),
   rust: read('desktop-tauri/src-tauri/src/lib.rs'),
   desktopCapability: read('desktop-tauri/src-tauri/capabilities/default.json'),
   logLocalization: read('desktop-tauri/src/utils/logLocalization.ts'),

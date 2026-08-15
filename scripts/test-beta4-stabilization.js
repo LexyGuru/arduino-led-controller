@@ -17,7 +17,7 @@ const settings = read(
 const firmwarePage = read(
   'desktop-tauri/src/pages/FirmwarePage.tsx'
 );
-const i18n = read('desktop-tauri/src/i18n/index.tsx');
+const i18n = read('desktop-tauri/src/i18n/runtime.ts');
 
 for (const token of [
   'firmware_update_channel',

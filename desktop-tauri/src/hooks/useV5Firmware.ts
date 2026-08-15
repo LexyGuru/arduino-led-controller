@@ -21,7 +21,7 @@ import {
   normalizeFirmwareStatus
 } from '../services/v5FirmwareModels.mjs';
 
-import { translate } from '../i18n';
+import { translate } from '../i18n/runtime';
 
 import type {
   FirmwareStatus,
