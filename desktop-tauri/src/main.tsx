@@ -40,6 +40,7 @@ import './schedule-firmware-logs-api-v2.css';
 import './native-credential-bridge.css';
 import './release-finalization.css';
 import './lxc-orchestration.css';
+import './v551-beta5-mobile-shell-foundation.css';
 
 const tauriAvailable =
   typeof globalThis !==
