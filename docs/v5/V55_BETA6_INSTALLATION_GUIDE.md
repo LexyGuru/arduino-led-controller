@@ -1,0 +1,1 @@
+# V5.5.1 Beta.6 Installation Guide\n\nInstall `5.5.1-beta.6` through the Beta updater. On first local-network access, allow Local Network access for Arduino LED Controller. Firmware remains `5.0.0-beta.10`.\n

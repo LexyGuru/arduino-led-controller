@@ -1,0 +1,1 @@
+# Arduino LED Controller 5.5.1-beta.6 — macOS Local Network OTA Hotfix\n\n- Application: `5.5.1-beta.6`\n- Firmware: `5.0.0-beta.10`\n- Direct API: `1.0.0`\n\nAdds macOS Local Network usage description, preserves OTA target selection, and fails immediately on zero-byte TCP connection failure.\n

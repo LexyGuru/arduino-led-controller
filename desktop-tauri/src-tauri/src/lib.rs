@@ -1994,17 +1994,12 @@ async fn upload_firmware_native(
         }
 
         let Some(mut stream) = stream else {
-            emit_ota_progress(
-                &app,
-                "Kapcsolat",
-                "info",
-                format!(
-                    "Az OTA transport {} másodperc alatt nem adott megbízható listener-visszajelzést a(z) {address}:{port} címen. A külső OTA-port állapotából nem döntök sikerről vagy hibáról; innentől a Direct API reboot/Boot ID/firmware ellenőrzése a mérvadó. Utolsó transport hiba: {last_error}",
-                    OTA_LISTENER_STARTUP_TIMEOUT.as_secs()
-                ),
-                Some(52),
+            let message = format!(
+                "OTA_TRANSPORT_CONNECT_FAILED: a(z) {address}:{port} OTA-célhoz {} másodperc alatt nem jött létre TCP-kapcsolat. 0 firmware bájt került átvitelre; API-confirmation nem indul. Utolsó transport hiba: {last_error}",
+                OTA_LISTENER_STARTUP_TIMEOUT.as_secs()
             );
-            return Ok("OTA_TRANSPORT_UNCONFIRMED_API_CONFIRMATION".to_string());
+            emit_ota_progress(&app, "Kapcsolat", "error", &message, Some(52));
+            return Err(message);
         };
         stream.set_nodelay(true).ok();
         let ota_timeout =

@@ -1,0 +1,1 @@
+# V5.5.1 Beta.6 Release Checklist\n\n- [ ] `5.5.1-beta.6` version parity\n- [ ] generated macOS app contains NSLocalNetworkUsageDescription\n- [ ] OTA target resolver unchanged\n- [ ] zero-byte failure immediate\n- [ ] 19 CURRENT + 23 REGRESSION\n- [ ] Rust check/test\n- [ ] real macOS OTA runtime test\n

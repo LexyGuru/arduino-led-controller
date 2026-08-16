@@ -44,7 +44,8 @@
     "test:native-credential-contract",
     "test:firmware-backup-rollback",
     "test:ota-cancellation",
-    "test:telemetry-timestamp-normalization"
+    "test:telemetry-timestamp-normalization",
+    "test:macos-local-network-ota"
   ],
   "historyAliasPatterns": [
     "^test:beta\\d+[-:]",
