@@ -139,12 +139,12 @@ jobs:
           - name: macOS Apple Silicon
             os: macos-15
             key: macos-apple-silicon
-            args: --target aarch64-apple-darwin --bundles dmg
+            args: --target aarch64-apple-darwin --bundles dmg,app
             target: aarch64-apple-darwin
           - name: macOS Intel
             os: macos-15-intel
             key: macos-intel
-            args: --target x86_64-apple-darwin --bundles dmg
+            args: --target x86_64-apple-darwin --bundles dmg,app
             target: x86_64-apple-darwin
     runs-on: ${{ matrix.os }}
     defaults:
@@ -235,22 +235,26 @@ jobs:
               ;;
             macos-apple-silicon)
               DMG="$(find src-tauri/target -type f -path '*/bundle/dmg/*.dmg' -print | sort | tail -n 1)"
-              test -f "${DMG}"
+              test -n "${DMG}" && test -f "${DMG}" || { echo "::error::MACOS_DMG=MISSING (${PLATFORM_KEY})"; exit 1; }
               APP_TAR="$(find src-tauri/target -type f -path '*/bundle/macos/*.app.tar.gz' -print | sort | tail -n 1)"
               APP_TAR_SIG="${APP_TAR}.sig"
-              test -f "${APP_TAR}"
-              test -f "${APP_TAR_SIG}"
+              test -n "${APP_TAR}" && test -f "${APP_TAR}" || { echo "::error::MACOS_UPDATER_TAR=MISSING (${PLATFORM_KEY})"; exit 1; }
+              echo "MACOS_UPDATER_TAR=FOUND (${PLATFORM_KEY})"
+              test -f "${APP_TAR_SIG}" || { echo "::error::MACOS_UPDATER_SIGNATURE=MISSING (${PLATFORM_KEY})"; exit 1; }
+              echo "MACOS_UPDATER_SIGNATURE=FOUND (${PLATFORM_KEY})"
               cp "${DMG}" "artifacts/Arduino_LED_Controller_${VERSION}_macOS_Apple_Silicon.dmg"
               cp "${APP_TAR}" "artifacts/Arduino_LED_Controller_${VERSION}_macOS_Apple_Silicon.app.tar.gz"
               cp "${APP_TAR_SIG}" "artifacts/Arduino_LED_Controller_${VERSION}_macOS_Apple_Silicon.app.tar.gz.sig"
               ;;
             macos-intel)
               DMG="$(find src-tauri/target -type f -path '*/bundle/dmg/*.dmg' -print | sort | tail -n 1)"
-              test -f "${DMG}"
+              test -n "${DMG}" && test -f "${DMG}" || { echo "::error::MACOS_DMG=MISSING (${PLATFORM_KEY})"; exit 1; }
               APP_TAR="$(find src-tauri/target -type f -path '*/bundle/macos/*.app.tar.gz' -print | sort | tail -n 1)"
               APP_TAR_SIG="${APP_TAR}.sig"
-              test -f "${APP_TAR}"
-              test -f "${APP_TAR_SIG}"
+              test -n "${APP_TAR}" && test -f "${APP_TAR}" || { echo "::error::MACOS_UPDATER_TAR=MISSING (${PLATFORM_KEY})"; exit 1; }
+              echo "MACOS_UPDATER_TAR=FOUND (${PLATFORM_KEY})"
+              test -f "${APP_TAR_SIG}" || { echo "::error::MACOS_UPDATER_SIGNATURE=MISSING (${PLATFORM_KEY})"; exit 1; }
+              echo "MACOS_UPDATER_SIGNATURE=FOUND (${PLATFORM_KEY})"
               cp "${DMG}" "artifacts/Arduino_LED_Controller_${VERSION}_macOS_Intel.dmg"
               cp "${APP_TAR}" "artifacts/Arduino_LED_Controller_${VERSION}_macOS_Intel.app.tar.gz"
               cp "${APP_TAR_SIG}" "artifacts/Arduino_LED_Controller_${VERSION}_macOS_Intel.app.tar.gz.sig"
