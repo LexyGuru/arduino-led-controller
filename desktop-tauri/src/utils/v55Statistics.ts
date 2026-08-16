@@ -17,7 +17,7 @@ export interface DashboardStatistics {
   scheduleDays: Array<{ day: number; count: number }>;
   httpRequests: number | null;
   httpTimeouts: number | null;
-  httpSuccessPercent: number | null;
+  httpTimeoutFreePercent: number | null;
   auditCount: number;
   auditErrors: number;
   networkCount: number;
@@ -48,7 +48,7 @@ export function buildDashboardStatistics(
 
   const requests = status?.http?.requests;
   const timeouts = status?.http?.timeouts;
-  const successPercent =
+  const timeoutFreePercent =
     requests != null && requests > 0 && timeouts != null
       ? Math.max(0, Math.min(100, Math.round(((requests - timeouts) / requests) * 100)))
       : null;
@@ -69,7 +69,7 @@ export function buildDashboardStatistics(
     scheduleDays,
     httpRequests: requests ?? null,
     httpTimeouts: timeouts ?? null,
-    httpSuccessPercent: successPercent,
+    httpTimeoutFreePercent: timeoutFreePercent,
     auditCount: audit.length,
     auditErrors: audit.filter((entry) => entry.level === 'error').length,
     networkCount: network.length,

@@ -6,7 +6,7 @@ const meta=JSON.parse(fs.readFileSync("firmware/firmware-release.json","utf8"));
 const otaDoc=fs.readFileSync("docs/firmware/OTA_UPDATE.md","utf8");
 assert.match(versions.firmware,/^\d+\.\d+\.\d+-beta\.\d+$/);
 assert.equal(meta.firmwareVersion,versions.firmware);
-assert.ok(fw.includes('#define FIRMWARE_VERSION "5.0.0-beta.9"'));
+assert.ok(fw.includes(`#define FIRMWARE_VERSION "${versions.firmware}"`));
 assert.ok(fw.includes('#define OTA_MAINTENANCE_MODE_V1 1'));
 const loop=fw.slice(fw.indexOf("void loop() {"));
 assert.ok(loop.indexOf("updateOtaVisualState()") < loop.indexOf("if (otaExclusiveMode || otaTransferActive) return;"));

@@ -21,12 +21,12 @@ Arduino továbbra is önálló **Direct API v1** végpontként működik.
 
 ## Aktuális kiadás
 
-> **Jelenlegi fejlesztési kiadás: Arduino LED Controller V5.5.1 Beta.4**
+> **Jelenlegi fejlesztési kiadás: Arduino LED Controller V5.5.1 Beta.5**
 
 | Komponens | Aktuális verzió / állapot |
 |---|---|
-| Alkalmazás | **`5.5.1-beta.4`** |
-| Firmware | **`5.0.0-beta.9`** |
+| Alkalmazás | **`5.5.1-beta.5`** |
+| Firmware | **`5.0.0-beta.10`** |
 | Direct API | **`1.0.0`** |
 | Beta ág | **`next/v5-rearchitecture`** |
 | Stabil alkalmazás | **`5.0.0`** |
@@ -36,21 +36,26 @@ Arduino továbbra is önálló **Direct API v1** végpontként működik.
 | LXC rendszer | Debian 13 |
 | LXC web/API port | `3000` |
 
-A **V5.5.1 Beta.4** fejlesztési állapot a Device Control & Reliability kiadás:
-kapcsolat-helyreállítás, Device Health, Scene/Preset alapok, Schedule 2.0 Copy Day,
-natív Diagnostics ZIP, HU/EN/DE runtime log lokalizáció és a firmware-katalógus
-downgrade-védelme tartozik hozzá. Az alkalmazás `5.5.1-beta.4` és a firmware
-`5.0.0-beta.9` külön verziózott komponensek.
+A **V5.5.1 Beta.5** fejlesztési ciklus a mobil/desktop használhatóság,
+Dashboard/Overview adatkonzisztencia és dokumentációs szinkron köre. Ide tartozik
+a fix mobil BottomNav, a desktop navigáció és Theme Engine olvashatósági polish,
+a Device Health / telemetria konszolidáció és a valós hálózati statisztika.
+Az alkalmazás `5.5.1-beta.5` és a firmware `5.0.0-beta.10` külön verziózott
+komponensek.
 
 ### Aktuális kiadási dokumentumok
+
+- [V5.5.1 Beta.5 release notes](docs/v5/V55_BETA5_RELEASE_NOTES.md)
+- [V5.5.1 Beta.5 telepítési útmutató](docs/v5/V55_BETA5_INSTALLATION_GUIDE.md)
+- [V5.5.1 Beta.5 release checklist](docs/v5/V55_BETA5_RELEASE_CHECKLIST.md)
+- [Részletes gyökér release notes](RELEASE_NOTES_5.5.1-beta.5.md)
+
+### Korábbi kiadási dokumentumok
 
 - [V5.5.1 Beta.4 release notes](docs/v5/V55_BETA4_RELEASE_NOTES.md)
 - [V5.5.1 Beta.4 telepítési útmutató](docs/v5/V55_BETA4_INSTALLATION_GUIDE.md)
 - [V5.5.1 Beta.4 release checklist](docs/v5/V55_BETA4_RELEASE_CHECKLIST.md)
-- [Részletes gyökér release notes](RELEASE_NOTES_5.5.1-beta.4.md)
-
-### Korábbi kiadási dokumentumok
-
+- [V5.5.1 Beta.4 gyökér release notes](RELEASE_NOTES_5.5.1-beta.4.md)
 - [V5.5.1 Beta.1 release notes](docs/v5/V55_BETA1_RELEASE_NOTES.md)
 - [V5.5.1 Beta.1 telepítési útmutató](docs/v5/V55_BETA1_INSTALLATION_GUIDE.md)
 - [V5.5.1 Beta.1 release checklist](docs/v5/V55_BETA1_RELEASE_CHECKLIST.md)
@@ -125,7 +130,7 @@ A korábbi Beta dokumentumok történeti snapshotok; nem az aktuális kiadás le
 ```text
                          ┌─────────────────────────────┐
                          │ Arduino UNO R4 WiFi         │
-                         │ Firmware 5.0.0-beta.9       │
+                         │ Firmware 5.0.0-beta.10       │
                          │ Direct API v1 / X-Device-Key│
                          └──────────────┬──────────────┘
                                         │
@@ -191,7 +196,7 @@ firmwareVersion + Boot ID + schedule persistence
 SUCCESS
 ```
 
-A firmware `5.0.0-beta.9` OTA Exclusive Mode alatt kizárólag a Wi-Fi
+A firmware `5.0.0-beta.10` OTA Exclusive Mode alatt kizárólag a Wi-Fi
 kapcsolatot, az ArduinoOTA motort és a LED Matrix visszajelzést hagyja aktívan.
 A schedule storage-ot az OTA folyamat nem törli és nem írja újra.
 

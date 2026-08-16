@@ -6,42 +6,127 @@ import {
   Wifi,
   WifiOff
 } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { useI18n } from '../../i18n';
 
 import type {
   ArduinoStatus,
-  ConnectionHealthState
+  ConnectionHealthState,
+  NetworkLog
 } from '../../types';
+import type { DashboardStatistics } from '../../utils/v55Statistics';
 
-function ageLabel(value: number | null) {
-  if (!value) return '—';
-  const seconds = Math.max(0, Math.floor((Date.now() - value) / 1000));
-  if (seconds < 60) return `${seconds}s`;
+function normalizeTelemetryTimestampMs(
+  value: number | null,
+  now = Date.now()
+): number | null {
+  if (
+    value == null ||
+    !Number.isFinite(value) ||
+    value <= 0
+  ) {
+    return null;
+  }
+
+  // ConnectionHealth timestamps are Date.now() milliseconds.
+  // Native Rust NetworkLog timestamps are UNIX seconds.
+  const timestamp =
+    value < 10_000_000_000
+      ? value * 1000
+      : value;
+
+  const minimumPlausible =
+    Date.UTC(2000, 0, 1);
+  const maximumFutureSkew =
+    now + 5 * 60 * 1000;
+
+  if (
+    !Number.isFinite(timestamp) ||
+    timestamp < minimumPlausible ||
+    timestamp > maximumFutureSkew
+  ) {
+    return null;
+  }
+
+  return timestamp;
+}
+
+function ageLabel(
+  value: number | null,
+  now = Date.now()
+) {
+  const timestamp =
+    normalizeTelemetryTimestampMs(
+      value,
+      now
+    );
+
+  if (timestamp == null) {
+    return '—';
+  }
+
+  const seconds = Math.max(
+    0,
+    Math.floor(
+      (now - timestamp) / 1000
+    )
+  );
+
+  if (seconds < 60) {
+    return `${seconds}s`;
+  }
+
   const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m`;
+
+  if (minutes < 60) {
+    return `${minutes}m`;
+  }
+
   return `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
+}
+
+function countdownLabel(target: number | null, now: number) {
+  if (!target) return '—';
+  return `${Math.max(0, Math.ceil((target - now) / 1000))}s`;
 }
 
 export function DeviceHealthPanel({
   health,
   status,
-  networkErrorCount,
+  stats,
+  latestNetworkError,
   onRetry
 }: {
   health: ConnectionHealthState;
   status: ArduinoStatus | null;
-  networkErrorCount: number;
+  stats: DashboardStatistics;
+  latestNetworkError: NetworkLog | null;
   onRetry: () => void;
 }) {
   const { t } = useI18n();
   const healthy = health.state === 'healthy';
   const recovering = health.state === 'recovering';
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+
   const stateLabel = t(`beta2.health.state.${health.state}`);
   const stateMessage = t(`beta2.health.message.${health.state}`);
+  const lastFailureAt = health.lastFailureAt ?? latestNetworkError?.timestamp ?? null;
+  const lastError = useMemo(() => {
+    if (health.lastError) return health.lastError;
+    if (latestNetworkError) {
+      return `${latestNetworkError.endpoint}: ${latestNetworkError.message}`;
+    }
+    return t('beta2.health.noError');
+  }, [health.lastError, latestNetworkError, t]);
 
   return (
-    <section className={`panel beta2-health-panel ${health.state}`}>
+    <section className={`panel beta2-health-panel v568-system-telemetry ${health.state}`}>
       <div className="panel-title">
         <div>
           <p className="eyebrow">{t('beta2.health.eyebrow')}</p>
@@ -59,19 +144,23 @@ export function DeviceHealthPanel({
         <span>{stateMessage}</span>
       </div>
 
-      <div className="beta2-health-grid">
+      <div className="beta2-health-grid v568-telemetry-grid">
         <div><span><Activity size={15}/>{t('beta2.health.consecutiveFailures')}</span><strong>{health.consecutiveFailures}</strong></div>
-        <div><span><RefreshCw size={15}/>{t('beta2.health.nextPolling')}</span><strong>{Math.round(health.pollIntervalMs / 1000)}s</strong></div>
+        <div><span><RefreshCw size={15}/>{t('beta2.health.nextPolling')}</span><strong>{countdownLabel(health.nextRetryAt, now)}</strong></div>
         <div><span><Clock3 size={15}/>{t('beta2.health.lastSuccess')}</span><strong>{ageLabel(health.lastSuccessAt)}</strong></div>
-        <div><span><Clock3 size={15}/>{t('beta2.health.lastFailure')}</span><strong>{ageLabel(health.lastFailureAt)}</strong></div>
+        <div><span><Clock3 size={15}/>{t('beta2.health.lastFailure')}</span><strong>{ageLabel(lastFailureAt)}</strong></div>
         <div><span><Wifi size={15}/>{t('beta2.health.wifi')}</span><strong>{status?.rssi == null ? '—' : `${status.rssi} dBm`}</strong></div>
-        <div><span><Activity size={15}/>{t('beta2.health.networkErrors')}</span><strong>{networkErrorCount}</strong></div>
+        <div><span><Activity size={15}/>{t('beta2.health.networkErrors')}</span><strong>{stats.networkErrors}</strong></div>
+        <div><span>{t('stats.ledsActive')}</span><strong>{stats.enabledStrips}/{stats.stripCount}</strong><small>{t('stats.averageBrightness')}: {stats.averageBrightness}</small></div>
+        <div><span>{t('stats.schedules')}</span><strong>{stats.scheduleCount}</strong><small>{t('stats.activeEffects')}: {stats.activeEffects}</small></div>
+        <div><span>{t('stats.httpRequests')}</span><strong>{stats.httpRequests ?? '—'}</strong><small>{t('stats.timeouts')}: {stats.httpTimeouts ?? '—'}</small></div>
+        <div><span>{t('stats.httpTimeoutFree')}</span><strong>{stats.httpTimeoutFreePercent == null ? '—' : `${stats.httpTimeoutFreePercent}%`}</strong></div>
       </div>
 
       <div className="beta2-health-actions">
         <div>
           <span>{t('beta2.health.lastError')}</span>
-          <code>{health.lastError ?? t('beta2.health.noError')}</code>
+          <code>{lastError}</code>
         </div>
         <button className="secondary" onClick={onRetry}>
           <RefreshCw size={16} />

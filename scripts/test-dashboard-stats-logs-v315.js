@@ -32,12 +32,14 @@ for (const marker of [
 assert.match(dashboard, /StatisticsPanel/);
 assert.match(dashboard, /ActivityTimeline/);
 assert.match(dashboard, /buildDashboardStatistics/);
-assert.match(dashboard, /status\?\.http\?\.requests/);
+assert.match(util, /status\?\.http\?\.requests/);
+assert.match(dashboard, /networkLogs/);
+assert.match(dashboard, /stats=\{stats\}/);
 assert.match(dashboard, /status\?\.freeMemory/);
-assert.match(dashboard, /status\?\.strips/);
+assert.match(util, /status\?\.strips/);
 assert.match(dashboard, /scheduleSync/);
 
-assert.match(util, /httpSuccessPercent/);
+assert.match(util, /httpTimeoutFreePercent/);
 assert.match(util, /scheduleDays/);
 assert.match(util, /sourceCounts/);
 assert.match(util, /auditErrors/);

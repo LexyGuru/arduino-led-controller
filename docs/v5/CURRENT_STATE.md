@@ -1,29 +1,37 @@
 # Arduino LED Controller – Current Beta State
 
 ## Aktuális verziók
-
-- Alkalmazás: `5.5.1-beta.2`
-- Firmware: `5.0.0-beta.9`
+- Alkalmazás: `5.5.1-beta.5`
+- Firmware: `5.0.0-beta.10`
 - Direct API: `1.0.0`
 - Fejlesztési ág: `next/v5-rearchitecture`
 
-## Aktuális release
-
-- Alkalmazás release: `V55_BETA2`
+## Aktuális fejlesztési ciklus
+- Alkalmazás release azonosító: `V55_BETA5`
+- Állapot: lokális development candidate, még nincs publikálva
 - Firmware Event Code Protocol: `v1`
 - Firmware OTA cél: UNO R4 WiFi
 - Firmware downgrade: kizárólag Restore útvonalon
-- Fő Install útvonal: csak valóban újabb firmware-t telepít
 
-## Validált Beta.2 állapot
+## Beta.5 fókusz
+- mobil viewport shell + fix BottomNav
+- desktop sidebar/navigation cleanup
+- Theme Engine 2.5 olvashatósági polish
+- Áttekintés / Dashboard adatkonzisztencia
+- Device Health és telemetria konszolidáció
+- valós network error statisztika
+- valós next-poll countdown
+- pontos timeout nélküli HTTP arány
+- HU/EN/DE feliratparitás
+- V571E schedule-save progress + firmware transaction diagnostics
+- V572A telemetria timestamp normalizálás és tartós regression védelem
+- Test Architecture V2: 19 CURRENT + 22 REGRESSION
+- dokumentáció és verziófelületek Beta.5 szinkronja
 
-- Device Health / connection recovery
-- Scene/Preset alapok
-- Schedule 2.0 Copy Day
-- natív Diagnostics ZIP és log export
-- HU/EN/DE runtime log lokalizáció
-- külső `.bin` OTA SHA-256/readback/reboot/persistence ellenőrzés
-- `5.0.0-beta.9` hardveres boot és persistence validálva
+## Változatlan komponensek
+- Firmware: `5.0.0-beta.10`
+- Direct API: `1.0.0`
+- Stable `main`: nem módosul
 
 Ez a fájl a rolling **aktuális** Beta állapot kanonikus dokumentuma.
-A verzióhoz kötött `BETA*_CURRENT_STATE.md` fájlok történelmi snapshotok.
+A verzióhoz kötött dokumentumok történelmi snapshotok.

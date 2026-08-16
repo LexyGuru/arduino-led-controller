@@ -143,6 +143,20 @@ export interface ScheduleSyncSnapshot {
   recoveredLegacyActionCount: number;
 }
 
+export interface ScheduleSaveProgressEvent {
+  timestamp: number;
+  stage: 'preparing' | 'transaction' | 'uploading' | 'committing' | 'verifying' | 'readback' | 'success' | 'error';
+  level: 'info' | 'success' | 'error';
+  message: string;
+  current: number;
+  total: number;
+  progress?: number | null;
+  revisionBefore?: number | null;
+  revisionAfter?: number | null;
+  checksum?: string | null;
+  durationMs?: number | null;
+}
+
 export interface ScheduleSaveResult extends ScheduleSyncSnapshot {
   success: boolean;
   verifiedCount: number;

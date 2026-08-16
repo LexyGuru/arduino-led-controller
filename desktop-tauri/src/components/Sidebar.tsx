@@ -55,7 +55,7 @@ export function Sidebar({
           <small>{t('brand.directArduino')}</small>
         </div>
         <span className="core-version-pill">UI 2.0</span>
-        <span className="beta4-version-pill">Beta 4</span>
+        <span className="beta4-version-pill">Beta 5</span>
       </div>
 
       <div className="core-nav-label">{t('core.navigation')}</div>

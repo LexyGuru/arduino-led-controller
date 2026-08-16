@@ -29,8 +29,6 @@ import { buildDashboardStatistics } from '../utils/v55Statistics';
 
 const dayKeys = ['days.1','days.2','days.3','days.4','days.5','days.6','days.7'];
 const effectKeys = ['effects.0','effects.1','effects.2','effects.3','effects.4'];
-const EMPTY_NETWORK_LOGS: Parameters<typeof buildDashboardStatistics>[3] = [];
-
 function formatUptime(seconds: number | undefined) {
   if (seconds == null) return '—';
   const days = Math.floor(seconds / 86400);
@@ -133,8 +131,10 @@ export function DashboardPage({
     status,
     schedules,
     audit.entries,
-    EMPTY_NETWORK_LOGS
+    networkLogs
   );
+  const latestNetworkError =
+    networkLogs.find((entry) => !entry.ok) ?? null;
 
   const utcOffset = status?.utcOffsetMinutes;
   const offsetLabel = utcOffset == null
@@ -194,21 +194,9 @@ export function DashboardPage({
 
       <section className="v55-primary-metrics">
         <article className="v55-primary-card">
-          <span><Radio size={18}/>{t('dashboard.connection')}</span>
-          <strong className={status?.connected ? 'ok' : 'bad'}>
-            {status?.connected ? t('common.online') : t('common.offline')}
-          </strong>
-          <small>{status?.ipAddress ?? '—'}</small>
-        </article>
-        <article className="v55-primary-card">
           <span><Cpu size={18}/>Firmware</span>
           <strong>{status?.firmwareVersion ?? '—'}</strong>
           <small>UNO R4 WiFi</small>
-        </article>
-        <article className="v55-primary-card">
-          <span><Wifi size={18}/>{t('dashboard.signal')}</span>
-          <strong>{status?.rssi == null ? '—' : `${status.rssi} dBm`}</strong>
-          <small>{status?.rssi == null ? '—' : t(status.rssi > -60 ? 'dashboard2.signalGood' : 'dashboard2.signalWeak')}</small>
         </article>
         <article className="v55-primary-card">
           <span><Clock3 size={18}/>{t('dashboard.uptime')}</span>
@@ -220,17 +208,13 @@ export function DashboardPage({
           <strong>{status?.freeMemory == null ? '—' : `${status.freeMemory} B`}</strong>
           <small>{t('dashboard2.runtimeMemory')}</small>
         </article>
-        <article className="v55-primary-card">
-          <span><Database size={18}/>{t('dashboard2.apiRequests')}</span>
-          <strong>{status?.http?.requests ?? '—'}</strong>
-          <small>{t('dashboard.timeouts')}: {status?.http?.timeouts ?? '—'}</small>
-        </article>
       </section>
 
       <DeviceHealthPanel
         health={connectionHealth}
         status={status}
-        networkErrorCount={networkLogs.filter((entry) => !entry.ok).length}
+        stats={stats}
+        latestNetworkError={latestNetworkError}
         onRetry={() => void dashboard.refresh()}
       />
 
@@ -360,7 +344,7 @@ export function DashboardPage({
       <section className="v55-dashboard-bottom">
         <ActivityTimeline entries={audit.entries} />
 
-        <article className="panel v55-http-panel">
+        <article className="panel v55-http-panel v568-http-context">
           <div className="panel-title">
             <div>
               <p className="eyebrow">{t('dashboard.systemState')}</p>
@@ -376,14 +360,6 @@ export function DashboardPage({
             <div>
               <span>{t('dashboard.lastPath')}</span>
               <strong>{status?.http?.lastPath ?? '—'}</strong>
-            </div>
-            <div>
-              <span>{t('dashboard.requests')}</span>
-              <strong>{status?.http?.requests ?? '—'}</strong>
-            </div>
-            <div>
-              <span>{t('dashboard.timeouts')}</span>
-              <strong>{status?.http?.timeouts ?? '—'}</strong>
             </div>
           </div>
         </article>

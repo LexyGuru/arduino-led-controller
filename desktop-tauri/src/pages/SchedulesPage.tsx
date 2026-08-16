@@ -1,6 +1,7 @@
 import {
   useEffect,
   useMemo,
+  useRef,
   useState
 } from 'react';
 
@@ -10,6 +11,7 @@ import {
   CopyPlus,
   Database,
   Download,
+  Pencil,
   RefreshCw,
   Save,
   Trash2,
@@ -39,6 +41,7 @@ import type {
   LedSchedule,
   ScheduleBackup,
   ScheduleLed,
+  ScheduleSaveProgressEvent,
   ScheduleSaveResult,
   ScheduleSyncSnapshot,
   ScheduleSyncState
@@ -253,6 +256,10 @@ export function SchedulesPage({
   ] =
     useState('');
 
+  const [saveProgress, setSaveProgress] =
+    useState<ScheduleSaveProgressEvent | null>(null);
+  const saveStartedAt = useRef<number | null>(null);
+
   const [
     backups,
     setBackups
@@ -316,6 +323,17 @@ export function SchedulesPage({
 
   useEffect(() => {
     void tauriApi.listScheduleBackups().then(setBackups).catch(() => undefined);
+  }, []);
+
+  useEffect(() => {
+    let disposed = false;
+    let unlisten: (() => void) | undefined;
+    void tauriApi.listenScheduleSaveProgress((entry) => {
+      if (!disposed) setSaveProgress(entry);
+    }).then((dispose) => {
+      if (disposed) dispose(); else unlisten = dispose;
+    }).catch(() => undefined);
+    return () => { disposed = true; unlisten?.(); };
   }, []);
 
   const deleteAllSchedules = async () => {
@@ -530,6 +548,8 @@ export function SchedulesPage({
       force = false
     ) => {
       try {
+        saveStartedAt.current = Date.now();
+        setSaveProgress({timestamp:Date.now(),stage:'preparing',level:'info',message:t('schedules.saveProgress.preparing'),current:0,total:draft.length,progress:null});
         const result =
           await state.save(
             draft,
@@ -552,9 +572,11 @@ export function SchedulesPage({
           result.revision
         );
         setConflict(false);
+        setSaveProgress({timestamp:Date.now(),stage:'success',level:'success',message:t('schedules.saveProgress.success'),current:result.count,total:result.count,progress:100,revisionBefore:result.revisionBefore,revisionAfter:result.revisionAfter,checksum:result.checksumAfter,durationMs:saveStartedAt.current==null?null:Date.now()-saveStartedAt.current});
       } catch (
         error
       ) {
+        setSaveProgress((current)=>({timestamp:Date.now(),stage:'error',level:'error',message:String(error),current:current?.current??0,total:current?.total??draft.length,progress:current?.progress??null,revisionBefore:current?.revisionBefore??baseRevision,revisionAfter:current?.revisionAfter??null,checksum:current?.checksum??null,durationMs:saveStartedAt.current==null?null:Date.now()-saveStartedAt.current}));
         if (
           (
             error as {
@@ -738,6 +760,21 @@ export function SchedulesPage({
     globalThis.scrollTo({
       top: 0,
       behavior: 'smooth'
+    });
+  };
+
+  const editAndReveal = (
+    schedule: LedSchedule
+  ) => {
+    edit(schedule);
+
+    globalThis.requestAnimationFrame(() => {
+      document
+        .getElementById('schedule-editor')
+        ?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start'
+        });
     });
   };
 
@@ -1049,6 +1086,126 @@ export function SchedulesPage({
         )}
       </section>
 
+      {saveProgress && (
+        <section className="schedule-save-progress-card" data-level={saveProgress.level} aria-live="polite">
+          <div className="schedule-save-progress-head">
+            <div className="schedule-save-progress-title">
+              {saveProgress.level==='success'?<CheckCircle2 className="ok" size={19}/>:saveProgress.level==='error'?<AlertTriangle size={19}/>:<Save className="is-running" size={19}/>}
+              <div><strong>{t('schedules.saveProgress.title')}</strong><small>{t(`schedules.saveProgress.${saveProgress.stage}`)}</small></div>
+            </div>
+            {saveProgress.total>0&&<span className="schedule-save-progress-count">{saveProgress.current} / {saveProgress.total}</span>}
+          </div>
+          <div className={`schedule-save-progress-track ${saveProgress.level==='info'&&saveProgress.stage!=='uploading'?'is-indeterminate':''}`}>
+            <div className="schedule-save-progress-bar" style={{width:`${saveProgress.level==='success'?100:saveProgress.stage==='uploading'&&saveProgress.total>0?Math.round((saveProgress.current/saveProgress.total)*100):Math.max(4,saveProgress.progress??0)}%`}}/>
+          </div>
+          <div className="schedule-save-progress-details">
+            {saveProgress.total>0&&<span>{t('schedules.saveProgress.records',{current:saveProgress.current,total:saveProgress.total})}</span>}
+            {saveProgress.revisionBefore!=null&&saveProgress.revisionAfter!=null&&<span>{t('schedules.saveProgress.revision',{before:saveProgress.revisionBefore,after:saveProgress.revisionAfter})}</span>}
+            {saveProgress.checksum&&<code>{saveProgress.checksum}</code>}
+            {saveProgress.durationMs!=null&&<span>{t('schedules.saveProgress.duration',{seconds:(saveProgress.durationMs/1000).toFixed(1)})}</span>}
+          </div>
+          {saveProgress.level==='error'&&<p className="schedule-save-progress-error">{saveProgress.message}</p>}
+        </section>
+      )}
+
+      <section className="schedule-week-overview" aria-label={t('schedules.title')}>
+        <div className="schedule-week-overview-head">
+          <div>
+            <p className="eyebrow">{t('schedules.title')}</p>
+            <h2>{t('schedules.editList')}</h2>
+          </div>
+          <span className="schedule-week-total">
+            {draft.length}{t('schedules.eventCount',{count:draft.length})}
+          </span>
+        </div>
+
+        <div className="schedule-week-grid">
+          {grouped.map((group) => (
+            <article className="schedule-day-card" key={group.day}>
+              <div className="schedule-day-card-head">
+                <h3>{group.name}</h3>
+                <span>{group.items.length}</span>
+              </div>
+
+              <div className="schedule-day-items">
+                {group.items.length === 0 ? (
+                  <div className="schedule-day-empty">
+                    {t('schedules.empty')}
+                  </div>
+                ) : (
+                  group.items.map((schedule) => (
+                    <div className="schedule-compact-card" key={schedule.id}>
+                      <button
+                        type="button"
+                        className="schedule-compact-time"
+                        disabled={!state.canWrite}
+                        onClick={() => edit(schedule)}
+                      >
+                        {schedule.time}
+                      </button>
+
+                      <div className="schedule-led-chips">
+                        {schedule.leds.length ? (
+                          schedule.leds.map((led) => (
+                            <span
+                              className={`schedule-led-chip ${led.enabled ? 'is-on' : 'is-off'}`}
+                              key={led.id}
+                              title={t('schedules.ledSummary',{
+                                id:led.id,
+                                state:t(led.enabled?'common.on':'common.off'),
+                                brightness:led.brightness,
+                                color:led.color.join(',')
+                              })}
+                            >
+                              <i
+                                className="schedule-color-dot"
+                                style={{ backgroundColor: `rgb(${led.color.join(',')})` }}
+                              />
+                              LED {led.id} · {t(led.enabled?'common.on':'common.off')} · {led.brightness}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="schedule-no-action">
+                            {t('schedules.noLedAction')}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="schedule-compact-actions">
+                        <button
+                          type="button"
+                          className="icon-button secondary schedule-compact-edit"
+                          title={t('schedules.edit')}
+                          aria-label={t('schedules.edit')}
+                          disabled={!state.canWrite}
+                          onClick={() => editAndReveal(schedule)}
+                        >
+                          <Pencil size={15} />
+                        </button>
+
+                      <button
+                        type="button"
+                        className="icon-button danger schedule-compact-delete"
+                        title={t('common.delete')}
+                        disabled={!state.canWrite}
+                        onClick={() =>
+                          setDraft((items) =>
+                            items.filter((item) => item.id !== schedule.id)
+                          )
+                        }
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
       <section className="panel beta2-schedule-copy">
         <div className="panel-title">
           <div>
@@ -1211,7 +1368,7 @@ export function SchedulesPage({
         )}
       </section>
 
-      <section className="panel schedule-editor">
+      <section id="schedule-editor" className="panel schedule-editor">
         <div className="schedule-top-row">
           <label>
             {t('schedules.time')}
@@ -1506,86 +1663,7 @@ export function SchedulesPage({
         </div>
       </section>
 
-      <section className="schedule-groups">
-        {grouped.map(
-          (group) =>
-            group.items.length >
-              0 && (
-              <article
-                className="panel day-group"
-                key={group.day}
-              >
-                <div className="day-group-title">
-                  <h3>
-                    {group.name}
-                  </h3>
-                  <span>
-                    {group.items.length}
-                    {t('schedules.eventCount',{count:group.items.length})}
-                  </span>
-                </div>
 
-                {group.items.map(
-                  (schedule) => (
-                    <div
-                      className="schedule-summary"
-                      key={
-                        schedule.id
-                      }
-                    >
-                      <button
-                        className="summary-main"
-                        disabled={!state.canWrite}
-                        onClick={
-                          () =>
-                            edit(
-                              schedule
-                            )
-                        }
-                      >
-                        <strong>
-                          {schedule.time}
-                        </strong>
-
-                        <span>
-                          {schedule.leds.length
-                            ? schedule.leds
-                                .map(
-                                  (led) =>
-                                    t('schedules.ledSummary',{id:led.id,state:t(led.enabled?'common.on':'common.off'),brightness:led.brightness,color:led.color.join(',')})
-                                )
-                                .join(
-                                  ' | '
-                                )
-                            : t('schedules.noLedAction')}
-                        </span>
-                      </button>
-
-                      <button
-                        className="icon-button danger"
-                        title={t('common.delete')}
-                        disabled={!state.canWrite}
-                        onClick={
-                          () =>
-                            setDraft(
-                              (items) =>
-                                items.filter(
-                                  (item) =>
-                                    item.id !==
-                                    schedule.id
-                                )
-                            )
-                        }
-                      >
-                        <Trash2 size={17} />
-                      </button>
-                    </div>
-                  )
-                )}
-              </article>
-            )
-        )}
-      </section>
 
       {!draft.length && (
         <section className="panel empty">

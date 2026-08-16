@@ -1,8 +1,8 @@
 import { invoke } from '@tauri-apps/api/core';
 import { loadLxcSchedules, saveLxcSchedules } from './lxcScheduleCodec';
-import type { ArduinoConsoleResponse, ArduinoStatus, ConnectionConfig, FirmwareArtifact, FirmwareStatus, LedSchedule, LedStrip, NativeAppUpdateInfo, NetworkLog, OtaProgressEvent, RuntimeCapabilities, ScheduleBackup, ScheduleSaveResult, ScheduleSyncSnapshot } from '../types';
+import type { ArduinoConsoleResponse, ArduinoStatus, ConnectionConfig, FirmwareArtifact, FirmwareStatus, LedSchedule, LedStrip, NativeAppUpdateInfo, NetworkLog, OtaProgressEvent, RuntimeCapabilities, ScheduleBackup, ScheduleSaveProgressEvent, ScheduleSaveResult, ScheduleSyncSnapshot } from '../types';
 
-const APP_VERSION='5.5.1-beta.4',CFG='alc.shared.lxc.config.v1',BACKUPS='alc.shared.lxc.schedule-backups.v1',TOKEN='alc.shared.lxc.ota-control-token';
+const APP_VERSION='5.5.1-beta.5',CFG='alc.shared.lxc.config.v1',BACKUPS='alc.shared.lxc.schedule-backups.v1',TOKEN='alc.shared.lxc.ota-control-token';
 export const isTauriRuntime=()=>typeof globalThis!=='undefined'&&'__TAURI_INTERNALS__' in globalThis;
 
 async function json<T>(url:string,init?:RequestInit):Promise<T>{
@@ -49,6 +49,7 @@ export const tauriApi={
   createScheduleBackup:async(schedules:LedSchedule[],revision:number|null,checksum:string):Promise<ScheduleBackup>=>{if(isTauriRuntime())return invoke('create_schedule_backup',{schedules,revision,checksum});const item:ScheduleBackup={id:`lxc-${Date.now()}`,createdAt:Date.now(),count:schedules.length,revision:revision??undefined,checksum,schedules:structuredClone(schedules)};saveBackups([item,...backups()]);return item},
   listScheduleBackups:():Promise<ScheduleBackup[]>=>isTauriRuntime()?invoke('list_schedule_backups'):Promise.resolve(backups()),
   saveSchedules:(schedules:LedSchedule[],expectedRevision:number|null,force=false):Promise<ScheduleSaveResult>=>isTauriRuntime()?invoke('save_and_sync_schedules',{schedules,expectedRevision,force}):saveLxcSchedules(schedules,force?null:expectedRevision),
+  listenScheduleSaveProgress:async(listener:(entry:ScheduleSaveProgressEvent)=>void):Promise<()=>void>=>{if(isTauriRuntime()){const{listen}=await import('@tauri-apps/api/event');return listen<ScheduleSaveProgressEvent>('schedule-save-progress',e=>listener(e.payload))}return()=>{}},
   firmwareReleases:():Promise<FirmwareArtifact[]>=>isTauriRuntime()?invoke('firmware_releases'):releases(),
   firmwareInstallRelease:(tag:string):Promise<FirmwareStatus>=>isTauriRuntime()?invoke('firmware_install_release',{tag}):install(tag),
   firmwareInstallExternal:(fileName:string,firmware:number[]):Promise<FirmwareStatus>=>isTauriRuntime()?invoke('firmware_install_external',{fileName,firmware}):Promise.reject(new Error('Külső firmware feltöltés a natív desktop/mobil alkalmazásban használható.')),

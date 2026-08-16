@@ -14,8 +14,8 @@
 #include <stdarg.h>
 #include "secrets.h"
 
-#define FIRMWARE_VERSION "5.0.0-beta.9"
-#define FIRMWARE_FEATURE "f14-direct-api-v1-only-storage-udp-ntp-dst-ota-exclusive-v191-matrix-neopixel-stable-bootgen-sizeopt"
+#define FIRMWARE_VERSION "5.0.0-beta.10"
+#define FIRMWARE_FEATURE "f14-direct-api-v1-only-storage-udp-ntp-dst-ota-exclusive-v191-matrix-neopixel-stable-bootgen-sizeopt-schedule-progress-diag"
 #define OTA_MAINTENANCE_MODE_V1 1
 #define DIRECT_API_VERSION "1.0.0"
 #define DEVICE_NAME "arduino-led-controller"
@@ -2421,6 +2421,16 @@ void cancelScheduleTransaction() {
   scheduleTransactionTotal = 0;
 }
 
+uint8_t scheduleTransactionReceivedCount() {
+  uint64_t mask = scheduleTransactionReceivedMask;
+  uint8_t count = 0;
+  while (mask) {
+    count += static_cast<uint8_t>(mask & 1ULL);
+    mask >>= 1;
+  }
+  return count;
+}
+
 bool pathEquals(const char* left, const char* right) {
   return left && right && strcmp(left, right) == 0;
 }
@@ -2518,8 +2528,14 @@ int routeV1(WiFiClient& c, const char* method, const char* base,
       static_cast<unsigned long>(scheduleRevision),
       static_cast<unsigned long>(scheduleChecksum(schedules, scheduleCount)), schedulesStored ? "true" : "false");
     appendFormat(b, "\"storageLayout\":\"ab-v2\",\"activeSlot\":%u,\"abSlots\":true,", activeScheduleSlotOffset);
-    appendFormat(b, "\"readbackAfterWrite\":true,\"transactionActive\":%s}",
+    appendFormat(b, "\"readbackAfterWrite\":true,\"transactionActive\":%s,",
       scheduleTransactionActive ? "true" : "false");
+    appendFormat(b, "\"transactionId\":%lu,\"transactionTotal\":%u,\"transactionReceived\":%u,",
+      static_cast<unsigned long>(scheduleTransactionId),
+      scheduleTransactionTotal,
+      scheduleTransactionReceivedCount());
+    appendFormat(b, "\"transactionGeneration\":%lu}",
+      static_cast<unsigned long>(scheduleTransactionGeneration));
     sendJsonBuffer(c, b.data, b.length, 200, requestId); return 200;
   }
   if (pathEquals(base, "/api/v1/schedules") && pathEquals(method, "GET")) {

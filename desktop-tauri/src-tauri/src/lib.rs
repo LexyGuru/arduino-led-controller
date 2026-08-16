@@ -318,6 +318,22 @@ struct OtaProgressEvent {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
+struct ScheduleSaveProgressEvent {
+    timestamp: u64,
+    stage: String,
+    level: String,
+    message: String,
+    current: usize,
+    total: usize,
+    progress: Option<u8>,
+    revision_before: Option<u64>,
+    revision_after: Option<u64>,
+    checksum: Option<String>,
+    duration_ms: Option<u64>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 struct RuntimeCapabilities {
     platform: String,
     mobile: bool,
@@ -381,6 +397,35 @@ fn emit_ota_progress(
         progress,
     };
     let _ = app.emit("ota-progress", payload);
+}
+
+fn emit_schedule_save_progress(
+    app: &AppHandle,
+    stage: &str,
+    level: &str,
+    message: impl Into<String>,
+    current: usize,
+    total: usize,
+    progress: Option<u8>,
+    revision_before: Option<u64>,
+    revision_after: Option<u64>,
+    checksum: Option<String>,
+    duration_ms: Option<u64>,
+) {
+    let payload = ScheduleSaveProgressEvent {
+        timestamp: unix_millis(),
+        stage: stage.to_string(),
+        level: level.to_string(),
+        message: message.into(),
+        current,
+        total,
+        progress,
+        revision_before,
+        revision_after,
+        checksum,
+        duration_ms,
+    };
+    let _ = app.emit("schedule-save-progress", payload);
 }
 
 fn validate_host(host: &str, label: &str) -> Result<(), String> {
@@ -2579,7 +2624,13 @@ async fn save_and_sync_schedules(
     expected_revision: Option<u64>,
     force: Option<bool>,
 ) -> Result<Value, String> {
+    let started_at = Instant::now();
     let schedules = normalize_schedules(schedules)?;
+    let total = schedules.len();
+    emit_schedule_save_progress(
+        &app, "preparing", "info", "Időzítések ellenőrzése és Arduino állapot lekérése.",
+        0, total, None, expected_revision, None, None, None
+    );
     let before = schedule_status(&state).await?;
     let force = force.unwrap_or(false);
 
@@ -2605,7 +2656,15 @@ async fn save_and_sync_schedules(
     }
 
     if schedules.is_empty() {
+        emit_schedule_save_progress(
+            &app, "committing", "info", "Az Arduino időzítéseinek törlése folyamatban.",
+            0, 0, None, Some(before.revision), None, None, None
+        );
         delete_json(&state, "/api/v1/schedules").await?;
+        emit_schedule_save_progress(
+            &app, "readback", "info", "Törlés utáni Arduino visszaellenőrzés.",
+            0, 0, None, Some(before.revision), None, None, None
+        );
         let verified = fetch_schedule_snapshot(&state).await?;
         if verified.count != 0 || !verified.schedules.is_empty() {
             return Err(format!(
@@ -2614,6 +2673,11 @@ async fn save_and_sync_schedules(
             ));
         }
         write_schedule_cache(&app, verified.schedules.clone())?;
+        emit_schedule_save_progress(
+            &app, "success", "success", "Arduino mentés és visszaellenőrzés kész.",
+            0, 0, Some(100), Some(before.revision), Some(verified.revision),
+            Some(verified.checksum.clone()), Some(started_at.elapsed().as_millis() as u64)
+        );
         return Ok(serde_json::json!({
             "success": true,
             "schedules": verified.schedules.clone(),
@@ -2630,6 +2694,10 @@ async fn save_and_sync_schedules(
         }));
     }
 
+    emit_schedule_save_progress(
+        &app, "transaction", "info", "Schedule tranzakció megnyitása az Arduinón.",
+        0, total, None, Some(before.revision), None, None, None
+    );
     let transaction: ArduinoScheduleTransaction = serde_json::from_value(
         post_json(
             &state,
@@ -2655,6 +2723,10 @@ async fn save_and_sync_schedules(
         "/api/v1/schedules/transactions/{}",
         transaction.transaction_id
     );
+    emit_schedule_save_progress(
+        &app, "uploading", "info", format!("0/{total} időzítés elküldve az Arduinónak."),
+        0, total, Some(0), Some(before.revision), None, None, None
+    );
     let upload_result: Result<(), String> = async {
         for (index, schedule) in schedules.iter().enumerate() {
             put_json(
@@ -2666,19 +2738,38 @@ async fn save_and_sync_schedules(
                 }),
             )
             .await?;
+            let current = index + 1;
+            let progress = if total == 0 { 100 } else { ((current * 100) / total).min(100) as u8 };
+            emit_schedule_save_progress(
+                &app, "uploading", "info", format!("{current}/{total} időzítés elküldve az Arduinónak."),
+                current, total, Some(progress), Some(before.revision), None, None, None
+            );
         }
+        emit_schedule_save_progress(
+            &app, "committing", "info", "EEPROM A/B tranzakció commit és readback.",
+            total, total, None, Some(before.revision), None, None, None
+        );
         post_json(&state, &format!("{tx_base}/commit"), None).await?;
         Ok(())
     }
     .await;
 
     if let Err(error) = upload_result {
+        emit_schedule_save_progress(
+            &app, "error", "error", format!("Schedule tranzakció hiba: {error}"),
+            0, total, None, Some(before.revision), None, None,
+            Some(started_at.elapsed().as_millis() as u64)
+        );
         let _ = delete_json(&state, &tx_base).await;
         return Err(format!(
             "A schedule tranzakció megszakadt és vissza lett vonva: {error}"
         ));
     }
 
+    emit_schedule_save_progress(
+        &app, "verifying", "info", "Commit utáni revision és checksum ellenőrzése.",
+        total, total, None, Some(before.revision), None, None, None
+    );
     let after = schedule_status(&state).await?;
     if after.count as usize != schedules.len() || after.revision <= before.revision {
         return Err(format!(
@@ -2687,6 +2778,10 @@ async fn save_and_sync_schedules(
         ));
     }
 
+    emit_schedule_save_progress(
+        &app, "readback", "info", "Teljes schedule visszaolvasás az Arduinóról.",
+        total, total, None, Some(before.revision), Some(after.revision), Some(after.checksum.clone()), None
+    );
     let verified = fetch_schedule_snapshot(&state).await?;
     let expected_payloads: Vec<String> = schedules
         .iter()
@@ -2713,6 +2808,11 @@ async fn save_and_sync_schedules(
     }
 
     write_schedule_cache(&app, verified.schedules.clone())?;
+    emit_schedule_save_progress(
+        &app, "success", "success", "Arduino mentés és teljes readback kész.",
+        total, total, Some(100), Some(before.revision), Some(verified.revision),
+        Some(verified.checksum.clone()), Some(started_at.elapsed().as_millis() as u64)
+    );
 
     Ok(serde_json::json!({
         "success": true,

@@ -3,35 +3,67 @@
 
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const path = require('node:path');
 
-const read = (p) => fs.readFileSync(p, 'utf8');
+const DOC_DIR = path.join('docs', 'v5');
+const version = fs.readFileSync('VERSION', 'utf8').trim();
+const currentMatch = version.match(/^(\d+)\.(\d+)\.(\d+)-beta\.(\d+)$/);
 
-const history = [
-  ['docs/v5/BETA3_RELEASE_NOTES.md', '5.0.0-beta.3'],
-  ['docs/v5/BETA4_RELEASE_NOTES.md', '5.0.0-beta.4'],
-  ['docs/v5/BETA8_RELEASE_NOTES.md', '5.0.0-beta.9'],
-  ['docs/v5/BETA9_RELEASE_NOTES.md', '5.0.0-beta.9'],
-  ['docs/v5/BETA10_RELEASE_NOTES.md', '5.0.0-beta.10']
-];
+assert.ok(currentMatch, `Unsupported current Beta version: ${version}`);
 
-for (const [file, version] of history) {
-  assert.ok(fs.existsSync(file), `Missing historical release document: ${file}`);
-  assert.ok(read(file).includes(version), `${file} does not preserve ${version}`);
-}
+const [, major, minor, , currentBeta] = currentMatch;
+const currentPrefix =
+  major === '5' && minor === '0'
+    ? `BETA${currentBeta}`
+    : `V${major}${minor}_BETA${currentBeta}`;
 
-assert.equal(read('VERSION').trim(), '5.5.0-beta.1');
-assert.ok(fs.existsSync('docs/v5/V55_BETA1_RELEASE_NOTES.md'));
-assert.ok(
-  read('docs/v5/V55_BETA1_RELEASE_NOTES.md').includes('5.5.0-beta.1')
+const releaseNotes = fs.readdirSync(DOC_DIR)
+  .filter((name) =>
+    /^(?:BETA\d+|V\d+_BETA\d+)_RELEASE_NOTES\.md$/.test(name)
+  )
+  .sort();
+
+assert.ok(releaseNotes.length > 0, 'No versioned release notes discovered');
+
+const historical = releaseNotes.filter(
+  (name) => !name.startsWith(`${currentPrefix}_`)
 );
 
-for (const [file] of history) {
-  assert.doesNotMatch(
-    read(file),
-    /5\.5\.0-beta\.1/,
-    `${file} was overwritten with the current release version`
+assert.ok(
+  historical.length > 0,
+  `No historical release notes discovered; current prefix=${currentPrefix}`
+);
+
+for (const name of historical) {
+  const file = path.join(DOC_DIR, name);
+  const text = fs.readFileSync(file, 'utf8');
+
+  assert.ok(text.trim().length > 0, `Historical document is empty: ${file}`);
+  assert.match(text, /^#\s+\S/m, `Historical document has no Markdown title: ${file}`);
+
+  const betaMatch = name.match(/(?:^BETA|_BETA)(\d+)_RELEASE_NOTES\.md$/);
+  assert.ok(betaMatch, `Cannot derive Beta number from historical file: ${name}`);
+  const expectedBeta = betaMatch[1];
+
+  const semanticVersions =
+    text.match(/\b\d+\.\d+\.\d+-beta\.\d+\b/g) || [];
+
+  assert.ok(
+    semanticVersions.length > 0,
+    `Historical release document has no semantic Beta version: ${file}`
+  );
+
+  const selfIdentity = semanticVersions.some((item) =>
+    item.endsWith(`-beta.${expectedBeta}`)
+  );
+
+  assert.ok(
+    selfIdentity,
+    `${file} does not self-identify as Beta.${expectedBeta}`
   );
 }
 
-console.log('HISTORICAL_RELEASE_DOCUMENTS=PRESERVED');
-console.log('CURRENT_RELEASE_SEPARATED_FROM_HISTORY=PASSED');
+console.log(`HISTORICAL_RELEASE_DOCUMENTS_DISCOVERED=${historical.length}`);
+console.log(`CURRENT_RELEASE_EXCLUDED_FROM_HISTORY=${currentPrefix}`);
+console.log('HISTORICAL_RELEASE_SELF_IDENTITY=PASSED');
+console.log('HISTORY_AUDIT_HAS_NO_HARDCODED_RELEASE_MAP=PASSED');

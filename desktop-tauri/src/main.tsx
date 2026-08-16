@@ -40,6 +40,11 @@ import './schedule-firmware-logs-api-v2.css';
 import './native-credential-bridge.css';
 import './release-finalization.css';
 import './lxc-orchestration.css';
+import './v551-beta5-desktop-navigation-cleanup.css';
+import './v551-beta5-desktop-sidebar-theme-readability-polish.css';
+import './v551-beta5-overview-consistency.css';
+import './v551-beta5-weekly-schedule-ux.css';
+import './v551-beta5-schedule-save-progress.css';
 import './v551-beta5-mobile-shell-foundation.css';
 
 const tauriAvailable =
