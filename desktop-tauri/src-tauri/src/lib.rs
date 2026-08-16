@@ -1969,7 +1969,15 @@ async fn upload_firmware_native(
                         }
                         break 'connect_attempts;
                     }
-                    Err(error) => last_error = format!("{socket}: {error}"),
+                    Err(error) => {
+                        last_error = format!("{socket}: {error}");
+                        #[cfg(target_os = "macos")]
+                        if error.raw_os_error() == Some(65) {
+                            return Err(format!(
+                                "OTA_TRANSPORT_CONNECT_FAILED: a(z) {address}:{port} OTA-cél nem érhető el a Tauri folyamatból. 0 firmware bájt került átvitelre. Utolsó transport hiba: {last_error}"
+                            ));
+                        }
+                    }
                 }
             }
 
@@ -3406,9 +3414,9 @@ async fn firmware_update_inner(
             &binary_path,
         )
         .await
-        .map(|_| "Terminal + arduinoOTA".to_string())
+        .map(|tool| format!("Terminal + arduinoOTA ({tool})"))
     } else {
-        upload_firmware_native(
+        match upload_firmware_native(
             app,
             Arc::clone(&state.arduino_request_lock),
             &ota_address,
@@ -3418,6 +3426,47 @@ async fn firmware_update_inner(
             config.ota_timeout_seconds,
         )
         .await
+        {
+            Ok(result) => Ok(result),
+            Err(native_error) => {
+                #[cfg(target_os = "macos")]
+                {
+                    let auto_mode = matches!(config.ota_upload_mode.trim(), "auto" | "bundled");
+                    if auto_mode && native_error.starts_with("OTA_TRANSPORT_CONNECT_FAILED") {
+                        let (terminal_address, terminal_port) = status_ota_target(&status_json)?;
+                        let tool = find_ota_tool(app, &config).ok_or_else(|| {
+                            format!("{native_error}\nAUTO_TERMINAL_FALLBACK_UNAVAILABLE: nem található működő arduinoOTA.")
+                        })?;
+                        emit_ota_progress(
+                            app,
+                            "Terminal fallback",
+                            "info",
+                            format!(
+                                "A beépített OTA nem éri el a helyi célt. Automatikus macOS Terminal fallback indul: {}:{} • feltöltő: {}",
+                                terminal_address, terminal_port, tool.to_string_lossy()
+                            ),
+                            Some(53),
+                        );
+                        upload_firmware_in_terminal(
+                            app,
+                            &config,
+                            &terminal_address,
+                            terminal_port,
+                            &password,
+                            &binary_path,
+                        )
+                        .await
+                        .map(|tool| format!("AUTO_TERMINAL_FALLBACK:{tool}"))
+                    } else {
+                        Err(native_error)
+                    }
+                }
+                #[cfg(not(target_os = "macos"))]
+                {
+                    Err(native_error)
+                }
+            }
+        }
     };
     let transfer_result = upload_result?;
 
@@ -3736,7 +3785,7 @@ async fn firmware_install_external_inner(
         )
         .await?;
     } else {
-        upload_firmware_native(
+        match upload_firmware_native(
             app,
             Arc::clone(&state.arduino_request_lock),
             &ota_address,
@@ -3745,7 +3794,47 @@ async fn firmware_install_external_inner(
             firmware,
             config.ota_timeout_seconds,
         )
-        .await?;
+        .await
+        {
+            Ok(_) => {}
+            Err(native_error) => {
+                #[cfg(target_os = "macos")]
+                {
+                    let auto_mode = matches!(config.ota_upload_mode.trim(), "auto" | "bundled");
+                    if auto_mode && native_error.starts_with("OTA_TRANSPORT_CONNECT_FAILED") {
+                        let (terminal_address, terminal_port) = status_ota_target(&status_json)?;
+                        let tool = find_ota_tool(app, &config).ok_or_else(|| {
+                            format!("{native_error}\nAUTO_TERMINAL_FALLBACK_UNAVAILABLE: nem található működő arduinoOTA.")
+                        })?;
+                        emit_ota_progress(
+                            app,
+                            "Terminal fallback",
+                            "info",
+                            format!(
+                                "A beépített OTA nem éri el a helyi célt. Automatikus macOS Terminal fallback indul: {}:{} • feltöltő: {}",
+                                terminal_address, terminal_port, tool.to_string_lossy()
+                            ),
+                            Some(53),
+                        );
+                        upload_firmware_in_terminal(
+                            app,
+                            &config,
+                            &terminal_address,
+                            terminal_port,
+                            &password,
+                            &binary_path,
+                        )
+                        .await?;
+                    } else {
+                        return Err(native_error);
+                    }
+                }
+                #[cfg(not(target_os = "macos"))]
+                {
+                    return Err(native_error);
+                }
+            }
+        }
     }
 
     if let Ok(mut current) = state.firmware_status.lock() {

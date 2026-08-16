@@ -1,5 +1,5 @@
 /* AUTO-GENERÁLT — NE SZERKESZD KÉZZEL. */
-/* OpenAPI verzió: 5.5.1-beta.6 */
+/* OpenAPI verzió: 5.5.1-beta.7 */
 
 import {
   ApiClientConfiguration,

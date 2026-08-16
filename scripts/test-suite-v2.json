@@ -45,7 +45,8 @@
     "test:firmware-backup-rollback",
     "test:ota-cancellation",
     "test:telemetry-timestamp-normalization",
-    "test:macos-local-network-ota"
+    "test:macos-local-network-ota",
+    "test:macos-auto-terminal-ota-fallback"
   ],
   "historyAliasPatterns": [
     "^test:beta\\d+[-:]",

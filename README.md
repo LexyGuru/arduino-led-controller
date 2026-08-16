@@ -21,11 +21,11 @@ Arduino továbbra is önálló **Direct API v1** végpontként működik.
 
 ## Aktuális kiadás
 
-> **Jelenlegi fejlesztési kiadás: Arduino LED Controller V5.5.1 Beta.6**
+> **Jelenlegi fejlesztési kiadás: Arduino LED Controller V5.5.1 Beta.7**
 
 | Komponens | Aktuális verzió / állapot |
 |---|---|
-| Alkalmazás | **`5.5.1-beta.6`** |
+| Alkalmazás | **`5.5.1-beta.7`** |
 | Firmware | **`5.0.0-beta.10`** |
 | Direct API | **`1.0.0`** |
 | Beta ág | **`next/v5-rearchitecture`** |
@@ -36,22 +36,26 @@ Arduino továbbra is önálló **Direct API v1** végpontként működik.
 | LXC rendszer | Debian 13 |
 | LXC web/API port | `3000` |
 
-A **V5.5.1 Beta.6** fejlesztési ciklus a mobil/desktop használhatóság,
-Dashboard/Overview adatkonzisztencia és dokumentációs szinkron köre. Ide tartozik
-a fix mobil BottomNav, a desktop navigáció és Theme Engine olvashatósági polish,
-a Device Health / telemetria konszolidáció és a valós hálózati statisztika.
-Az alkalmazás `5.5.1-beta.6` és a firmware `5.0.0-beta.10` külön verziózott
-komponensek.
+A **V5.5.1 Beta.7** az OTA fallback helyreállítási kiadás. macOS-on az
+`auto` / `bundled` mód továbbra is a beépített Rust OTA-motorral indul, de ha a
+helyi OTA-cél a Tauri folyamatból nem érhető el, automatikusan megnyílik a Terminal
+és az `arduinoOTA` végzi a feltöltést az Arduino aktuális LAN-címére. A sikeres
+átvitel után a meglévő 180 másodperces Direct API reboot/firmware ellenőrzés fut.
+A firmware változatlanul `5.0.0-beta.10`.
 
 ### Aktuális kiadási dokumentumok
+
+- [V5.5.1 Beta.7 release notes](docs/v5/V55_BETA7_RELEASE_NOTES.md)
+- [V5.5.1 Beta.7 telepítési útmutató](docs/v5/V55_BETA7_INSTALLATION_GUIDE.md)
+- [V5.5.1 Beta.7 release checklist](docs/v5/V55_BETA7_RELEASE_CHECKLIST.md)
+- [Részletes gyökér release notes](RELEASE_NOTES_5.5.1-beta.7.md)
+
+### Korábbi kiadási dokumentumok
 
 - [V5.5.1 Beta.6 release notes](docs/v5/V55_BETA6_RELEASE_NOTES.md)
 - [V5.5.1 Beta.6 telepítési útmutató](docs/v5/V55_BETA6_INSTALLATION_GUIDE.md)
 - [V5.5.1 Beta.6 release checklist](docs/v5/V55_BETA6_RELEASE_CHECKLIST.md)
-- [Részletes gyökér release notes](RELEASE_NOTES_5.5.1-beta.6.md)
-
-### Korábbi kiadási dokumentumok
-
+- [V5.5.1 Beta.6 gyökér release notes](RELEASE_NOTES_5.5.1-beta.6.md)
 - [V5.5.1 Beta.5 release notes](docs/v5/V55_BETA5_RELEASE_NOTES.md)
 - [V5.5.1 Beta.5 telepítési útmutató](docs/v5/V55_BETA5_INSTALLATION_GUIDE.md)
 - [V5.5.1 Beta.5 release checklist](docs/v5/V55_BETA5_RELEASE_CHECKLIST.md)
