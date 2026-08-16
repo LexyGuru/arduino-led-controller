@@ -277,7 +277,8 @@
     "test:architecture-preflight-v2": "node scripts/test-test-architecture-v2-manifest-preflight.js package.json scripts/test-suite-v2.json",
     "test:telemetry-timestamp-normalization": "node scripts/test-telemetry-timestamp-normalization.js",
     "test:macos-local-network-ota": "node scripts/test-macos-local-network-ota-regression.js",
-    "test:macos-auto-terminal-ota-fallback": "node scripts/test-macos-auto-terminal-ota-fallback.js"
+    "test:macos-auto-terminal-ota-fallback": "node scripts/test-macos-auto-terminal-ota-fallback.js",
+    "test:macos-ota-immutable": "node scripts/test-macos-ota-beta7-immutable-contract.js"
   },
   "engines": {
     "node": ">=20"

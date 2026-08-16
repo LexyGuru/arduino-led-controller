@@ -103,6 +103,9 @@ jobs:
           node scripts/test-beta-release-workflow.js
           npm run test:beta-installation-assets
 
+      - name: Enforce immutable macOS OTA Beta.7 contract
+        run: npm run test:macos-ota-immutable
+
       - name: Run full Node regression suite
         run: npm test
 

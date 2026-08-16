@@ -46,7 +46,8 @@
     "test:ota-cancellation",
     "test:telemetry-timestamp-normalization",
     "test:macos-local-network-ota",
-    "test:macos-auto-terminal-ota-fallback"
+    "test:macos-auto-terminal-ota-fallback",
+    "test:macos-ota-immutable"
   ],
   "historyAliasPatterns": [
     "^test:beta\\d+[-:]",

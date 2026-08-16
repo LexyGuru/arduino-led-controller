@@ -1,0 +1,61 @@
+{
+  "contract": "MACOS_OTA_BETA7_IMMUTABLE_V1",
+  "sourceCommit": "32fc43d786580b82f5700ca7453f4b73e77726d5",
+  "applicationVersion": "5.5.1-beta.7",
+  "firmwareVersion": "5.0.0-beta.10",
+  "directApiVersion": "1.0.0",
+  "functions": {
+    "confirm_restart": {
+      "sha256": "9e6ba3d152e79f6c57896d4011c0ffbe40f55a2b47cdda9769060eeca1ddf3ed",
+      "bytes": 6746
+    },
+    "status_ota_target": {
+      "sha256": "f467641702cb6ce83afb572f70f7b4c8de9efef2a5f093550e58dfb3beac9b25",
+      "bytes": 756
+    },
+    "ota_target_from_status": {
+      "sha256": "cbc0d5a845764984db18a4c7bd93b8f79fe825ee7c4cf3ceb94013700847a1a5",
+      "bytes": 1729
+    },
+    "find_ota_tool": {
+      "sha256": "660f67065ef67a3f026504cd44050ac09d967ad6374d8166045356069090ba0a",
+      "bytes": 814
+    },
+    "use_terminal_ota": {
+      "sha256": "302fe85c9e875db3ab7c9bc99f0190ebf48b899dfb88b02d95ef5d0af661f7bd",
+      "bytes": 1136
+    },
+    "upload_firmware_in_terminal": {
+      "sha256": "900e7d01d40cc468f8f25aa3bdb1cf460ef78145bc30bed3a4eb9e658aa7f277",
+      "bytes": 10917
+    },
+    "upload_firmware_native": {
+      "sha256": "1a0f987fdbb074e8f47b4aa16ecdd9debb6b27115e43e113a78f894b78982e8a",
+      "bytes": 8649
+    },
+    "firmware_update_inner": {
+      "sha256": "2e9989e6cd8ae0408c93c914fd9a7ea825499882adf01ced051fdcacfc6edaf1",
+      "bytes": 19093
+    },
+    "firmware_install_external_inner": {
+      "sha256": "96960a9327645a2e3c2ca21f2022f62f0f959ed020c9b36c6dc366a4498671ba",
+      "bytes": 13084
+    }
+  },
+  "requiredMarkers": [
+    "if matches!(mode, \"auto\" | \"bundled\")",
+    "native_error.starts_with(\"OTA_TRANSPORT_CONNECT_FAILED\")",
+    "AUTO_TERMINAL_FALLBACK_UNAVAILABLE",
+    "AUTO_TERMINAL_FALLBACK:{tool}",
+    "status_ota_target(&status_json)?",
+    "Command::new(\"open\")",
+    ".args([\"-a\", \"Terminal\"])",
+    "-address",
+    "-port",
+    "-sketch",
+    "-upload /sketch",
+    "Duration::from_secs(180)",
+    "NEW_FIRMWARE_BOOT_CONFIRMED",
+    "TRANSFER -> API_CONFIRMATION"
+  ]
+}
