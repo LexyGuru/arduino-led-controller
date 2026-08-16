@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Arduino LED Controller",
-  "version": "5.5.1-beta.2",
+  "version": "5.5.1-beta.4",
   "identifier": "hu.lexyguru.arduinoledcontroller",
   "build": {
     "frontendDist": "../dist",
@@ -40,6 +40,18 @@
     ],
     "iOS": {
       "minimumSystemVersion": "15.0"
+    },
+    "createUpdaterArtifacts": true
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDE5M0ZGNEMxMjNDQkEyMDAKUldRQW9zc2p3ZlEvR2QxT0ViRE93ejhLb3JCR0tqVVF0M0JLQStyZVlXdm9pSllJNndDaUorWVQK",
+      "endpoints": [
+        "https://github.com/LexyGuru/arduino-led-controller/releases/download/updater-beta/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
     }
   }
 }

@@ -9,32 +9,25 @@ import {
 import { useI18n } from '../../i18n';
 import type { AppUpdateState } from '../../hooks/useAppUpdateCenter';
 
-export function AppUpdateCenter({
-  state
-}: {
-  state: AppUpdateState;
-}) {
+export function AppUpdateCenter({ state }: { state: AppUpdateState }) {
   const { t, language } = useI18n();
-  const locale =
-    language === 'de'
-      ? 'de-DE'
-      : language === 'en'
-        ? 'en-US'
-        : 'hu-HU';
+  const locale = language === 'de' ? 'de-DE' : language === 'en' ? 'en-US' : 'hu-HU';
 
   const statusLabel =
     state.phase === 'available'
       ? t('appUpdate.available')
-      : state.phase === 'current'
-        ? t('appUpdate.current')
-        : state.phase === 'error'
-          ? t('appUpdate.error')
-          : state.phase === 'checking'
-            ? t('appUpdate.checking')
-            : t('appUpdate.notChecked');
+      : state.phase === 'installing'
+        ? t('appUpdate.installing')
+        : state.phase === 'current'
+          ? t('appUpdate.current')
+          : state.phase === 'error'
+            ? t('appUpdate.error')
+            : state.phase === 'checking'
+              ? t('appUpdate.checking')
+              : t('appUpdate.notChecked');
 
   const StatusIcon =
-    state.phase === 'available'
+    state.phase === 'available' || state.phase === 'installing'
       ? Rocket
       : state.phase === 'error'
         ? TriangleAlert
@@ -49,21 +42,11 @@ export function AppUpdateCenter({
           <p className="eyebrow">{t('appUpdate.eyebrow')}</p>
           <h2>{t('appUpdate.title')}</h2>
         </div>
-        <StatusIcon
-          className={
-            state.phase === 'available'
-              ? 'update-available'
-              : state.phase === 'error'
-                ? 'bad'
-                : 'ok'
-          }
-        />
+        <StatusIcon className={state.phase === 'available' || state.phase === 'installing' ? 'update-available' : state.phase === 'error' ? 'bad' : 'ok'} />
       </div>
 
       <div className={`v55-update-state ${state.phase}`}>
-        <span className="v55-update-state-icon">
-          <StatusIcon size={19} />
-        </span>
+        <span className="v55-update-state-icon"><StatusIcon size={19} /></span>
         <div>
           <strong>{statusLabel}</strong>
           <small>{t('appUpdate.channel',{channel:state.channel})}</small>
@@ -71,68 +54,32 @@ export function AppUpdateCenter({
       </div>
 
       <div className="v55-update-grid">
-        <div>
-          <span>{t('appUpdate.installed')}</span>
-          <strong>{state.currentVersion}</strong>
-        </div>
-        <div>
-          <span>{t('appUpdate.latest')}</span>
-          <strong>{state.latestVersion ?? '—'}</strong>
-        </div>
-        <div>
-          <span>{t('appUpdate.lastCheck')}</span>
-          <strong>
-            {state.checkedAt
-              ? new Date(state.checkedAt).toLocaleString(locale)
-              : t('appUpdate.never')}
-          </strong>
-        </div>
+        <div><span>{t('appUpdate.installed')}</span><strong>{state.currentVersion}</strong></div>
+        <div><span>{t('appUpdate.latest')}</span><strong>{state.latestVersion ?? '—'}</strong></div>
+        <div><span>{t('appUpdate.lastCheck')}</span><strong>{state.checkedAt ? new Date(state.checkedAt).toLocaleString(locale) : t('appUpdate.never')}</strong></div>
       </div>
 
-      {state.error && (
-        <div className="notice v55-update-error">
-          <TriangleAlert size={18} />
-          <p>{t('appUpdate.checkError',{error:state.error})}</p>
-        </div>
-      )}
+      {state.error && <div className="notice v55-update-error"><TriangleAlert size={18}/><p>{t('appUpdate.checkError',{error:state.error})}</p></div>}
 
       <div className="v55-update-actions">
-        <button
-          type="button"
-          className="secondary"
-          disabled={state.checking}
-          onClick={() => void state.checkNow()}
-        >
-          <RefreshCw size={17} className={state.checking ? 'spin' : ''} />
-          {t('appUpdate.checkNow')}
+        <button type="button" className="secondary" disabled={state.checking || state.installing} onClick={() => void state.checkNow()}>
+          <RefreshCw size={17} className={state.checking ? 'spin' : ''}/>{t('appUpdate.checkNow')}
         </button>
 
-        {state.updateAvailable && targetUrl && (
-          <a
-            className="primary-button"
-            href={targetUrl}
-            target="_blank"
-            rel="noreferrer"
-          >
-            <DownloadCloud size={17} />
-            {t('appUpdate.download')}
-          </a>
+        {state.updateAvailable && state.nativeInstallAvailable && (
+          <button type="button" className="primary-button" disabled={state.installing} onClick={() => void state.installNow()}>
+            <DownloadCloud size={17}/>{state.installing ? t('appUpdate.installing') : t('appUpdate.install')}
+          </button>
+        )}
+
+        {state.updateAvailable && !state.nativeInstallAvailable && targetUrl && (
+          <a className="primary-button" href={targetUrl} target="_blank" rel="noreferrer"><DownloadCloud size={17}/>{t('appUpdate.download')}</a>
         )}
       </div>
 
-      {!state.updateAvailable && state.phase === 'current' && (
-        <div className="v55-update-current-note">
-          <CheckCircle2 size={16} />
-          <span>{t('appUpdate.currentHelp')}</span>
-        </div>
-      )}
-
-      {state.updateAvailable && !targetUrl && (
-        <div className="v55-update-current-note warning">
-          <Clock3 size={16} />
-          <span>{t('appUpdate.noDirectDownload')}</span>
-        </div>
-      )}
+      {!state.updateAvailable && state.phase === 'current' && <div className="v55-update-current-note"><CheckCircle2 size={16}/><span>{t('appUpdate.currentHelp')}</span></div>}
+      {state.updateAvailable && !state.nativeInstallAvailable && !targetUrl && <div className="v55-update-current-note warning"><Clock3 size={16}/><span>{t('appUpdate.noDirectDownload')}</span></div>}
+      {state.nativeInstallAvailable && <div className="v55-update-current-note"><CheckCircle2 size={16}/><span>{t('appUpdate.nativeVerified')}</span></div>}
     </section>
   );
 }

@@ -1,0 +1,670 @@
+/* Beta.4 — Firmware / OTA2 / Update Center Modern Glass Redesign
+   Presentation-only override layer. All update/install/readiness/recovery
+   behavior remains owned by the existing Beta.3 models and controllers. */
+
+.beta4-firmware-redesign {
+  --beta4-fw-glass:
+    color-mix(in srgb, var(--ds-surface-raised) 78%, transparent);
+  --beta4-fw-soft:
+    color-mix(in srgb, var(--ds-surface) 68%, transparent);
+  --beta4-fw-border:
+    color-mix(in srgb, var(--ds-accent) 16%, var(--ds-border));
+  --beta4-fw-glow:
+    0 0 34px color-mix(in srgb, var(--ds-accent) 10%, transparent);
+}
+
+/* Firmware command-center heading */
+.beta4-firmware-redesign .v55-management-heading {
+  position: relative;
+  overflow: hidden;
+  padding: clamp(24px, 3vw, 34px);
+  border: 1px solid var(--beta4-fw-border);
+  border-radius: 24px;
+  background:
+    radial-gradient(
+      circle at 92% 10%,
+      color-mix(in srgb, var(--ds-accent) 18%, transparent),
+      transparent 30%
+    ),
+    radial-gradient(
+      circle at 64% 110%,
+      color-mix(in srgb, var(--ds-accent-hover) 12%, transparent),
+      transparent 35%
+    ),
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--ds-surface-raised) 82%, transparent),
+      color-mix(in srgb, var(--ds-surface) 66%, transparent)
+    );
+  box-shadow:
+    0 22px 58px rgba(0,0,0,.16),
+    inset 0 1px 0 color-mix(in srgb, white 6%, transparent);
+  backdrop-filter: blur(24px) saturate(145%);
+  -webkit-backdrop-filter: blur(24px) saturate(145%);
+}
+
+.beta4-firmware-redesign .v55-management-heading::after {
+  content: "";
+  position: absolute;
+  left: 28px;
+  right: 28px;
+  bottom: 0;
+  height: 1px;
+  background:
+    linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in srgb, var(--ds-accent) 66%, transparent),
+      transparent
+    );
+}
+
+.beta4-firmware-redesign .v5-heading-actions {
+  gap: 10px;
+}
+
+.beta4-firmware-redesign .v5-heading-actions button {
+  min-height: 42px;
+  border-radius: 13px;
+}
+
+/* Update Center — premium dual-tile dashboard */
+.beta4-firmware-redesign .beta3-update-center {
+  position: relative;
+  overflow: hidden;
+  gap: 18px;
+  padding: clamp(20px, 2.6vw, 30px);
+  border:
+    1px solid color-mix(in srgb, var(--ds-accent) 19%, var(--ds-border));
+  border-radius: 24px;
+  background:
+    radial-gradient(
+      circle at 92% -5%,
+      color-mix(in srgb, var(--ds-accent) 17%, transparent),
+      transparent 32%
+    ),
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--ds-surface-raised) 80%, transparent),
+      color-mix(in srgb, var(--ds-surface) 64%, transparent)
+    );
+  box-shadow:
+    0 24px 60px rgba(0,0,0,.17),
+    inset 0 1px 0 color-mix(in srgb, white 6%, transparent),
+    var(--beta4-fw-glow);
+  backdrop-filter: blur(24px) saturate(145%);
+}
+
+.beta4-firmware-redesign .beta3-update-center::before {
+  content: "";
+  position: absolute;
+  width: 250px;
+  height: 250px;
+  right: -110px;
+  top: -150px;
+  border-radius: 50%;
+  background:
+    radial-gradient(
+      circle,
+      color-mix(in srgb, var(--ds-accent-hover) 20%, transparent),
+      transparent 68%
+    );
+  pointer-events: none;
+}
+
+.beta4-firmware-redesign .beta3-update-center-title {
+  position: relative;
+  z-index: 1;
+  padding-bottom: 4px;
+}
+
+.beta4-firmware-redesign .beta3-update-center-title h2 {
+  margin-top: 4px;
+  font-size: clamp(22px, 2vw, 30px);
+  letter-spacing: -.035em;
+}
+
+.beta4-firmware-redesign .beta3-update-subtitle {
+  line-height: 1.65;
+}
+
+.beta4-firmware-redesign .beta3-update-check {
+  min-height: 42px;
+  border-radius: 13px;
+}
+
+.beta4-firmware-redesign .beta3-update-grid {
+  position: relative;
+  z-index: 1;
+  gap: 16px;
+}
+
+.beta4-firmware-redesign .beta3-update-card {
+  position: relative;
+  overflow: hidden;
+  gap: 15px;
+  min-height: 230px;
+  padding: 20px;
+  border:
+    1px solid color-mix(in srgb, var(--ds-accent) 14%, var(--ds-border));
+  border-radius: 19px;
+  background:
+    radial-gradient(
+      circle at 100% 0,
+      color-mix(in srgb, var(--ds-accent) 9%, transparent),
+      transparent 32%
+    ),
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--ds-surface-raised) 84%, transparent),
+      color-mix(in srgb, var(--ds-surface) 70%, transparent)
+    );
+  box-shadow:
+    0 18px 46px rgba(0,0,0,.14),
+    inset 0 1px 0 color-mix(in srgb, white 5%, transparent);
+  transition:
+    transform .2s ease,
+    border-color .2s ease,
+    box-shadow .2s ease;
+}
+
+.beta4-firmware-redesign .beta3-update-card::after {
+  content: "";
+  position: absolute;
+  left: 20px;
+  right: 20px;
+  top: 0;
+  height: 1px;
+  background:
+    linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in srgb, var(--ds-accent) 72%, transparent),
+      transparent
+    );
+}
+
+.beta4-firmware-redesign .beta3-update-card:hover {
+  transform: translateY(-3px);
+  border-color:
+    color-mix(in srgb, var(--ds-accent) 30%, var(--ds-border));
+  box-shadow:
+    0 26px 58px rgba(0,0,0,.2),
+    inset 0 1px 0 color-mix(in srgb, white 7%, transparent),
+    0 0 28px color-mix(in srgb, var(--ds-accent) 7%, transparent);
+}
+
+.beta4-firmware-redesign .beta3-update-card-head strong {
+  font-size: 15px;
+  letter-spacing: -.015em;
+}
+
+.beta4-firmware-redesign .beta3-update-channel {
+  padding: 5px 10px;
+  color: var(--ds-accent);
+  border-color:
+    color-mix(in srgb, var(--ds-accent) 28%, var(--ds-border));
+  background:
+    color-mix(in srgb, var(--ds-accent-soft) 78%, transparent);
+  box-shadow:
+    0 0 18px color-mix(in srgb, var(--ds-accent) 8%, transparent);
+}
+
+.beta4-firmware-redesign .beta3-version-pair {
+  gap: 13px;
+  align-items: center;
+  padding: 14px;
+  border:
+    1px solid color-mix(in srgb, var(--ds-accent) 8%, var(--ds-border));
+  border-radius: 14px;
+  background:
+    color-mix(in srgb, var(--ds-surface-soft) 72%, transparent);
+}
+
+.beta4-firmware-redesign .beta3-version-pair small {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.beta4-firmware-redesign .beta3-version-pair b {
+  margin-top: 3px;
+  font-size: clamp(16px, 1.7vw, 22px);
+  letter-spacing: -.025em;
+}
+
+.beta4-firmware-redesign .beta3-version-pair > span {
+  color: var(--ds-accent);
+  font-size: 20px;
+  opacity: .72;
+}
+
+.beta4-firmware-redesign .beta3-update-relation {
+  min-height: 34px;
+  padding: 7px 10px;
+  border-radius: 11px;
+  background:
+    color-mix(in srgb, currentColor 7%, transparent);
+}
+
+.beta4-firmware-redesign .beta3-update-relation.newer {
+  box-shadow:
+    0 0 18px color-mix(in srgb, var(--ds-success) 8%, transparent);
+}
+
+.beta4-firmware-redesign .beta3-readiness-line {
+  display: grid;
+  gap: 9px;
+  padding: 11px 0 0;
+  border-top:
+    1px solid color-mix(in srgb, var(--ds-border) 64%, transparent);
+}
+
+.beta4-firmware-redesign .beta3-readiness-statuses {
+  gap: 8px;
+}
+
+.beta4-firmware-redesign .beta3-readiness-statuses span {
+  padding: 5px 8px;
+  border:
+    1px solid color-mix(in srgb, currentColor 24%, transparent);
+  border-radius: 999px;
+  background:
+    color-mix(in srgb, currentColor 6%, transparent);
+}
+
+.beta4-firmware-redesign .beta3-readiness-dot {
+  box-shadow:
+    0 0 10px currentColor;
+}
+
+.beta4-firmware-redesign .beta3-update-action {
+  min-height: 40px;
+  border-radius: 12px;
+}
+
+/* Support stats */
+.beta4-firmware-redesign .beta3-firmware-support-grid {
+  gap: 14px;
+}
+
+.beta4-firmware-redesign .beta3-firmware-support-grid .stat-card {
+  position: relative;
+  overflow: hidden;
+  min-height: 92px;
+  padding: 18px;
+  border:
+    1px solid color-mix(in srgb, var(--ds-accent) 12%, var(--ds-border));
+  border-radius: 17px;
+  background:
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--ds-surface-raised) 78%, transparent),
+      color-mix(in srgb, var(--ds-surface) 68%, transparent)
+    );
+  box-shadow:
+    0 16px 36px rgba(0,0,0,.12),
+    inset 0 1px 0 color-mix(in srgb, white 4%, transparent);
+}
+
+.beta4-firmware-redesign .beta3-firmware-support-grid .stat-card strong {
+  margin-top: 7px;
+  font-size: 17px;
+  letter-spacing: -.02em;
+}
+
+/* Main firmware status card */
+.beta4-firmware-redesign .firmware-panel {
+  position: relative;
+  overflow: hidden;
+  gap: 20px;
+  padding: 24px;
+  border:
+    1px solid color-mix(in srgb, var(--ds-accent) 14%, var(--ds-border));
+  border-radius: 21px;
+  background:
+    radial-gradient(
+      circle at 0 0,
+      color-mix(in srgb, var(--ds-accent) 10%, transparent),
+      transparent 30%
+    ),
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--ds-surface-raised) 78%, transparent),
+      color-mix(in srgb, var(--ds-surface) 68%, transparent)
+    );
+  box-shadow:
+    0 20px 48px rgba(0,0,0,.14),
+    inset 0 1px 0 color-mix(in srgb, white 5%, transparent);
+}
+
+.beta4-firmware-redesign .firmware-icon {
+  width: 58px;
+  height: 58px;
+  border:
+    1px solid color-mix(in srgb, var(--ds-accent) 30%, var(--ds-border));
+  border-radius: 18px;
+  background:
+    color-mix(in srgb, var(--ds-accent-soft) 76%, transparent);
+  box-shadow:
+    0 0 28px color-mix(in srgb, var(--ds-accent) 12%, transparent);
+}
+
+.beta4-firmware-redesign .firmware-status-summary {
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.beta4-firmware-redesign .v5-firmware-actions {
+  gap: 9px;
+}
+
+.beta4-firmware-redesign .v5-firmware-actions button,
+.beta4-firmware-redesign .v5-firmware-actions .secondary-button {
+  min-height: 41px;
+  border-radius: 12px;
+}
+
+/* Legacy OTA realtime console */
+.beta4-firmware-redesign .ota-progress-panel {
+  padding: 22px;
+  border:
+    1px solid color-mix(in srgb, var(--ds-accent) 13%, var(--ds-border));
+  border-radius: 20px;
+  background:
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--ds-surface-raised) 78%, transparent),
+      color-mix(in srgb, var(--ds-surface) 66%, transparent)
+    );
+  box-shadow:
+    0 18px 44px rgba(0,0,0,.13),
+    inset 0 1px 0 color-mix(in srgb, white 4%, transparent);
+}
+
+.beta4-firmware-redesign .ota-state-badge {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background:
+    color-mix(in srgb, var(--ds-surface-soft) 76%, transparent);
+}
+
+.beta4-firmware-redesign .ota-progress-summary {
+  margin-top: 8px;
+  padding: 14px;
+  border:
+    1px solid color-mix(in srgb, var(--ds-accent) 8%, var(--ds-border));
+  border-radius: 14px;
+  background:
+    color-mix(in srgb, var(--ds-surface-soft) 68%, transparent);
+}
+
+.beta4-firmware-redesign .ota-progress-track {
+  height: 10px;
+  margin: 12px 0;
+  background:
+    color-mix(in srgb, var(--ds-border) 68%, transparent);
+  box-shadow:
+    inset 0 1px 2px rgba(0,0,0,.18);
+}
+
+.beta4-firmware-redesign .ota-progress-track > div {
+  background:
+    linear-gradient(
+      90deg,
+      var(--ds-accent),
+      var(--ds-accent-hover)
+    );
+  box-shadow:
+    0 0 18px color-mix(in srgb, var(--ds-accent) 30%, transparent);
+}
+
+.beta4-firmware-redesign .ota-console {
+  border:
+    1px solid color-mix(in srgb, var(--ds-accent) 9%, var(--ds-border));
+  border-radius: 15px;
+  background:
+    color-mix(in srgb, var(--ds-background) 78%, black 4%);
+  box-shadow:
+    inset 0 1px 12px rgba(0,0,0,.18);
+}
+
+.beta4-firmware-redesign .ota-console-line {
+  border-bottom:
+    1px solid color-mix(in srgb, var(--ds-border) 52%, transparent);
+}
+
+/* OTA2 operation — modern timeline card */
+.beta4-firmware-redesign .beta3-ota2-operation {
+  position: relative;
+  overflow: hidden;
+  gap: 17px;
+  padding: clamp(20px, 2.5vw, 28px);
+  border:
+    1px solid color-mix(in srgb, var(--ds-accent) 17%, var(--ds-border));
+  border-radius: 22px;
+  background:
+    radial-gradient(
+      circle at 95% 0,
+      color-mix(in srgb, var(--ds-accent) 14%, transparent),
+      transparent 32%
+    ),
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--ds-surface-raised) 82%, transparent),
+      color-mix(in srgb, var(--ds-surface) 66%, transparent)
+    );
+  box-shadow:
+    0 22px 54px rgba(0,0,0,.16),
+    inset 0 1px 0 color-mix(in srgb, white 5%, transparent);
+}
+
+.beta4-firmware-redesign .beta3-ota2-operation.is-critical {
+  border-color:
+    color-mix(in srgb, var(--ds-warning) 50%, var(--ds-border));
+  box-shadow:
+    0 22px 54px rgba(0,0,0,.16),
+    0 0 30px color-mix(in srgb, var(--ds-warning) 8%, transparent);
+}
+
+.beta4-firmware-redesign .beta3-ota2-summary {
+  gap: 12px;
+}
+
+.beta4-firmware-redesign .beta3-ota2-summary > div {
+  padding: 13px;
+  border:
+    1px solid color-mix(in srgb, var(--ds-accent) 8%, var(--ds-border));
+  border-radius: 13px;
+  background:
+    color-mix(in srgb, var(--ds-surface-soft) 72%, transparent);
+}
+
+.beta4-firmware-redesign .beta3-ota2-summary span {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.beta4-firmware-redesign .beta3-ota2-summary strong,
+.beta4-firmware-redesign .beta3-ota2-summary code {
+  margin-top: 3px;
+  font-size: 14px;
+}
+
+.beta4-firmware-redesign .beta3-ota2-progress {
+  height: 11px;
+  border:
+    1px solid color-mix(in srgb, var(--ds-border) 70%, transparent);
+  background:
+    color-mix(in srgb, var(--ds-background) 62%, transparent);
+  box-shadow:
+    inset 0 1px 3px rgba(0,0,0,.2);
+}
+
+.beta4-firmware-redesign .beta3-ota2-progress > div {
+  background:
+    linear-gradient(
+      90deg,
+      var(--ds-accent),
+      var(--ds-accent-hover)
+    );
+  box-shadow:
+    0 0 22px color-mix(in srgb, var(--ds-accent) 34%, transparent);
+}
+
+.beta4-firmware-redesign .beta3-ota2-blockers {
+  padding: 14px;
+  border:
+    1px solid color-mix(in srgb, var(--ds-danger) 24%, var(--ds-border));
+  border-radius: 14px;
+  background:
+    color-mix(in srgb, var(--ds-danger) 7%, var(--ds-surface));
+}
+
+.beta4-firmware-redesign .beta3-ota2-history {
+  gap: 7px;
+  padding-top: 13px;
+  border-top:
+    1px solid color-mix(in srgb, var(--ds-border) 66%, transparent);
+}
+
+.beta4-firmware-redesign .beta3-ota2-history-title {
+  margin-bottom: 3px;
+}
+
+.beta4-firmware-redesign .beta3-ota2-history-row {
+  min-height: 38px;
+  padding: 8px 10px;
+  border:
+    1px solid color-mix(in srgb, var(--ds-accent) 7%, var(--ds-border));
+  border-radius: 11px;
+  background:
+    color-mix(in srgb, var(--ds-surface-soft) 68%, transparent);
+}
+
+.beta4-firmware-redesign .beta3-ota2-history-row code {
+  color: var(--ds-accent);
+}
+
+/* External firmware + restore catalog */
+.beta4-firmware-redesign > .panel:not(.beta3-update-center):not(.firmware-panel):not(.ota-progress-panel):not(.beta3-ota2-operation) {
+  border-color:
+    color-mix(in srgb, var(--ds-accent) 10%, var(--ds-border));
+  border-radius: 19px;
+  box-shadow:
+    0 16px 40px rgba(0,0,0,.12),
+    inset 0 1px 0 color-mix(in srgb, white 4%, transparent);
+}
+
+.beta4-firmware-redesign .v5-firmware-backups {
+  overflow: hidden;
+}
+
+.beta4-firmware-redesign .v5-firmware-catalog-scroll {
+  display: grid;
+  gap: 10px;
+  padding: 4px 8px 4px 2px;
+}
+
+.beta4-firmware-redesign .v5-firmware-catalog-scroll > article {
+  padding: 16px;
+  border:
+    1px solid color-mix(in srgb, var(--ds-accent) 9%, var(--ds-border));
+  border-radius: 14px;
+  background:
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--ds-surface-raised) 76%, transparent),
+      color-mix(in srgb, var(--ds-surface) 70%, transparent)
+    );
+  transition:
+    transform .18s ease,
+    border-color .18s ease,
+    box-shadow .18s ease;
+}
+
+.beta4-firmware-redesign .v5-firmware-catalog-scroll > article:hover {
+  transform: translateY(-2px);
+  border-color:
+    color-mix(in srgb, var(--ds-accent) 24%, var(--ds-border));
+  box-shadow:
+    0 14px 30px rgba(0,0,0,.13),
+    0 0 18px color-mix(in srgb, var(--ds-accent) 5%, transparent);
+}
+
+.beta4-firmware-redesign .v5-firmware-catalog-scroll button {
+  min-height: 39px;
+  border-radius: 11px;
+}
+
+.beta4-firmware-redesign > .notice:last-child {
+  border-radius: 15px;
+  background:
+    color-mix(in srgb, var(--ds-accent-soft) 52%, var(--ds-surface));
+}
+
+@media (max-width: 980px) {
+  .beta4-firmware-redesign .beta3-update-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .beta4-firmware-redesign .beta3-update-card {
+    min-height: 0;
+  }
+
+  .beta4-firmware-redesign .firmware-panel {
+    grid-template-columns: auto minmax(0,1fr);
+  }
+
+  .beta4-firmware-redesign .v5-firmware-actions {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 720px) {
+  .beta4-firmware-redesign .v55-management-heading,
+  .beta4-firmware-redesign .beta3-update-center,
+  .beta4-firmware-redesign .beta3-ota2-operation {
+    padding: 18px;
+    border-radius: 18px;
+  }
+
+  .beta4-firmware-redesign .beta3-version-pair {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .beta4-firmware-redesign .beta3-version-pair > span {
+    transform: rotate(90deg);
+    justify-self: center;
+  }
+
+  .beta4-firmware-redesign .beta3-version-pair > div:last-child {
+    text-align: left;
+  }
+
+  .beta4-firmware-redesign .beta3-ota2-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .beta4-firmware-redesign .firmware-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .beta4-firmware-redesign .firmware-icon {
+    width: 52px;
+    height: 52px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .beta4-firmware-redesign *,
+  .beta4-firmware-redesign *::before,
+  .beta4-firmware-redesign *::after {
+    animation-duration: .001ms !important;
+    transition-duration: .001ms !important;
+  }
+}

@@ -209,7 +209,7 @@ export function LogsPage({
   };
 
   return (
-    <div className="page v55-logs-page">
+    <div className="page v55-logs-page beta4-logs-redesign">
       <div className="page-heading">
         <div>
           <p className="eyebrow">{t('logs2.eyebrow')}</p>

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { tauriApi } from '../services/tauriApi';
+import { isTauriRuntime, tauriApi } from '../services/tauriApi';
 import type { ConnectionConfig } from '../types';
 
 export type AppUpdatePhase =
@@ -7,6 +7,7 @@ export type AppUpdatePhase =
   | 'checking'
   | 'current'
   | 'available'
+  | 'installing'
   | 'error';
 
 export interface AppUpdateState {
@@ -20,7 +21,10 @@ export interface AppUpdateState {
   checkedAt: number | null;
   error: string | null;
   checking: boolean;
+  installing: boolean;
+  nativeInstallAvailable: boolean;
   checkNow: () => Promise<void>;
+  installNow: () => Promise<void>;
 }
 
 const LAST_CHECK_KEY = 'arduino-led-controller.app-update.last-check.v1';
@@ -95,9 +99,19 @@ export function useAppUpdateCenter(
   const [releaseUrl, setReleaseUrl] = useState<string | null>(null);
   const [checkedAt, setCheckedAt] = useState<number | null>(() => readLastCheck());
   const [error, setError] = useState<string | null>(null);
+  const [nativeDesktop, setNativeDesktop] = useState(false);
 
   useEffect(() => {
     mounted.current = true;
+    void tauriApi.runtimeCapabilities()
+      .then((capabilities) => {
+        if (mounted.current) {
+          setNativeDesktop(isTauriRuntime() && !capabilities.mobile);
+        }
+      })
+      .catch(() => {
+        if (mounted.current) setNativeDesktop(false);
+      });
     return () => {
       mounted.current = false;
     };
@@ -121,27 +135,15 @@ export function useAppUpdateCenter(
         '…';
 
       const artifact = status.availableApp;
-      const latest =
-        artifact?.version?.trim() ||
-        artifact?.tag?.trim() ||
-        null;
-
+      const latest = artifact?.version?.trim() || artifact?.tag?.trim() || null;
       const semanticComparison =
-        latest &&
-        current !== '…'
-          ? compareVersions(latest, current)
-          : null;
-
+        latest && current !== '…' ? compareVersions(latest, current) : null;
       const available =
         semanticComparison !== null
           ? semanticComparison > 0
           : status.appUpdateAvailable === true;
-
       const displayedLatest =
-        semanticComparison !== null &&
-        semanticComparison <= 0
-          ? current
-          : latest;
+        semanticComparison !== null && semanticComparison <= 0 ? current : latest;
 
       const now = Date.now();
       setCurrentVersion(current);
@@ -164,6 +166,30 @@ export function useAppUpdateCenter(
     }
   }, [config.updateChannel]);
 
+  const nativeInstallAvailable =
+    nativeDesktop && config.updateChannel === 'beta' && phase === 'available';
+
+  const installNow = useCallback(async () => {
+    if (!nativeDesktop || config.updateChannel !== 'beta') return;
+
+    setPhase('installing');
+    setError(null);
+    try {
+      const update = await tauriApi.appUpdateCheck();
+      if (!update) {
+        await checkNow();
+        return;
+      }
+      if (mounted.current) setLatestVersion(update.version);
+      const installed = await tauriApi.appUpdateInstall();
+      if (!installed && mounted.current) await checkNow();
+    } catch (caught) {
+      if (!mounted.current) return;
+      setError(String(caught));
+      setPhase('error');
+    }
+  }, [checkNow, config.updateChannel, nativeDesktop]);
+
   useEffect(() => {
     if (!config.autoCheckUpdates) {
       void tauriApi.appVersion()
@@ -175,10 +201,7 @@ export function useAppUpdateCenter(
     }
 
     void checkNow();
-    const timer = window.setInterval(() => {
-      void checkNow();
-    }, SIX_HOURS);
-
+    const timer = window.setInterval(() => void checkNow(), SIX_HOURS);
     return () => window.clearInterval(timer);
   }, [checkNow, config.autoCheckUpdates]);
 
@@ -193,6 +216,9 @@ export function useAppUpdateCenter(
     checkedAt,
     error,
     checking: phase === 'checking',
-    checkNow
+    installing: phase === 'installing',
+    nativeInstallAvailable,
+    checkNow,
+    installNow
   };
 }

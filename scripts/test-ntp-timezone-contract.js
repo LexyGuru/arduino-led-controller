@@ -97,7 +97,7 @@ assert.ok(readme.includes('actions/workflows/firmware-beta-release.yml'));
 assert.ok(readme.includes('actions/workflows/beta-release.yml'));
 
 for (const marker of [
-  '5.5.1-beta.2',
+  '5.5.1-beta.4',
   '5.0.0-beta.9',
   'next/v5-rearchitecture',
   'Stabil ág | `main`',

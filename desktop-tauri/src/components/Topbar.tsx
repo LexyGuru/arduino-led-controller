@@ -25,7 +25,8 @@ export function Topbar({
         <div className="core-topbar-kicker">
           <CircleDot size={13} />
           <span>{t('core.controlCenter')}</span>
-          <span className="core-topbar-version">Core UI 1.5</span>
+          <span className="core-topbar-version">Core UI 2.0</span>
+          <span className="beta4-topbar-version">Beta 4 UI</span>
         </div>
         <h1>Arduino LED Controller V5</h1>
         <p className="topbar-tagline">Direct Arduino Control & Automation</p>

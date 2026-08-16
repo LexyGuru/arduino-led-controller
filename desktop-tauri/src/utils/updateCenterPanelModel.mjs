@@ -17,8 +17,8 @@ export function buildUpdateCenterPanelModel({
   );
   const availableApplication = text(
     application?.availableVersion ??
-    firmware?.availableApp?.tag ??
-    firmware?.availableApp?.version,
+    firmware?.availableApp?.version ??
+    firmware?.availableApp?.tag,
   );
   const installedFirmware = text(firmware?.installedVersion);
   const availableFirmware = text(

@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 
 import { useI18n } from '../../i18n';
+import type { AppUpdateState } from '../../hooks/useAppUpdateCenter';
 import type { FirmwareStatus } from '../../types';
 import {
   getUpdateRelation,
@@ -16,6 +17,8 @@ import { buildUpdateCenterPanelModel } from '../../utils/updateCenterPanelModel.
 
 interface Props {
   firmware: FirmwareStatus | null;
+  appUpdate: AppUpdateState;
+  isMobile: boolean;
   busy: boolean;
   onCheck: () => void;
   onInstallFirmware: () => void;
@@ -35,27 +38,41 @@ function RelationIcon({ relation }: { relation: UpdateRelation }) {
 
 export function UpdateCenterPanel({
   firmware,
+  appUpdate,
+  isMobile,
   busy,
   onCheck,
   onInstallFirmware
 }: Props) {
   const { t } = useI18n();
 
-  const appInstalled = firmware?.appCurrentVersion;
+  const appInstalled =
+    appUpdate.currentVersion && appUpdate.currentVersion !== '…'
+      ? appUpdate.currentVersion
+      : firmware?.appCurrentVersion;
+
+  // Important: use the actual catalog version first. useAppUpdateCenter intentionally
+  // normalizes latestVersion back to currentVersion when GitHub only has an older build.
   const appAvailable =
     firmware?.availableApp?.version ??
-    firmware?.availableApp?.tag;
+    firmware?.availableApp?.tag ??
+    appUpdate.latestVersion;
+
   const firmwareInstalled = firmware?.installedVersion;
   const firmwareAvailable =
     firmware?.availableFirmware?.firmwareVersion ??
     firmware?.availableFirmware?.tag;
 
-  const updateCenterModel =
-    buildUpdateCenterPanelModel({ firmware });
+  // Keep the established Beta3 model binding intact for firmware readiness and
+  // as the fallback application relation when one side of the comparison is absent.
+  const updateCenterModel = buildUpdateCenterPanelModel({ firmware });
+  const fallbackAppRelation = updateCenterModel.application.relation as UpdateRelation;
   const appRelation =
-    updateCenterModel.application.relation;
+    appInstalled && appAvailable
+      ? getUpdateRelation(appAvailable, appInstalled)
+      : fallbackAppRelation;
   const firmwareRelation =
-    updateCenterModel.firmware.relation;
+    updateCenterModel.firmware.relation as UpdateRelation;
 
   const readiness = [
     {
@@ -80,15 +97,35 @@ export function UpdateCenterPanel({
 
   const canInstallFirmware =
     !busy &&
-    updateCenterModel.firmware.canInstall;
+    updateCenterModel.firmware.canInstall &&
+    firmwareReady;
+
+  const appTargetUrl =
+    appUpdate.downloadUrl ||
+    appUpdate.releaseUrl ||
+    firmware?.availableApp?.downloadUrl ||
+    firmware?.availableApp?.releaseUrl ||
+    null;
+
+  const showNativeAppInstall =
+    !isMobile &&
+    appRelation === 'newer' &&
+    appUpdate.nativeInstallAvailable;
+
+  const showExternalAppInstall =
+    !isMobile &&
+    appRelation === 'newer' &&
+    !appUpdate.nativeInstallAvailable &&
+    Boolean(appTargetUrl);
 
   return (
-    <section className="panel beta3-update-center beta3-update-center-compact">
+    <section
+      className={`panel beta3-update-center beta3-update-center-compact update-system-v2${isMobile ? ' mobile-firmware-only' : ''}`}
+      data-update-system-version="2.0"
+    >
       <div className="panel-title beta3-update-center-title">
         <div>
-          <p className="eyebrow">
-            {t('beta3.update.eyebrow')}
-          </p>
+          <p className="eyebrow">UPDATE SYSTEM 2.0</p>
           <h2>{t('beta3.update.title')}</h2>
           <p className="beta3-update-subtitle">
             {t('beta3.update.subtitle')}
@@ -98,11 +135,11 @@ export function UpdateCenterPanel({
         <button
           className="secondary beta3-update-check"
           type="button"
-          disabled={busy}
+          disabled={busy || appUpdate.checking || appUpdate.installing}
           onClick={onCheck}
         >
           <RefreshCw
-            className={busy ? 'spin' : ''}
+            className={busy || appUpdate.checking ? 'spin' : ''}
             size={16}
           />
           {t('beta3.update.checkAll')}
@@ -110,50 +147,69 @@ export function UpdateCenterPanel({
       </div>
 
       <div className="beta3-update-grid">
-        <article className="beta3-update-card">
-          <div className="beta3-update-card-head">
-            <strong>{t('beta3.update.application')}</strong>
-            <span className="beta3-update-channel">
-              {firmware?.updateChannel ?? t('common.unknown')}
-            </span>
-          </div>
-
-          <div className="beta3-version-pair">
-            <div>
-              <small>{t('beta3.update.installed')}</small>
-              <b>{appInstalled ?? t('common.unknown')}</b>
+        {!isMobile && (
+          <article className="beta3-update-card update-system-app-card">
+            <div className="beta3-update-card-head">
+              <strong>{t('beta3.update.application')}</strong>
+              <span className="beta3-update-channel">
+                {firmware?.updateChannel ?? t('common.unknown')}
+              </span>
             </div>
-            <span aria-hidden="true">→</span>
-            <div>
-              <small>{t('beta3.update.available')}</small>
-              <b>{appAvailable ?? t('common.noData')}</b>
+
+            <div className="beta3-version-pair">
+              <div>
+                <small>{t('beta3.update.installed')}</small>
+                <b>{appInstalled ?? t('common.unknown')}</b>
+              </div>
+              <span aria-hidden="true">→</span>
+              <div>
+                <small>{t('beta3.update.available')}</small>
+                <b>{appAvailable ?? t('common.noData')}</b>
+              </div>
             </div>
-          </div>
 
-          <div className={`beta3-update-relation ${appRelation}`}>
-            <RelationIcon relation={appRelation} />
-            {t(relationKey(appRelation))}
-          </div>
+            <div className={`beta3-update-relation ${appRelation}`}>
+              <RelationIcon relation={appRelation} />
+              {t(relationKey(appRelation))}
+            </div>
 
-          {appRelation === 'newer' &&
-          firmware?.availableApp?.downloadUrl ? (
-            <a
-              className="secondary-button beta3-update-action"
-              href={firmware.availableApp.downloadUrl}
-              target="_blank"
-              rel="noreferrer"
-            >
-              <DownloadCloud size={16} />
-              {t('beta3.update.downloadApp')}
-            </a>
-          ) : appRelation === 'newer' ? (
-            <p className="notice-text beta3-update-note">
-              {t('beta3.update.noDirectAppDownload')}
-            </p>
-          ) : null}
-        </article>
+            {showNativeAppInstall && (
+              <button
+                className="beta3-update-action update-system-install-app"
+                type="button"
+                disabled={appUpdate.installing}
+                onClick={() => void appUpdate.installNow()}
+              >
+                <DownloadCloud size={16} />
+                {appUpdate.installing
+                  ? t('appUpdate.installing')
+                  : t('appUpdate.install')}
+              </button>
+            )}
 
-        <article className="beta3-update-card">
+            {showExternalAppInstall && appTargetUrl && (
+              <a
+                className="secondary-button beta3-update-action update-system-install-app-fallback"
+                href={appTargetUrl}
+                target="_blank"
+                rel="noreferrer"
+              >
+                <DownloadCloud size={16} />
+                {t('beta3.update.downloadApp')}
+              </a>
+            )}
+
+            {appRelation === 'newer' &&
+              !showNativeAppInstall &&
+              !showExternalAppInstall && (
+                <p className="notice-text beta3-update-note">
+                  {t('beta3.update.noDirectAppDownload')}
+                </p>
+              )}
+          </article>
+        )}
+
+        <article className="beta3-update-card update-system-firmware-card">
           <div className="beta3-update-card-head">
             <strong>{t('beta3.update.firmware')}</strong>
             <span className="beta3-update-channel">
@@ -180,7 +236,7 @@ export function UpdateCenterPanel({
 
           <div className="beta3-readiness-line">
             <small className="beta3-readiness-label">
-              {t('beta3.update.ota2Ready')}
+              OTA 2.0 · {t('beta3.update.ota2Ready')}
             </small>
             <div
               className="beta3-readiness-statuses"
@@ -203,7 +259,7 @@ export function UpdateCenterPanel({
 
           {firmwareRelation === 'newer' ? (
             <button
-              className="beta3-update-action"
+              className="beta3-update-action update-system-install-firmware"
               type="button"
               disabled={!canInstallFirmware}
               onClick={onInstallFirmware}

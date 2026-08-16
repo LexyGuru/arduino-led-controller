@@ -46,3 +46,25 @@ artifacts/
 rust/target/
 web-lxc/node_modules/
 web-lxc/dist/
+
+# Tauri updater signing secrets
+# Public updater verification key belongs in tauri.conf.json; private signing material never does.
+*.key
+*.private.key
+*.secret.key
+*.minisign.key
+*.minisign.secret
+*updater-private*
+*updater-secret*
+*tauri-signing-private*
+*TAURI_SIGNING_PRIVATE_KEY*
+*.pem
+*.p8
+
+# Local secret/password material
+.env.*
+!.env.example
+*.secret
+*.secrets
+*.credentials
+*.credentials.json

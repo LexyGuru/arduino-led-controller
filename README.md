@@ -21,11 +21,11 @@ Arduino továbbra is önálló **Direct API v1** végpontként működik.
 
 ## Aktuális kiadás
 
-> **Jelenlegi fejlesztési kiadás: Arduino LED Controller V5.5.1 Beta.2**
+> **Jelenlegi fejlesztési kiadás: Arduino LED Controller V5.5.1 Beta.4**
 
 | Komponens | Aktuális verzió / állapot |
 |---|---|
-| Alkalmazás | **`5.5.1-beta.2`** |
+| Alkalmazás | **`5.5.1-beta.4`** |
 | Firmware | **`5.0.0-beta.9`** |
 | Direct API | **`1.0.0`** |
 | Beta ág | **`next/v5-rearchitecture`** |
@@ -36,18 +36,18 @@ Arduino továbbra is önálló **Direct API v1** végpontként működik.
 | LXC rendszer | Debian 13 |
 | LXC web/API port | `3000` |
 
-A **V5.5.1 Beta.2** fejlesztési állapot a Device Control & Reliability kiadás:
+A **V5.5.1 Beta.4** fejlesztési állapot a Device Control & Reliability kiadás:
 kapcsolat-helyreállítás, Device Health, Scene/Preset alapok, Schedule 2.0 Copy Day,
 natív Diagnostics ZIP, HU/EN/DE runtime log lokalizáció és a firmware-katalógus
-downgrade-védelme tartozik hozzá. Az alkalmazás `5.5.1-beta.2` és a firmware
+downgrade-védelme tartozik hozzá. Az alkalmazás `5.5.1-beta.4` és a firmware
 `5.0.0-beta.9` külön verziózott komponensek.
 
 ### Aktuális kiadási dokumentumok
 
-- [V5.5.1 Beta.2 release notes](docs/v5/V55_BETA2_RELEASE_NOTES.md)
-- [V5.5.1 Beta.2 telepítési útmutató](docs/v5/V55_BETA2_INSTALLATION_GUIDE.md)
-- [V5.5.1 Beta.2 release checklist](docs/v5/V55_BETA2_RELEASE_CHECKLIST.md)
-- [Részletes gyökér release notes](RELEASE_NOTES_5.5.1-beta.2.md)
+- [V5.5.1 Beta.4 release notes](docs/v5/V55_BETA4_RELEASE_NOTES.md)
+- [V5.5.1 Beta.4 telepítési útmutató](docs/v5/V55_BETA4_INSTALLATION_GUIDE.md)
+- [V5.5.1 Beta.4 release checklist](docs/v5/V55_BETA4_RELEASE_CHECKLIST.md)
+- [Részletes gyökér release notes](RELEASE_NOTES_5.5.1-beta.4.md)
 
 ### Korábbi kiadási dokumentumok
 
@@ -69,14 +69,14 @@ A korábbi Beta dokumentumok történeti snapshotok; nem az aktuális kiadás le
 
 ### Közös alkalmazásplatform
 
-- **Theme Engine 2.0** – világos/sötét mód, Arctic és Midnight presetek,
+- **Theme Engine 2.5** – világos/sötét mód, Arctic és Midnight presetek,
   kiemelőszínek, sűrűség, lekerekítés és glass beállítások.
-- **Core UI 1.5** – reszponzív Sidebar, Topbar és mobil BottomNav.
+- **Core UI 2.0** – reszponzív Sidebar, Topbar és mobil BottomNav.
 - **Dashboard 2.0** – valós Arduino-, schedule-, audit- és aktivitási adatok.
 - **Statistics 1.0** – kizárólag valós adatok, szintetikus history nélkül.
 - **Activity & Logs 2.0** – Arduino konzol, helyi műveletek és Tauri audit.
 - **Management UI 2.0** – Firmware, Schedules és Settings felületek.
-- **App Update Center 1.0** – stable/beta csatorna és automatikus ellenőrzés.
+- **Update System 2.0** – stable/beta csatorna és automatikus ellenőrzés.
 - Egyetlen shared React UI desktop, iOS/iPadOS, Android és LXC számára.
 
 ### LED és automatizálás
@@ -379,3 +379,22 @@ A mobil- és nem-macOS platformok a normál generált platformikonokat használj
 
 A repository licencfeltételeit a projekt tulajdonosa határozza meg.
 Külső terjesztés előtt külön `LICENSE` fájl szükséges.
+
+## Beta.4 final release state
+
+<!-- BETA4_FINAL_PAPERWORK_V554 -->
+
+Current beta application version: **5.5.1-beta.4**.
+
+Current platform identity:
+- **Core UI 2.0**
+- **Theme Engine 2.5**
+- **OTA 2.0**
+- **Update System 2.0**
+
+Final Beta.4 validation includes the V548 recovery closure, V549 UI/layout QA,
+V552 signed native macOS updater E2E proof, and V554 sidebar badge/paperwork closure.
+When the installed app and latest beta are both `5.5.1-beta.4`, Update Center reports
+the application as up to date and exposes update checking without requiring an install action.
+
+No publication is implied by this source state; release publication is a separate explicit step.

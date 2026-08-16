@@ -1,8 +1,8 @@
 import { invoke } from '@tauri-apps/api/core';
 import { loadLxcSchedules, saveLxcSchedules } from './lxcScheduleCodec';
-import type { ArduinoConsoleResponse, ArduinoStatus, ConnectionConfig, FirmwareArtifact, FirmwareStatus, LedSchedule, LedStrip, NetworkLog, OtaProgressEvent, RuntimeCapabilities, ScheduleBackup, ScheduleSaveResult, ScheduleSyncSnapshot } from '../types';
+import type { ArduinoConsoleResponse, ArduinoStatus, ConnectionConfig, FirmwareArtifact, FirmwareStatus, LedSchedule, LedStrip, NativeAppUpdateInfo, NetworkLog, OtaProgressEvent, RuntimeCapabilities, ScheduleBackup, ScheduleSaveResult, ScheduleSyncSnapshot } from '../types';
 
-const APP_VERSION='5.5.1-beta.2',CFG='alc.shared.lxc.config.v1',BACKUPS='alc.shared.lxc.schedule-backups.v1',TOKEN='alc.shared.lxc.ota-control-token';
+const APP_VERSION='5.5.1-beta.4',CFG='alc.shared.lxc.config.v1',BACKUPS='alc.shared.lxc.schedule-backups.v1',TOKEN='alc.shared.lxc.ota-control-token';
 export const isTauriRuntime=()=>typeof globalThis!=='undefined'&&'__TAURI_INTERNALS__' in globalThis;
 
 async function json<T>(url:string,init?:RequestInit):Promise<T>{
@@ -30,6 +30,8 @@ async function install(version:string){const tok=controlToken();try{await json('
 
 export const tauriApi={
   appVersion:async()=>isTauriRuntime()?(await import('@tauri-apps/api/app')).getVersion():APP_VERSION,
+  appUpdateCheck:():Promise<NativeAppUpdateInfo|null>=>isTauriRuntime()?invoke('app_update_check'):Promise.resolve(null),
+  appUpdateInstall:():Promise<boolean>=>isTauriRuntime()?invoke('app_update_install'):Promise.reject(new Error('Native application updater is available only in the desktop application.')),
   runtimeCapabilities:():Promise<RuntimeCapabilities>=>isTauriRuntime()?invoke('runtime_capabilities'):Promise.resolve({platform:'proxmox-lxc',mobile:false,otaSupported:true}),
   migrateNativeCredentials:():Promise<boolean>=>isTauriRuntime()?invoke('migrate_native_credentials'):Promise.resolve(true),
   loadConfig:():Promise<ConnectionConfig>=>isTauriRuntime()?invoke('load_config'):Promise.resolve(config()),

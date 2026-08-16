@@ -14,8 +14,8 @@ const css = read('desktop-tauri/src/theme-engine-v2.css');
 const i18n = read('desktop-tauri/src/i18n/runtime.ts');
 
 assert.match(main, /theme-engine-v2\.css/);
-assert.match(types, /THEME_ENGINE_VERSION = '2\.0'/);
-assert.match(types, /CORE_UI_VERSION = '1\.5'/);
+assert.match(types, /THEME_ENGINE_VERSION = '2\.5'/);
+assert.match(types, /CORE_UI_VERSION = '2\.0'/);
 assert.match(storage, /appearance\.v2/);
 assert.match(storage, /appearance\.v1/);
 assert.match(storage, /migrated/);
@@ -44,4 +44,4 @@ for (const key of [
 assert.match(css, /@media\(max-width:720px\)/);
 assert.match(appearance, /aria-pressed/);
 assert.match(appearance, /data-mobile-theme-parity="full"/);
-console.log('OK: Theme Engine 2.0 full preset gallery, v1→v2 migration, cross-platform responsive contract');
+console.log('OK: Theme Engine 2.5 current identity, v1→v2 storage migration, cross-platform responsive contract');

@@ -42,7 +42,7 @@ assert.ok(n.includes("!busy&&updateCenterModel.firmware.canInstall"));
  }
 
  const rv=JSON.parse(fs.readFileSync("release-versions.json","utf8"));
- assert.equal(fs.readFileSync("VERSION","utf8").trim(),"5.5.1-beta.2");
+ assert.equal(fs.readFileSync("VERSION","utf8").trim(),"5.5.1-beta.4");
  assert.equal(rv.firmware,"5.0.0-beta.9");
  assert.equal(rv.directApi,"1.0.0");
 

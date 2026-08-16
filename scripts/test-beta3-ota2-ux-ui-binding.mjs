@@ -17,8 +17,8 @@ for (const marker of [
   "awaitrunAudited(",
   "awaitstate.cancel()",
   "isOta2CancelSafe(ota2Runtime.stage)",
-  "state.busy||ota2Installing",
-  "busy={state.busy||ota2Installing}",
+  "state.busy||ota2Installing||appUpdate.installing",
+  "busy={state.busy||ota2Installing||appUpdate.installing}",
 ]) assert.ok(n.includes(marker), marker);
 
 assert.ok(!page.includes('data-ota2-runtime="live"'));

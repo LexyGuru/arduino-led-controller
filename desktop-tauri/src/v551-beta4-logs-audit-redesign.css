@@ -1,0 +1,349 @@
+/* Beta.4 — Logs / Audit / Observability Modern Glass Redesign
+   Presentation only. Refresh cadence, API v2 fallback, event stream,
+   filters, exports and clear-console behavior remain unchanged. */
+
+.beta4-logs-redesign {
+  --beta4-log-glass: color-mix(in srgb,var(--ds-surface-raised) 79%,transparent);
+  --beta4-log-soft: color-mix(in srgb,var(--ds-surface) 69%,transparent);
+  --beta4-log-border: color-mix(in srgb,var(--ds-accent) 15%,var(--ds-border));
+}
+
+/* Page hero */
+.beta4-logs-redesign .page-heading {
+  position:relative;
+  overflow:hidden;
+  padding:clamp(22px,2.7vw,32px);
+  border:1px solid var(--beta4-log-border);
+  border-radius:23px;
+  background:
+    radial-gradient(circle at 90% 0,
+      color-mix(in srgb,var(--ds-accent) 17%,transparent),
+      transparent 31%),
+    radial-gradient(circle at 68% 120%,
+      color-mix(in srgb,var(--ds-accent-hover) 10%,transparent),
+      transparent 38%),
+    linear-gradient(135deg,
+      color-mix(in srgb,var(--ds-surface-raised) 82%,transparent),
+      color-mix(in srgb,var(--ds-surface) 66%,transparent));
+  box-shadow:
+    0 22px 56px rgba(0,0,0,.15),
+    inset 0 1px 0 color-mix(in srgb,white 6%,transparent);
+  backdrop-filter:blur(23px) saturate(145%);
+  -webkit-backdrop-filter:blur(23px) saturate(145%);
+}
+.beta4-logs-redesign .page-heading::after {
+  content:"";
+  position:absolute;
+  left:26px; right:26px; bottom:0; height:1px;
+  background:linear-gradient(90deg,
+    transparent,
+    color-mix(in srgb,var(--ds-accent) 62%,transparent),
+    transparent);
+}
+
+/* Search toolbar */
+.beta4-logs-redesign .v5-log-toolbar {
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  gap:12px;
+  padding:14px;
+  border:1px solid color-mix(in srgb,var(--ds-accent) 11%,var(--ds-border));
+  border-radius:17px;
+  background:linear-gradient(145deg,
+    color-mix(in srgb,var(--ds-surface-raised) 76%,transparent),
+    color-mix(in srgb,var(--ds-surface) 70%,transparent));
+  box-shadow:
+    0 16px 38px rgba(0,0,0,.12),
+    inset 0 1px 0 color-mix(in srgb,white 4%,transparent);
+}
+.beta4-logs-redesign .v5-log-toolbar label {
+  min-height:43px;
+  padding:0 12px;
+  border:1px solid color-mix(in srgb,var(--ds-accent) 9%,var(--ds-border));
+  border-radius:12px;
+  background:color-mix(in srgb,var(--ds-surface-soft) 72%,transparent);
+}
+.beta4-logs-redesign .v5-log-toolbar input {
+  min-width:0;
+}
+.beta4-logs-redesign .v5-log-toolbar button {
+  min-height:43px;
+  border-radius:12px;
+}
+
+/* Level/source controls + actions */
+.beta4-logs-redesign .v55-log-controlbar {
+  display:flex;
+  align-items:end;
+  flex-wrap:wrap;
+  gap:10px;
+  padding:15px;
+  border:1px solid color-mix(in srgb,var(--ds-accent) 10%,var(--ds-border));
+  border-radius:17px;
+  background:linear-gradient(145deg,
+    color-mix(in srgb,var(--ds-surface-raised) 76%,transparent),
+    color-mix(in srgb,var(--ds-surface) 68%,transparent));
+  box-shadow:
+    0 16px 38px rgba(0,0,0,.11),
+    inset 0 1px 0 color-mix(in srgb,white 4%,transparent);
+}
+.beta4-logs-redesign .v55-log-controlbar > label {
+  display:grid;
+  grid-template-columns:auto 1fr;
+  align-items:center;
+  gap:5px 8px;
+  min-width:150px;
+  padding:8px 10px;
+  border:1px solid color-mix(in srgb,var(--ds-accent) 8%,var(--ds-border));
+  border-radius:12px;
+  background:color-mix(in srgb,var(--ds-surface-soft) 70%,transparent);
+}
+.beta4-logs-redesign .v55-log-controlbar > label span {
+  font-size:9px;
+  font-weight:800;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  color:var(--ds-text-muted);
+}
+.beta4-logs-redesign .v55-log-controlbar select {
+  grid-column:1 / -1;
+  min-height:34px;
+  border-radius:9px;
+}
+.beta4-logs-redesign .v55-log-control-actions {
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-left:auto;
+}
+.beta4-logs-redesign .v55-log-control-actions button {
+  min-height:40px;
+  border-radius:11px;
+}
+
+/* Summary telemetry cards */
+.beta4-logs-redesign .v55-log-summary {
+  display:grid;
+  grid-template-columns:repeat(5,minmax(0,1fr));
+  gap:11px;
+}
+.beta4-logs-redesign .v55-log-summary > article {
+  position:relative;
+  overflow:hidden;
+  min-width:0;
+  padding:15px;
+  border:1px solid color-mix(in srgb,var(--ds-accent) 10%,var(--ds-border));
+  border-radius:15px;
+  background:
+    radial-gradient(circle at 100% 0,
+      color-mix(in srgb,var(--ds-accent) 8%,transparent),
+      transparent 38%),
+    linear-gradient(145deg,
+      color-mix(in srgb,var(--ds-surface-raised) 78%,transparent),
+      color-mix(in srgb,var(--ds-surface) 70%,transparent));
+  box-shadow:
+    0 14px 34px rgba(0,0,0,.11),
+    inset 0 1px 0 color-mix(in srgb,white 4%,transparent);
+}
+.beta4-logs-redesign .v55-log-summary span {
+  display:block;
+  font-size:9px;
+  font-weight:800;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  color:var(--ds-text-muted);
+}
+.beta4-logs-redesign .v55-log-summary strong {
+  display:block;
+  margin-top:6px;
+  font-size:clamp(21px,2.1vw,30px);
+  line-height:1;
+  letter-spacing:-.04em;
+}
+.beta4-logs-redesign .v55-log-summary strong.bad {
+  color:var(--ds-danger);
+  text-shadow:0 0 18px color-mix(in srgb,var(--ds-danger) 18%,transparent);
+}
+
+/* Main layout */
+.beta4-logs-redesign .v55-log-layout {
+  display:grid;
+  grid-template-columns:minmax(0,1.55fr) minmax(300px,.8fr);
+  gap:15px;
+  align-items:start;
+}
+.beta4-logs-redesign .v55-unified-log-panel,
+.beta4-logs-redesign .v55-log-side > .panel {
+  border:1px solid color-mix(in srgb,var(--ds-accent) 11%,var(--ds-border));
+  border-radius:19px;
+  background:linear-gradient(145deg,
+    color-mix(in srgb,var(--ds-surface-raised) 79%,transparent),
+    color-mix(in srgb,var(--ds-surface) 66%,transparent));
+  box-shadow:
+    0 20px 48px rgba(0,0,0,.13),
+    inset 0 1px 0 color-mix(in srgb,white 5%,transparent);
+  backdrop-filter:blur(18px);
+}
+
+/* Unified activity stream */
+.beta4-logs-redesign .v55-unified-log-panel {
+  overflow:hidden;
+}
+.beta4-logs-redesign .tauri-audit-console {
+  max-height:min(68vh,720px);
+  overflow:auto;
+  padding:7px;
+  border:1px solid color-mix(in srgb,var(--ds-accent) 8%,var(--ds-border));
+  border-radius:14px;
+  background:
+    linear-gradient(180deg,
+      color-mix(in srgb,var(--ds-background) 82%,black 4%),
+      color-mix(in srgb,var(--ds-background) 74%,black 7%));
+  box-shadow:inset 0 1px 14px rgba(0,0,0,.22);
+  overscroll-behavior:contain;
+  scrollbar-gutter:stable;
+}
+.beta4-logs-redesign .v55-unified-line {
+  display:grid;
+  grid-template-columns:82px 78px 86px minmax(0,1fr);
+  align-items:start;
+  gap:8px;
+  min-height:42px;
+  padding:10px 11px;
+  border-bottom:1px solid color-mix(in srgb,var(--ds-border) 48%,transparent);
+  border-radius:9px;
+  transition:background .15s ease,transform .15s ease;
+}
+.beta4-logs-redesign .v55-unified-line:hover {
+  background:color-mix(in srgb,var(--ds-accent) 5%,transparent);
+  transform:translateX(2px);
+}
+.beta4-logs-redesign .v55-unified-line time {
+  font-variant-numeric:tabular-nums;
+  color:var(--ds-text-muted);
+}
+.beta4-logs-redesign .v55-unified-line b,
+.beta4-logs-redesign .v55-unified-line code {
+  width:fit-content;
+  max-width:100%;
+  padding:3px 7px;
+  border-radius:999px;
+  border:1px solid color-mix(in srgb,currentColor 22%,transparent);
+  background:color-mix(in srgb,currentColor 6%,transparent);
+  font-size:10px;
+  font-weight:800;
+  text-transform:uppercase;
+}
+.beta4-logs-redesign .v55-unified-line.info b { color:var(--ds-accent); }
+.beta4-logs-redesign .v55-unified-line.action b { color:var(--ds-accent-hover); }
+.beta4-logs-redesign .v55-unified-line.success b { color:var(--ds-success); }
+.beta4-logs-redesign .v55-unified-line.warning b { color:var(--ds-warning); }
+.beta4-logs-redesign .v55-unified-line.error b { color:var(--ds-danger); }
+.beta4-logs-redesign .v55-unified-line.error {
+  background:color-mix(in srgb,var(--ds-danger) 4%,transparent);
+}
+.beta4-logs-redesign .v55-unified-line span {
+  min-width:0;
+  overflow-wrap:anywhere;
+  line-height:1.5;
+}
+
+/* Side observability panels */
+.beta4-logs-redesign .v55-log-side {
+  display:grid;
+  gap:15px;
+}
+.beta4-logs-redesign .v55-log-side .panel-title {
+  margin-bottom:10px;
+}
+.beta4-logs-redesign .log-list,
+.beta4-logs-redesign .tauri-audit-list {
+  max-height:min(42vh,430px);
+  overflow:auto;
+  overscroll-behavior:contain;
+  scrollbar-gutter:stable;
+  padding-right:4px;
+}
+.beta4-logs-redesign .log-list > div,
+.beta4-logs-redesign .tauri-audit-list > div {
+  display:grid;
+  gap:4px;
+  padding:10px;
+  border-bottom:1px solid color-mix(in srgb,var(--ds-border) 48%,transparent);
+  border-radius:9px;
+}
+.beta4-logs-redesign .log-list > div:hover,
+.beta4-logs-redesign .tauri-audit-list > div:hover {
+  background:color-mix(in srgb,var(--ds-accent) 5%,transparent);
+}
+.beta4-logs-redesign .log-list time,
+.beta4-logs-redesign .tauri-audit-list time {
+  font-size:10px;
+  color:var(--ds-text-muted);
+  font-variant-numeric:tabular-nums;
+}
+.beta4-logs-redesign .audit-entry.error b { color:var(--ds-danger); }
+.beta4-logs-redesign .audit-entry.warning b { color:var(--ds-warning); }
+.beta4-logs-redesign .audit-entry.success b { color:var(--ds-success); }
+
+/* Error callout */
+.beta4-logs-redesign > .console-warning {
+  padding:12px 14px;
+  border-radius:13px;
+  border:1px solid color-mix(in srgb,var(--ds-danger) 22%,var(--ds-border));
+  background:color-mix(in srgb,var(--ds-danger) 6%,var(--ds-surface));
+}
+
+/* Responsive */
+@media(max-width:1180px) {
+  .beta4-logs-redesign .v55-log-summary {
+    grid-template-columns:repeat(3,minmax(0,1fr));
+  }
+  .beta4-logs-redesign .v55-log-layout {
+    grid-template-columns:1fr;
+  }
+  .beta4-logs-redesign .v55-log-side {
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+}
+@media(max-width:760px) {
+  .beta4-logs-redesign .page-heading {
+    padding:18px;
+    border-radius:18px;
+  }
+  .beta4-logs-redesign .v5-log-toolbar {
+    grid-template-columns:1fr;
+  }
+  .beta4-logs-redesign .v55-log-summary {
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+  .beta4-logs-redesign .v55-log-side {
+    grid-template-columns:1fr;
+  }
+  .beta4-logs-redesign .v55-unified-line {
+    grid-template-columns:70px 70px minmax(0,1fr);
+  }
+  .beta4-logs-redesign .v55-unified-line code {
+    grid-column:3;
+    grid-row:1;
+  }
+  .beta4-logs-redesign .v55-unified-line span {
+    grid-column:1 / -1;
+  }
+}
+@media(max-width:480px) {
+  .beta4-logs-redesign .v55-log-summary {
+    grid-template-columns:1fr 1fr;
+  }
+  .beta4-logs-redesign .v55-log-control-actions button {
+    flex:1 1 135px;
+  }
+}
+@media(prefers-reduced-motion:reduce) {
+  .beta4-logs-redesign *,
+  .beta4-logs-redesign *::before,
+  .beta4-logs-redesign *::after {
+    animation-duration:.001ms !important;
+    transition-duration:.001ms !important;
+  }
+}

@@ -19,7 +19,7 @@ concurrency:
 env:
   NODE_VERSION: "24"
   EXPECTED_BRANCH: next/v5-rearchitecture
-  EXPECTED_VERSION: 5.5.1-beta.2
+  EXPECTED_VERSION: 5.5.1-beta.4
 
 jobs:
   validate:
@@ -188,7 +188,19 @@ jobs:
       - name: Test Rust library
         run: RUSTFLAGS="-D warnings" cargo test --locked --manifest-path src-tauri/Cargo.toml --lib
 
+      - name: Verify Tauri updater signing secrets
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -n "${TAURI_SIGNING_PRIVATE_KEY:-}" || { echo "::error::Missing TAURI_SIGNING_PRIVATE_KEY"; exit 1; }
+          test -n "${TAURI_SIGNING_PRIVATE_KEY_PASSWORD:-}" || { echo "::error::Missing TAURI_SIGNING_PRIVATE_KEY_PASSWORD"; exit 1; }
+
       - name: Build Tauri installer
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         uses: tauri-apps/tauri-action@v1
         with:
           projectPath: desktop-tauri
@@ -207,23 +219,41 @@ jobs:
               DEB="$(find src-tauri/target -type f -path '*/bundle/deb/*.deb' -print | sort | tail -n 1)"
               test -f "${APPIMAGE}"
               test -f "${DEB}"
+              APPIMAGE_SIG="${APPIMAGE}.sig"
+              test -f "${APPIMAGE_SIG}"
               cp "${APPIMAGE}" "artifacts/Arduino_LED_Controller_${VERSION}_Linux_x86_64.AppImage"
+              cp "${APPIMAGE_SIG}" "artifacts/Arduino_LED_Controller_${VERSION}_Linux_x86_64.AppImage.sig"
               cp "${DEB}" "artifacts/Arduino_LED_Controller_${VERSION}_Linux_x86_64.deb"
               ;;
             windows-x86_64)
               EXE="$(find src-tauri/target -type f -path '*/bundle/nsis/*.exe' -print | sort | tail -n 1)"
               test -f "${EXE}"
+              EXE_SIG="${EXE}.sig"
+              test -f "${EXE_SIG}"
               cp "${EXE}" "artifacts/Arduino_LED_Controller_${VERSION}_Windows_x86_64_Setup.exe"
+              cp "${EXE_SIG}" "artifacts/Arduino_LED_Controller_${VERSION}_Windows_x86_64_Setup.exe.sig"
               ;;
             macos-apple-silicon)
               DMG="$(find src-tauri/target -type f -path '*/bundle/dmg/*.dmg' -print | sort | tail -n 1)"
               test -f "${DMG}"
+              APP_TAR="$(find src-tauri/target -type f -path '*/bundle/macos/*.app.tar.gz' -print | sort | tail -n 1)"
+              APP_TAR_SIG="${APP_TAR}.sig"
+              test -f "${APP_TAR}"
+              test -f "${APP_TAR_SIG}"
               cp "${DMG}" "artifacts/Arduino_LED_Controller_${VERSION}_macOS_Apple_Silicon.dmg"
+              cp "${APP_TAR}" "artifacts/Arduino_LED_Controller_${VERSION}_macOS_Apple_Silicon.app.tar.gz"
+              cp "${APP_TAR_SIG}" "artifacts/Arduino_LED_Controller_${VERSION}_macOS_Apple_Silicon.app.tar.gz.sig"
               ;;
             macos-intel)
               DMG="$(find src-tauri/target -type f -path '*/bundle/dmg/*.dmg' -print | sort | tail -n 1)"
               test -f "${DMG}"
+              APP_TAR="$(find src-tauri/target -type f -path '*/bundle/macos/*.app.tar.gz' -print | sort | tail -n 1)"
+              APP_TAR_SIG="${APP_TAR}.sig"
+              test -f "${APP_TAR}"
+              test -f "${APP_TAR_SIG}"
               cp "${DMG}" "artifacts/Arduino_LED_Controller_${VERSION}_macOS_Intel.dmg"
+              cp "${APP_TAR}" "artifacts/Arduino_LED_Controller_${VERSION}_macOS_Intel.app.tar.gz"
+              cp "${APP_TAR_SIG}" "artifacts/Arduino_LED_Controller_${VERSION}_macOS_Intel.app.tar.gz.sig"
               ;;
             *)
               echo "::error::Ismeretlen platform: ${PLATFORM_KEY}"
@@ -545,8 +575,69 @@ jobs:
           test "$(find release-assets -maxdepth 1 -type f -name '*.bin.sha256' | wc -l | tr -d ' ')" -eq 0
           test -f release-assets/release-versions.json
           node -e "const r=require('./release-assets/release-versions.json'); if(r.application!==process.env.EXPECTED_VERSION) process.exit(1)"
-          test "$(find release-assets -maxdepth 1 -type f -name '*.tar.gz' | wc -l | tr -d ' ')" -eq 1
+          test "$(find release-assets -maxdepth 1 -type f -name '*_LXC_Server.tar.gz' | wc -l | tr -d ' ')" -eq 1
+          test "$(find release-assets -maxdepth 1 -type f -name '*.app.tar.gz' | wc -l | tr -d ' ')" -eq 2
+          test "$(find release-assets -maxdepth 1 -type f -name '*.sig' | wc -l | tr -d ' ')" -eq 4
           find release-assets -maxdepth 1 -type f -print | sort
+
+      - name: Generate Tauri updater static feed
+        env:
+          VERSION: ${{ needs.validate.outputs.version }}
+          TAG: ${{ needs.validate.outputs.tag }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          root = Path("release-assets")
+          version = os.environ["VERSION"]
+          tag = os.environ["TAG"]
+          base = f"https://github.com/LexyGuru/arduino-led-controller/releases/download/{tag}"
+          assets = {
+              "linux-x86_64": (
+                  f"Arduino_LED_Controller_{version}_Linux_x86_64.AppImage",
+                  f"Arduino_LED_Controller_{version}_Linux_x86_64.AppImage.sig",
+              ),
+              "windows-x86_64": (
+                  f"Arduino_LED_Controller_{version}_Windows_x86_64_Setup.exe",
+                  f"Arduino_LED_Controller_{version}_Windows_x86_64_Setup.exe.sig",
+              ),
+              "darwin-aarch64": (
+                  f"Arduino_LED_Controller_{version}_macOS_Apple_Silicon.app.tar.gz",
+                  f"Arduino_LED_Controller_{version}_macOS_Apple_Silicon.app.tar.gz.sig",
+              ),
+              "darwin-x86_64": (
+                  f"Arduino_LED_Controller_{version}_macOS_Intel.app.tar.gz",
+                  f"Arduino_LED_Controller_{version}_macOS_Intel.app.tar.gz.sig",
+              ),
+          }
+          platforms = {}
+          for platform, (artifact, signature_file) in assets.items():
+              artifact_path = root / artifact
+              signature_path = root / signature_file
+              if not artifact_path.is_file():
+                  raise SystemExit(f"Missing updater artifact: {artifact}")
+              if not signature_path.is_file():
+                  raise SystemExit(f"Missing updater signature: {signature_file}")
+              signature = signature_path.read_text(encoding="utf-8").strip()
+              if not signature:
+                  raise SystemExit(f"Empty updater signature: {signature_file}")
+              platforms[platform] = {
+                  "url": f"{base}/{artifact}",
+                  "signature": signature,
+              }
+          latest = {
+              "version": version,
+              "notes": "Arduino LED Controller Beta signed native application update.",
+              "platforms": platforms,
+          }
+          (root / "latest.json").write_text(
+              json.dumps(latest, indent=2, ensure_ascii=False) + "\n",
+              encoding="utf-8",
+          )
+          PY
+          test -f release-assets/latest.json
 
       - name: Generate supply-chain evidence
         env:
@@ -682,6 +773,31 @@ jobs:
           make_latest: false
           overwrite_files: true
           files: release-assets/*
+
+      - name: Publish beta updater feed alias
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if gh release view updater-beta >/dev/null 2>&1; then
+            gh release upload updater-beta release-assets/latest.json --clobber
+          else
+            gh release create updater-beta release-assets/latest.json \
+              --target "${GITHUB_SHA}" \
+              --title "Arduino LED Controller Beta Updater Feed" \
+              --notes "Machine-readable signed Beta updater feed. Use the versioned prerelease for human downloads." \
+              --prerelease
+          fi
+
+      - name: Verify beta updater feed alias
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.validate.outputs.version }}
+        run: |
+          set -euo pipefail
+          TMP="$(mktemp -d)"
+          gh release download updater-beta --pattern latest.json --dir "${TMP}" --clobber
+          node -e "const f=require('fs');const j=JSON.parse(f.readFileSync(process.argv[1],'utf8'));if(j.version!==process.env.VERSION)process.exit(1);for(const k of ['linux-x86_64','windows-x86_64','darwin-aarch64','darwin-x86_64']){if(!j.platforms?.[k]?.url||!j.platforms?.[k]?.signature)process.exit(2)}" "${TMP}/latest.json"
 
       - name: Verify published prerelease
         env:

@@ -49,12 +49,15 @@ import type {
   FirmwareStatus,
   OtaProgressEvent
 } from '../types';
+import type { AppUpdateState } from '../hooks/useAppUpdateCenter';
 
 import { V5BetaBadge } from '../components/v5/V5BetaBadge';
 import { UpdateCenterPanel } from '../components/v55/UpdateCenterPanel';
 
 interface FirmwarePageProps {
   firmware: FirmwareStatus | null;
+  appUpdate: AppUpdateState;
+  isMobile: boolean;
   busy: boolean;
   otaLogs: OtaProgressEvent[];
   otaProgress: number;
@@ -132,6 +135,8 @@ function logTime(timestamp: number, language: 'hu' | 'en' | 'de') {
 export function FirmwarePage({
   firmware:
     legacyFirmware,
+  appUpdate,
+  isMobile,
   busy:
     legacyBusy,
   otaLogs:
@@ -190,14 +195,17 @@ export function FirmwarePage({
   };
 
   const checkBoth = async () => {
-    await runUpdateCenterCheckBoth({
-      refreshStatus: () =>
-        state.refresh({
-          forceCheck: true
-        }),
-      refreshFirmwareCatalog:
-        refreshCatalog
-    });
+    await Promise.all([
+      runUpdateCenterCheckBoth({
+        refreshStatus: () =>
+          state.refresh({
+            forceCheck: true
+          }),
+        refreshFirmwareCatalog:
+          refreshCatalog
+      }),
+      appUpdate.checkNow()
+    ]);
   };
   const installCatalogItem = async (
     item: FirmwareArtifact,
@@ -334,11 +342,11 @@ export function FirmwarePage({
   );
 
   return (
-    <div className="page v55-firmware-page">
+    <div className="page v55-firmware-page beta4-firmware-redesign">
       <div className="page-heading v55-management-heading">
         <div>
           <p className="eyebrow">
-            V5 ARDUINO OTA
+            OTA 2.0 · ARDUINO FIRMWARE
           </p>
           <h2>
             {t('firmware.title')}
@@ -394,7 +402,11 @@ export function FirmwarePage({
         </section>
       )}
 
-      <UpdateCenterPanel firmware={firmware} busy={state.busy || ota2Installing}
+      <UpdateCenterPanel
+        firmware={firmware}
+        appUpdate={appUpdate}
+        isMobile={isMobile}
+        busy={state.busy || ota2Installing || appUpdate.installing}
         onCheck={
           () =>
             void checkBoth()

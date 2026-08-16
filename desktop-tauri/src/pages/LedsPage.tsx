@@ -581,7 +581,7 @@ export function LedsPage({
     });
 
   return (
-    <div className="page">
+    <div className="page beta4-leds-page">
       <div className="page-heading">
         <div>
           <p className="eyebrow">

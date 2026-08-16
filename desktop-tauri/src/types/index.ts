@@ -191,6 +191,11 @@ export interface FirmwareArtifact {
 }
 
 
+export interface NativeAppUpdateInfo {
+  version: string;
+  body?: string;
+}
+
 export interface AppUpdateArtifact {
   version: string;
   tag: string;

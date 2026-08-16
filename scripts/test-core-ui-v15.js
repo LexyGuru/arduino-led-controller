@@ -18,6 +18,7 @@ const web = read('web-lxc/src/main.tsx');
 
 assert.match(app, /<BottomNav/);
 assert.match(app, /core-ui-v15/);
+assert.match(app, /core-ui-v20/);
 assert.match(app, /data-page=\{page\}/);
 
 assert.match(sidebar, /core-sidebar/);
@@ -30,7 +31,7 @@ for (const id of ['dashboard','leds','schedules','firmware','logs','settings']) 
   assert.match(sidebar, new RegExp(`id:'${id}'`), `legacy compact nav id compatibility: ${id}`);
 }
 
-assert.match(topbar, /Core UI 1\.5/);
+assert.match(topbar, /Core UI 2\.0/);
 assert.match(topbar, /Arduino LED Controller V5/);
 assert.match(topbar, /Direct Arduino Control & Automation/);
 assert.match(topbar, /core-connection-chip/);
@@ -70,5 +71,5 @@ for (const key of [
 }
 
 console.log(
-  'OK: Core UI 1.5 AppShell, responsive sidebar, topbar status center, mobile bottom navigation és LXC shared contract'
+  'OK: Core UI 2.0 current identity with Core UI 1.5 compatibility assets, responsive shell and LXC shared contract'
 );

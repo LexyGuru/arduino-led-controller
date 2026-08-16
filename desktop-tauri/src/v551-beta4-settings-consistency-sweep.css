@@ -1,0 +1,407 @@
+/* Beta.4 — Settings + Final UI Consistency / Accessibility Sweep
+   Presentation-only. Configuration validation, theme engine, timezone,
+   OTA, update-center and persistence behavior remain authoritative. */
+
+.beta4-settings-redesign {
+  --beta4-settings-border:
+    color-mix(in srgb,var(--ds-accent) 15%,var(--ds-border));
+}
+
+/* Settings hub header */
+.beta4-settings-redesign .v55-settings-hub-nav {
+  position:relative;
+  overflow:hidden;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:18px;
+  padding:20px;
+  border:1px solid var(--beta4-settings-border);
+  border-radius:20px;
+  background:
+    radial-gradient(circle at 92% 0,
+      color-mix(in srgb,var(--ds-accent) 15%,transparent),
+      transparent 35%),
+    linear-gradient(145deg,
+      color-mix(in srgb,var(--ds-surface-raised) 80%,transparent),
+      color-mix(in srgb,var(--ds-surface) 67%,transparent));
+  box-shadow:
+    0 20px 48px rgba(0,0,0,.14),
+    inset 0 1px 0 color-mix(in srgb,white 5%,transparent);
+  backdrop-filter:blur(22px) saturate(142%);
+  -webkit-backdrop-filter:blur(22px) saturate(142%);
+}
+.beta4-settings-redesign .v55-settings-hub-copy {
+  display:grid;
+  gap:5px;
+}
+.beta4-settings-redesign .v55-settings-hub-copy strong {
+  font-size:clamp(18px,2vw,25px);
+  letter-spacing:-.03em;
+}
+.beta4-settings-redesign .v55-settings-hub-copy span {
+  max-width:720px;
+  color:var(--ds-text-muted);
+  line-height:1.55;
+}
+.beta4-settings-redesign .v55-settings-hub-tabs {
+  display:flex;
+  gap:7px;
+  padding:5px;
+  border:1px solid color-mix(in srgb,var(--ds-accent) 8%,var(--ds-border));
+  border-radius:13px;
+  background:color-mix(in srgb,var(--ds-surface-soft) 72%,transparent);
+}
+.beta4-settings-redesign .v55-settings-hub-tabs button {
+  min-height:38px;
+  padding:0 14px;
+  border-radius:9px;
+  transition:
+    background .16s ease,
+    color .16s ease,
+    box-shadow .16s ease,
+    transform .16s ease;
+}
+.beta4-settings-redesign .v55-settings-hub-tabs button.active {
+  color:var(--ds-accent);
+  background:color-mix(in srgb,var(--ds-accent-soft) 80%,transparent);
+  box-shadow:
+    0 0 18px color-mix(in srgb,var(--ds-accent) 8%,transparent),
+    inset 0 1px 0 color-mix(in srgb,white 5%,transparent);
+}
+
+/* Settings panels */
+.beta4-settings-redesign .settings-panel,
+.beta4-settings-redesign .appearance-panel,
+.beta4-settings-redesign .v55-app-update-center {
+  position:relative;
+  overflow:hidden;
+  border:1px solid color-mix(in srgb,var(--ds-accent) 11%,var(--ds-border));
+  border-radius:19px;
+  background:
+    linear-gradient(145deg,
+      color-mix(in srgb,var(--ds-surface-raised) 79%,transparent),
+      color-mix(in srgb,var(--ds-surface) 67%,transparent));
+  box-shadow:
+    0 18px 44px rgba(0,0,0,.12),
+    inset 0 1px 0 color-mix(in srgb,white 4%,transparent);
+  backdrop-filter:blur(18px);
+}
+.beta4-settings-redesign .settings-panel::before,
+.beta4-settings-redesign .appearance-panel::before,
+.beta4-settings-redesign .v55-app-update-center::before {
+  content:"";
+  position:absolute;
+  left:20px;
+  right:20px;
+  top:0;
+  height:1px;
+  background:linear-gradient(90deg,
+    transparent,
+    color-mix(in srgb,var(--ds-accent) 55%,transparent),
+    transparent);
+  pointer-events:none;
+}
+.beta4-settings-redesign .panel-title {
+  gap:12px;
+}
+.beta4-settings-redesign .panel-title h2 {
+  margin-top:3px;
+  letter-spacing:-.025em;
+}
+
+/* Form layout */
+.beta4-settings-redesign .settings-grid,
+.beta4-settings-redesign .appearance-control-grid {
+  gap:12px;
+}
+.beta4-settings-redesign .settings-grid > label,
+.beta4-settings-redesign .appearance-control-grid > label {
+  display:grid;
+  gap:7px;
+  min-width:0;
+  color:var(--ds-text-secondary);
+  font-size:10px;
+  font-weight:750;
+  letter-spacing:.02em;
+}
+.beta4-settings-redesign input,
+.beta4-settings-redesign select {
+  min-height:42px;
+  border-radius:11px;
+}
+.beta4-settings-redesign input[type="checkbox"] {
+  min-height:auto;
+}
+.beta4-settings-redesign .check-row {
+  min-height:42px;
+  padding:9px 11px;
+  border:1px solid color-mix(in srgb,var(--ds-accent) 7%,var(--ds-border));
+  border-radius:11px;
+  background:color-mix(in srgb,var(--ds-surface-soft) 64%,transparent);
+}
+.beta4-settings-redesign .check-row:hover {
+  border-color:color-mix(in srgb,var(--ds-accent) 20%,var(--ds-border));
+}
+.beta4-settings-redesign .endpoint-preview {
+  min-height:45px;
+  padding:10px 12px;
+  border:1px solid color-mix(in srgb,var(--ds-accent) 10%,var(--ds-border));
+  border-radius:12px;
+  background:color-mix(in srgb,var(--ds-surface-soft) 70%,transparent);
+}
+.beta4-settings-redesign .endpoint-preview span {
+  min-width:0;
+  overflow-wrap:anywhere;
+}
+.beta4-settings-redesign .notice {
+  border-radius:13px;
+}
+
+/* Theme Engine */
+.beta4-settings-redesign .theme-engine-hero {
+  position:relative;
+  overflow:hidden;
+  border:1px solid color-mix(in srgb,var(--ds-accent) 14%,var(--ds-border));
+  border-radius:16px;
+  background:
+    radial-gradient(circle at 90% 0,
+      color-mix(in srgb,var(--ds-accent) 14%,transparent),
+      transparent 38%),
+    color-mix(in srgb,var(--ds-surface-soft) 72%,transparent);
+  box-shadow:inset 0 1px 0 color-mix(in srgb,white 5%,transparent);
+}
+.beta4-settings-redesign .theme-gallery {
+  gap:11px;
+}
+.beta4-settings-redesign .theme-card {
+  position:relative;
+  overflow:hidden;
+  min-height:136px;
+  border-radius:15px;
+  border-color:color-mix(in srgb,var(--ds-accent) 9%,var(--ds-border));
+  transition:
+    transform .18s ease,
+    border-color .18s ease,
+    box-shadow .18s ease;
+}
+.beta4-settings-redesign .theme-card:hover {
+  transform:translateY(-2px);
+  border-color:color-mix(in srgb,var(--ds-accent) 25%,var(--ds-border));
+  box-shadow:
+    0 14px 30px rgba(0,0,0,.12),
+    0 0 18px color-mix(in srgb,var(--ds-accent) 6%,transparent);
+}
+.beta4-settings-redesign .theme-card.is-selected {
+  border-color:color-mix(in srgb,var(--ds-accent) 42%,var(--ds-border));
+  box-shadow:
+    0 0 0 1px color-mix(in srgb,var(--ds-accent) 12%,transparent),
+    0 0 25px color-mix(in srgb,var(--ds-accent) 9%,transparent);
+}
+.beta4-settings-redesign .accent-picker {
+  padding:12px;
+  border:1px solid color-mix(in srgb,var(--ds-accent) 8%,var(--ds-border));
+  border-radius:13px;
+  background:color-mix(in srgb,var(--ds-surface-soft) 65%,transparent);
+}
+.beta4-settings-redesign .accent-swatch {
+  min-width:36px;
+  min-height:36px;
+  border-radius:11px;
+}
+
+/* App update center */
+.beta4-settings-redesign .v55-app-update-center {
+  padding:20px;
+}
+.beta4-settings-redesign .v55-update-state {
+  padding:13px;
+  border:1px solid color-mix(in srgb,var(--ds-accent) 9%,var(--ds-border));
+  border-radius:13px;
+  background:color-mix(in srgb,var(--ds-surface-soft) 70%,transparent);
+}
+.beta4-settings-redesign .v55-update-grid {
+  gap:10px;
+}
+.beta4-settings-redesign .v55-update-grid > div {
+  padding:12px;
+  border:1px solid color-mix(in srgb,var(--ds-accent) 8%,var(--ds-border));
+  border-radius:12px;
+  background:color-mix(in srgb,var(--ds-surface-soft) 66%,transparent);
+}
+.beta4-settings-redesign .v55-update-grid span {
+  font-size:9px;
+  font-weight:800;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  color:var(--ds-text-muted);
+}
+.beta4-settings-redesign .v55-update-actions {
+  gap:8px;
+}
+.beta4-settings-redesign .v55-update-actions button,
+.beta4-settings-redesign .v55-update-actions a {
+  min-height:41px;
+  border-radius:11px;
+}
+
+/* Bottom actions */
+.beta4-settings-redesign .settings-actions {
+  position:sticky;
+  bottom:12px;
+  z-index:20;
+  display:flex;
+  justify-content:flex-end;
+  gap:10px;
+  padding:12px;
+  border:1px solid color-mix(in srgb,var(--ds-accent) 13%,var(--ds-border));
+  border-radius:15px;
+  background:color-mix(in srgb,var(--ds-surface-raised) 84%,transparent);
+  box-shadow:
+    0 16px 38px rgba(0,0,0,.18),
+    inset 0 1px 0 color-mix(in srgb,white 5%,transparent);
+  backdrop-filter:blur(18px);
+}
+.beta4-settings-redesign .settings-actions button,
+.beta4-settings-redesign .settings-actions .primary-button,
+.beta4-settings-redesign .settings-actions .secondary-button {
+  min-height:43px;
+  border-radius:11px;
+}
+
+/* ==========================================================
+   Beta.4 global consistency + accessibility sweep
+   ========================================================== */
+
+/* Make interactive targets consistently reachable and visible. */
+.beta4-ui-baseline :where(
+  button,
+  a,
+  input,
+  select,
+  textarea,
+  [role="button"],
+  [tabindex]:not([tabindex="-1"])
+):focus-visible {
+  outline:2px solid color-mix(in srgb,var(--ds-accent) 76%,white 8%);
+  outline-offset:3px;
+  box-shadow:
+    0 0 0 4px color-mix(in srgb,var(--ds-accent) 14%,transparent);
+}
+
+/* Disabled affordance stays readable but clearly inactive. */
+.beta4-ui-baseline :where(button,input,select,textarea):disabled,
+.beta4-ui-baseline [aria-disabled="true"] {
+  cursor:not-allowed;
+  opacity:.58;
+}
+
+/* Prevent long runtime values from breaking glass cards. */
+.beta4-ui-baseline :where(code,pre,.endpoint-preview span,.notice,.console-warning) {
+  overflow-wrap:anywhere;
+  word-break:break-word;
+}
+
+/* Stable form sizing and touch target. */
+.beta4-ui-baseline :where(button,.primary-button,.secondary-button) {
+  min-height:38px;
+}
+@media (pointer:coarse) {
+  .beta4-ui-baseline :where(button,.primary-button,.secondary-button,select) {
+    min-height:44px;
+  }
+}
+
+/* Scrollable operational regions should not leak horizontal layout. */
+.beta4-ui-baseline :where(
+  .ota-console,
+  .tauri-audit-console,
+  .v5-firmware-catalog-scroll,
+  .log-list,
+  .tauri-audit-list
+) {
+  max-width:100%;
+  overflow-x:auto;
+  overscroll-behavior:contain;
+}
+
+/* Consistent visual transition without forcing motion. */
+@media (prefers-reduced-motion:no-preference) {
+  .beta4-ui-baseline :where(
+    button,
+    .primary-button,
+    .secondary-button,
+    .panel,
+    .stat-card
+  ) {
+    transition:
+      border-color .16s ease,
+      background-color .16s ease,
+      box-shadow .16s ease,
+      transform .16s ease,
+      opacity .16s ease;
+  }
+}
+
+/* High-contrast fallback: reduce transparency and preserve borders. */
+@media (prefers-contrast:more) {
+  .beta4-ui-baseline :where(.panel,.stat-card) {
+    border-width:2px;
+    backdrop-filter:none !important;
+    -webkit-backdrop-filter:none !important;
+  }
+}
+
+/* Final responsive protection. */
+@media(max-width:900px) {
+  .beta4-settings-redesign .v55-settings-hub-nav {
+    align-items:stretch;
+    flex-direction:column;
+  }
+  .beta4-settings-redesign .v55-settings-hub-tabs {
+    width:100%;
+  }
+  .beta4-settings-redesign .v55-settings-hub-tabs button {
+    flex:1 1 0;
+  }
+}
+@media(max-width:640px) {
+  .beta4-settings-redesign .v55-settings-hub-nav {
+    padding:16px;
+    border-radius:17px;
+  }
+  .beta4-settings-redesign .settings-panel,
+  .beta4-settings-redesign .appearance-panel,
+  .beta4-settings-redesign .v55-app-update-center {
+    border-radius:16px;
+  }
+  .beta4-settings-redesign .settings-grid,
+  .beta4-settings-redesign .appearance-control-grid {
+    grid-template-columns:1fr;
+  }
+  .beta4-settings-redesign .settings-span {
+    grid-column:auto;
+  }
+  .beta4-settings-redesign .settings-actions {
+    bottom:8px;
+    flex-direction:column;
+  }
+  .beta4-settings-redesign .settings-actions button,
+  .beta4-settings-redesign .settings-actions .primary-button,
+  .beta4-settings-redesign .settings-actions .secondary-button {
+    width:100%;
+  }
+}
+@media(prefers-reduced-motion:reduce) {
+  .beta4-settings-redesign *,
+  .beta4-settings-redesign *::before,
+  .beta4-settings-redesign *::after,
+  .beta4-ui-baseline *,
+  .beta4-ui-baseline *::before,
+  .beta4-ui-baseline *::after {
+    animation-duration:.001ms !important;
+    animation-iteration-count:1 !important;
+    transition-duration:.001ms !important;
+    scroll-behavior:auto !important;
+  }
+}

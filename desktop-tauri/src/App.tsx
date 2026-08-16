@@ -96,7 +96,7 @@ export default function App() {
   );
 
   return (
-    <div className="app-shell core-ui-v15">
+    <div className="app-shell core-ui-v15 core-ui-v20 beta4-ui-baseline">
       <Sidebar
         page={page}
         onChange={setPage}
@@ -243,6 +243,8 @@ export default function App() {
               firmware={
                 controller.firmware
               }
+              appUpdate={appUpdate}
+              isMobile={controller.capabilities.mobile}
               busy={
                 controller.busy
               }

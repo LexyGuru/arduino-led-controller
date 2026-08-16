@@ -1,0 +1,32 @@
+/* Beta.4 sidebar version badge final closure.
+   Presentation-only. Loaded after V549 final UI/layout QA. */
+
+@media (min-width: 1181px) {
+  .beta4-ui-baseline .core-brand {
+    /* Reserve vertical room for two independent version pills. */
+    padding-bottom: 54px;
+  }
+
+  .beta4-ui-baseline .core-version-pill {
+    top: 52px;
+    right: 7px;
+  }
+
+  .beta4-ui-baseline .beta4-version-pill {
+    top: 78px;
+    right: 7px;
+    margin: 0;
+  }
+}
+
+/* Compact sidebar must hide both members of the version pair together. */
+@media (max-width: 1180px) and (min-width: 821px) {
+  .beta4-ui-baseline .core-brand {
+    padding-bottom: 25px;
+  }
+
+  .beta4-ui-baseline .core-version-pill,
+  .beta4-ui-baseline .beta4-version-pill {
+    display: none !important;
+  }
+}

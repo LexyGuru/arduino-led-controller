@@ -144,7 +144,7 @@ export function DashboardPage({
       ).padStart(2, '0')}:${String(Math.abs(utcOffset) % 60).padStart(2, '0')}`;
 
   return (
-    <div className="page v55-dashboard">
+    <div className="page v55-dashboard beta4-dashboard-redesign">
       <section className="v55-dashboard-hero">
         <div className="v55-dashboard-hero-copy">
           <div className="v55-dashboard-kicker">

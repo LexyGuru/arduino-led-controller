@@ -1,0 +1,70 @@
+/* Beta.4 current identity + Update System 2.0 integration.
+   Compatibility assets core-ui-v1.5.css and theme-engine-v2.css remain loaded. */
+
+.core-ui-v20 .core-topbar-kicker {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.core-ui-v20 .core-topbar-version,
+.core-ui-v20 .beta4-topbar-version {
+  flex: 0 0 auto;
+  margin-inline-start: 0;
+  white-space: nowrap;
+}
+
+.core-ui-v20 .core-sidebar-brand {
+  min-width: 0;
+}
+
+.update-system-v2 .beta3-update-grid {
+  align-items: stretch;
+}
+
+.update-system-v2 .beta3-update-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.update-system-v2 .beta3-update-action {
+  width: 100%;
+  margin-top: auto;
+  justify-content: center;
+}
+
+.update-system-v2 .beta3-update-relation {
+  min-height: 26px;
+}
+
+.update-system-v2.mobile-firmware-only .beta3-update-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.update-system-v2.mobile-firmware-only .update-system-firmware-card {
+  max-width: none;
+}
+
+.theme-engine-version {
+  white-space: normal;
+}
+
+@media (max-width: 980px) {
+  .update-system-v2 .beta3-update-center-title {
+    align-items: flex-start;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 720px) {
+  .update-system-v2 .beta3-update-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .core-ui-v20 .core-topbar-kicker {
+    row-gap: 6px;
+  }
+}

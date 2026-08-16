@@ -90,8 +90,8 @@ const notes = read(`docs/v5/${docPrefix}_RELEASE_NOTES.md`);
 assert.ok(notes.includes(version));
 assert.ok(/main/i.test(notes));
 assert.ok(/not modified|nem módosul/i.test(notes));
-assert.ok(/Theme Engine 2\.0/i.test(notes));
-assert.ok(/App Update Center 1\.0/i.test(notes));
+assert.ok(/Theme Engine 2\.5/i.test(notes));
+assert.ok(/Update System 2\.0/i.test(notes));
 assert.ok(/LXC/i.test(notes));
 
 const fw = read('firmware/ArduinoLedController/ArduinoLedController.ino');

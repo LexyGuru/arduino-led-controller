@@ -60,8 +60,8 @@ export interface AppearanceSettings {
   backgroundArt: boolean;
 }
 
-export const THEME_ENGINE_VERSION = '2.0';
-export const CORE_UI_VERSION = '1.5';
+export const THEME_ENGINE_VERSION = '2.5';
+export const CORE_UI_VERSION = '2.0';
 
 export const DEFAULT_APPEARANCE: AppearanceSettings = {
   mode: 'system',

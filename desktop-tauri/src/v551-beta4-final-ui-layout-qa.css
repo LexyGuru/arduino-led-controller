@@ -1,0 +1,282 @@
+/* Beta.4 Final UI/Layout/Responsive QA
+   Presentation-only closure layer loaded after all existing Beta.4 layers.
+   No controller, updater, OTA, API, persistence or release behavior changes. */
+
+/* ---------- global layout safety ---------- */
+.beta4-ui-baseline .content,
+.beta4-ui-baseline .page,
+.beta4-ui-baseline .panel,
+.beta4-ui-baseline .stat-card {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.beta4-ui-baseline .page {
+  overflow-x: clip;
+}
+
+/* ---------- Core UI 2.0 topbar badge separation ---------- */
+.core-ui-v20 .core-topbar-kicker {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  column-gap: 8px;
+  row-gap: 6px;
+  min-width: 0;
+}
+
+.core-ui-v20 .core-topbar-kicker > span {
+  min-width: 0;
+}
+
+.core-ui-v20 .core-topbar-version,
+.core-ui-v20 .beta4-topbar-version {
+  position: static;
+  flex: 0 0 auto;
+  margin: 0;
+  white-space: nowrap;
+}
+
+.core-ui-v20 .core-topbar-version {
+  margin-inline-start: 2px;
+}
+
+.core-ui-v20 .core-topbar h1,
+.core-ui-v20 .topbar-tagline {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+/* ---------- LED toolbar + control density ---------- */
+.beta4-leds-page .v5-led-bulk-actions,
+.beta4-leds-page .beta2-scene-actions,
+.beta4-leds-page .test-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.beta4-leds-page .v5-led-bulk-actions > button,
+.beta4-leds-page .beta2-scene-actions > button,
+.beta4-leds-page .test-actions > button {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.beta4-leds-page .color-row,
+.beta4-leds-page .slider-number-row {
+  min-width: 0;
+}
+
+.beta4-leds-page .slider-number-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(70px, 92px);
+  align-items: center;
+  gap: 10px;
+}
+
+/* ---------- Schedules action hierarchy / wrapping ---------- */
+.beta4-schedules-redesign .v55-management-heading {
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.beta4-schedules-redesign .page-actions {
+  display: flex;
+  flex: 1 1 560px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+
+.beta4-schedules-redesign .page-actions button {
+  flex: 0 1 auto;
+  min-width: 0;
+  white-space: normal;
+}
+
+.beta4-schedules-redesign .schedule-form,
+.beta4-schedules-redesign .schedule-editor,
+.beta4-schedules-redesign .schedule-copy-panel,
+.beta4-schedules-redesign .schedule-backups {
+  min-width: 0;
+}
+
+/* ---------- Firmware / Update System 2.0 ---------- */
+.beta4-firmware-redesign .beta3-update-center-title {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.beta4-firmware-redesign .beta3-update-check {
+  flex: 0 0 auto;
+}
+
+.beta4-firmware-redesign .beta3-update-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
+}
+
+.beta4-firmware-redesign .beta3-update-card {
+  min-width: 0;
+}
+
+.beta4-firmware-redesign .beta3-version-pair > div {
+  min-width: 0;
+}
+
+.beta4-firmware-redesign .beta3-version-pair b {
+  overflow-wrap: anywhere;
+}
+
+.beta4-firmware-redesign .beta3-readiness-statuses {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.beta4-firmware-redesign .beta3-update-action {
+  width: 100%;
+  justify-content: center;
+}
+
+/* ---------- Logs: eliminate dead right-side space ---------- */
+.beta4-logs-redesign .v55-log-layout {
+  grid-template-columns: minmax(0, 1fr);
+  width: 100%;
+}
+
+.beta4-logs-redesign .v55-unified-log-panel,
+.beta4-logs-redesign .v55-log-side {
+  width: 100%;
+  min-width: 0;
+}
+
+.beta4-logs-redesign .v55-log-side {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.beta4-logs-redesign .tauri-audit-console,
+.beta4-logs-redesign .log-list,
+.beta4-logs-redesign .tauri-audit-list {
+  max-width: 100%;
+}
+
+/* ---------- Settings: calmer density, stable responsive groups ---------- */
+.beta4-settings-redesign {
+  --beta4-settings-section-gap: 16px;
+}
+
+.beta4-settings-redesign .settings-general-wrap,
+.beta4-settings-redesign .settings-panel,
+.beta4-settings-redesign .appearance-panel,
+.beta4-settings-redesign .v55-app-update-center {
+  min-width: 0;
+}
+
+.beta4-settings-redesign .settings-grid,
+.beta4-settings-redesign .appearance-control-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.beta4-settings-redesign .theme-gallery {
+  grid-template-columns: repeat(auto-fit, minmax(165px, 1fr));
+}
+
+.beta4-settings-redesign .v55-update-actions,
+.beta4-settings-redesign .settings-actions {
+  flex-wrap: wrap;
+}
+
+.beta4-settings-redesign .v55-update-actions > *,
+.beta4-settings-redesign .settings-actions > * {
+  min-width: 0;
+}
+
+/* ---------- responsive closure ---------- */
+@media (max-width: 1180px) {
+  .beta4-schedules-redesign .page-actions {
+    flex-basis: 100%;
+    justify-content: flex-start;
+  }
+
+  .beta4-logs-redesign .v55-log-side {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 900px) {
+  .beta4-leds-page .led-grid,
+  .beta4-firmware-redesign .beta3-update-grid,
+  .beta4-settings-redesign .settings-grid,
+  .beta4-settings-redesign .appearance-control-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .beta4-firmware-redesign .beta3-update-check {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .beta4-settings-redesign .v55-settings-hub-nav {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .beta4-settings-redesign .v55-settings-hub-tabs {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 640px) {
+  .core-ui-v20 .core-topbar-kicker {
+    align-items: flex-start;
+  }
+
+  .beta4-leds-page .v5-led-bulk-actions > button,
+  .beta4-leds-page .beta2-scene-actions > button,
+  .beta4-leds-page .test-actions > button,
+  .beta4-schedules-redesign .page-actions > button {
+    flex: 1 1 150px;
+  }
+
+  .beta4-leds-page .slider-number-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .beta4-logs-redesign .v5-log-toolbar {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .beta4-logs-redesign .v55-unified-line {
+    grid-template-columns: 70px 70px minmax(0, 1fr);
+  }
+
+  .beta4-settings-redesign .theme-gallery {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .beta4-settings-redesign .settings-actions {
+    position: static;
+  }
+
+  .beta4-settings-redesign .settings-actions > *,
+  .beta4-settings-redesign .v55-update-actions > * {
+    flex: 1 1 100%;
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .beta4-ui-baseline *,
+  .beta4-ui-baseline *::before,
+  .beta4-ui-baseline *::after {
+    scroll-behavior: auto !important;
+  }
+}

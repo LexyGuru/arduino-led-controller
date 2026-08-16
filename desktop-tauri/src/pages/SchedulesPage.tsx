@@ -880,7 +880,7 @@ export function SchedulesPage({
     };
 
   return (
-    <div className="page v55-schedules-page">
+    <div className="page v55-schedules-page beta4-schedules-redesign">
       <div className="page-heading v55-management-heading">
         <div>
           <p className="eyebrow">
