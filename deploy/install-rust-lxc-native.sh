@@ -183,6 +183,12 @@ if ! grep -q '^LXC_OTA_CONTROL_TOKEN=' "$ETC/lxc.env" || grep -q '^LXC_OTA_CONTR
 fi
 chmod 0600 "$ETC/lxc.env"
 echo "LXC_OTA_ENV_MIGRATION=SUCCESS"
+# V590_GITHUB_FIRMWARE_CATALOG_ENV_MIGRATION
+grep -q '^GITHUB_FIRMWARE_CACHE_JSON=' "$ETC/lxc.env" || \
+  printf 'GITHUB_FIRMWARE_CACHE_JSON=/var/lib/arduino-led-controller/github-firmware-releases-cache.json\n' >> "$ETC/lxc.env"
+grep -q '^GITHUB_FIRMWARE_CACHE_TTL_SECONDS=' "$ETC/lxc.env" || \
+  printf 'GITHUB_FIRMWARE_CACHE_TTL_SECONDS=900\n' >> "$ETC/lxc.env"
+
 
 install -m 0644 \
   "${SOURCE_ROOT}/deploy/systemd/arduino-led-controller-rust.service" \

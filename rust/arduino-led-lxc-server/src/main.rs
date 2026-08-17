@@ -249,35 +249,172 @@ fn firmware_version_from_asset(name: &str) -> Option<String> {
         .map(str::to_string)
 }
 
-fn github_firmware_artifacts(channel: &str) -> Result<Vec<Value>, String> {
-    let output = Command::new("curl")
-        .args([
-            "-fsSL",
-            "--retry",
-            "3",
-            "--connect-timeout",
-            "20",
-            "-H",
-            "Accept: application/vnd.github+json",
-            "-H",
-            "User-Agent: arduino-led-controller-lxc",
-            "https://api.github.com/repos/LexyGuru/arduino-led-controller/releases?per_page=100",
-        ])
+// V590_LXC_GITHUB_FIRMWARE_CATALOG_RECOVERY
+const GITHUB_RELEASES_URL: &str =
+    "https://api.github.com/repos/LexyGuru/arduino-led-controller/releases?per_page=100";
+const DEFAULT_GITHUB_FIRMWARE_CACHE_SECONDS: u64 = 900;
+
+fn github_firmware_cache_path() -> PathBuf {
+    env::var("GITHUB_FIRMWARE_CACHE_JSON")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| {
+            PathBuf::from("/var/lib/arduino-led-controller/github-firmware-releases-cache.json")
+        })
+}
+
+fn github_firmware_cache_ttl() -> Duration {
+    let seconds = env::var("GITHUB_FIRMWARE_CACHE_TTL_SECONDS")
+        .ok()
+        .and_then(|value| value.parse::<u64>().ok())
+        .filter(|value| *value >= 60)
+        .unwrap_or(DEFAULT_GITHUB_FIRMWARE_CACHE_SECONDS);
+    Duration::from_secs(seconds)
+}
+
+fn read_github_firmware_cache(require_fresh: bool) -> Option<Value> {
+    let path = github_firmware_cache_path();
+    if require_fresh {
+        let metadata = fs::metadata(&path).ok()?;
+        let modified = metadata.modified().ok()?;
+        if modified.elapsed().ok()? > github_firmware_cache_ttl() {
+            return None;
+        }
+    }
+    let value: Value = serde_json::from_slice(&fs::read(path).ok()?).ok()?;
+    value.as_array()?;
+    Some(value)
+}
+
+fn write_github_firmware_cache(value: &Value) {
+    let path = github_firmware_cache_path();
+    let Some(parent) = path.parent() else {
+        return;
+    };
+    if fs::create_dir_all(parent).is_err() {
+        return;
+    }
+    let temporary = path.with_extension("json.tmp");
+    let Ok(data) = serde_json::to_vec(value) else {
+        return;
+    };
+    if fs::write(&temporary, data).is_ok() {
+        let _ = fs::rename(temporary, path);
+    }
+}
+
+fn github_api_token() -> Option<String> {
+    ["GITHUB_TOKEN", "GH_TOKEN"].iter().find_map(|name| {
+        env::var(name)
+            .ok()
+            .map(|value| value.trim().to_string())
+            .filter(|value| !value.is_empty())
+    })
+}
+
+fn github_release_json() -> Result<Value, String> {
+    if let Some(cached) = read_github_firmware_cache(true) {
+        return Ok(cached);
+    }
+
+    let stale_cache = read_github_firmware_cache(false);
+    let token = github_api_token();
+
+    let mut command = Command::new("curl");
+    command.args([
+        "-sS",
+        "-L",
+        "--retry",
+        "2",
+        "--connect-timeout",
+        "20",
+        "--max-time",
+        "45",
+        "-H",
+        "Accept: application/vnd.github+json",
+        "-H",
+        "X-GitHub-Api-Version: 2022-11-28",
+        "-H",
+        "User-Agent: arduino-led-controller-lxc",
+    ]);
+    if let Some(value) = token.as_ref() {
+        command
+            .arg("-H")
+            .arg(format!("Authorization: Bearer {value}"));
+    }
+    command.args(["-w", "\n%{http_code}", GITHUB_RELEASES_URL]);
+
+    let output = command
         .output()
-        .map_err(|e| format!("GitHub firmware catalog curl hiba: {e}"))?;
+        .map_err(|e| format!("GitHub firmware catalog curl indítási hiba: {e}"))?;
+
     if !output.status.success() {
+        if let Some(cached) = stale_cache {
+            return Ok(cached);
+        }
         return Err(format!(
-            "GitHub firmware catalog HTTP hiba: {}",
+            "GitHub firmware catalog hálózati hiba: {}",
             String::from_utf8_lossy(&output.stderr).trim()
         ));
     }
-    let releases: Value = serde_json::from_slice(&output.stdout)
-        .map_err(|e| format!("GitHub releases JSON hiba: {e}"))?;
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let Some((body, status_text)) = stdout.rsplit_once('\n') else {
+        if let Some(cached) = stale_cache {
+            return Ok(cached);
+        }
+        return Err("GitHub firmware catalog válasz státusza hiányzik.".into());
+    };
+    let status = status_text.trim().parse::<u16>().unwrap_or(0);
+
+    if !(200..300).contains(&status) {
+        if let Some(cached) = stale_cache {
+            return Ok(cached);
+        }
+
+        let github_message = serde_json::from_str::<Value>(body)
+            .ok()
+            .and_then(|value| {
+                value
+                    .get("message")
+                    .and_then(Value::as_str)
+                    .map(str::to_string)
+            })
+            .unwrap_or_else(|| {
+                let trimmed = body.trim();
+                if trimmed.is_empty() {
+                    "nincs GitHub hibatörzs".into()
+                } else {
+                    trimmed.chars().take(240).collect()
+                }
+            });
+
+        let auth = if token.is_some() {
+            "GitHub token használatban."
+        } else {
+            "Nincs GITHUB_TOKEN/GH_TOKEN; publikus GitHub API limit érvényes."
+        };
+        return Err(format!(
+            "GitHub firmware catalog HTTP {status}: {github_message}. {auth}"
+        ));
+    }
+
+    let releases: Value =
+        serde_json::from_str(body).map_err(|e| format!("GitHub releases JSON hiba: {e}"))?;
+    releases
+        .as_array()
+        .ok_or_else(|| "A GitHub releases válasz nem lista.".to_string())?;
+    write_github_firmware_cache(&releases);
+    Ok(releases)
+}
+
+fn github_firmware_artifacts(channel: &str) -> Result<Vec<Value>, String> {
+    let releases = github_release_json()?;
     let list = releases
         .as_array()
         .ok_or_else(|| "A GitHub releases válasz nem lista.".to_string())?;
     let want_beta = channel != "stable";
     let mut artifacts = Vec::new();
+
     for release in list {
         if release
             .get("draft")
@@ -321,7 +458,20 @@ fn github_firmware_artifacts(channel: &str) -> Result<Vec<Value>, String> {
             if download_url.is_empty() || checksum_url.is_empty() {
                 continue;
             }
-            artifacts.push(json!({"name":name,"downloadUrl":download_url,"checksumUrl":checksum_url,"firmwareVersion":version,"version":version,"tag":release.get("tag_name").and_then(Value::as_str).unwrap_or(&version),"createdAt":release.get("published_at").and_then(Value::as_str),"summary":release.get("name").and_then(Value::as_str).unwrap_or("Arduino LED Controller firmware"),"channel":if prerelease{"beta"}else{"stable"},"otaPort":65280,"installMode":"native-rust-http"}));
+            artifacts.push(json!({
+                "name":name,
+                "downloadUrl":download_url,
+                "checksumUrl":checksum_url,
+                "firmwareVersion":version,
+                "version":version,
+                "tag":release.get("tag_name").and_then(Value::as_str).unwrap_or(&version),
+                "createdAt":release.get("published_at").and_then(Value::as_str),
+                "summary":release.get("name").and_then(Value::as_str)
+                    .unwrap_or("Arduino LED Controller firmware"),
+                "channel":if prerelease{"beta"}else{"stable"},
+                "otaPort":65280,
+                "installMode":"native-rust-http"
+            }));
         }
     }
     artifacts.sort_by(|a, b| {
@@ -333,7 +483,66 @@ fn github_firmware_artifacts(channel: &str) -> Result<Vec<Value>, String> {
     Ok(artifacts)
 }
 
-async fn firmware_releases(OriginalUri(uri): OriginalUri) -> ApiResult {
+fn local_firmware_catalog_fallback(state: &AppState, channel: &str) -> Vec<Value> {
+    let Some(path) = state.firmware_catalog.as_ref() else {
+        return Vec::new();
+    };
+    let Ok(bytes) = fs::read(path) else {
+        return Vec::new();
+    };
+    let Ok(value) = serde_json::from_slice::<Value>(&bytes) else {
+        return Vec::new();
+    };
+
+    let local_channel = value
+        .get("channel")
+        .and_then(Value::as_str)
+        .unwrap_or("beta");
+    if (channel == "stable") != (local_channel == "stable") {
+        return Vec::new();
+    }
+
+    value
+        .get("artifacts")
+        .and_then(Value::as_array)
+        .cloned()
+        .unwrap_or_default()
+        .into_iter()
+        .filter_map(|artifact| {
+            let version = artifact
+                .get("version")
+                .and_then(Value::as_str)
+                .or_else(|| artifact.get("firmwareVersion").and_then(Value::as_str))?
+                .to_string();
+            let download_url = artifact
+                .get("downloadUrl")
+                .and_then(Value::as_str)?
+                .to_string();
+            let checksum_url = artifact
+                .get("checksumUrl")
+                .and_then(Value::as_str)?
+                .to_string();
+            Some(json!({
+                "name":format!("Arduino_LED_Controller_Firmware_{version}_UNO_R4_WiFi.bin"),
+                "downloadUrl":download_url,
+                "checksumUrl":checksum_url,
+                "firmwareVersion":version,
+                "version":version,
+                "tag":"local-firmware-catalog",
+                "createdAt":Value::Null,
+                "summary":"Helyi, ellenőrzött firmware-katalógus tartalék",
+                "channel":local_channel,
+                "otaPort":artifact.get("otaPort").and_then(Value::as_u64).unwrap_or(65280),
+                "installMode":artifact.get("installMode").and_then(Value::as_str)
+                    .unwrap_or("native-rust-http")
+            }))
+        })
+        .collect()
+}
+async fn firmware_releases(
+    State(state): State<AppState>,
+    OriginalUri(uri): OriginalUri,
+) -> ApiResult {
     let channel = uri
         .query()
         .and_then(|q| {
@@ -346,19 +555,33 @@ async fn firmware_releases(OriginalUri(uri): OriginalUri) -> ApiResult {
             })
         })
         .unwrap_or_else(|| "beta".into());
-    let c = channel.clone();
-    let result = task::spawn_blocking(move || github_firmware_artifacts(&c))
+
+    let query_channel = channel.clone();
+    let remote_result = task::spawn_blocking(move || github_firmware_artifacts(&query_channel))
         .await
         .map_err(|e| {
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(json!({"error":format!("firmware worker error: {e}")})),
             )
-        })?
-        .map_err(|e| (StatusCode::BAD_GATEWAY, Json(json!({"error":e}))))?;
-    Ok(Json(
-        json!({"source":"github-releases","channel":channel,"artifacts":result}),
-    ))
+        })?;
+
+    match remote_result {
+        Ok(result) => Ok(Json(json!({
+            "source":"github-releases",
+            "channel":channel,
+            "artifacts":result
+        }))),
+        Err(error) => {
+            let fallback = local_firmware_catalog_fallback(&state, &channel);
+            Ok(Json(json!({
+                "source":"local-catalog-fallback",
+                "channel":channel,
+                "artifacts":fallback,
+                "warning":error
+            })))
+        }
+    }
 }
 
 async fn firmware_cancel(State(state): State<AppState>, headers: HeaderMap) -> ApiResult {
