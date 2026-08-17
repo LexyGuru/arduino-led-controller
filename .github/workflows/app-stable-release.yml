@@ -67,8 +67,41 @@ jobs:
             echo "::error::Missing RELEASE_PUBLISH_TOKEN. Stable publishing requires a dedicated token with repository Contents: write permission."
             exit 1
           }
+          retry_gh() {
+            local n=1 delay=5
+            while true; do
+              local output rc
+              set +e
+              output="$("$@" 2>&1)"
+              rc=$?
+              set -e
+              if [ "$rc" -eq 0 ]; then
+                [ -n "$output" ] && printf '%s\n' "$output"
+                return 0
+              fi
+              if printf '%s\n' "$output" | grep -Eq 'HTTP 5[0-9][0-9]|No server is currently available|Bad Gateway|Service Unavailable|502|503|504'; then
+                if [ "$n" -ge 8 ]; then
+                  printf '%s\n' "$output" >&2
+                  return "$rc"
+                fi
+                echo "RETRY ${n}/8: transient GitHub/API failure, waiting ${delay}s..." >&2
+                sleep "$delay"
+                n=$((n + 1))
+                delay=$((delay * 2))
+                [ "$delay" -gt 40 ] && delay=40
+                continue
+              fi
+              printf '%s\n' "$output" >&2
+              return "$rc"
+            done
+          }
           VERSION="$(tr -d '[:space:]' < VERSION)"
-          gh api --method POST             -H "Accept: application/vnd.github+json"             "repos/${GITHUB_REPOSITORY}/releases/generate-notes"             -f tag_name="v${VERSION}"             -f target_commitish="${GITHUB_SHA}"             >/dev/null
+          retry_gh gh api --method POST \
+            -H "Accept: application/vnd.github+json" \
+            "repos/${GITHUB_REPOSITORY}/releases/generate-notes" \
+            -f tag_name="v${VERSION}" \
+            -f target_commitish="${GITHUB_SHA}" \
+            >/dev/null
           echo "STABLE_RELEASE_WRITE_PERMISSION_PREFLIGHT=PASSED"
 
   app-build:
@@ -189,6 +222,34 @@ jobs:
         run: |
           set -euo pipefail
 
+          retry_gh() {
+            local n=1 delay=5
+            while true; do
+              local output rc
+              set +e
+              output="$("$@" 2>&1)"
+              rc=$?
+              set -e
+              if [ "$rc" -eq 0 ]; then
+                [ -n "$output" ] && printf '%s\n' "$output"
+                return 0
+              fi
+              if printf '%s\n' "$output" | grep -Eq 'HTTP 5[0-9][0-9]|No server is currently available|Bad Gateway|Service Unavailable|502|503|504'; then
+                if [ "$n" -ge 8 ]; then
+                  printf '%s\n' "$output" >&2
+                  return "$rc"
+                fi
+                echo "RETRY ${n}/8: transient GitHub/API failure, waiting ${delay}s..." >&2
+                sleep "$delay"
+                n=$((n + 1))
+                delay=$((delay * 2))
+                [ "$delay" -gt 40 ] && delay=40
+                continue
+              fi
+              printf '%s\n' "$output" >&2
+              return "$rc"
+            done
+          }
           mapfile -d '' FILES < <(
             find release-assets -type f \
               \( -name '*.dmg' -o -name '*.exe' -o -name '*.AppImage' -o -name '*.deb' -o -name '*.ipa' -o -name '*.apk' -o -name '*.aab' -o -name '*.app.tar.gz' -o -name '*.sig' -o -name 'latest.json' \) \
@@ -203,20 +264,20 @@ jobs:
           printf 'Feltöltendő Release-fájlok:\n'
           printf ' - %s\n' "${FILES[@]}"
 
-          if gh release view "$TAG" >/dev/null 2>&1; then
+          if retry_gh gh release view "$TAG" >/dev/null 2>&1; then
             while IFS= read -r ASSET; do
               case "$ASSET" in
                 *.dmg|*.exe|*.AppImage|*.deb|*.ipa|*.apk|*.aab)
                   ;;
                 *)
-                  gh release delete-asset "$TAG" "$ASSET" --yes || true
+                  retry_gh gh release delete-asset "$TAG" "$ASSET" --yes || true
                   ;;
               esac
-            done < <(gh release view "$TAG" --json assets --jq '.assets[].name')
+            done < <(retry_gh gh release view "$TAG" --json assets --jq '.assets[].name')
 
-            gh release upload "$TAG" "${FILES[@]}" --clobber
+            retry_gh gh release upload "$TAG" "${FILES[@]}" --clobber
           else
-            gh release create "$TAG" "${FILES[@]}" \
+            retry_gh gh release create "$TAG" "${FILES[@]}" \
               --target "$GITHUB_SHA" \
               --title "Arduino LED Controller v$VERSION" \
               --notes "Automatikusan fordított Tauri kiadás Windows, macOS, Linux, Android, iPhone és iPad platformokra ugyanabból a forrásverzióból. Az unsigned iOS IPA telepítés előtt külön aláírást vagy sideload eszközt igényel. Android aláíró secretek nélkül debug APK és aláíratlan AAB készül; Play Store kiadáshoz állandó Android aláírókulcs szükséges."
@@ -227,10 +288,38 @@ jobs:
           GH_TOKEN: ${{ secrets.RELEASE_PUBLISH_TOKEN }}
         run: |
           set -euo pipefail
-          if gh release view updater-stable >/dev/null 2>&1; then
-            gh release upload updater-stable release-assets/latest.json --clobber
+          retry_gh() {
+            local n=1 delay=5
+            while true; do
+              local output rc
+              set +e
+              output="$("$@" 2>&1)"
+              rc=$?
+              set -e
+              if [ "$rc" -eq 0 ]; then
+                [ -n "$output" ] && printf '%s\n' "$output"
+                return 0
+              fi
+              if printf '%s\n' "$output" | grep -Eq 'HTTP 5[0-9][0-9]|No server is currently available|Bad Gateway|Service Unavailable|502|503|504'; then
+                if [ "$n" -ge 8 ]; then
+                  printf '%s\n' "$output" >&2
+                  return "$rc"
+                fi
+                echo "RETRY ${n}/8: transient GitHub/API failure, waiting ${delay}s..." >&2
+                sleep "$delay"
+                n=$((n + 1))
+                delay=$((delay * 2))
+                [ "$delay" -gt 40 ] && delay=40
+                continue
+              fi
+              printf '%s\n' "$output" >&2
+              return "$rc"
+            done
+          }
+          if retry_gh gh release view updater-stable >/dev/null 2>&1; then
+            retry_gh gh release upload updater-stable release-assets/latest.json --clobber
           else
-            gh release create updater-stable release-assets/latest.json               --target "${GITHUB_SHA}"               --title "Arduino LED Controller Stable Updater Feed"               --notes "Machine-readable signed Stable updater feed."               --prerelease
+            retry_gh gh release create updater-stable release-assets/latest.json               --target "${GITHUB_SHA}"               --title "Arduino LED Controller Stable Updater Feed"               --notes "Machine-readable signed Stable updater feed."               --prerelease
           fi
       - name: Verify Stable updater feed alias
         shell: bash
@@ -238,7 +327,35 @@ jobs:
           GH_TOKEN: ${{ secrets.RELEASE_PUBLISH_TOKEN }}
         run: |
           set -euo pipefail
+          retry_gh() {
+            local n=1 delay=5
+            while true; do
+              local output rc
+              set +e
+              output="$("$@" 2>&1)"
+              rc=$?
+              set -e
+              if [ "$rc" -eq 0 ]; then
+                [ -n "$output" ] && printf '%s\n' "$output"
+                return 0
+              fi
+              if printf '%s\n' "$output" | grep -Eq 'HTTP 5[0-9][0-9]|No server is currently available|Bad Gateway|Service Unavailable|502|503|504'; then
+                if [ "$n" -ge 8 ]; then
+                  printf '%s\n' "$output" >&2
+                  return "$rc"
+                fi
+                echo "RETRY ${n}/8: transient GitHub/API failure, waiting ${delay}s..." >&2
+                sleep "$delay"
+                n=$((n + 1))
+                delay=$((delay * 2))
+                [ "$delay" -gt 40 ] && delay=40
+                continue
+              fi
+              printf '%s\n' "$output" >&2
+              return "$rc"
+            done
+          }
           TMP="$(mktemp -d)"
-          gh release download updater-stable --pattern latest.json --dir "${TMP}" --clobber
+          retry_gh gh release download updater-stable --pattern latest.json --dir "${TMP}" --clobber
           VERSION="$(tr -d '[:space:]' < VERSION)"
           VERSION="${VERSION}" node -e "const f=require('fs');const j=JSON.parse(f.readFileSync(process.argv[1],'utf8'));if(j.version!==process.env.VERSION)process.exit(1);for(const k of ['linux-x86_64','windows-x86_64','darwin-aarch64','darwin-x86_64'])if(!j.platforms?.[k]?.signature)process.exit(2)" "${TMP}/latest.json"
