@@ -1,6 +1,6 @@
 {
   "name": "arduino-led-controller",
-  "version": "5.0.0",
+  "version": "5.1.0",
   "private": true,
   "description": "Arduino UNO R4 WiFi LED controller and weekly scheduler",
   "main": "server2_final.js",
@@ -198,7 +198,8 @@
     "test:mobile-native-dependency-closure-v184": "node scripts/test-mobile-native-dependency-closure-v184.js",
     "test:mobile-native-dependency-closure-v185": "node scripts/test-mobile-native-dependency-closure-v185.js",
     "test:beta9-critical-mobile-clock-v186": "node scripts/test-beta9-critical-mobile-clock-v186.js",
-    "test:unor4-ota-contract": "node scripts/test-unor4-renesas-ota-contract.js"
+    "test:unor4-ota-contract": "node scripts/test-unor4-renesas-ota-contract.js",
+    "test:release-architecture-v2": "node scripts/test-release-architecture-v2.js"
   },
   "engines": {
     "node": ">=20"

@@ -1,7 +1,7 @@
 # Arduino LED Controller V5
 
 <!-- V5_STABLE_RELEASE_STATUS -->
-> **Aktuális stabil alkalmazás:** `v5.0.0`
+> **Aktuális stabil alkalmazás:** `v5.1.0`
 > **Állapot:** V5 Stable / Final
 > A `main` ág a stabil alkalmazásvonal. A Beta fejlesztések a `next/v5-rearchitecture` ágon folytatódnak.
 
@@ -33,13 +33,13 @@ Beta.10 kiadási dokumentumok:
 
 A Beta.1–Beta.8 dokumentumok történeti release-dokumentációként maradnak a repositoryban.
 
-A Beta.10 dokumentumok szintén a `next/v5-rearchitecture` utolsó validált prerelease állapotát dokumentálják; a `main` aktuális alkalmazásverziója `5.0.0`.
+A Beta.10 dokumentumok szintén a `next/v5-rearchitecture` utolsó validált prerelease állapotát dokumentálják; a `main` aktuális alkalmazásverziója `5.1.0`.
 
 ## Aktuális stable verziók és fejlesztési állapot
 
 | Elem | Verzió / állapot |
 |---|---|
-| Stabil alkalmazás | `5.0.0` |
+| Stabil alkalmazás | `5.1.0` |
 | Utolsó validált Beta alkalmazás | `5.0.0-beta.10` |
 | Firmware | `5.0.0-beta.7` |
 | Direct API | `1.0.0` |

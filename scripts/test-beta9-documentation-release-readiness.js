@@ -2,12 +2,17 @@
 'use strict';
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const CURRENT_APPLICATION_VERSION = fs.readFileSync('VERSION', 'utf8').trim();
-const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-const CURRENT_APPLICATION_VERSION_RE = escapeRegExp(CURRENT_APPLICATION_VERSION);
-const CURRENT_FIRMWARE_VERSION = JSON.parse(
-  fs.readFileSync('release-versions.json', 'utf8'),
-).firmware;
+
+const CURRENT_APPLICATION_VERSION = fs.readFileSync('VERSION','utf8').trim();
+const manifest = JSON.parse(fs.readFileSync('release-versions.json','utf8'));
+const applicationChannel =
+  manifest.applicationRelease?.channel ||
+  manifest.channel ||
+  'unknown';
+const currentFirmware =
+  manifest.firmwareRelease?.recommendedVersion ||
+  manifest.firmware ||
+  null;
 
 const workflow = fs.readFileSync('.github/workflows/beta-release.yml','utf8');
 const readme = fs.readFileSync('README.md','utf8');
@@ -16,22 +21,40 @@ const notes = fs.readFileSync('docs/v5/BETA9_RELEASE_NOTES.md','utf8');
 const guide = fs.readFileSync('docs/v5/BETA9_INSTALLATION_GUIDE.md','utf8');
 const checklist = fs.readFileSync('docs/v5/BETA9_RELEASE_CHECKLIST.md','utf8');
 
-assert.match(workflow, new RegExp(`EXPECTED_VERSION:\\s*${CURRENT_APPLICATION_VERSION_RE}`));
+const escapeRegExp=(value)=>String(value).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+
+if (applicationChannel === 'beta') {
+  assert.match(
+    workflow,
+    new RegExp(`EXPECTED_VERSION:\\s*${escapeRegExp(CURRENT_APPLICATION_VERSION)}`)
+  );
+  console.log(`BETA9_RELEASE_WORKFLOW_CURRENT_BETA_VERSION=PASSED:${CURRENT_APPLICATION_VERSION}`);
+} else if (applicationChannel === 'stable') {
+  assert.match(workflow,/EXPECTED_BRANCH:\s*next\/v5-rearchitecture/);
+  assert.match(workflow,/EXPECTED_VERSION:\s*\d+\.\d+\.\d+-beta\.\d+/);
+  assert.doesNotMatch(workflow,new RegExp(`EXPECTED_VERSION:\\s*${escapeRegExp(CURRENT_APPLICATION_VERSION)}`));
+  console.log('BETA9_RELEASE_WORKFLOW_PRESERVED_AS_BETA_HISTORY=PASSED');
+} else {
+  assert.fail(`Unsupported application channel: ${applicationChannel}`);
+}
+
 assert.match(workflow,/prerelease: true/);
 assert.match(workflow,/make_latest: false/);
 
-// Current README follows the active application/firmware versions.
 assert.ok(
   readme.includes(CURRENT_APPLICATION_VERSION),
-  'README: current application version missing',
-);
-assert.ok(
-  readme.includes(CURRENT_FIRMWARE_VERSION),
-  'README: current firmware version missing',
+  'README: current application version missing'
 );
 
-// Beta.9 release documents remain immutable historical release evidence.
-for (const text of [notes, guide, checklist]) {
+if (applicationChannel === 'beta' && currentFirmware) {
+  assert.ok(
+    readme.includes(currentFirmware),
+    'README: current firmware version missing'
+  );
+}
+
+// Beta.9 release documents are immutable historical release evidence.
+for (const text of [notes,guide,checklist]) {
   assert.match(text,/5.0.0-beta.9/);
   assert.match(text,/5.0.0-beta.6/);
 }
@@ -60,7 +83,7 @@ for (const [name,text] of [
   }
 }
 
-console.log('BETA9_RELEASE_WORKFLOW_VERSION=PASSED');
+console.log('BETA9_RELEASE_WORKFLOW_CHANNEL_AWARE=PASSED');
 console.log('BETA9_RELEASE_DOCUMENTATION=PASSED');
 console.log('BETA9_RUST_LEGACY_DEPLOY_SEPARATION=PASSED');
 console.log('BETA9_DOCUMENTATION_RELEASE_READINESS=PASSED');

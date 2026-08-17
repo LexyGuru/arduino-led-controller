@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 2,
+  "product": "Arduino LED Controller",
+  "branch": "main",
+  "application": {
+    "version": "5.1.0",
+    "channel": "stable",
+    "updaterAlias": "updater-stable",
+    "githubReleaseType": "release"
+  },
+  "firmware": {
+    "channel": "stable",
+    "available": false,
+    "recommendedVersion": null,
+    "releaseFamily": "firmware-stable"
+  },
+  "directApi": "1.0.0",
+  "rules": {
+    "applicationAndFirmwareHaveIndependentLifecycles": true,
+    "stableAndBetaCatalogsMustNeverMix": true,
+    "mainIsStableOnly": true,
+    "nextIsBetaOnly": true
+  }
+}

@@ -1,0 +1,1 @@
+# Arduino LED Controller 5.1.0 — Stable Installation Guide\n\nUse the Stable application channel from `main` and updater alias `updater-stable`.\n\nNo Stable firmware is promoted by this architecture cleanup candidate. Do not infer Stable firmware availability from the legacy scalar firmware field.\n
