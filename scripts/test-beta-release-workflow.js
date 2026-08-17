@@ -98,9 +98,9 @@ assert.match(
   /body_path: docs\/v5\/\$\{\{ needs\.validate\.outputs\.doc_prefix \}\}_RELEASE_NOTES\.md/,
 );
 assert.doesNotMatch(appWorkflow, /body_path: docs\/v5\/BETA6_RELEASE_NOTES\.md/);
-assert.match(appWorkflow, /Dispatch and wait for dedicated firmware prerelease/);
-assert.match(appWorkflow, /gh workflow run firmware-beta-release\.yml/);
-assert.match(appWorkflow, /gh run watch \"\$\{RUN_ID\}\" --exit-status/);
+assert.doesNotMatch(appWorkflow, /Dispatch and wait for dedicated firmware prerelease/);
+assert.doesNotMatch(appWorkflow, /gh workflow run firmware-beta-release\.yml/);
+assert.ok(fs.existsSync('.github/workflows/app-beta-release.yml'));
 assert.doesNotMatch(appWorkflow, /EXPECTED_FIRMWARE_VERSION:/);
 assert.doesNotMatch(appWorkflow, /build-firmware:/);
 assert.doesNotMatch(appWorkflow, /UNO R4 WiFi firmware/);

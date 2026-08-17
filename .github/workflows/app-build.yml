@@ -1,0 +1,25 @@
+name: Application build
+on:
+  workflow_dispatch:
+  workflow_call:
+permissions:
+  contents: read
+jobs:
+  validate-and-build:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "24"
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+      - run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+      - run: npm ci --no-audit --no-fund
+      - run: npm run test:release-architecture-v2
+      - run: npm run validate
+      - working-directory: desktop-tauri
+        run: npm ci --no-audit --no-fund
+      - working-directory: desktop-tauri
+        run: npm run build
+      - run: RUSTFLAGS="-D warnings" cargo check --locked --manifest-path desktop-tauri/src-tauri/Cargo.toml
