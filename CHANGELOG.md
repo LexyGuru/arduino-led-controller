@@ -1,4 +1,4 @@
-# 5.6.0-beta.1
+# 5.6.0-beta.2
 
 ### Theme Engine 3.0
 - 12 factory themes plus custom theme profiles.

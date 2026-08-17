@@ -1,7 +1,7 @@
 # Arduino LED Controller – Current Beta State
 
 ## Aktuális verziók
-- Alkalmazás: `5.6.0-beta.1`
+- Alkalmazás: `5.6.0-beta.2`
 - Firmware: `5.0.0-beta.10`
 - Direct API: `1.0.0`
 - Fejlesztési ág: `next/v5-rearchitecture`
@@ -20,6 +20,6 @@ Beta.7 macOS OTA and its immutable baseline remain frozen.
 Firmware remains `5.0.0-beta.10`.
 
 ## Startup UX
-The 5.6.0-beta.1 candidate includes an animated startup integrity gate and
+The 5.6.0-beta.2 candidate includes an animated startup integrity gate and
 shared page-transition motion. External Arduino/API connectivity is advisory:
 offline state is surfaced as a warning while normal background retry behavior continues.

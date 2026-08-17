@@ -25,7 +25,7 @@ Arduino továbbra is önálló **Direct API v1** végpontként működik.
 
 | Komponens | Aktuális verzió / állapot |
 |---|---|
-| Alkalmazás | **`5.6.0-beta.1`** |
+| Alkalmazás | **`5.6.0-beta.2`** |
 | Firmware | **`5.0.0-beta.10`** |
 | Direct API | **`1.0.0`** |
 | Beta ág | **`next/v5-rearchitecture`** |
@@ -48,7 +48,7 @@ A firmware változatlanul `5.0.0-beta.10`.
 - [V5.5.1 Beta.7 release notes](docs/v5/V55_BETA7_RELEASE_NOTES.md)
 - [V5.5.1 Beta.7 telepítési útmutató](docs/v5/V55_BETA7_INSTALLATION_GUIDE.md)
 - [V5.5.1 Beta.7 release checklist](docs/v5/V55_BETA7_RELEASE_CHECKLIST.md)
-- [Részletes gyökér release notes](RELEASE_NOTES_5.6.0-beta.1.md)
+- [Részletes gyökér release notes](RELEASE_NOTES_5.6.0-beta.2.md)
 
 ### Korábbi kiadási dokumentumok
 

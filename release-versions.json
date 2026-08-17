@@ -1,9 +1,26 @@
 {
-  "schemaVersion": 1,
-  "application": "5.6.0-beta.1",
+  "schemaVersion": 2,
+  "application": "5.6.0-beta.2",
   "firmware": "5.0.0-beta.10",
   "directApi": "1.0.0",
   "channel": "beta",
+  "applicationRelease": {
+    "version": "5.6.0-beta.2",
+    "channel": "beta",
+    "branch": "next/v5-rearchitecture",
+    "updaterAlias": "updater-beta",
+    "releaseType": "prerelease"
+  },
+  "firmwareRelease": {
+    "recommendedVersion": "5.0.0-beta.10",
+    "channel": "beta",
+    "available": true,
+    "releaseFamily": "firmware-beta",
+    "legacyCompatibilityVersion": null
+  },
+  "directApiRelease": {
+    "version": "1.0.0"
+  },
   "board": "arduino:renesas_uno:unor4wifi",
   "otaPort": 65280
 }
