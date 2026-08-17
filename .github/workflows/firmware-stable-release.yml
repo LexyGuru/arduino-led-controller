@@ -1,0 +1,20 @@
+name: Firmware Stable release
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        required: true
+        default: false
+        type: boolean
+permissions:
+  contents: read
+jobs:
+  availability-gate:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Enforce Stable firmware contract
+        run: |
+          set -euo pipefail
+          test "${GITHUB_REF_NAME}" = "main"
+          node -e "const r=require('./release-versions.json'); if(r.schemaVersion!==2||r.firmwareRelease?.channel!=='stable') process.exit(1); if(r.firmwareRelease?.available!==true||!r.firmwareRelease?.recommendedVersion){console.error('No Stable firmware has been explicitly promoted. Refusing firmware release.');process.exit(20)}; if(/-beta\./.test(r.firmwareRelease.recommendedVersion)) process.exit(21)"

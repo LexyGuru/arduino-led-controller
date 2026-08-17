@@ -1,4 +1,4 @@
-name: Application Beta release (legacy entry)
+name: Application Beta release
 
 on:
   workflow_dispatch:

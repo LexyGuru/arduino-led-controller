@@ -1,0 +1,34 @@
+name: Application Stable release
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        required: true
+        default: false
+        type: boolean
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "24"
+          cache: npm
+      - name: Enforce Stable branch/channel contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${GITHUB_REF_NAME}" = "main"
+          VERSION="$(tr -d '[:space:]' < VERSION)"
+          [[ "${VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          node -e "const r=require('./release-versions.json'); if(r.schemaVersion!==2||r.applicationRelease?.channel!=='stable'||r.applicationRelease?.branch!=='main'||r.applicationRelease?.updaterAlias!=='updater-stable') process.exit(1)"
+      - run: npm ci --no-audit --no-fund
+      - run: npm run test:release-architecture-v2
+      - run: npm test
+      - run: npm run validate
+      - name: Stable application publishing hand-off
+        if: ${{ inputs.publish }}
+        run: echo "Stable artifact publishing remains delegated to tauri-desktop.yml for this migration phase."
