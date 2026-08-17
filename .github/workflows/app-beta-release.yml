@@ -757,13 +757,41 @@ jobs:
           TAG: ${{ needs.validate.outputs.tag }}
         run: |
           set -euo pipefail
-          if gh release view "${TAG}" >/dev/null 2>&1; then
+          retry_gh() {
+            local n=1 delay=5
+            while true; do
+              local output rc
+              set +e
+              output="$("$@" 2>&1)"
+              rc=$?
+              set -e
+              if [ "$rc" -eq 0 ]; then
+                [ -n "$output" ] && printf '%s\n' "$output"
+                return 0
+              fi
+              if printf '%s\n' "$output" | grep -Eq 'HTTP 5[0-9][0-9]|No server is currently available|Bad Gateway|Service Unavailable|502|503|504'; then
+                if [ "$n" -ge 8 ]; then
+                  printf '%s\n' "$output" >&2
+                  return "$rc"
+                fi
+                echo "RETRY ${n}/8: transient GitHub/API failure, waiting ${delay}s..." >&2
+                sleep "$delay"
+                n=$((n + 1))
+                delay=$((delay * 2))
+                [ "$delay" -gt 40 ] && delay=40
+                continue
+              fi
+              printf '%s\n' "$output" >&2
+              return "$rc"
+            done
+          }
+          if retry_gh gh release view "${TAG}" >/dev/null 2>&1; then
             for generation in 1 2 3 4 5 6 7 8; do
               for kind in INSTALLATION_GUIDE RELEASE_NOTES RELEASE_CHECKLIST; do
                 name="BETA${generation}_${kind}.md"
-                asset_id="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${TAG}" --jq ".assets[] | select(.name==\"${name}\") | .id" | head -n 1)"
+                asset_id="$(retry_gh gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${TAG}" --jq ".assets[] | select(.name==\"${name}\") | .id" | head -n 1)"
                 if [ -n "${asset_id}" ]; then
-                  gh api --method DELETE "repos/${GITHUB_REPOSITORY}/releases/assets/${asset_id}"
+                  retry_gh gh api --method DELETE "repos/${GITHUB_REPOSITORY}/releases/assets/${asset_id}"
                 fi
               done
             done
@@ -786,10 +814,38 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          if gh release view updater-beta >/dev/null 2>&1; then
-            gh release upload updater-beta release-assets/latest.json --clobber
+          retry_gh() {
+            local n=1 delay=5
+            while true; do
+              local output rc
+              set +e
+              output="$("$@" 2>&1)"
+              rc=$?
+              set -e
+              if [ "$rc" -eq 0 ]; then
+                [ -n "$output" ] && printf '%s\n' "$output"
+                return 0
+              fi
+              if printf '%s\n' "$output" | grep -Eq 'HTTP 5[0-9][0-9]|No server is currently available|Bad Gateway|Service Unavailable|502|503|504'; then
+                if [ "$n" -ge 8 ]; then
+                  printf '%s\n' "$output" >&2
+                  return "$rc"
+                fi
+                echo "RETRY ${n}/8: transient GitHub/API failure, waiting ${delay}s..." >&2
+                sleep "$delay"
+                n=$((n + 1))
+                delay=$((delay * 2))
+                [ "$delay" -gt 40 ] && delay=40
+                continue
+              fi
+              printf '%s\n' "$output" >&2
+              return "$rc"
+            done
+          }
+          if retry_gh gh release view updater-beta >/dev/null 2>&1; then
+            retry_gh gh release upload updater-beta release-assets/latest.json --clobber
           else
-            gh release create updater-beta release-assets/latest.json \
+            retry_gh gh release create updater-beta release-assets/latest.json \
               --target "${GITHUB_SHA}" \
               --title "Arduino LED Controller Beta Updater Feed" \
               --notes "Machine-readable signed Beta updater feed. Use the versioned prerelease for human downloads." \
@@ -802,8 +858,36 @@ jobs:
           VERSION: ${{ needs.validate.outputs.version }}
         run: |
           set -euo pipefail
+          retry_gh() {
+            local n=1 delay=5
+            while true; do
+              local output rc
+              set +e
+              output="$("$@" 2>&1)"
+              rc=$?
+              set -e
+              if [ "$rc" -eq 0 ]; then
+                [ -n "$output" ] && printf '%s\n' "$output"
+                return 0
+              fi
+              if printf '%s\n' "$output" | grep -Eq 'HTTP 5[0-9][0-9]|No server is currently available|Bad Gateway|Service Unavailable|502|503|504'; then
+                if [ "$n" -ge 8 ]; then
+                  printf '%s\n' "$output" >&2
+                  return "$rc"
+                fi
+                echo "RETRY ${n}/8: transient GitHub/API failure, waiting ${delay}s..." >&2
+                sleep "$delay"
+                n=$((n + 1))
+                delay=$((delay * 2))
+                [ "$delay" -gt 40 ] && delay=40
+                continue
+              fi
+              printf '%s\n' "$output" >&2
+              return "$rc"
+            done
+          }
           TMP="$(mktemp -d)"
-          gh release download updater-beta --pattern latest.json --dir "${TMP}" --clobber
+          retry_gh gh release download updater-beta --pattern latest.json --dir "${TMP}" --clobber
           node -e "const f=require('fs');const j=JSON.parse(f.readFileSync(process.argv[1],'utf8'));if(j.version!==process.env.VERSION)process.exit(1);for(const k of ['linux-x86_64','windows-x86_64','darwin-aarch64','darwin-x86_64']){if(!j.platforms?.[k]?.url||!j.platforms?.[k]?.signature)process.exit(2)}" "${TMP}/latest.json"
 
       - name: Verify published prerelease
@@ -812,10 +896,38 @@ jobs:
           TAG: ${{ needs.validate.outputs.tag }}
         run: |
           set -euo pipefail
-          gh release view "${TAG}" --json isPrerelease,targetCommitish,assets \
+          retry_gh() {
+            local n=1 delay=5
+            while true; do
+              local output rc
+              set +e
+              output="$("$@" 2>&1)"
+              rc=$?
+              set -e
+              if [ "$rc" -eq 0 ]; then
+                [ -n "$output" ] && printf '%s\n' "$output"
+                return 0
+              fi
+              if printf '%s\n' "$output" | grep -Eq 'HTTP 5[0-9][0-9]|No server is currently available|Bad Gateway|Service Unavailable|502|503|504'; then
+                if [ "$n" -ge 8 ]; then
+                  printf '%s\n' "$output" >&2
+                  return "$rc"
+                fi
+                echo "RETRY ${n}/8: transient GitHub/API failure, waiting ${delay}s..." >&2
+                sleep "$delay"
+                n=$((n + 1))
+                delay=$((delay * 2))
+                [ "$delay" -gt 40 ] && delay=40
+                continue
+              fi
+              printf '%s\n' "$output" >&2
+              return "$rc"
+            done
+          }
+          retry_gh gh release view "${TAG}" --json isPrerelease,targetCommitish,assets \
             --jq '{isPrerelease,targetCommitish,assetCount:(.assets|length),assets:[.assets[].name]}'
-          test "$(gh release view "${TAG}" --json isPrerelease --jq '.isPrerelease')" = "true"
-          test "$(gh release view "${TAG}" --json assets --jq '.assets | length')" -ge 18
+          test "$(retry_gh gh release view "${TAG}" --json isPrerelease --jq '.isPrerelease')" = "true"
+          test "$(retry_gh gh release view "${TAG}" --json assets --jq '.assets | length')" -ge 18
 
 
       - name: Upload complete release set as workflow artifact
