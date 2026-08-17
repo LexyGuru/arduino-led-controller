@@ -41,9 +41,41 @@ jobs:
       - run: npm test
       - run: npm run validate
 
+  release-permission-preflight:
+    name: Stable release permission and signing preflight
+    needs: validate
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+      - name: Verify signing secrets before expensive builds
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -n "${TAURI_SIGNING_PRIVATE_KEY:-}" || { echo "::error::Missing TAURI_SIGNING_PRIVATE_KEY"; exit 1; }
+          test -n "${TAURI_SIGNING_PRIVATE_KEY_PASSWORD:-}" || { echo "::error::Missing TAURI_SIGNING_PRIVATE_KEY_PASSWORD"; exit 1; }
+      - name: Verify dedicated release publishing token before expensive builds
+        if: ${{ inputs.publish }}
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_PUBLISH_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "${GH_TOKEN:-}" || {
+            echo "::error::Missing RELEASE_PUBLISH_TOKEN. Stable publishing requires a dedicated token with repository Contents: write permission."
+            exit 1
+          }
+          VERSION="$(tr -d '[:space:]' < VERSION)"
+          gh api --method POST             -H "Accept: application/vnd.github+json"             "repos/${GITHUB_REPOSITORY}/releases/generate-notes"             -f tag_name="v${VERSION}"             -f target_commitish="${GITHUB_SHA}"             >/dev/null
+          echo "STABLE_RELEASE_WRITE_PERMISSION_PREFLIGHT=PASSED"
+
   app-build:
     name: Build all Stable application artifacts
-    needs: validate
+    needs:
+      - validate
+      - release-permission-preflight
     uses: ./.github/workflows/app-build.yml
     secrets: inherit
 
@@ -52,6 +84,7 @@ jobs:
     if: ${{ inputs.publish }}
     needs:
       - validate
+      - release-permission-preflight
       - app-build
     runs-on: ubuntu-latest
 
@@ -72,10 +105,19 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Összes elkészült csomag letöltése
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v7
         with:
           path: release-assets
           merge-multiple: true
+
+      - name: Enforce downloaded Stable application-only assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          if find release-assets -type f \( -name '*.bin' -o -name '*.bin.sha256' -o -name 'firmware-release.json' -o -name 'firmware-catalog.json' -o -name 'Arduino_LED_Controller_Firmware_*' \) | grep -q .; then
+            echo "::error::Firmware artifact must not be published by Application Stable release."
+            exit 1
+          fi
 
       - name: Verzió beolvasása
         id: version
@@ -93,11 +135,11 @@ jobs:
           set -euo pipefail
 
           find release-assets -type f \
-            \( -name '*.dmg' -o -name '*.exe' -o -name '*.AppImage' -o -name '*.deb' -o -name '*.ipa' -o -name '*.apk' -o -name '*.aab' \) \
+            \( -name '*.dmg' -o -name '*.exe' -o -name '*.AppImage' -o -name '*.deb' -o -name '*.ipa' -o -name '*.apk' -o -name '*.aab' -o -name '*.app.tar.gz' -o -name '*.sig' -o -name 'latest.json' \) \
             -print
 
           COUNT="$(find release-assets -type f \
-            \( -name '*.dmg' -o -name '*.exe' -o -name '*.AppImage' -o -name '*.deb' -o -name '*.ipa' -o -name '*.apk' -o -name '*.aab' \) \
+            \( -name '*.dmg' -o -name '*.exe' -o -name '*.AppImage' -o -name '*.deb' -o -name '*.ipa' -o -name '*.apk' -o -name '*.aab' -o -name '*.app.tar.gz' -o -name '*.sig' -o -name 'latest.json' \) \
             | wc -l | tr -d ' ')"
 
           if [ "$COUNT" -lt 7 ]; then
@@ -109,10 +151,39 @@ jobs:
           test "$(find release-assets -type f -name '*.apk' | wc -l | tr -d ' ')" -ge 1 || { echo "HIBA: hiányzik az Android APK."; exit 1; }
           test "$(find release-assets -type f -name '*.aab' | wc -l | tr -d ' ')" -ge 1 || { echo "HIBA: hiányzik az Android AAB."; exit 1; }
 
+      - name: Generate signed Stable updater feed
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          root=Path("release-assets")
+          version=json.loads(Path("desktop-tauri/src-tauri/tauri.conf.json").read_text())["version"]
+          base=f"https://github.com/{os.environ['GITHUB_REPOSITORY']}/releases/download/v{version}"
+          specs={
+            "linux-x86_64":(f"Arduino_LED_Controller_{version}_Linux_x86_64.AppImage",f"Arduino_LED_Controller_{version}_Linux_x86_64.AppImage.sig"),
+            "windows-x86_64":(f"Arduino_LED_Controller_{version}_Windows_x86_64_Setup.exe",f"Arduino_LED_Controller_{version}_Windows_x86_64_Setup.exe.sig"),
+            "darwin-aarch64":(f"Arduino_LED_Controller_{version}_macOS_Apple_Silicon.app.tar.gz",f"Arduino_LED_Controller_{version}_macOS_Apple_Silicon.app.tar.gz.sig"),
+            "darwin-x86_64":(f"Arduino_LED_Controller_{version}_macOS_Intel.app.tar.gz",f"Arduino_LED_Controller_{version}_macOS_Intel.app.tar.gz.sig"),
+          }
+          platforms={}
+          for platform,(artifact,sigfile) in specs.items():
+            ap=root/artifact; sp=root/sigfile
+            if not ap.is_file(): raise SystemExit(f"Missing updater artifact: {artifact}")
+            if not sp.is_file(): raise SystemExit(f"Missing updater signature: {sigfile}")
+            sig=sp.read_text(encoding="utf-8").strip()
+            if not sig: raise SystemExit(f"Empty updater signature: {sigfile}")
+            platforms[platform]={"url":f"{base}/{artifact}","signature":sig}
+          latest={"version":version,"notes":"Arduino LED Controller Stable signed native application update.","platforms":platforms}
+          (root/"latest.json").write_text(json.dumps(latest,indent=2,ensure_ascii=False)+"\n",encoding="utf-8")
+          PY
+          echo "STABLE_SIGNED_UPDATER_FEED=GENERATED"
+
       - name: GitHub Release létrehozása vagy frissítése
         shell: bash
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.RELEASE_PUBLISH_TOKEN }}
           TAG: ${{ steps.version.outputs.tag }}
           VERSION: ${{ steps.version.outputs.version }}
         run: |
@@ -120,7 +191,7 @@ jobs:
 
           mapfile -d '' FILES < <(
             find release-assets -type f \
-              \( -name '*.dmg' -o -name '*.exe' -o -name '*.AppImage' -o -name '*.deb' -o -name '*.ipa' -o -name '*.apk' -o -name '*.aab' \) \
+              \( -name '*.dmg' -o -name '*.exe' -o -name '*.AppImage' -o -name '*.deb' -o -name '*.ipa' -o -name '*.apk' -o -name '*.aab' -o -name '*.app.tar.gz' -o -name '*.sig' -o -name 'latest.json' \) \
               -print0
           )
 
@@ -150,3 +221,24 @@ jobs:
               --title "Arduino LED Controller v$VERSION" \
               --notes "Automatikusan fordított Tauri kiadás Windows, macOS, Linux, Android, iPhone és iPad platformokra ugyanabból a forrásverzióból. Az unsigned iOS IPA telepítés előtt külön aláírást vagy sideload eszközt igényel. Android aláíró secretek nélkül debug APK és aláíratlan AAB készül; Play Store kiadáshoz állandó Android aláírókulcs szükséges."
           fi
+      - name: Publish Stable updater feed alias
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_PUBLISH_TOKEN }}
+        run: |
+          set -euo pipefail
+          if gh release view updater-stable >/dev/null 2>&1; then
+            gh release upload updater-stable release-assets/latest.json --clobber
+          else
+            gh release create updater-stable release-assets/latest.json               --target "${GITHUB_SHA}"               --title "Arduino LED Controller Stable Updater Feed"               --notes "Machine-readable signed Stable updater feed."               --prerelease
+          fi
+      - name: Verify Stable updater feed alias
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_PUBLISH_TOKEN }}
+        run: |
+          set -euo pipefail
+          TMP="$(mktemp -d)"
+          gh release download updater-stable --pattern latest.json --dir "${TMP}" --clobber
+          VERSION="$(tr -d '[:space:]' < VERSION)"
+          VERSION="${VERSION}" node -e "const f=require('fs');const j=JSON.parse(f.readFileSync(process.argv[1],'utf8'));if(j.version!==process.env.VERSION)process.exit(1);for(const k of ['linux-x86_64','windows-x86_64','darwin-aarch64','darwin-x86_64'])if(!j.platforms?.[k]?.signature)process.exit(2)" "${TMP}/latest.json"

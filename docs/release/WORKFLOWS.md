@@ -23,3 +23,10 @@ Stable application release explicitly rejects firmware assets.
 ## Remaining migration
 
 The historical Stable pipeline did not provide the same signed Tauri updater feed contract as the Beta pipeline. `updater-stable` signed-feed publication is therefore intentionally deferred to the next dedicated updater-signing migration rather than being synthesized incorrectly.
+
+## Stable updater publishing
+
+Stable native updater artifacts are signed during `app-build.yml`.
+`app-stable-release.yml` generates `latest.json` and publishes `updater-stable`.
+
+Stable publishing requires repository secret `RELEASE_PUBLISH_TOKEN`. The workflow validates that token before expensive builds with GitHub generate-release-notes, which requires Contents write but does not save a release.
