@@ -1924,6 +1924,7 @@ export function useController(
     otaPassword,
     setOtaPassword,
     busy,
+    initialized,
     message,
     refresh,
     refreshFirmware,

@@ -20,6 +20,8 @@ import {
 } from './hooks/useController';
 
 import { useAppUpdateCenter } from './hooks/useAppUpdateCenter';
+import { useAppStartupGate } from './hooks/useAppStartupGate';
+import { AppStartupScreen } from './components/AppStartupScreen';
 
 import {
   DashboardPage
@@ -78,6 +80,17 @@ export default function App() {
       autoCheckUpdates: controller.config.autoCheckUpdates
     });
 
+  const startup =
+    useAppStartupGate({
+      initialized: controller.initialized,
+      appVersion,
+      capabilities: controller.capabilities,
+      config: controller.config,
+      scheduleCount: controller.schedules.length,
+      connectionHealth: controller.connectionHealth
+    });
+
+
 
   useEffect(
     () => {
@@ -96,7 +109,8 @@ export default function App() {
   );
 
   return (
-    <div className="app-shell core-ui-v15 core-ui-v20 beta4-ui-baseline">
+    <>
+      <div className={`app-shell core-ui-v15 core-ui-v20 beta4-ui-baseline${startup.blocking ? ' app-shell--booting' : ''}`}>
       <Sidebar
         page={page}
         onChange={setPage}
@@ -135,6 +149,11 @@ export default function App() {
           }
         />
         <main className="content" data-page={page}>
+          <div
+            key={page}
+            className="page-transition-stage"
+            data-page-transition={page}
+          >
           {page ===
             'dashboard' && (
             <DashboardPage
@@ -336,9 +355,20 @@ export default function App() {
               appUpdate={appUpdate}
             />
           )}
+          </div>
         </main>
       </div>
       <BottomNav page={page} onChange={setPage} />
-    </div>
+      </div>
+
+      {startup.visible && (
+        <AppStartupScreen
+          checks={startup.checks}
+          progress={startup.progress}
+          warningCount={startup.warningCount}
+          exiting={startup.exiting}
+        />
+      )}
+    </>
   );
 }

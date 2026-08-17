@@ -1,3 +1,12 @@
+# 5.6.0-beta.1
+
+### Theme Engine 3.0
+- 12 factory themes plus custom theme profiles.
+- Expanded accent palette and material / gradient / contrast dimensions.
+- JSON import/export, clone-current workflow and contrast validation.
+- Shared desktop/mobile/web-LXC ThemeProvider with v1/v2 storage migration.
+- Frozen Beta.7 macOS OTA contract remains untouched.
+
 # 5.5.0-beta.1
 
 ## V5.5 — Next Generation UI & Shared Runtime — 2026-08-12

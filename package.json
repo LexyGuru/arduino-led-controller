@@ -1,6 +1,6 @@
 {
   "name": "arduino-led-controller",
-  "version": "5.5.1-beta.7",
+  "version": "5.6.0-beta.1",
   "private": true,
   "description": "Arduino UNO R4 WiFi LED controller and weekly scheduler",
   "main": "server2_final.js",
@@ -278,7 +278,15 @@
     "test:telemetry-timestamp-normalization": "node scripts/test-telemetry-timestamp-normalization.js",
     "test:macos-local-network-ota": "node scripts/test-macos-local-network-ota-regression.js",
     "test:macos-auto-terminal-ota-fallback": "node scripts/test-macos-auto-terminal-ota-fallback.js",
-    "test:macos-ota-immutable": "node scripts/test-macos-ota-beta7-immutable-contract.js"
+    "test:macos-ota-immutable": "node scripts/test-macos-ota-beta7-immutable-contract.js",
+    "test:theme-engine-v3": "node scripts/test-theme-engine-v3.js",
+    "test:app-startup-motion-v584": "node scripts/test-app-startup-motion-v584.js",
+    "test:custom-theme-editor-v585": "node scripts/test-custom-theme-editor-v585.js",
+    "test:theme-engine-v3-completion-v586": "node scripts/test-theme-engine-v3-completion-v586.js",
+    "test:theme-hardening-v587": "node scripts/test-theme-hardening-v587.js",
+    "test:theme-visual-contract-v587": "node scripts/test-theme-visual-contract-v587.js",
+    "test:theme-performance-v587": "node scripts/test-theme-performance-v587.js",
+    "audit:theme-colors-v587": "node scripts/audit-theme-hardcoded-colors-v587.js"
   },
   "engines": {
     "node": ">=20"

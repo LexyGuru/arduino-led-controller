@@ -25,7 +25,7 @@ Arduino továbbra is önálló **Direct API v1** végpontként működik.
 
 | Komponens | Aktuális verzió / állapot |
 |---|---|
-| Alkalmazás | **`5.5.1-beta.7`** |
+| Alkalmazás | **`5.6.0-beta.1`** |
 | Firmware | **`5.0.0-beta.10`** |
 | Direct API | **`1.0.0`** |
 | Beta ág | **`next/v5-rearchitecture`** |
@@ -48,7 +48,7 @@ A firmware változatlanul `5.0.0-beta.10`.
 - [V5.5.1 Beta.7 release notes](docs/v5/V55_BETA7_RELEASE_NOTES.md)
 - [V5.5.1 Beta.7 telepítési útmutató](docs/v5/V55_BETA7_INSTALLATION_GUIDE.md)
 - [V5.5.1 Beta.7 release checklist](docs/v5/V55_BETA7_RELEASE_CHECKLIST.md)
-- [Részletes gyökér release notes](RELEASE_NOTES_5.5.1-beta.7.md)
+- [Részletes gyökér release notes](RELEASE_NOTES_5.6.0-beta.1.md)
 
 ### Korábbi kiadási dokumentumok
 
@@ -82,7 +82,7 @@ A korábbi Beta dokumentumok történeti snapshotok; nem az aktuális kiadás le
 
 ### Közös alkalmazásplatform
 
-- **Theme Engine 2.5** – világos/sötét mód, Arctic és Midnight presetek,
+- **Theme Engine 2.0** – világos/sötét mód, Arctic és Midnight presetek,
   kiemelőszínek, sűrűség, lekerekítés és glass beállítások.
 - **Core UI 2.0** – reszponzív Sidebar, Topbar és mobil BottomNav.
 - **Dashboard 2.0** – valós Arduino-, schedule-, audit- és aktivitási adatok.
@@ -401,7 +401,7 @@ Current beta application version: **5.5.1-beta.4**.
 
 Current platform identity:
 - **Core UI 2.0**
-- **Theme Engine 2.5**
+- **Theme Engine 2.0**
 - **OTA 2.0**
 - **Update System 2.0**
 

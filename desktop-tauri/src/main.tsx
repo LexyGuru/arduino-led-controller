@@ -18,6 +18,8 @@ import {
 import './styles.css';
 import './beta7-theme.css';
 import './theme-engine-v2.css';
+import './theme-engine-v3.css';
+import './app-startup-motion.css';
 import './core-ui-v1.5.css';
 import './v55-dashboard-stats-logs.css';
 import './v55-management-ui.css';

@@ -7,7 +7,7 @@
     "test:firmware-ota-maintenance-mode",
     "test:firmware-ota-production-regression",
     "test:tauri-ota-tool-config",
-    "test:theme-engine-v2",
+    "test:theme-engine-v3",
     "test:core-ui-v15",
     "test:dashboard-stats-logs-v315",
     "test:app-update-center-v319",
@@ -20,7 +20,13 @@
     "test:openapi-typescript",
     "test:tauri-config-update",
     "test:dashboard-arduino-time-sync",
-    "test:tauri-complete-updater-ota"
+    "test:tauri-complete-updater-ota",
+    "test:app-startup-motion-v584",
+    "test:custom-theme-editor-v585",
+    "test:theme-engine-v3-completion-v586",
+    "test:theme-hardening-v587",
+    "test:theme-visual-contract-v587",
+    "test:theme-performance-v587"
   ],
   "regression": [
     "test:core",
@@ -47,7 +53,8 @@
     "test:telemetry-timestamp-normalization",
     "test:macos-local-network-ota",
     "test:macos-auto-terminal-ota-fallback",
-    "test:macos-ota-immutable"
+    "test:macos-ota-immutable",
+    "test:theme-engine-v2"
   ],
   "historyAliasPatterns": [
     "^test:beta\\d+[-:]",
