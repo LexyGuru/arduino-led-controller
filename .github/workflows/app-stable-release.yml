@@ -1,15 +1,25 @@
 name: Application Stable release
+
 on:
   workflow_dispatch:
     inputs:
       publish:
+        description: Publish the Stable application release after all builds succeed
         required: true
         default: false
         type: boolean
+  workflow_call:
+    inputs:
+      publish:
+        required: true
+        type: boolean
+
 permissions:
   contents: read
+
 jobs:
   validate:
+    name: Stable application release gate
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v5
@@ -27,8 +37,116 @@ jobs:
           node -e "const r=require('./release-versions.json'); if(r.schemaVersion!==2||r.applicationRelease?.channel!=='stable'||r.applicationRelease?.branch!=='main'||r.applicationRelease?.updaterAlias!=='updater-stable') process.exit(1)"
       - run: npm ci --no-audit --no-fund
       - run: npm run test:release-architecture-v2
+      - run: npm run test:release-workflow-architecture-v2
       - run: npm test
       - run: npm run validate
-      - name: Stable application publishing hand-off
-        if: ${{ inputs.publish }}
-        run: echo "Stable artifact publishing remains delegated to tauri-desktop.yml for this migration phase."
+
+  app-build:
+    name: Build all Stable application artifacts
+    needs: validate
+    uses: ./.github/workflows/app-build.yml
+    secrets: inherit
+
+  publish:
+    name: Stable application GitHub Release
+    if: ${{ inputs.publish }}
+    needs:
+      - validate
+      - app-build
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Enforce application-only Stable release assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          if find release-assets -type f \( -name '*.bin' -o -name '*.bin.sha256' -o -name 'firmware-release.json' -o -name 'firmware-catalog.json' -o -name 'Arduino_LED_Controller_Firmware_*' \) | grep -q .; then
+            echo "::error::Firmware artifact must not be published by Application Stable release."
+            exit 1
+          fi
+
+      - name: Forrás letöltése
+        uses: actions/checkout@v5
+
+      - name: Összes elkészült csomag letöltése
+        uses: actions/download-artifact@v5
+        with:
+          path: release-assets
+          merge-multiple: true
+
+      - name: Verzió beolvasása
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="$(node -p "require('./desktop-tauri/src-tauri/tauri.conf.json').version")"
+          test -n "$VERSION" || { echo "HIBA: a Tauri verzió nem olvasható ki."; exit 1; }
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Release-fájlok ellenőrzése
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          find release-assets -type f \
+            \( -name '*.dmg' -o -name '*.exe' -o -name '*.AppImage' -o -name '*.deb' -o -name '*.ipa' -o -name '*.apk' -o -name '*.aab' \) \
+            -print
+
+          COUNT="$(find release-assets -type f \
+            \( -name '*.dmg' -o -name '*.exe' -o -name '*.AppImage' -o -name '*.deb' -o -name '*.ipa' -o -name '*.apk' -o -name '*.aab' \) \
+            | wc -l | tr -d ' ')"
+
+          if [ "$COUNT" -lt 7 ]; then
+            echo "HIBA: túl kevés kiadási csomag készült: $COUNT; legalább 7 szükséges."
+            exit 1
+          fi
+
+          test "$(find release-assets -type f -name '*.ipa' | wc -l | tr -d ' ')" -eq 1 || { echo "HIBA: pontosan egy IPA szükséges."; exit 1; }
+          test "$(find release-assets -type f -name '*.apk' | wc -l | tr -d ' ')" -ge 1 || { echo "HIBA: hiányzik az Android APK."; exit 1; }
+          test "$(find release-assets -type f -name '*.aab' | wc -l | tr -d ' ')" -ge 1 || { echo "HIBA: hiányzik az Android AAB."; exit 1; }
+
+      - name: GitHub Release létrehozása vagy frissítése
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+
+          mapfile -d '' FILES < <(
+            find release-assets -type f \
+              \( -name '*.dmg' -o -name '*.exe' -o -name '*.AppImage' -o -name '*.deb' -o -name '*.ipa' -o -name '*.apk' -o -name '*.aab' \) \
+              -print0
+          )
+
+          if [ "${#FILES[@]}" -lt 7 ]; then
+            echo "HIBA: a Release-hez túl kevés fájl található: ${#FILES[@]}"
+            exit 1
+          fi
+
+          printf 'Feltöltendő Release-fájlok:\n'
+          printf ' - %s\n' "${FILES[@]}"
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            while IFS= read -r ASSET; do
+              case "$ASSET" in
+                *.dmg|*.exe|*.AppImage|*.deb|*.ipa|*.apk|*.aab)
+                  ;;
+                *)
+                  gh release delete-asset "$TAG" "$ASSET" --yes || true
+                  ;;
+              esac
+            done < <(gh release view "$TAG" --json assets --jq '.assets[].name')
+
+            gh release upload "$TAG" "${FILES[@]}" --clobber
+          else
+            gh release create "$TAG" "${FILES[@]}" \
+              --target "$GITHUB_SHA" \
+              --title "Arduino LED Controller v$VERSION" \
+              --notes "Automatikusan fordított Tauri kiadás Windows, macOS, Linux, Android, iPhone és iPad platformokra ugyanabból a forrásverzióból. Az unsigned iOS IPA telepítés előtt külön aláírást vagy sideload eszközt igényel. Android aláíró secretek nélkül debug APK és aláíratlan AAB készül; Play Store kiadáshoz állandó Android aláírókulcs szükséges."
+          fi

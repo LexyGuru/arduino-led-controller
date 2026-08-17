@@ -200,7 +200,8 @@
     "test:beta9-critical-mobile-clock-v186": "node scripts/test-beta9-critical-mobile-clock-v186.js",
     "test:unor4-ota-contract": "node scripts/test-unor4-renesas-ota-contract.js",
     "test:release-architecture-v2": "node scripts/test-release-architecture-v2.js",
-    "test:release-workflow-architecture-v2": "node scripts/test-release-workflow-architecture-v2.js"
+    "test:release-workflow-architecture-v2": "node scripts/test-release-workflow-architecture-v2.js",
+    "test:stable-artifact-pipeline-v2": "node scripts/test-stable-artifact-pipeline-v2.js"
   },
   "engines": {
     "node": ">=20"
