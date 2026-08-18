@@ -77,6 +77,7 @@ export default function App() {
   const appUpdate =
     useAppUpdateCenter({
       updateChannel: controller.config.updateChannel,
+      firmwareUpdateChannel: controller.config.firmwareUpdateChannel,
       autoCheckUpdates: controller.config.autoCheckUpdates
     });
 
@@ -172,6 +173,8 @@ export default function App() {
               networkLogs={
                 controller.networkLogs
               }
+              platform={controller.capabilities.platform}
+              startupIssues={startup.checks.filter((check) => check.state === 'warn')}
               busy={
                 controller.busy
               }
@@ -263,6 +266,7 @@ export default function App() {
                 controller.firmware
               }
               appUpdate={appUpdate}
+              firmwareUpdateChannel={controller.config.firmwareUpdateChannel}
               isMobile={controller.capabilities.mobile}
               busy={
                 controller.busy

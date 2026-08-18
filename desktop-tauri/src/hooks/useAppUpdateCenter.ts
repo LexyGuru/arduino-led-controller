@@ -89,7 +89,7 @@ function storeLastCheck(value: number) {
 }
 
 export function useAppUpdateCenter(
-  config: Pick<ConnectionConfig, 'updateChannel' | 'autoCheckUpdates'>
+  config: Pick<ConnectionConfig, 'updateChannel' | 'firmwareUpdateChannel' | 'autoCheckUpdates'>
 ): AppUpdateState {
   const mounted = useRef(true);
   const [phase, setPhase] = useState<AppUpdatePhase>('idle');
@@ -124,7 +124,10 @@ export function useAppUpdateCenter(
     try {
       const [runtimeVersion, status] = await Promise.all([
         tauriApi.appVersion(),
-        tauriApi.firmwareStatus()
+        tauriApi.firmwareStatus(
+          config.updateChannel,
+          config.firmwareUpdateChannel
+        )
       ]);
 
       if (!mounted.current) return;
@@ -164,7 +167,7 @@ export function useAppUpdateCenter(
       setError(String(caught));
       setPhase('error');
     }
-  }, [config.updateChannel]);
+  }, [config.updateChannel, config.firmwareUpdateChannel]);
 
   const nativeInstallAvailable =
     nativeDesktop && config.updateChannel === 'beta' && phase === 'available';

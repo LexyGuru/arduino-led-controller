@@ -85,10 +85,15 @@ assert.equal(ageLabel(1, now), '—');
 assert.equal(ageLabel(now + 10 * 60_000, now), '—');
 assert.equal(ageLabel(now + 30_000, now), '0s');
 
-// The audited V568 fallback remains allowed; the unit normalization is the fix.
+// The timestamp fallback still preserves ConnectionHealth milliseconds and
+// NetworkLog UNIX-seconds input, but V621 first filters recovered transient
+// macOS credential-bootstrap noise. Only an effective error may expose a
+// failure timestamp.
+assert.match(source, /effectiveHealthError/);
+assert.match(source, /effectiveNetworkError/);
 assert.match(
   source,
-  /health\.lastFailureAt \?\? latestNetworkError\?\.timestamp \?\? null/
+  /effectiveHealthError \|\| effectiveNetworkError[\s\S]*health\.lastFailureAt \?\? effectiveNetworkError\?\.timestamp \?\? null/
 );
 
 console.log('TELEMETRY_TIMESTAMP_SECONDS_NORMALIZED=PASSED');

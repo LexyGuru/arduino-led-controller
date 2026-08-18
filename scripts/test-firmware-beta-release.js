@@ -5,7 +5,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 
 const full = fs.readFileSync(
-  '.github/workflows/beta-release.yml',
+  '.github/workflows/app-beta-release.yml',
   'utf8'
 );
 const fw = fs.readFileSync(

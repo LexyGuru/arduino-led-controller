@@ -19,13 +19,9 @@ assert.equal(release.applicationRelease.branch, 'next/v5-rearchitecture');
 assert.equal(release.firmware, '5.0.0-beta.10');
 assert.equal(release.firmwareRelease.channel, 'beta');
 
-for (const workflowPath of [
-  '.github/workflows/app-beta-release.yml',
-  '.github/workflows/beta-release.yml'
-]) {
-  const workflow = read(workflowPath);
-  assert.match(workflow, /EXPECTED_VERSION:\s*5\.6\.1-beta\.1/);
-}
+const appBetaWorkflow = read('.github/workflows/app-beta-release.yml');
+assert.match(appBetaWorkflow, /EXPECTED_VERSION:\s*5\.6\.1-beta\.1/);
+assert.equal(fs.existsSync('.github/workflows/beta-release.yml'), false);
 for (const p of [
   'RELEASE_NOTES_5.6.1-beta.1.md',
   'docs/v5/V56_BETA1_RELEASE_NOTES.md',
@@ -60,7 +56,9 @@ assert.match(panel, /channelIdentity\.appMismatch/);
 assert.match(panel, /channelIdentity\.firmwareMismatch/);
 assert.doesNotMatch(panel, /\{firmware\?\.updateChannel \?\? t\('common\.unknown'\)\}/);
 
-assert.match(fwPage, /restoreVersions.*Stable.*Beta/);
+assert.match(fwPage, /const selectedFirmwareChannel = firmwareUpdateChannel/);
+assert.match(fwPage, /restoreVersions[\s\S]*selectedFirmwareChannel === 'stable'[\s\S]*'Stable'[\s\S]*'Beta'/);
+assert.doesNotMatch(fwPage, /restoreVersions[\s\S]{0,180}firmware\?\.firmwareUpdateChannel/);
 assert.doesNotMatch(fwPage, /Stable \/ main/);
 
 for (const key of [

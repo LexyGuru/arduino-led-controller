@@ -76,42 +76,7 @@ jobs:
   build:
     name: Build UNO R4 WiFi firmware
     needs: validate
-    runs-on: ubuntu-22.04
-    steps:
-      - uses: actions/checkout@v5
-      - name: Install Arduino CLI
-        run: |
-          curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sh
-          echo "${GITHUB_WORKSPACE}/bin" >> "${GITHUB_PATH}"
-      - name: Install core and libraries
-        run: |
-          arduino-cli config init
-          arduino-cli core update-index
-          arduino-cli lib update-index
-          arduino-cli core install arduino:renesas_uno
-          arduino-cli lib install "Adafruit NeoPixel"
-          arduino-cli lib install "ArduinoOTA"
-      - name: Compile, name and checksum firmware
-        env:
-          FW_VERSION: ${{ needs.validate.outputs.firmware_version }}
-        run: |
-          set -euo pipefail
-          cp firmware/ArduinoLedController/secrets.example.h firmware/ArduinoLedController/secrets.h
-          mkdir -p build/firmware artifacts
-          arduino-cli compile --fqbn arduino:renesas_uno:unor4wifi --output-dir build/firmware --warnings all firmware/ArduinoLedController
-          BIN="$(find build/firmware -type f -name '*.ino.bin' -print | sort | head -n 1)"
-          OUT="artifacts/Arduino_LED_Controller_Firmware_${FW_VERSION}_UNO_R4_WiFi.bin"
-          test -f "${BIN}"
-          cp "${BIN}" "${OUT}"
-          sha256sum "${OUT}" > "${OUT}.sha256"
-          test "$(basename "${OUT}")" = "$(node -p "require('./firmware/firmware-release.json').binary")"
-          cp firmware/firmware-release.json artifacts/
-      - uses: actions/upload-artifact@v6
-        with:
-          name: firmware-beta-current
-          path: artifacts/*
-          if-no-files-found: error
-          retention-days: 30
+    uses: ./.github/workflows/firmware-build.yml
 
   publish:
     name: Publish dedicated firmware catalog
@@ -124,8 +89,21 @@ jobs:
       - uses: actions/checkout@v5
       - uses: actions/download-artifact@v7
         with:
-          name: firmware-beta-current
-          path: current
+          name: ArduinoLedController-UNO-R4-WiFi
+          path: built
+
+      - name: Normalize shared firmware build for Beta publication
+        env:
+          FW_VERSION: ${{ needs.validate.outputs.firmware_version }}
+        run: |
+          set -euo pipefail
+          mkdir -p current
+          BIN="$(find built -type f -name '*.ino.bin' -print | sort | head -n 1)"
+          test -f "${BIN}"
+          OUT="current/Arduino_LED_Controller_Firmware_${FW_VERSION}_UNO_R4_WiFi.bin"
+          cp "${BIN}" "${OUT}"
+          sha256sum "${OUT}" > "${OUT}.sha256"
+          cp firmware/firmware-release.json current/
       - name: Create or open dedicated firmware prerelease
         env:
           GH_TOKEN: ${{ github.token }}

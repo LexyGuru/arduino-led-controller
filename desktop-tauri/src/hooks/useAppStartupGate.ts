@@ -159,7 +159,7 @@ export function useAppStartupGate({
     const timer = window.setTimeout(() => {
       update(
         'arduino',
-        connectionHealth.state === 'healthy' ? 'pass' : 'warn',
+        'pass',
         connectionHealth.state === 'healthy'
           ? undefined
           : 'startup.detail.arduinoBackground'
@@ -174,7 +174,7 @@ export function useAppStartupGate({
       setChecks((current) =>
         current.map((check) =>
           check.state === 'pending'
-            ? { ...check, state: 'warn', detailKey: 'startup.detail.backgroundContinue' }
+            ? { ...check, state: 'pass', detailKey: 'startup.detail.backgroundContinue' }
             : check
         )
       );

@@ -1,4 +1,4 @@
-name: Tauri staging artifact build
+name: Application staging build
 
 on:
   workflow_dispatch:
@@ -11,7 +11,7 @@ on:
       - "desktop-tauri/**"
       - "docs/api/openapi-v2.json"
       - "scripts/generate-openapi-typescript.js"
-      - ".github/workflows/tauri-artifact-build.yml"
+      - ".github/workflows/app-staging-build.yml"
 
 permissions:
   contents: read

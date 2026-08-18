@@ -8,7 +8,8 @@ import {
   MemoryStick,
   Radio,
   RefreshCw,
-  Wifi
+  Wifi,
+  TriangleAlert
 } from 'lucide-react';
 import { ActivityTimeline } from '../components/v55/ActivityTimeline';
 import { StatisticsPanel } from '../components/v55/StatisticsPanel';
@@ -26,6 +27,7 @@ import type {
   ScheduleSyncState
 } from '../types';
 import { buildDashboardStatistics } from '../utils/v55Statistics';
+import type { StartupCheck } from '../hooks/useAppStartupGate';
 
 const dayKeys = ['days.1','days.2','days.3','days.4','days.5','days.6','days.7'];
 const effectKeys = ['effects.0','effects.1','effects.2','effects.3','effects.4'];
@@ -102,6 +104,8 @@ export function DashboardPage({
   scheduleSync,
   connectionHealth,
   networkLogs,
+  platform,
+  startupIssues,
   busy,
   onSyncTime
 }: {
@@ -110,6 +114,8 @@ export function DashboardPage({
   scheduleSync: ScheduleSyncState;
   connectionHealth: ConnectionHealthState;
   networkLogs: NetworkLog[];
+  platform: string;
+  startupIssues: StartupCheck[];
   busy: boolean;
   onSyncTime: () => Promise<void>;
 }) {
@@ -127,14 +133,22 @@ export function DashboardPage({
       : next?.dayOffset === 1
         ? t('dashboard.tomorrow')
         : t('dashboard.nextDay');
+  const recoveredMacCredentialBootstrap = (message?: string) =>
+    platform === 'macos' &&
+    connectionHealth.state === 'healthy' &&
+    Boolean(message?.includes('Az Arduino API-kulcs nem használható biztonságos HTTP-fejlécértékként.'));
+
+  const effectiveNetworkLogs = networkLogs.filter(
+    (entry) => !recoveredMacCredentialBootstrap(entry.message)
+  );
   const stats = buildDashboardStatistics(
     status,
     schedules,
     audit.entries,
-    networkLogs
+    effectiveNetworkLogs
   );
   const latestNetworkError =
-    networkLogs.find((entry) => !entry.ok) ?? null;
+    effectiveNetworkLogs.find((entry) => !entry.ok) ?? null;
 
   const utcOffset = status?.utcOffsetMinutes;
   const offsetLabel = utcOffset == null
@@ -210,11 +224,33 @@ export function DashboardPage({
         </article>
       </section>
 
+      {startupIssues.length > 0 && (
+        <section className="panel v621-startup-issues" data-startup-issues={startupIssues.length}>
+          <div className="panel-title">
+            <div>
+              <p className="eyebrow">{t('startupIssues.eyebrow')}</p>
+              <h2>{t('startupIssues.title')}</h2>
+            </div>
+            <TriangleAlert className="bad" />
+          </div>
+          <p className="muted">{t('startupIssues.help')}</p>
+          <div className="v621-startup-issue-list">
+            {startupIssues.map((check) => (
+              <div className="v621-startup-issue" key={check.id}>
+                <strong>{t(check.labelKey)}</strong>
+                <span>{check.detailKey ? t(check.detailKey) : t('startupIssues.unknown')}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       <DeviceHealthPanel
         health={connectionHealth}
         status={status}
         stats={stats}
         latestNetworkError={latestNetworkError}
+        platform={platform}
         onRetry={() => void dashboard.refresh()}
       />
 

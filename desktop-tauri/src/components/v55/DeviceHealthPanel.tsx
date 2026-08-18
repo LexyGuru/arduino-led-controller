@@ -96,12 +96,14 @@ export function DeviceHealthPanel({
   status,
   stats,
   latestNetworkError,
+  platform,
   onRetry
 }: {
   health: ConnectionHealthState;
   status: ArduinoStatus | null;
   stats: DashboardStatistics;
   latestNetworkError: NetworkLog | null;
+  platform: string;
   onRetry: () => void;
 }) {
   const { t } = useI18n();
@@ -116,14 +118,28 @@ export function DeviceHealthPanel({
 
   const stateLabel = t(`beta2.health.state.${health.state}`);
   const stateMessage = t(`beta2.health.message.${health.state}`);
-  const lastFailureAt = health.lastFailureAt ?? latestNetworkError?.timestamp ?? null;
+  const recoveredMacCredentialBootstrap = (message?: string | null) =>
+    platform === 'macos' &&
+    health.state === 'healthy' &&
+    Boolean(message?.includes('Az Arduino API-kulcs nem használható biztonságos HTTP-fejlécértékként.'));
+
+  const effectiveHealthError =
+    recoveredMacCredentialBootstrap(health.lastError) ? null : health.lastError;
+  const effectiveNetworkError =
+    latestNetworkError && recoveredMacCredentialBootstrap(latestNetworkError.message)
+      ? null
+      : latestNetworkError;
+  const lastFailureAt =
+    effectiveHealthError || effectiveNetworkError
+      ? health.lastFailureAt ?? effectiveNetworkError?.timestamp ?? null
+      : null;
   const lastError = useMemo(() => {
-    if (health.lastError) return health.lastError;
-    if (latestNetworkError) {
-      return `${latestNetworkError.endpoint}: ${latestNetworkError.message}`;
+    if (effectiveHealthError) return effectiveHealthError;
+    if (effectiveNetworkError) {
+      return `${effectiveNetworkError.endpoint}: ${effectiveNetworkError.message}`;
     }
     return t('beta2.health.noError');
-  }, [health.lastError, latestNetworkError, t]);
+  }, [effectiveHealthError, effectiveNetworkError, t]);
 
   return (
     <section className={`panel beta2-health-panel v568-system-telemetry ${health.state}`}>

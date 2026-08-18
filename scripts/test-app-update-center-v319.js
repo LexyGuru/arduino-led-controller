@@ -15,7 +15,6 @@ const i18n=read('desktop-tauri/src/i18n/runtime.ts');
 
 for(const marker of [
   'tauriApi.appVersion()',
-  'tauriApi.firmwareStatus()',
   'appUpdateAvailable',
   'availableApp',
   'autoCheckUpdates',
@@ -26,6 +25,11 @@ for(const marker of [
   'phase'
 ]) assert.ok(hook.includes(marker),`hook: ${marker}`);
 
+assert.match(
+  hook,
+  /tauriApi\.firmwareStatus\(\s*config\.updateChannel,\s*config\.firmwareUpdateChannel\s*\)/s,
+  'hook: live app + firmware channels must be passed to firmwareStatus'
+);
 assert.ok(!hook.includes('Math.random'),'no fake update data');
 assert.ok(component.includes('v55-app-update-center'));
 assert.ok(component.includes('appUpdate.current'));

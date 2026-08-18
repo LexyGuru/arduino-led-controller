@@ -714,7 +714,10 @@ export function useController(
 
         try {
           const value =
-            await tauriApi.firmwareStatus();
+            await tauriApi.firmwareStatus(
+              config.updateChannel,
+              config.firmwareUpdateChannel
+            );
 
           setFirmware(
             value
@@ -735,7 +738,11 @@ export function useController(
           );
         }
       },
-      [capabilities.otaSupported]
+      [
+        capabilities.otaSupported,
+        config.updateChannel,
+        config.firmwareUpdateChannel
+      ]
     );
 
   useEffect(

@@ -12,20 +12,20 @@ for (const f of [
   'firmware-beta-release.yml',
   'firmware-stable-release.yml',
   'app-build.yml',
-  'firmware-build.yml'
+  'firmware-build.yml',
+  'app-staging-build.yml'
 ]) {
   assert.ok(fs.existsSync('.github/workflows/' + f), 'missing ' + f);
 }
 
 const appBeta = read('.github/workflows/app-beta-release.yml');
-const legacy = read('.github/workflows/beta-release.yml');
 const appStable = read('.github/workflows/app-stable-release.yml');
 const fwBeta = read('.github/workflows/firmware-beta-release.yml');
 const fwStable = read('.github/workflows/firmware-stable-release.yml');
 const appBuild = read('.github/workflows/app-build.yml');
 const fwBuild = read('.github/workflows/firmware-build.yml');
 
-for (const t of [appBeta, legacy, appStable]) {
+for (const t of [appBeta, appStable]) {
   assert.doesNotMatch(t, /gh workflow run firmware-beta-release\.yml/);
   assert.doesNotMatch(t, /Dispatch and wait for dedicated firmware prerelease/);
 }
@@ -33,10 +33,19 @@ for (const t of [appBeta, legacy, appStable]) {
 assert.match(appBeta, /EXPECTED_BRANCH: next\/v5-rearchitecture/);
 assert.match(appBeta, /prerelease: true/);
 assert.match(appBeta, /make_latest: false/);
-assert.match(fwBeta, /Build UNO R4 WiFi firmware/);
+assert.match(fwBeta, /uses: \.\/\.github\/workflows\/firmware-build\.yml/);
 assert.match(appStable, /GITHUB_REF_NAME/);
 assert.match(appStable, /updater-stable/);
 assert.match(appBuild, /workflow_call:/);
+assert.ok(!fs.existsSync('.github/workflows/beta-release.yml'));
+assert.ok(!fs.existsSync('.github/workflows/tauri-desktop.yml'));
+assert.ok(!fs.existsSync('.github/workflows/tauri-artifact-build.yml'));
+assert.ok(fs.existsSync('.github/workflows/app-staging-build.yml'));
+assert.match(appStable, /EXPECTED_BRANCH: main/);
+assert.match(appStable, /prerelease: false/);
+assert.match(appStable, /make_latest: true/);
+assert.match(appStable, /updater-stable/);
+assert.doesNotMatch(appStable, /tauri-desktop\.yml/);
 
 /* Firmware build is CI/build-only. Publishing belongs to dedicated release workflows. */
 assert.match(fwBuild, /workflow_call:/);

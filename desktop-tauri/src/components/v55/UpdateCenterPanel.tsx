@@ -18,6 +18,7 @@ import { buildUpdateCenterPanelModel } from '../../utils/updateCenterPanelModel.
 interface Props {
   firmware: FirmwareStatus | null;
   appUpdate: AppUpdateState;
+  firmwareUpdateChannel: 'stable' | 'beta';
   isMobile: boolean;
   busy: boolean;
   onCheck: () => void;
@@ -45,6 +46,7 @@ function RelationIcon({ relation }: { relation: UpdateRelation }) {
 export function UpdateCenterPanel({
   firmware,
   appUpdate,
+  firmwareUpdateChannel,
   isMobile,
   busy,
   onCheck,
@@ -72,8 +74,7 @@ export function UpdateCenterPanel({
   const appBuildChannel = channelFromVersion(appInstalled);
   const firmwareBuildChannel = channelFromVersion(firmwareInstalled);
   const appSelectedChannel = appUpdate.channel;
-  const firmwareSelectedChannel =
-    firmware?.firmwareUpdateChannel === 'stable' ? 'stable' : 'beta';
+  const firmwareSelectedChannel = firmwareUpdateChannel;
   const appChannelMismatch =
     appBuildChannel !== 'unknown' && appBuildChannel !== appSelectedChannel;
   const firmwareChannelMismatch =
@@ -244,7 +245,7 @@ export function UpdateCenterPanel({
           <div className="beta3-update-card-head">
             <strong>{t('beta3.update.firmware')}</strong>
             <span className="beta3-update-channel">
-              {firmware?.firmwareUpdateChannel ?? t('common.unknown')}
+              {firmwareSelectedChannel.toUpperCase()}
             </span>
           </div>
 

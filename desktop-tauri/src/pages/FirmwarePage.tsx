@@ -57,6 +57,7 @@ import { UpdateCenterPanel } from '../components/v55/UpdateCenterPanel';
 interface FirmwarePageProps {
   firmware: FirmwareStatus | null;
   appUpdate: AppUpdateState;
+  firmwareUpdateChannel: 'stable' | 'beta';
   isMobile: boolean;
   busy: boolean;
   otaLogs: OtaProgressEvent[];
@@ -136,6 +137,7 @@ export function FirmwarePage({
   firmware:
     legacyFirmware,
   appUpdate,
+  firmwareUpdateChannel,
   isMobile,
   busy:
     legacyBusy,
@@ -182,8 +184,7 @@ export function FirmwarePage({
   >(null);
   const externalFirmwareInputRef = useRef<HTMLInputElement | null>(null);
   const [externalFirmwareBusy, setExternalFirmwareBusy] = useState(false);
-  const selectedFirmwareChannel =
-    firmware?.firmwareUpdateChannel === 'stable' ? 'stable' : 'beta';
+  const selectedFirmwareChannel = firmwareUpdateChannel;
   const firmwareCatalog = deduplicateFirmwareCatalog(releaseCatalog).filter(
     (item) => (item.channel ?? '').trim().toLowerCase() === selectedFirmwareChannel
   );
@@ -191,7 +192,9 @@ export function FirmwarePage({
 
   const refreshCatalog = async () => {
     try {
-      setReleaseCatalog(await tauriApi.firmwareReleases());
+      setReleaseCatalog(
+        await tauriApi.firmwareReleases(selectedFirmwareChannel)
+      );
       setCatalogError('');
     } catch (error) {
       setCatalogError(String(error));
@@ -231,7 +234,8 @@ export function FirmwarePage({
 
 
     const controller = createOta2LiveInstallController({
-      firmwareInstallRelease: tauriApi.firmwareInstallRelease,
+      firmwareInstallRelease: (tag) =>
+        tauriApi.firmwareInstallRelease(tag, selectedFirmwareChannel),
       firmwareStatus: tauriApi.firmwareStatus,
       subscribeProgress: tauriApi.listenOtaProgress,
       createBackup: () => recovery.prepare()
@@ -280,7 +284,10 @@ export function FirmwarePage({
     setOta2Result({ ok: false, code: OTA2_UX_CODES.CANCEL_REQUESTED });
   };
 
-  useEffect(() => { void refreshCatalog(); }, [firmware?.firmwareUpdateChannel]);
+  useEffect(() => {
+    setReleaseCatalog([]);
+    void refreshCatalog();
+  }, [selectedFirmwareChannel]);
 
   const available =
     firmware
@@ -409,6 +416,7 @@ export function FirmwarePage({
       <UpdateCenterPanel
         firmware={firmware}
         appUpdate={appUpdate}
+        firmwareUpdateChannel={selectedFirmwareChannel}
         isMobile={isMobile}
         busy={state.busy || ota2Installing || appUpdate.installing}
         onCheck={
@@ -773,7 +781,9 @@ export function FirmwarePage({
         <div className="panel-title">
           <div>
             <p className="eyebrow">{t('firmware.catalog')}</p>
-            <h2>{t('firmware.restoreVersions',{channel:firmware?.firmwareUpdateChannel === 'stable' ? 'Stable' : 'Beta'})}</h2>
+            <h2>{t('firmware.restoreVersions',{
+              channel: selectedFirmwareChannel === 'stable' ? 'Stable' : 'Beta'
+            })}</h2>
           </div>
           <ShieldCheck />
         </div>

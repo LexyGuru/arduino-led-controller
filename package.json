@@ -290,7 +290,11 @@
     "test:release-architecture-v2": "node scripts/test-release-architecture-v2.js",
     "test:release-workflow-architecture-v2": "node scripts/test-release-workflow-architecture-v2.js",
     "test:v615-firmware-channel-startup": "node scripts/test-v615-firmware-channel-startup-contract.js",
-    "test:v617-release-channel-identity": "node scripts/test-v617-release-channel-identity.js"
+    "test:v617-release-channel-identity": "node scripts/test-v617-release-channel-identity.js",
+    "test:v619-live-channel-runtime": "node scripts/test-v619-live-channel-runtime.js",
+    "test:v621-startup-error-update-visibility": "node scripts/test-v621-startup-error-update-visibility.js",
+    "test:v622-startup-no-scroll": "node scripts/test-v622-startup-no-scroll.js",
+    "test:v623-workflow-cleanup": "node scripts/test-v623-workflow-cleanup.js"
   },
   "engines": {
     "node": ">=20"

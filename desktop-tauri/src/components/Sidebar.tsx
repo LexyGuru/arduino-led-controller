@@ -4,7 +4,8 @@ import {
   Gauge,
   Lightbulb,
   ScrollText,
-  Settings
+  Settings,
+  DownloadCloud
 } from 'lucide-react';
 import { useI18n } from '../i18n';
 import type { PageId } from '../types';
@@ -80,6 +81,23 @@ export function Sidebar({
           </button>
         ))}
       </nav>
+
+      {updateAvailable && (
+        <button
+          type="button"
+          className="v621-sidebar-update-card"
+          onClick={() => onChange('settings')}
+          aria-label={t('appUpdate.sidebarCta', {
+            version: latestAppVersion ?? t('common.unknown')
+          })}
+        >
+          <DownloadCloud size={17} />
+          <span>
+            <small>{t('appUpdate.available')}</small>
+            <strong>{latestAppVersion ?? t('common.unknown')}</strong>
+          </span>
+        </button>
+      )}
 
       <div className="sidebar-footer core-sidebar-footer">
         <div className="core-device-line">

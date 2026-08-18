@@ -67,7 +67,8 @@ assert.match(
   new RegExp(`APP_VERSION\\s*=\\s*['"]${versionPattern}['"]`)
 );
 
-const workflow = read('.github/workflows/beta-release.yml');
+const workflow = read('.github/workflows/app-beta-release.yml');
+assert.equal(exists('.github/workflows/beta-release.yml'), false);
 assert.match(workflow, new RegExp(`EXPECTED_VERSION:\\s*${versionPattern}`));
 assert.match(workflow, /prerelease:\s*true/);
 assert.match(workflow, /make_latest:\s*false/);

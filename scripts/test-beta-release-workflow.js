@@ -31,7 +31,7 @@ const firmwareSource = fs.readFileSync(
   'utf8',
 );
 const appWorkflow = fs.readFileSync(
-  '.github/workflows/beta-release.yml',
+  '.github/workflows/app-beta-release.yml',
   'utf8',
 );
 const firmwareWorkflow = fs.readFileSync(
@@ -100,7 +100,6 @@ assert.match(
 assert.doesNotMatch(appWorkflow, /body_path: docs\/v5\/BETA6_RELEASE_NOTES\.md/);
 assert.doesNotMatch(appWorkflow, /Dispatch and wait for dedicated firmware prerelease/);
 assert.doesNotMatch(appWorkflow, /gh workflow run firmware-beta-release\.yml/);
-assert.ok(fs.existsSync('.github/workflows/app-beta-release.yml'));
 assert.doesNotMatch(appWorkflow, /EXPECTED_FIRMWARE_VERSION:/);
 assert.doesNotMatch(appWorkflow, /build-firmware:/);
 assert.doesNotMatch(appWorkflow, /UNO R4 WiFi firmware/);

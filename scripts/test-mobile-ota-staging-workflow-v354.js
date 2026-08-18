@@ -1,6 +1,6 @@
 const fs = require('fs');
 const lib = fs.readFileSync('desktop-tauri/src-tauri/src/lib.rs', 'utf8');
-const staging = fs.readFileSync('.github/workflows/tauri-artifact-build.yml', 'utf8');
+const staging = fs.readFileSync('.github/workflows/app-staging-build.yml', 'utf8');
 
 function requireMatch(value, regex, label) {
   if (!regex.test(value)) throw new Error(`Missing contract: ${label}`);

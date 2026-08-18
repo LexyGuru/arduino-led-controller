@@ -5,8 +5,8 @@ const theme = fs.readFileSync("desktop-tauri/src/design-system/ThemeProvider.tsx
 const sidebar = fs.readFileSync("desktop-tauri/src/components/Sidebar.tsx", "utf8");
 const rust = fs.readFileSync("desktop-tauri/src-tauri/src/lib.rs", "utf8");
 const cargo = fs.readFileSync("desktop-tauri/src-tauri/Cargo.toml", "utf8");
-const beta = fs.readFileSync(".github/workflows/beta-release.yml", "utf8");
-const staging = fs.readFileSync(".github/workflows/tauri-artifact-build.yml", "utf8");
+const beta = fs.readFileSync(".github/workflows/app-beta-release.yml", "utf8");
+const staging = fs.readFileSync(".github/workflows/app-staging-build.yml", "utf8");
 const generator = fs.readFileSync("scripts/generate-v5-mobile-icons.sh", "utf8");
 assert.match(theme, /V417_MACOS_DOCK_ICON_FOLLOWS_RESOLVED_MODE/);
 assert.match(theme, /macos_sync_app_icon/);

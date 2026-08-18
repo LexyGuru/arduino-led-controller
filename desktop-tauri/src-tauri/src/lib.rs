@@ -1284,13 +1284,19 @@ async fn firmware_beta_release() -> Result<GitHubRelease, String> {
 }
 
 #[tauri::command]
-async fn firmware_releases(state: State<'_, AppState>) -> Result<Vec<FirmwareArtifact>, String> {
-    let channel = state
-        .config
-        .lock()
-        .map_err(|_| "Beállítás zárolva".to_string())?
-        .firmware_update_channel
-        .clone();
+async fn firmware_releases(
+    state: State<'_, AppState>,
+    channel: Option<String>,
+) -> Result<Vec<FirmwareArtifact>, String> {
+    let channel = match channel {
+        Some(channel) => channel,
+        None => state
+            .config
+            .lock()
+            .map_err(|_| "Beállítás zárolva".to_string())?
+            .firmware_update_channel
+            .clone(),
+    };
     let normalized_channel = if channel.trim() == "stable" { "stable" } else { "beta" };
     let releases = github_releases().await?;
     let mut artifacts = releases
@@ -2935,12 +2941,22 @@ fn list_schedule_backups(app: AppHandle) -> Result<Vec<ScheduleBackup>, String> 
 async fn firmware_status(
     app: AppHandle,
     state: State<'_, AppState>,
+    update_channel: Option<String>,
+    firmware_update_channel: Option<String>,
 ) -> Result<FirmwareStatus, String> {
-    let config = state
+    let mut config = state
         .config
         .lock()
         .map_err(|_| "Beállítás zárolva".to_string())?
         .clone();
+    if let Some(channel) = update_channel {
+        config.update_channel =
+            if channel.trim().eq_ignore_ascii_case("stable") { "stable" } else { "beta" }.into();
+    }
+    if let Some(channel) = firmware_update_channel {
+        config.firmware_update_channel =
+            if channel.trim().eq_ignore_ascii_case("stable") { "stable" } else { "beta" }.into();
+    }
     let mut status = FirmwareStatus {
         state: "idle".into(),
         message: "Nincs folyamatban firmware-frissítés.".into(),
@@ -4042,8 +4058,15 @@ async fn firmware_install_release(
     app: AppHandle,
     state: State<'_, AppState>,
     tag: String,
+    channel: Option<String>,
 ) -> Result<FirmwareStatus, String> {
-    let normalized_channel = {
+    let normalized_channel = if let Some(channel) = channel.as_deref() {
+        if channel.trim().eq_ignore_ascii_case("stable") {
+            "stable"
+        } else {
+            "beta"
+        }
+    } else {
         let config = state
             .config
             .lock()
