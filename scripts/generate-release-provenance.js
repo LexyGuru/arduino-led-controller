@@ -63,31 +63,82 @@ function main() {
       )
     );
 
+  const targetVersion =
+    argument(
+      '--target-version',
+      null
+    );
+
+  const builderId =
+    argument(
+      '--builder-id',
+      null
+    );
+
+  const dependencyInstall =
+    argument(
+      '--dependency-install',
+      null
+    );
+
+  const byproductsValue =
+    argument(
+      '--byproducts',
+      null
+    );
+
+  const provenanceOptions = {
+    product:
+      packageData.name,
+    version:
+      packageData.version,
+    commit:
+      argument(
+        '--commit',
+        process.env
+          .RELEASE_COMMIT ||
+        ''
+      ),
+    generatedAt:
+      argument(
+        '--generated-at',
+        new Date()
+          .toISOString()
+      ),
+    phase:
+      argument(
+        '--phase',
+        'staging'
+      )
+  };
+
+  if (targetVersion) {
+    provenanceOptions.targetVersion =
+      targetVersion;
+  }
+
+  if (builderId) {
+    provenanceOptions.builderId =
+      builderId;
+  }
+
+  if (dependencyInstall) {
+    provenanceOptions.dependencyInstall =
+      dependencyInstall;
+  }
+
+  if (byproductsValue) {
+    provenanceOptions.byproducts =
+      byproductsValue
+        .split(',')
+        .map((value) => value.trim())
+        .filter(Boolean);
+  }
+
   const provenance =
-    buildReleaseProvenance({
-      product:
-        packageData.name,
-      version:
-        packageData.version,
-      commit:
-        argument(
-          '--commit',
-          process.env
-            .RELEASE_COMMIT ||
-          ''
-        ),
-      generatedAt:
-        argument(
-          '--generated-at',
-          new Date()
-            .toISOString()
-        ),
-      phase:
-        argument(
-          '--phase',
-          'staging'
-        )
-    });
+    buildReleaseProvenance(
+      provenanceOptions
+    );
 
   fs.mkdirSync(
     path.dirname(

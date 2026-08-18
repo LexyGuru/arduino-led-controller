@@ -555,23 +555,11 @@ jobs:
           chmod 0755 release-assets/install-rust-lxc-native.sh
 
       - name: Verify expected release asset classes
-        shell: bash
+        env:
+          EXPECTED_VERSION: ${{ needs.validate.outputs.version }}
         run: |
           set -euo pipefail
-          test "$(find release-assets -maxdepth 1 -type f -name '*.dmg' | wc -l | tr -d ' ')" -eq 2
-          test "$(find release-assets -maxdepth 1 -type f -name '*.exe' | wc -l | tr -d ' ')" -eq 1
-          test "$(find release-assets -maxdepth 1 -type f -name '*.AppImage' | wc -l | tr -d ' ')" -eq 1
-          test "$(find release-assets -maxdepth 1 -type f -name '*.deb' | wc -l | tr -d ' ')" -eq 1
-          test "$(find release-assets -maxdepth 1 -type f -name '*.apk' | wc -l | tr -d ' ')" -eq 1
-          test "$(find release-assets -maxdepth 1 -type f -name '*.aab' | wc -l | tr -d ' ')" -eq 1
-          test "$(find release-assets -maxdepth 1 -type f -name '*.ipa' | wc -l | tr -d ' ')" -eq 1
-          test "$(find release-assets -maxdepth 1 -type f -name '*.bin' | wc -l | tr -d ' ')" -eq 0
-          test "$(find release-assets -maxdepth 1 -type f -name '*.bin.sha256' | wc -l | tr -d ' ')" -eq 0
-          test -f release-assets/release-versions.json
-          node -e "const r=require('./release-assets/release-versions.json'); if(r.application!==process.env.EXPECTED_VERSION) process.exit(1)"
-          test "$(find release-assets -maxdepth 1 -type f -name '*_LXC_Server.tar.gz' | wc -l | tr -d ' ')" -eq 1
-          test "$(find release-assets -maxdepth 1 -type f -name '*.app.tar.gz' | wc -l | tr -d ' ')" -eq 2
-          test "$(find release-assets -maxdepth 1 -type f -name '*.sig' | wc -l | tr -d ' ')" -eq 4
+          node scripts/verify-stable-release-assets-v650.js release-assets "${EXPECTED_VERSION}"
           find release-assets -maxdepth 1 -type f -print | sort
 
       - name: Generate Tauri updater static feed
@@ -579,64 +567,17 @@ jobs:
           VERSION: ${{ needs.validate.outputs.version }}
           TAG: ${{ needs.validate.outputs.tag }}
         run: |
-          python3 - <<'PY'
-          import json
-          import os
-          from pathlib import Path
-
-          root = Path("release-assets")
-          version = os.environ["VERSION"]
-          tag = os.environ["TAG"]
-          base = f"https://github.com/LexyGuru/arduino-led-controller/releases/download/{tag}"
-          assets = {
-              "linux-x86_64": (
-                  f"Arduino_LED_Controller_{version}_Linux_x86_64.AppImage",
-                  f"Arduino_LED_Controller_{version}_Linux_x86_64.AppImage.sig",
-              ),
-              "windows-x86_64": (
-                  f"Arduino_LED_Controller_{version}_Windows_x86_64_Setup.exe",
-                  f"Arduino_LED_Controller_{version}_Windows_x86_64_Setup.exe.sig",
-              ),
-              "darwin-aarch64": (
-                  f"Arduino_LED_Controller_{version}_macOS_Apple_Silicon.app.tar.gz",
-                  f"Arduino_LED_Controller_{version}_macOS_Apple_Silicon.app.tar.gz.sig",
-              ),
-              "darwin-x86_64": (
-                  f"Arduino_LED_Controller_{version}_macOS_Intel.app.tar.gz",
-                  f"Arduino_LED_Controller_{version}_macOS_Intel.app.tar.gz.sig",
-              ),
-          }
-          platforms = {}
-          for platform, (artifact, signature_file) in assets.items():
-              artifact_path = root / artifact
-              signature_path = root / signature_file
-              if not artifact_path.is_file():
-                  raise SystemExit(f"Missing updater artifact: {artifact}")
-              if not signature_path.is_file():
-                  raise SystemExit(f"Missing updater signature: {signature_file}")
-              signature = signature_path.read_text(encoding="utf-8").strip()
-              if not signature:
-                  raise SystemExit(f"Empty updater signature: {signature_file}")
-              platforms[platform] = {
-                  "url": f"{base}/{artifact}",
-                  "signature": signature,
-              }
-          latest = {
-              "version": version,
-              "notes": "Arduino LED Controller Stable signed native application update.",
-              "platforms": platforms,
-          }
-          (root / "latest.json").write_text(
-              json.dumps(latest, indent=2, ensure_ascii=False) + "\n",
-              encoding="utf-8",
-          )
-          PY
-          test -f release-assets/latest.json
+          set -euo pipefail
+          node scripts/generate-stable-tauri-updater-feed-v650.js \
+            --root release-assets \
+            --version "${VERSION}" \
+            --tag "${TAG}"
 
       - name: Generate supply-chain evidence
         env:
           RELEASE_COMMIT: ${{ github.sha }}
         run: |
+          set -euo pipefail
           node scripts/generate-release-sbom.js \
             --root "${GITHUB_WORKSPACE}" \
             --output "${GITHUB_WORKSPACE}/release-assets/SBOM.cdx.json" \
@@ -646,7 +587,11 @@ jobs:
             --root "${GITHUB_WORKSPACE}" \
             --output "${GITHUB_WORKSPACE}/release-assets/PROVENANCE.json" \
             --commit "${GITHUB_SHA}" \
-            --phase stable
+            --phase stable \
+            --target-version "${{ needs.validate.outputs.version }}" \
+            --builder-id "https://github.com/LexyGuru/arduino-led-controller/actions/workflows/app-stable-release.yml" \
+            --dependency-install "npm-ci" \
+            --byproducts "SBOM.cdx.json,SECRET-SCAN.json,SHA256SUMS,latest.json,latest-stable.json,RELEASE-MANIFEST.json"
           node scripts/scan-release-secrets.js \
             --root "${GITHUB_WORKSPACE}/release-assets" \
             --output "${GITHUB_WORKSPACE}/release-assets/SECRET-SCAN.json"
@@ -657,78 +602,12 @@ jobs:
           TAG: ${{ needs.validate.outputs.tag }}
         run: |
           set -euo pipefail
-          (
-            cd release-assets
-            find . -maxdepth 1 -type f ! -name SHA256SUMS ! -name RELEASE-MANIFEST.json -printf '%f\0' \
-              | sort -z \
-              | xargs -0 sha256sum > SHA256SUMS
-          )
-          python3 - <<'PY'
-          import hashlib
-          import json
-          import os
-          from pathlib import Path
-
-          root = Path("release-assets")
-          files = []
-          for path in sorted(root.iterdir(), key=lambda item: item.name):
-              if not path.is_file() or path.name == "RELEASE-MANIFEST.json":
-                  continue
-              payload = path.read_bytes()
-              files.append({
-                  "name": path.name,
-                  "bytes": len(payload),
-                  "sha256": hashlib.sha256(payload).hexdigest(),
-              })
-
-          version = os.environ["VERSION"]
-          tag = os.environ["TAG"]
-          versions = json.loads(Path("release-versions.json").read_text(encoding="utf-8"))
-          manifest = {
-              "schemaVersion": 2,
-              "product": "Arduino LED Controller",
-              "version": version,
-              "tag": tag,
-              "commit": os.environ["GITHUB_SHA"],
-              "channel": "stable",
-              "prerelease": False,
-              "productionDeploymentIncluded": True,
-              "compatibility": {
-                  "board": "arduino-uno-r4-wifi",
-                  "directApiVersion": "1.0.0",
-                  "applicationVersion": version,
-              },
-              "files": files,
-          }
-          (root / "RELEASE-MANIFEST.json").write_text(
-              json.dumps(manifest, indent=2, ensure_ascii=False) + "\n",
-              encoding="utf-8",
-          )
-
-          base_url = f"https://github.com/LexyGuru/arduino-led-controller/releases/download/{tag}"
-          app_assets = {
-              "windows-x86_64": f"Arduino_LED_Controller_{version}_Windows_x86_64_Setup.exe",
-              "linux-x86_64-appimage": f"Arduino_LED_Controller_{version}_Linux_x86_64.AppImage",
-              "linux-x86_64-deb": f"Arduino_LED_Controller_{version}_Linux_x86_64.deb",
-              "macos-aarch64": f"Arduino_LED_Controller_{version}_macOS_Apple_Silicon.dmg",
-              "macos-x86_64": f"Arduino_LED_Controller_{version}_macOS_Intel.dmg",
-          }
-          latest = {
-              "schemaVersion": 1,
-              "channel": "stable",
-              "publishedAt": os.environ.get("GITHUB_RUN_ID", "github-actions"),
-              "app": {
-                  "version": version,
-                  "directApiVersion": "1.0.0",
-                  "releaseUrl": f"https://github.com/LexyGuru/arduino-led-controller/releases/tag/{tag}",
-                  "artifacts": {key: {"name": name, "url": f"{base_url}/{name}"} for key, name in app_assets.items()},
-              },
-          }
-          (root / "latest-stable.json").write_text(
-              json.dumps(latest, indent=2, ensure_ascii=False) + "\n",
-              encoding="utf-8",
-          )
-          PY
+          node scripts/generate-stable-release-metadata-v650.js \
+            --root release-assets \
+            --version "${VERSION}" \
+            --tag "${TAG}" \
+            --commit "${GITHUB_SHA}" \
+            --published-at "${GITHUB_RUN_ID}"
 
       - name: Enforce application-only release assets
         run: |
@@ -801,6 +680,12 @@ jobs:
               --notes "Machine-readable signed Stable updater feed. Use the versioned Stable release for human downloads." \
               --latest=false
           fi
+          retry_gh gh release edit updater-stable \
+            --draft=false \
+            --prerelease=false \
+            --target "${GITHUB_SHA}" \
+            --title "Arduino LED Controller Stable Updater Feed" \
+            --notes "Machine-readable signed Stable updater feed. Use the versioned Stable release for human downloads."
 
       - name: Verify stable updater feed alias
         env:
@@ -837,6 +722,10 @@ jobs:
             done
           }
           TMP="$(mktemp -d)"
+          retry_gh gh release view updater-stable --json isDraft,isPrerelease,targetCommitish \
+            --jq '{isDraft,isPrerelease,targetCommitish}'
+          test "$(retry_gh gh release view updater-stable --json isDraft --jq '.isDraft')" = "false"
+          test "$(retry_gh gh release view updater-stable --json isPrerelease --jq '.isPrerelease')" = "false"
           retry_gh gh release download updater-stable --pattern latest.json --dir "${TMP}" --clobber
           node -e "const f=require('fs');const j=JSON.parse(f.readFileSync(process.argv[1],'utf8'));if(j.version!==process.env.VERSION)process.exit(1);for(const k of ['linux-x86_64','windows-x86_64','darwin-aarch64','darwin-x86_64']){if(!j.platforms?.[k]?.url||!j.platforms?.[k]?.signature)process.exit(2)}" "${TMP}/latest.json"
 
