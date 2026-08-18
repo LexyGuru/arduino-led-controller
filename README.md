@@ -6,7 +6,7 @@
 
 [![Firmware build](https://github.com/LexyGuru/arduino-led-controller/actions/workflows/firmware-build.yml/badge.svg?branch=next%2Fv5-rearchitecture)](https://github.com/LexyGuru/arduino-led-controller/actions/workflows/firmware-build.yml)
 [![Firmware Beta release](https://github.com/LexyGuru/arduino-led-controller/actions/workflows/firmware-beta-release.yml/badge.svg?branch=next%2Fv5-rearchitecture)](https://github.com/LexyGuru/arduino-led-controller/actions/workflows/firmware-beta-release.yml)
-[![V5 Beta release](https://github.com/LexyGuru/arduino-led-controller/actions/workflows/beta-release.yml/badge.svg?branch=next%2Fv5-rearchitecture)](https://github.com/LexyGuru/arduino-led-controller/actions/workflows/beta-release.yml)
+[![V5 Beta release](https://github.com/LexyGuru/arduino-led-controller/actions/workflows/app-beta-release.yml/badge.svg?branch=next%2Fv5-rearchitecture)](https://github.com/LexyGuru/arduino-led-controller/actions/workflows/app-beta-release.yml)
 
 <p align="center">
   <img src="docs/assets/v5-neon-panel-presentation.png" alt="Arduino LED Controller V5 – Neon Panel" />
@@ -29,7 +29,7 @@ Arduino továbbra is önálló **Direct API v1** végpontként működik.
 | Firmware | **`5.0.0-beta.10`** |
 | Direct API | **`1.0.0`** |
 | Beta ág | **`next/v5-rearchitecture`** |
-| Stabil alkalmazás | **`5.0.0`** |
+| Stabil alkalmazás | **`5.1.0`** |
 | Stabil ág | `main` |
 | Arduino board | `arduino:renesas_uno:unor4wifi` |
 | OTA port | `65280` |

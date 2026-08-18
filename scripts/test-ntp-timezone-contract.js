@@ -89,12 +89,12 @@ assert.ok(
 );
 assert.ok(
   readme.includes(
-    'beta-release.yml/badge.svg?branch=next%2Fv5-rearchitecture',
+    'app-beta-release.yml/badge.svg?branch=next%2Fv5-rearchitecture',
   ),
   'Hiányzó dinamikus V5 Beta workflow badge',
 );
 assert.ok(readme.includes('actions/workflows/firmware-beta-release.yml'));
-assert.ok(readme.includes('actions/workflows/beta-release.yml'));
+assert.ok(readme.includes('actions/workflows/app-beta-release.yml'));
 
 for (const marker of [
   versions.application,
