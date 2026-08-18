@@ -21,7 +21,40 @@ const serverClient = read('server/arduino/arduino-client.js');
 const desktopRust = read('desktop-tauri/src-tauri/src/lib.rs');
 const sharedRustCore = read('rust/arduino-led-core/src/lib.rs');
 
-assert.match(versions.firmware, /^\d+\.\d+\.\d+-beta\.\d+$/);
+const firmwareChannel =
+  versions.firmwareRelease?.channel ||
+  release.channel ||
+  versions.channel;
+
+assert.ok(
+  firmwareChannel === 'stable' || firmwareChannel === 'beta',
+  `Nem támogatott firmware release channel: ${firmwareChannel}`,
+);
+assert.equal(
+  release.channel,
+  firmwareChannel,
+  'A firmware-release.json channel nem egyezik a kanonikus firmware channellel',
+);
+assert.equal(
+  versions.firmwareRelease?.channel,
+  firmwareChannel,
+  'A release-versions.json firmwareRelease.channel eltér a firmware channeltől',
+);
+
+if (firmwareChannel === 'stable') {
+  assert.match(
+    versions.firmware,
+    /^\d+\.\d+\.\d+$/,
+    'Stable firmware verzió csak tiszta x.y.z lehet',
+  );
+} else {
+  assert.match(
+    versions.firmware,
+    /^\d+\.\d+\.\d+-beta\.\d+$/,
+    'Beta firmware verzió x.y.z-beta.N formátumú kell legyen',
+  );
+}
+
 assert.equal(release.firmwareVersion, versions.firmware);
 assert.equal(release.directApiVersion, versions.directApi);
 assert.ok(
@@ -67,7 +100,7 @@ assert.match(firmware, /PRIVATE_PATH_NOT_FOUND/);
 assert.match(firmware, /X-Request-Id/);
 
 console.log(
-  `OK: firmware ${versions.firmware}, Direct API ${versions.directApi} verzió contract`,
+  `OK: firmware ${versions.firmware} ${firmwareChannel}, Direct API ${versions.directApi} verzió contract`,
 );
 console.log(
   'OK: X-Device-Key a firmware, Node és Tauri elsődleges authja',
