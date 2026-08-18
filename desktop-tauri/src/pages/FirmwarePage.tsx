@@ -773,7 +773,7 @@ export function FirmwarePage({
         <div className="panel-title">
           <div>
             <p className="eyebrow">{t('firmware.catalog')}</p>
-            <h2>{t('firmware.restoreVersions',{channel:firmware?.firmwareUpdateChannel === 'stable' ? 'Stable / main' : 'Beta'})}</h2>
+            <h2>{t('firmware.restoreVersions',{channel:firmware?.firmwareUpdateChannel === 'stable' ? 'Stable' : 'Beta'})}</h2>
           </div>
           <ShieldCheck />
         </div>

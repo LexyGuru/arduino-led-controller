@@ -27,7 +27,8 @@
     "test:theme-hardening-v587",
     "test:theme-visual-contract-v587",
     "test:theme-performance-v587",
-    "test:v615-firmware-channel-startup"
+    "test:v615-firmware-channel-startup",
+    "test:v617-release-channel-identity"
   ],
   "regression": [
     "test:core",

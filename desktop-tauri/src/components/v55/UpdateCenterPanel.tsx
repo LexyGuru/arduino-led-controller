@@ -28,6 +28,12 @@ function relationKey(relation: UpdateRelation) {
   return `beta3.update.relation.${relation}` as const;
 }
 
+function channelFromVersion(value?: string): 'stable' | 'beta' | 'unknown' {
+  const normalized = (value ?? '').trim().replace(/^v/i, '');
+  if (!normalized || normalized === '…') return 'unknown';
+  return /-(?:alpha|beta|rc)(?:[.-]|$)/i.test(normalized) ? 'beta' : 'stable';
+}
+
 function RelationIcon({ relation }: { relation: UpdateRelation }) {
   return relation === 'older'
     ? <AlertTriangle size={15} />
@@ -62,6 +68,17 @@ export function UpdateCenterPanel({
   const firmwareAvailable =
     firmware?.availableFirmware?.firmwareVersion ??
     firmware?.availableFirmware?.tag;
+
+  const appBuildChannel = channelFromVersion(appInstalled);
+  const firmwareBuildChannel = channelFromVersion(firmwareInstalled);
+  const appSelectedChannel = appUpdate.channel;
+  const firmwareSelectedChannel =
+    firmware?.firmwareUpdateChannel === 'stable' ? 'stable' : 'beta';
+  const appChannelMismatch =
+    appBuildChannel !== 'unknown' && appBuildChannel !== appSelectedChannel;
+  const firmwareChannelMismatch =
+    firmwareBuildChannel !== 'unknown' &&
+    firmwareBuildChannel !== firmwareSelectedChannel;
 
   // Keep the established Beta3 model binding intact for firmware readiness and
   // as the fallback application relation when one side of the comparison is absent.
@@ -152,7 +169,7 @@ export function UpdateCenterPanel({
             <div className="beta3-update-card-head">
               <strong>{t('beta3.update.application')}</strong>
               <span className="beta3-update-channel">
-                {firmware?.updateChannel ?? t('common.unknown')}
+                {appSelectedChannel.toUpperCase()}
               </span>
             </div>
 
@@ -167,6 +184,20 @@ export function UpdateCenterPanel({
                 <b>{appAvailable ?? t('common.noData')}</b>
               </div>
             </div>
+
+            <p className="notice-text beta3-update-note">
+              {t('channelIdentity.buildType')}: {appBuildChannel.toUpperCase()}
+              {' · '}
+              {t('channelIdentity.updateChannel')}: {appSelectedChannel.toUpperCase()}
+            </p>
+            {appChannelMismatch && (
+              <p className="console-warning beta3-update-note">
+                {t('channelIdentity.appMismatch', {
+                  build: appBuildChannel.toUpperCase(),
+                  channel: appSelectedChannel.toUpperCase()
+                })}
+              </p>
+            )}
 
             <div className={`beta3-update-relation ${appRelation}`}>
               <RelationIcon relation={appRelation} />
@@ -228,6 +259,20 @@ export function UpdateCenterPanel({
               <b>{firmwareAvailable ?? t('common.noData')}</b>
             </div>
           </div>
+
+          <p className="notice-text beta3-update-note">
+            {t('channelIdentity.buildType')}: {firmwareBuildChannel.toUpperCase()}
+            {' · '}
+            {t('channelIdentity.updateChannel')}: {firmwareSelectedChannel.toUpperCase()}
+          </p>
+          {firmwareChannelMismatch && (
+            <p className="console-warning beta3-update-note">
+              {t('channelIdentity.firmwareMismatch', {
+                build: firmwareBuildChannel.toUpperCase(),
+                channel: firmwareSelectedChannel.toUpperCase()
+              })}
+            </p>
+          )}
 
           <div className={`beta3-update-relation ${firmwareRelation}`}>
             <RelationIcon relation={firmwareRelation} />

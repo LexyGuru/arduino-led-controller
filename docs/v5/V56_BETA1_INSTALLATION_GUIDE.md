@@ -1,11 +1,24 @@
-# Arduino LED Controller 5.6.0-beta.1 — Installation Guide
+# 5.6.1-beta.1 installation guide
 
-Application: `5.6.0-beta.1`
-Firmware: `5.0.0-beta.10`
-Direct API: `1.0.0`
+## Beta application
 
-Theme Engine 2.0 migrates v1/v2 local appearance settings automatically to v3.
-Theme JSON import/export is local shared-frontend state and does not modify Arduino configuration.
-Desktop, mobile and web/LXC share the ThemeProvider.
-The frozen Beta.7 macOS OTA contract remains unchanged.
-Firmware source remains unchanged.
+Install the `5.6.1-beta.1` Beta application from the Beta release assets.
+
+## Update channel
+
+- Application update channel: Stable or Beta, independently selectable.
+- Firmware update channel: Stable or Beta, independently selectable.
+- The running build identity does not change merely by changing the update channel.
+
+## Firmware
+
+The Beta firmware channel uses `5.0.0-beta.10`.
+Stable firmware is not substituted into the Beta channel.
+
+## LXC
+
+LXC/web deployments use the same application version contract and shared frontend assets.
+
+## Safety
+
+Stable `main` is not modified by installing or testing this Beta release.

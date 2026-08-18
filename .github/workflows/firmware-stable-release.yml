@@ -1,20 +1,154 @@
 name: Firmware Stable release
+
 on:
   workflow_dispatch:
     inputs:
       publish:
+        description: Publish the dedicated Stable firmware release
         required: true
         default: false
         type: boolean
+
 permissions:
   contents: read
+
+concurrency:
+  group: firmware-stable-release
+  cancel-in-progress: false
+
+env:
+  FIRMWARE_RELEASE_TAG: Arduino_LED_Controller_Firmware_STABLE
+  FIRMWARE_RELEASE_NAME: Arduino LED Controller Firmware Stable
+
 jobs:
-  availability-gate:
+  validate:
+    name: Stable firmware gate
     runs-on: ubuntu-22.04
+    outputs:
+      firmware_version: ${{ steps.version.outputs.firmware_version }}
     steps:
       - uses: actions/checkout@v5
-      - name: Enforce Stable firmware contract
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "24"
+          cache: npm
+      - name: Enforce Stable branch/version/metadata contract
+        id: version
+        shell: bash
         run: |
           set -euo pipefail
           test "${GITHUB_REF_NAME}" = "main"
-          node -e "const r=require('./release-versions.json'); if(r.schemaVersion!==2||r.firmwareRelease?.channel!=='stable') process.exit(1); if(r.firmwareRelease?.available!==true||!r.firmwareRelease?.recommendedVersion){console.error('No Stable firmware has been explicitly promoted. Refusing firmware release.');process.exit(20)}; if(/-beta\./.test(r.firmwareRelease.recommendedVersion)) process.exit(21)"
+          FW_VERSION="$(node -p "require('./release-versions.json').firmwareRelease.recommendedVersion")"
+          SOURCE_VERSION="$(sed -nE 's/^#define[[:space:]]+FIRMWARE_VERSION[[:space:]]+"([^"]+)".*/\1/p' firmware/ArduinoLedController/ArduinoLedController.ino | head -n 1)"
+          META_VERSION="$(node -p "require('./firmware/firmware-release.json').firmwareVersion")"
+          node -e "const r=require('./release-versions.json'); if(r.schemaVersion!==2||r.channel!=='stable'||r.firmwareRelease?.channel!=='stable'||r.firmwareRelease?.available!==true) process.exit(1)"
+          test -n "${FW_VERSION}"
+          ! printf '%s' "${FW_VERSION}" | grep -Eq -- '-(alpha|beta|rc)'
+          test "${FW_VERSION}" = "${SOURCE_VERSION}"
+          test "${FW_VERSION}" = "${META_VERSION}"
+          test "$(node -p "require('./firmware/firmware-release.json').channel")" = "stable"
+          test "$(node -p "require('./firmware/firmware-release.json').binary")" = "Arduino_LED_Controller_Firmware_${FW_VERSION}_UNO_R4_WiFi.bin"
+          echo "firmware_version=${FW_VERSION}" >> "${GITHUB_OUTPUT}"
+      - run: npm ci --no-audit --no-fund
+      - run: npm run test:release-architecture-v2
+      - run: npm run test:release-workflow-architecture-v2
+      - run: npm run test:ntp-timezone-contract
+
+  build:
+    name: Build Stable UNO R4 WiFi firmware
+    needs: validate
+    uses: ./.github/workflows/firmware-build.yml
+
+  publish:
+    name: Publish dedicated Stable firmware catalog
+    if: ${{ inputs.publish }}
+    needs: [validate, build]
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v7
+        with:
+          name: ArduinoLedController-UNO-R4-WiFi
+          path: built
+
+      - name: Normalize and verify Stable firmware files
+        env:
+          FW_VERSION: ${{ needs.validate.outputs.firmware_version }}
+        run: |
+          set -euo pipefail
+          mkdir -p release
+          BIN="$(find built -type f -name '*.ino.bin' -print | sort | head -n 1)"
+          test -f "${BIN}"
+          OUT="release/Arduino_LED_Controller_Firmware_${FW_VERSION}_UNO_R4_WiFi.bin"
+          cp "${BIN}" "${OUT}"
+          sha256sum "${OUT}" > "${OUT}.sha256"
+          cp firmware/firmware-release.json release/
+
+      - name: Create or update Stable firmware release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FW_VERSION: ${{ needs.validate.outputs.firmware_version }}
+        run: |
+          set -euo pipefail
+          if gh release view "${FIRMWARE_RELEASE_TAG}" >/dev/null 2>&1; then
+            gh release upload "${FIRMWARE_RELEASE_TAG}" release/* --clobber
+          else
+            gh release create "${FIRMWARE_RELEASE_TAG}" release/* \
+              --target "${GITHUB_SHA}" \
+              --title "${FIRMWARE_RELEASE_NAME}" \
+              --notes "Dedicated Stable UNO R4 WiFi firmware catalog. Firmware ${FW_VERSION}."
+          fi
+          test "$(gh release view "${FIRMWARE_RELEASE_TAG}" --json isPrerelease --jq '.isPrerelease')" = "false"
+
+      - name: Generate Stable firmware catalog
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${FIRMWARE_RELEASE_TAG}" > release-api.json
+          python3 - <<'PY'
+          import json,re,os
+          from pathlib import Path
+          release=json.loads(Path("release-api.json").read_text())
+          assets={a["name"]:a for a in release["assets"]}
+          pat=re.compile(r"^Arduino_LED_Controller_Firmware_(\d+\.\d+\.\d+)_UNO_R4_WiFi\.bin$")
+          entries=[]
+          for name,a in assets.items():
+              m=pat.match(name)
+              if not m: continue
+              checksum=name+".sha256"
+              if checksum not in assets: raise SystemExit(f"Missing checksum: {checksum}")
+              digest=a.get("digest") or ""
+              if not digest.startswith("sha256:"): raise SystemExit(f"Missing GitHub digest: {name}")
+              entries.append({
+                  "version":m.group(1),"channel":"stable",
+                  "board":"arduino-uno-r4-wifi","directApiVersion":"1.0.0",
+                  "file":name,"checksumFile":checksum,"sha256":digest[7:],
+                  "bytes":a["size"],"publishedAt":a.get("updated_at"),
+                  "url":a["browser_download_url"],
+                  "checksumUrl":assets[checksum]["browser_download_url"],
+              })
+          def key(e): return tuple(map(int,e["version"].split(".")))
+          entries.sort(key=key, reverse=True)
+          if not entries: raise SystemExit("Empty Stable firmware catalog")
+          catalog={
+              "schemaVersion":1,
+              "product":"Arduino LED Controller Firmware",
+              "releaseTag":os.environ["FIRMWARE_RELEASE_TAG"],
+              "channel":"stable",
+              "latest":entries[0]["version"],
+              "firmwares":entries,
+          }
+          Path("firmware-catalog.json").write_text(json.dumps(catalog,indent=2,ensure_ascii=False)+"\n")
+          PY
+          gh release upload "${FIRMWARE_RELEASE_TAG}" firmware-catalog.json --clobber
+
+      - name: Verify Stable release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$(gh release view "${FIRMWARE_RELEASE_TAG}" --json isPrerelease --jq '.isPrerelease')" = "false"
+          gh release view "${FIRMWARE_RELEASE_TAG}" --json assets --jq '.assets[].name' | grep -Fxq firmware-catalog.json
