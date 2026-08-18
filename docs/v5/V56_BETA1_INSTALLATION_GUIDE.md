@@ -1,64 +1,87 @@
-# 5.6.1-beta.1 installation guide
+# Arduino LED Controller 5.6.1-beta.1 — installation guide
 
-## Beta application
+## Release identity
 
-Install the `5.6.1-beta.1` Beta application from the Beta release assets.
+- Application: `5.6.1-beta.1` (Beta)
+- Firmware Beta: `5.0.0-beta.10`
+- Direct API: `1.0.0`
+- Source branch: `next/v5-rearchitecture`
 
-## Update channel
+The current Stable application on `main` is still `5.1.0`.
+Stable `5.6.1` and Stable firmware `5.0.0` are promotion targets only after this Beta has passed release QA.
 
-- Application update channel: Stable or Beta, independently selectable.
-- Firmware update channel: Stable or Beta, independently selectable.
-- The running build identity does not change merely by changing the update channel.
+## Install the Beta application
 
-## Firmware
+Use the assets attached to the `5.6.1-beta.1` GitHub prerelease.
+Do not use Stable assets to test the Beta runtime.
 
-The Beta firmware channel uses `5.0.0-beta.10`.
-Stable firmware is not substituted into the Beta channel.
+Supported application targets:
+- macOS Apple Silicon
+- macOS Intel
+- Windows x86_64
+- Linux x86_64
+- Android
+- unsigned iOS/iPadOS artifact where applicable
+- Debian 13 Rust LXC/shared web runtime
+
+## Application update channel
+
+Application Update Channel is a future-update selector:
+- **Beta** checks the Beta application catalog.
+- **Stable** checks the Stable application catalog.
+
+Changing this setting does not change the identity of the currently installed application.
+A running `5.6.1-beta.1` binary remains a Beta build even while it checks the Stable channel.
+
+## Firmware update channel
+
+Firmware Update Channel independently selects the firmware catalog:
+- **Beta** lists Beta firmware such as `5.0.0-beta.10`.
+- **Stable** lists only Stable firmware.
+
+Before `5.0.0` Stable firmware is promoted, the Stable list may be empty. This is expected and must not fall back to Beta artifacts.
+
+## Startup diagnostics
+
+- Normal background startup continuation must not be shown as a warning.
+- Real startup degraded/error states remain available on Dashboard.
+- The startup card is non-scrollable and fits the viewport.
+- On healthy macOS connections, recovered first-run Keychain/bootstrap credential noise is not retained as Latest Error.
+
+## Update Center visibility
+
+If a newer application build is available, the Sidebar shows a persistent update card with the target version.
+Selecting the card opens Settings / Update Center.
+
+## Firmware OTA
+
+The existing macOS OTA Beta.7 contract is frozen:
+- native uploader is preferred;
+- Terminal fallback remains available;
+- LAN target behavior is preserved;
+- post-flash Direct API confirmation may wait up to 180 seconds.
+
+The firmware source is unchanged by the V5.6 application/workflow cleanup.
 
 ## LXC
 
-LXC/web deployments use the same application version contract and shared frontend assets.
+Debian 13 Rust LXC uses the shared React frontend and the selected update channel.
+Direct Arduino mode remains usable without LXC.
 
-## Safety
+## Post-install Beta verification
 
-Stable `main` is not modified by installing or testing this Beta release.
+1. Confirm the application reports `5.6.1-beta.1` and Beta build identity.
+2. Switch Application channel Beta → Stable → Beta.
+3. Switch Firmware channel Beta → Stable and verify no Beta firmware appears.
+4. Switch Firmware back to Beta and confirm `5.0.0-beta.10`.
+5. Restart and confirm saved channels remain effective.
+6. Confirm the startup screen has no internal scrolling.
+7. Confirm normal startup has no false warning state.
+8. Confirm real startup problems appear on Dashboard.
+9. Verify Update Center/sidebar update visibility when an update exists.
+10. Verify OTA on macOS before approving Stable promotion.
 
-## V619 live channel runtime correction
+## Release separation
 
-The running application build identity and the selected update channel are independent.
-
-Expected behavior:
-- `5.6.1-beta.1` always reports its running application build as **BETA**.
-- Selecting Application Update Channel = **STABLE** immediately changes the application catalog/check target to Stable.
-- Selecting Firmware Update Channel = **STABLE** immediately changes the firmware catalog heading and query to Stable.
-- Stable firmware view must never show Beta firmware artifacts.
-- Beta firmware view must never show Stable firmware artifacts.
-- Until firmware `5.0.0` is actually promoted/published, the Stable firmware catalog may correctly be empty.
-- The loading screen uses warning icons only for actual degraded/error states; ordinary background continuation is informational.
-
-Manual pre-release QA:
-1. Start `5.6.1-beta.1`.
-2. Switch app channel Beta -> Stable -> Beta and verify the selected channel changes immediately.
-3. Switch firmware channel Beta -> Stable and verify the heading becomes `Stable visszaállítási verziók`.
-4. Confirm no `*-beta.*` firmware appears in Stable mode.
-5. Switch back to Beta and verify the Beta catalog returns.
-6. Restart the app after saving and repeat the channel checks.
-7. Do not start a GitHub release until these UI checks pass.
-
-## V623 canonical workflow architecture
-
-Canonical GitHub Actions set:
-- app-build.yml — application CI/build engine
-- app-staging-build.yml — non-release staging artifacts
-- app-beta-release.yml — explicit Beta application publisher
-- app-stable-release.yml — explicit Stable application publisher
-- firmware-build.yml — shared UNO R4 WiFi compile engine
-- firmware-beta-release.yml — Beta firmware catalog publisher using firmware-build.yml
-- firmware-stable-release.yml — Stable firmware catalog publisher using firmware-build.yml
-
-Removed legacy/overlapping workflows:
-- beta-release.yml
-- tauri-desktop.yml
-- tauri-artifact-build.yml (renamed to app-staging-build.yml)
-
-Release workflows remain workflow_dispatch-only. No release is dispatched by this cleanup.
+Application and firmware releases are separate manual workflows.
+Publishing the Beta application does not automatically publish firmware and does not modify `main`.

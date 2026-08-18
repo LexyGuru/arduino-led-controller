@@ -1,67 +1,76 @@
-# 5.6.1-beta.1 release checklist
+# Arduino LED Controller 5.6.1-beta.1 — release checklist
 
-- [ ] VERSION and package versions are `5.6.1-beta.1`
-- [ ] app-beta-release.yml EXPECTED_VERSION is `5.6.1-beta.1`
-- [ ] beta-release.yml legacy EXPECTED_VERSION is `5.6.1-beta.1`
-- [ ] release-versions.json application is `5.6.1-beta.1`
+## Identity and branch
+
+- [ ] `VERSION` is `5.6.1-beta.1`
+- [ ] application/package/Tauri/LXC versions are synchronized to `5.6.1-beta.1`
+- [ ] `release-versions.json` application channel is Beta and branch is `next/v5-rearchitecture`
 - [ ] firmware remains `5.0.0-beta.10`
-- [ ] Update System 2.0 channel identity contract passes
-- [ ] Theme Engine 2.0 compatibility contract passes
-- [ ] LXC shared frontend version contract passes
-- [ ] immutable macOS OTA contract passes
-- [ ] Stable main is not modified
+- [ ] Direct API remains `1.0.0`
+- [ ] `main` remains unchanged before Beta publication
+- [ ] current Stable application on `main` is documented as `5.1.0`, not `5.6.1`
+- [ ] Stable firmware is documented as unavailable until explicit promotion
 
-## V619 live channel runtime correction
+## Canonical GitHub Actions
 
-The running application build identity and the selected update channel are independent.
+- [ ] exactly seven canonical workflow files exist
+- [ ] `app-build.yml`
+- [ ] `app-staging-build.yml`
+- [ ] `app-beta-release.yml`
+- [ ] `app-stable-release.yml`
+- [ ] `firmware-build.yml`
+- [ ] `firmware-beta-release.yml`
+- [ ] `firmware-stable-release.yml`
+- [ ] `beta-release.yml` is absent
+- [ ] `tauri-desktop.yml` is absent
+- [ ] `tauri-artifact-build.yml` is absent
+- [ ] App Beta release is prerelease-only and NEXT-only
+- [ ] App Stable release is main-only, non-prerelease and self-contained
+- [ ] Firmware Beta and Stable release workflows reuse `firmware-build.yml`
+- [ ] no application workflow automatically dispatches a firmware release
 
-Expected behavior:
-- `5.6.1-beta.1` always reports its running application build as **BETA**.
-- Selecting Application Update Channel = **STABLE** immediately changes the application catalog/check target to Stable.
-- Selecting Firmware Update Channel = **STABLE** immediately changes the firmware catalog heading and query to Stable.
-- Stable firmware view must never show Beta firmware artifacts.
-- Beta firmware view must never show Stable firmware artifacts.
-- Until firmware `5.0.0` is actually promoted/published, the Stable firmware catalog may correctly be empty.
-- The loading screen uses warning icons only for actual degraded/error states; ordinary background continuation is informational.
+## Automated gates
 
-Manual pre-release QA:
-1. Start `5.6.1-beta.1`.
-2. Switch app channel Beta -> Stable -> Beta and verify the selected channel changes immediately.
-3. Switch firmware channel Beta -> Stable and verify the heading becomes `Stable visszaállítási verziók`.
-4. Confirm no `*-beta.*` firmware appears in Stable mode.
-5. Switch back to Beta and verify the Beta catalog returns.
-6. Restart the app after saving and repeat the channel checks.
-7. Do not start a GitHub release until these UI checks pass.
+- [ ] `npm test`
+- [ ] `npm run validate`
+- [ ] desktop frontend build passes
+- [ ] Rust `cargo check --locked` passes
+- [ ] immutable macOS OTA Beta.7 contract passes
+- [ ] workflow architecture contracts pass
+- [ ] `git diff --check` passes
+- [ ] firmware source hash is unchanged
 
-## V621 startup diagnostics and global update visibility
+## Manual runtime QA
 
-- Startup warnings that represent real degraded/error states persist on the Dashboard after the loading screen closes.
-- A recovered macOS first-run credential/Keychain bootstrap header error is not shown as the latest system error once the connection is healthy.
-- The macOS exception does not apply while the connection remains unhealthy and does not apply to Windows, Linux, LXC, iOS/iPadOS, or Android.
-- When an application update is available, a persistent sidebar update card shows the target version and opens Settings.
-- The existing Settings navigation dot remains as a secondary indicator.
+- [ ] running application build identity remains Beta
+- [ ] Application Update Channel Beta → Stable → Beta changes only the selected catalog
+- [ ] Firmware Update Channel Beta → Stable never leaks Beta firmware into Stable
+- [ ] Firmware Update Channel Stable → Beta restores the Beta catalog
+- [ ] channel settings persist across restart
+- [ ] normal startup shows no false warning icons
+- [ ] startup card does not scroll
+- [ ] real startup warning/error remains visible on Dashboard
+- [ ] recovered healthy macOS Keychain/bootstrap noise is not retained as Latest Error
+- [ ] persistent real connection error remains visible
+- [ ] Sidebar update card appears when an app update is available
+- [ ] macOS OTA native/fallback/LAN/180-second confirmation behavior remains correct
 
-Manual QA:
-1. Verify a real startup warning remains visible on Dashboard.
-2. Verify normal startup produces no startup issue card.
-3. On macOS, authorize Keychain access and verify the recovered bootstrap credential message is not shown as the latest error.
-4. Verify a persistent real connection error still appears.
-5. Simulate/observe an available app update and verify the sidebar update card is visible from every desktop page.
+## Beta publication
 
-## V623 canonical workflow architecture
+- [ ] documentation matches the released source state
+- [ ] run `Application Beta release` from `next/v5-rearchitecture`
+- [ ] release uses `5.6.1-beta.1`
+- [ ] GitHub release is a prerelease and not latest Stable
+- [ ] installers/updater/mobile/LXC artifacts are present as expected
+- [ ] install the published Beta artifact and repeat the critical runtime QA above
 
-Canonical GitHub Actions set:
-- app-build.yml — application CI/build engine
-- app-staging-build.yml — non-release staging artifacts
-- app-beta-release.yml — explicit Beta application publisher
-- app-stable-release.yml — explicit Stable application publisher
-- firmware-build.yml — shared UNO R4 WiFi compile engine
-- firmware-beta-release.yml — Beta firmware catalog publisher using firmware-build.yml
-- firmware-stable-release.yml — Stable firmware catalog publisher using firmware-build.yml
+## Stable promotion gate
 
-Removed legacy/overlapping workflows:
-- beta-release.yml
-- tauri-desktop.yml
-- tauri-artifact-build.yml (renamed to app-staging-build.yml)
+Do not promote to `main` until every Beta publication and manual installation item above passes.
 
-Release workflows remain workflow_dispatch-only. No release is dispatched by this cleanup.
+After Beta acceptance:
+- [ ] prepare application Stable `5.6.1`
+- [ ] prepare firmware Stable `5.0.0`
+- [ ] switch release metadata to Stable/main/updater-stable
+- [ ] rerun the full Stable regression and release gates
+- [ ] only then commit/push/promote to `main`

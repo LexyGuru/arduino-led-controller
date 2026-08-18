@@ -1,4 +1,4 @@
-# Arduino LED Controller V5.5
+# Arduino LED Controller V5.6
 
 <p align="center">
   <strong>Direct Arduino Control & Automation</strong>
@@ -13,7 +13,7 @@
 </p>
 
 Többplatformos vezérlő- és automatizálási rendszer **Arduino UNO R4 WiFi** és
-három WS2812B LED-szalag számára. A V5.5 közös React felületet használ
+három WS2812B LED-szalag számára. A V5.6 közös React felületet használ
 desktopon, mobilon és a Debian 13 Rust LXC webes környezetében, miközben az
 Arduino továbbra is önálló **Direct API v1** végpontként működik.
 
@@ -29,8 +29,10 @@ Arduino továbbra is önálló **Direct API v1** végpontként működik.
 | Firmware | **`5.0.0-beta.10`** |
 | Direct API | **`1.0.0`** |
 | Beta ág | **`next/v5-rearchitecture`** |
-| Stabil alkalmazás | **`5.6.1`** |
+| Jelenlegi Stable alkalmazás (`main`) | **`5.1.0`** |
 | Stabil ág | `main` |
+| Tervezett Stable promóció | `5.6.1` az elfogadott Beta után |
+| Stable firmware | jelenleg nincs publikálva; cél: `5.0.0` |
 | Arduino board | `arduino:renesas_uno:unor4wifi` |
 | OTA port | `65280` |
 | LXC rendszer | Debian 13 |
@@ -76,7 +78,7 @@ A korábbi Beta dokumentumok történeti snapshotok; nem az aktuális kiadás le
 
 ---
 
-## Mit tartalmaz a V5.5?
+## Mit tartalmaz a V5.6 Beta.1?
 
 ### Közös alkalmazásplatform
 
@@ -117,6 +119,43 @@ A korábbi Beta dokumentumok történeti snapshotok; nem az aktuális kiadás le
 
 ---
 
+## GitHub Actions és kiadási architektúra
+
+A repository jelenlegi kanonikus workflow-készlete pontosan hét fájl:
+
+| Workflow | Szerep |
+|---|---|
+| `app-build.yml` | alkalmazás CI/build engine, nem publikál release-t |
+| `app-staging-build.yml` | NEXT/feature staging artifact build, nem publikál release-t |
+| `app-beta-release.yml` | kézzel indított Beta alkalmazásrelease |
+| `app-stable-release.yml` | kézzel indított Stable alkalmazásrelease |
+| `firmware-build.yml` | közös UNO R4 WiFi firmware compile engine |
+| `firmware-beta-release.yml` | Beta firmware release + Beta katalógus |
+| `firmware-stable-release.yml` | Stable firmware release + Stable katalógus |
+
+A régi `beta-release.yml`, `tauri-desktop.yml` és `tauri-artifact-build.yml` workflow-k ki lettek vezetve.
+Az alkalmazásrelease és firmware-release külön folyamat. Egyik release workflow sem indítja el automatikusan a másikat.
+
+### Jelenlegi promóciós sorrend
+
+```text
+NEXT / 5.6.1-beta.1
+        ↓
+teljes regresszió + manuális Beta QA
+        ↓
+Application Beta release
+        ↓
+kiadott Beta build tényleges telepítési/OTA/channel tesztje
+        ↓
+Stable promóció előkészítése
+        ↓
+main / 5.6.1 + firmware 5.0.0
+```
+
+A `main` jelenleg még `5.1.0`; a `5.6.1` Stable és a `5.0.0` Stable firmware csak a Beta elfogadása után kerülhet promócióra.
+
+---
+
 ## Támogatott futtatási környezetek
 
 | Platform | Runtime | Fő feladat |
@@ -144,7 +183,7 @@ A korábbi Beta dokumentumok történeti snapshotok; nem az aktuális kiadás le
                 │                                               │
                 ▼                                               ▼
 ┌───────────────────────────────┐             ┌────────────────────────────────┐
-│ Tauri V5.5 client             │             │ Debian 13 Rust LXC             │
+│ Tauri V5.6 Beta.1 client      │             │ Debian 13 Rust LXC             │
 │                               │             │                                │
 │ macOS / Windows / Linux       │             │ Rust / Axum backend            │
 │ iOS / iPadOS / Android        │             │ React / Vite web UI            │

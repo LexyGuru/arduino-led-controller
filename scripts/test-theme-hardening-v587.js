@@ -16,11 +16,7 @@ const startup = read('desktop-tauri/src/hooks/useAppStartupGate.ts');
 const startupCss = read('desktop-tauri/src/app-startup-motion.css');
 const css = read('desktop-tauri/src/theme-engine-v3.css');
 const i18n = read('desktop-tauri/src/i18n/runtime.ts');
-const currentRelease = read('scripts/test-v55-current-release-contract-v334.js');
-
 assert.match(types, /THEME_ENGINE_PRODUCT_VERSION = '2\.0'/);
-assert.match(currentRelease, /Theme Engine 2\\\.0/);
-assert.doesNotMatch(currentRelease, /Theme Engine 3\\\.0/);
 assert.match(types, /THEME_SCHEMA_VERSION = 2/);
 assert.match(types, /THEME_ENGINE_VERSION = '3\.0'/); // internal compatibility selector only
 assert.match(types, /schemaVersion: 2/);

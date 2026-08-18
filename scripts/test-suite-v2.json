@@ -32,7 +32,8 @@
     "test:v619-live-channel-runtime",
     "test:v621-startup-error-update-visibility",
     "test:v622-startup-no-scroll",
-    "test:v623-workflow-cleanup"
+    "test:v623-workflow-cleanup",
+    "test:v625-documentation-reality"
   ],
   "regression": [
     "test:core",

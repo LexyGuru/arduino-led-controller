@@ -294,7 +294,8 @@
     "test:v619-live-channel-runtime": "node scripts/test-v619-live-channel-runtime.js",
     "test:v621-startup-error-update-visibility": "node scripts/test-v621-startup-error-update-visibility.js",
     "test:v622-startup-no-scroll": "node scripts/test-v622-startup-no-scroll.js",
-    "test:v623-workflow-cleanup": "node scripts/test-v623-workflow-cleanup.js"
+    "test:v623-workflow-cleanup": "node scripts/test-v623-workflow-cleanup.js",
+    "test:v625-documentation-reality": "node scripts/test-v625-documentation-reality.js"
   },
   "engines": {
     "node": ">=20"

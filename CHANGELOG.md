@@ -1,3 +1,30 @@
+# 5.6.1-beta.1 — 2026-08-18
+
+### Release/channel identity
+- Running application build identity is separated from the selected application update channel.
+- Installed firmware identity is separated from the selected firmware update channel.
+- Stable/Beta firmware catalogs are strictly channel-filtered.
+
+### Startup and diagnostics
+- Real startup warnings persist on Dashboard after the startup screen closes.
+- Recovered healthy macOS Keychain/bootstrap noise no longer dominates Latest Error.
+- Startup card scrolling is disabled.
+- Persistent Sidebar application-update visibility was added.
+
+### GitHub Actions cleanup
+- Canonical workflow set reduced to seven clear application/firmware build and release workflows.
+- Removed `beta-release.yml` and `tauri-desktop.yml`.
+- Renamed staging workflow to `app-staging-build.yml`.
+- Stable application publishing is self-contained in `app-stable-release.yml`.
+- Beta firmware publishing reuses `firmware-build.yml`.
+
+### Versions
+- Application: `5.6.1-beta.1`
+- Firmware: `5.0.0-beta.10`
+- Direct API: `1.0.0`
+- Current Stable application before promotion: `5.1.0`
+- Planned Stable promotion after accepted Beta: application `5.6.1`, firmware `5.0.0`
+
 # 5.6.0-beta.2
 
 ### Theme Engine 3.0

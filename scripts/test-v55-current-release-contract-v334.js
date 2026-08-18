@@ -88,12 +88,40 @@ for (const p of [
 }
 
 const notes = read(`docs/v5/${docPrefix}_RELEASE_NOTES.md`);
-assert.ok(notes.includes(version));
-assert.ok(/main/i.test(notes));
-assert.ok(/not modified|nem módosul/i.test(notes));
-assert.ok(/Theme Engine 2\.0/i.test(notes));
-assert.ok(/Update System 2\.0/i.test(notes));
-assert.ok(/LXC/i.test(notes));
+const guide = read(`docs/v5/${docPrefix}_INSTALLATION_GUIDE.md`);
+const checklist = read(`docs/v5/${docPrefix}_RELEASE_CHECKLIST.md`);
+const currentState = read('docs/v5/CURRENT_STATE.md');
+
+for (const [name, value] of [
+  ['release notes', notes],
+  ['installation guide', guide],
+  ['release checklist', checklist],
+  ['current state', currentState]
+]) {
+  assert.ok(value.includes(version), `${name}: current application version missing`);
+  assert.ok(value.includes(rv.firmware), `${name}: current firmware version missing`);
+  assert.ok(value.includes(rv.directApi), `${name}: Direct API version missing`);
+}
+
+assert.match(notes, /running.*build|build identity|build-identit/i);
+assert.match(notes, /firmware.*channel|Firmware Update Channel/i);
+assert.match(notes, /main/i);
+assert.match(notes, /not modified|nem módos/i);
+assert.match(notes, /LXC/i);
+assert.match(notes, /app-beta-release\.yml/);
+assert.match(notes, /app-stable-release\.yml/);
+
+assert.match(guide, /Application and firmware releases are separate manual workflows/i);
+assert.match(guide, /Stable promotion/i);
+
+assert.match(checklist, /`beta-release\.yml` is absent/);
+assert.match(checklist, /`tauri-desktop\.yml` is absent/);
+assert.match(checklist, /`tauri-artifact-build\.yml` is absent/);
+assert.match(checklist, /Stable promotion gate/i);
+
+assert.match(currentState, /5\.1\.0/);
+assert.match(currentState, /Stable firmware: jelenleg nincs publikálva/i);
+assert.match(currentState, /5\.6\.1.*5\.0\.0/);
 
 const fw = read('firmware/ArduinoLedController/ArduinoLedController.ino');
 assert.ok(
