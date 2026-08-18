@@ -501,11 +501,11 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
 
-      - name: Build versioned Beta LXC bundle
+      - name: Build versioned Stable LXC bundle
         env:
           OUTPUT_DIR: ${{ github.workspace }}/artifacts
           OUTPUT_BASENAME: Arduino_LED_Controller_${{ needs.validate.outputs.version }}_LXC_Server
-        run: bash deploy/build-beta-release-bundle.sh
+        run: bash deploy/build-stable-release-bundle.sh
 
       - name: Upload LXC artifact
         uses: actions/upload-artifact@v6

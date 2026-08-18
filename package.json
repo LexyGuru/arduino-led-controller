@@ -297,7 +297,8 @@
     "test:v623-workflow-cleanup": "node scripts/test-v623-workflow-cleanup.js",
     "test:v625-documentation-reality": "node scripts/test-v625-documentation-reality.js",
     "test:v629-device-key-contract": "node scripts/test-v629-device-key-contract.js",
-    "test:v635-stable-promotion": "node scripts/test-v635-stable-promotion-contract.js"
+    "test:v635-stable-promotion": "node scripts/test-v635-stable-promotion-contract.js",
+    "test:stable-lxc-release-contract": "node scripts/test-stable-lxc-release-contract-v644.js"
   },
   "engines": {
     "node": ">=20"
