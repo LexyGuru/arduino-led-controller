@@ -33,7 +33,8 @@
     "test:v621-startup-error-update-visibility",
     "test:v622-startup-no-scroll",
     "test:v623-workflow-cleanup",
-    "test:v625-documentation-reality"
+    "test:v625-documentation-reality",
+    "test:v629-device-key-contract"
   ],
   "regression": [
     "test:core",

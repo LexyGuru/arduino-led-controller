@@ -1,3 +1,11 @@
+# 5.6.1-beta.2 — 2026-08-18
+
+### Device Key transport recovery
+- Unified the Device Key minimum length across secure credential storage and HTTP `X-Device-Key` transport.
+- Valid printable-ASCII Device Keys of 16–64 characters are accepted consistently.
+- HTTP header safety remains strict.
+- Firmware remains `5.0.0-beta.10`; Direct API remains `1.0.0`.
+
 # 5.6.1-beta.1 — 2026-08-18
 
 ### Release/channel identity

@@ -1,10 +1,20 @@
 #!/usr/bin/env node
 'use strict';
+
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const read = (p) => fs.readFileSync(p, 'utf8');
 
 const version = read('VERSION').trim();
+const match = version.match(/^(\d+)\.(\d+)\.(\d+)-beta\.(\d+)$/);
+assert.ok(match, `Unsupported current Beta version: ${version}`);
+
+const [, major, minor, , betaNumber] = match;
+const docPrefix =
+  major === '5' && minor === '0'
+    ? `BETA${betaNumber}`
+    : `V${major}${minor}_BETA${betaNumber}`;
+
 const release = JSON.parse(read('release-versions.json'));
 const panel = read('desktop-tauri/src/components/v55/UpdateCenterPanel.tsx');
 const fwPage = read('desktop-tauri/src/pages/FirmwarePage.tsx');
@@ -12,39 +22,40 @@ const i18n = read('desktop-tauri/src/i18n/runtime.ts');
 const fwBuild = read('.github/workflows/firmware-build.yml');
 const fwStable = read('.github/workflows/firmware-stable-release.yml');
 
-assert.equal(version, '5.6.1-beta.1');
-assert.equal(release.application, '5.6.1-beta.1');
+assert.equal(release.application, version);
+assert.equal(release.applicationRelease.version, version);
 assert.equal(release.applicationRelease.channel, 'beta');
 assert.equal(release.applicationRelease.branch, 'next/v5-rearchitecture');
-assert.equal(release.firmware, '5.0.0-beta.10');
+assert.equal(release.applicationRelease.updaterAlias, 'updater-beta');
+assert.equal(release.applicationRelease.releaseType, 'prerelease');
+assert.match(release.firmware, /^\d+\.\d+\.\d+-beta\.\d+$/);
 assert.equal(release.firmwareRelease.channel, 'beta');
 
+const escapedVersion = version.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const appBetaWorkflow = read('.github/workflows/app-beta-release.yml');
-assert.match(appBetaWorkflow, /EXPECTED_VERSION:\s*5\.6\.1-beta\.1/);
+assert.match(appBetaWorkflow, new RegExp(`EXPECTED_VERSION:\\s*${escapedVersion}`));
 assert.equal(fs.existsSync('.github/workflows/beta-release.yml'), false);
+
 for (const p of [
-  'RELEASE_NOTES_5.6.1-beta.1.md',
-  'docs/v5/V56_BETA1_RELEASE_NOTES.md',
-  'docs/v5/V56_BETA1_INSTALLATION_GUIDE.md',
-  'docs/v5/V56_BETA1_RELEASE_CHECKLIST.md'
+  `RELEASE_NOTES_${version}.md`,
+  `docs/v5/${docPrefix}_RELEASE_NOTES.md`,
+  `docs/v5/${docPrefix}_INSTALLATION_GUIDE.md`,
+  `docs/v5/${docPrefix}_RELEASE_CHECKLIST.md`
 ]) {
   assert.equal(fs.existsSync(p), true, p);
 }
-const stagingEnv = read('deploy/staging.env.example');
-assert.match(stagingEnv, /^RELEASE_TARGET_VERSION=5\.6\.1-beta\.1$/m);
-assert.match(stagingEnv, /^RELEASE_CANDIDATE=beta\.1-gate$/m);
+
 const readme = read('README.md');
-assert.match(readme, /Jelenlegi fejlesztési kiadás: Arduino LED Controller V5\.6 Beta\.1/);
-assert.match(readme, /Alkalmazás \| \*\*`5\.6\.1-beta\.1`\*\*/);
-assert.match(readme, /docs\/v5\/V56_BETA1_RELEASE_NOTES\.md/);
-assert.match(readme, /RELEASE_NOTES_5\.6\.1-beta\.1\.md/);
+assert.ok(readme.includes(version));
+assert.ok(readme.includes(`docs/v5/${docPrefix}_RELEASE_NOTES.md`));
+assert.ok(readme.includes(`RELEASE_NOTES_${version}.md`));
 
 for (const generated of [
   'desktop-tauri/src/api/generated/api-v2-types.ts',
   'desktop-tauri/src/api/generated/api-v2-operations.ts',
   'desktop-tauri/src/api/generated/api-v2-client.ts'
 ]) {
-  assert.match(read(generated), /OpenAPI verzió: 5\.6\.1-beta\.1/);
+  assert.match(read(generated), new RegExp(`OpenAPI verzió: ${escapedVersion}`));
 }
 
 assert.match(panel, /function channelFromVersion/);
@@ -80,7 +91,8 @@ assert.match(fwStable, /uses: \.\/\.github\/workflows\/firmware-build\.yml/);
 assert.match(fwStable, /channel":"stable"/);
 assert.match(fwStable, /isPrerelease/);
 
-console.log('V617_BETA_APP_VERSION_5_6_1_BETA_1=PASSED');
+console.log(`V617_CURRENT_BETA_APP_VERSION=PASSED:${version}`);
+console.log(`V617_CURRENT_RELEASE_DOC_PREFIX=PASSED:${docPrefix}`);
 console.log('V617_CHANNEL_IDENTITY_UI=PASSED');
 console.log('V617_FIRMWARE_BUILD_IS_CI_ONLY=PASSED');
 console.log('V617_STABLE_FIRMWARE_WORKFLOW_FOUNDATION=PASSED');

@@ -510,7 +510,7 @@ fn protected_path(c: &Config, path: &str) -> Result<String, String> {
 
 fn device_key_header_value(c: &Config) -> Result<&str, String> {
     let value = c.arduino_api_key.trim();
-    if value.len() < 24
+    if value.len() < 16
         || value.len() > 64
         || !value.bytes().all(|byte| (0x21..=0x7e).contains(&byte))
     {

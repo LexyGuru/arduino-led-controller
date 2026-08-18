@@ -19,7 +19,7 @@ concurrency:
 env:
   NODE_VERSION: "24"
   EXPECTED_BRANCH: next/v5-rearchitecture
-  EXPECTED_VERSION: 5.6.1-beta.1
+  EXPECTED_VERSION: 5.6.1-beta.2
 
 jobs:
   validate:
