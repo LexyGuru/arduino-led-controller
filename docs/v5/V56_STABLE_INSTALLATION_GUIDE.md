@@ -1,21 +1,20 @@
-# Arduino LED Controller 5.6.1 — installation guide
+# Arduino LED Controller 5.6.1 — Stable installation guide
 
 ## Release identity
-
-- Application: `5.6.1` (Beta)
-- Firmware Beta: `5.0.0`
+- Application: `5.6.1`
+- Application channel: `stable`
+- Firmware: `5.0.0`
+- Firmware channel: `stable`
 - Direct API: `1.0.0`
-- Source branch: `next/v5-rearchitecture`
+- Source branch: `main`
+- Updater alias: `updater-stable`
 
-The current Stable application on `main` is still `5.1.0`.
-Stable `5.6.1` and Stable firmware `5.0.0` are promotion targets only after this Beta has passed release QA.
+This release is the Stable promotion of the manually validated `5.6.1-beta.2` application and `5.0.0-beta.10` firmware candidates.
 
-## Install the Beta application
+## Install the Stable application
+Use the assets attached to the `v5.6.1` GitHub Stable release.
 
-Use the assets attached to the `5.6.1` GitHub prerelease.
-Do not use Stable assets to test the Beta runtime.
-
-Supported application targets:
+Supported targets:
 - macOS Apple Silicon
 - macOS Intel
 - Windows x86_64
@@ -24,69 +23,39 @@ Supported application targets:
 - unsigned iOS/iPadOS artifact where applicable
 - Debian 13 Rust LXC/shared web runtime
 
-## Application update channel
+## Update channels
+Application Update Channel selects the future application catalog only.
+The installed `5.6.1` build remains Stable regardless of whether the future-update selector is Stable or Beta.
 
-Application Update Channel is a future-update selector:
-- **Beta** checks the Beta application catalog.
-- **Stable** checks the Stable application catalog.
-
-Changing this setting does not change the identity of the currently installed application.
-A running `5.6.1` binary remains a Beta build even while it checks the Stable channel.
-
-## Firmware update channel
-
-Firmware Update Channel independently selects the firmware catalog:
-- **Beta** lists Beta firmware such as `5.0.0`.
-- **Stable** lists only Stable firmware.
-
-Before `5.0.0` Stable firmware is promoted, the Stable list may be empty. This is expected and must not fall back to Beta artifacts.
-
-## Startup diagnostics
-
-- Normal background startup continuation must not be shown as a warning.
-- Real startup degraded/error states remain available on Dashboard.
-- The startup card is non-scrollable and fits the viewport.
-- On healthy macOS connections, recovered first-run Keychain/bootstrap credential noise is not retained as Latest Error.
-
-## Update Center visibility
-
-If a newer application build is available, the Sidebar shows a persistent update card with the target version.
-Selecting the card opens Settings / Update Center.
-
-## Firmware OTA
-
-The existing macOS OTA Beta.7 contract is frozen:
-- native uploader is preferred;
-- Terminal fallback remains available;
-- LAN target behavior is preserved;
-- post-flash Direct API confirmation may wait up to 180 seconds.
-
-The firmware source is unchanged by the V5.6 application/workflow cleanup.
+Firmware Update Channel independently selects Stable or Beta firmware catalogs.
+Stable firmware catalog must never fall back to Beta artifacts.
 
 ## LXC
+Stable Debian 13 Rust LXC uses production metadata:
+- install root: `/opt/arduino-led-controller`
+- service: `arduino-led-controller-rust.service`
+- channel: `stable`
 
-Debian 13 Rust LXC uses the shared React frontend and the selected update channel.
-Direct Arduino mode remains usable without LXC.
+Release installation assets:
+- `install-rust-lxc-native.sh`
+- `rust-lxc.env.example`
 
-## Post-install Beta verification
+## Firmware OTA
+The historical macOS OTA Beta.7 immutable implementation contract remains frozen:
+- native uploader preferred
+- Terminal fallback preserved
+- LAN target behavior preserved
+- post-flash Direct API confirmation up to 180 seconds
 
-1. Confirm the application reports `5.6.1` and Beta build identity.
-2. Switch Application channel Beta → Stable → Beta.
-3. Switch Firmware channel Beta → Stable and verify no Beta firmware appears.
-4. Switch Firmware back to Beta and confirm `5.0.0`.
-5. Restart and confirm saved channels remain effective.
-6. Confirm the startup screen has no internal scrolling.
-7. Confirm normal startup has no false warning state.
-8. Confirm real startup problems appear on Dashboard.
-9. Verify Update Center/sidebar update visibility when an update exists.
-10. Verify OTA on macOS before approving Stable promotion.
+## Stable Device Key
+Valid Device Key range is 16–64 printable ASCII characters.
+Whitespace, control characters and non-header-safe values remain rejected.
 
-## Release separation
-
-Application and firmware releases are separate manual workflows.
-Publishing the Beta application does not automatically publish firmware and does not modify `main`.
-
-## Stable Device Key verification
-
-Verify `/api/v1/status` on both configured local and remote/DDNS Arduino targets.
-A valid 16–64 character printable-ASCII Device Key must be accepted by the Direct API transport.
+## Post-install Stable verification
+1. Application reports `5.6.1` Stable.
+2. Firmware reports `5.0.0` Stable.
+3. Arduino Direct API connects successfully.
+4. LED control and schedules work.
+5. Update Center uses `updater-stable`.
+6. Stable firmware catalog contains no Beta artifacts.
+7. Stable LXC runtime works where used.
