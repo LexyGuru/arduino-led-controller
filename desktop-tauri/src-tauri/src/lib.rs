@@ -1191,7 +1191,7 @@ fn firmware_version_is_prerelease(version: &str) -> bool {
 }
 
 fn firmware_artifacts_from_release(release: &GitHubRelease) -> Vec<FirmwareArtifact> {
-    if release.draft || release.tag_name != FIRMWARE_BETA_RELEASE_TAG {
+    if release.draft {
         return Vec::new();
     }
     release
@@ -1199,14 +1199,13 @@ fn firmware_artifacts_from_release(release: &GitHubRelease) -> Vec<FirmwareArtif
         .iter()
         .filter_map(|binary| {
             let version = firmware_version_from_asset_name(&binary.name)?;
-            if !firmware_version_is_prerelease(&version) {
-                return None;
-            }
             let checksum_name = format!("{}.sha256", binary.name);
-            let checksum = release
-                .assets
-                .iter()
-                .find(|asset| asset.name == checksum_name)?;
+            let checksum = release.assets.iter().find(|asset| asset.name == checksum_name)?;
+            let channel = if firmware_version_is_prerelease(&version) {
+                "beta"
+            } else {
+                "stable"
+            };
             Some(FirmwareArtifact {
                 name: binary.name.clone(),
                 download_url: binary.browser_download_url.clone(),
@@ -1214,12 +1213,31 @@ fn firmware_artifacts_from_release(release: &GitHubRelease) -> Vec<FirmwareArtif
                 firmware_version: Some(version.clone()),
                 tag: version,
                 created_at: release.published_at.clone(),
-                summary: Some("Dedikált Arduino LED Controller Beta firmware-katalógus".into()),
-                channel: "beta".into(),
+                summary: Some(format!(
+                    "Arduino LED Controller {} firmware-katalógus",
+                    if channel == "stable" { "Stable" } else { "Beta" }
+                )),
+                channel: channel.into(),
                 expected_firmware_version: None,
                 metadata_conflict: None,
             })
         })
+        .collect()
+}
+
+fn firmware_artifacts_from_release_channel(
+    release: &GitHubRelease,
+    channel: &str,
+) -> Vec<FirmwareArtifact> {
+    let normalized_channel = if channel.trim() == "stable" { "stable" } else { "beta" };
+    let firmware_surface = release.tag_name == FIRMWARE_BETA_RELEASE_TAG
+        || release.tag_name.to_ascii_lowercase().contains("firmware");
+    if !firmware_surface || !release_matches_channel(release, normalized_channel) {
+        return Vec::new();
+    }
+    firmware_artifacts_from_release(release)
+        .into_iter()
+        .filter(|artifact| artifact.channel == normalized_channel)
         .collect()
 }
 
@@ -1238,16 +1256,31 @@ fn firmware_version_key(version: &str) -> (u64, u64, u64, u64) {
 }
 
 async fn firmware_beta_release() -> Result<GitHubRelease, String> {
-    github_releases()
-        .await?
-        .into_iter()
-        .find(|release| release.tag_name == FIRMWARE_BETA_RELEASE_TAG && !release.draft)
-        .ok_or_else(|| {
-            format!(
-                "A dedikált {} GitHub release nem található.",
-                FIRMWARE_BETA_RELEASE_TAG
-            )
-        })
+    let releases = github_releases().await?;
+    let mut assets = Vec::new();
+    let mut published_at = None;
+    for release in releases.into_iter().filter(|release| !release.draft) {
+        let firmware_surface = release.tag_name == FIRMWARE_BETA_RELEASE_TAG
+            || release.tag_name.to_ascii_lowercase().contains("firmware");
+        if !firmware_surface {
+            continue;
+        }
+        if published_at.is_none() {
+            published_at = release.published_at.clone();
+        }
+        assets.extend(release.assets);
+    }
+    if assets.is_empty() {
+        return Err("Nem található firmware release asset-katalógus.".into());
+    }
+    Ok(GitHubRelease {
+        tag_name: FIRMWARE_BETA_RELEASE_TAG.into(),
+        published_at,
+        html_url: None,
+        prerelease: true,
+        draft: false,
+        assets,
+    })
 }
 
 #[tauri::command]
@@ -1258,33 +1291,37 @@ async fn firmware_releases(state: State<'_, AppState>) -> Result<Vec<FirmwareArt
         .map_err(|_| "Beállítás zárolva".to_string())?
         .firmware_update_channel
         .clone();
-    if channel.trim() != "beta" {
-        return Ok(Vec::new());
-    }
-    let release = firmware_beta_release().await?;
-    let mut artifacts = firmware_artifacts_from_release(&release);
-    artifacts.sort_by_key(|a| {
+    let normalized_channel = if channel.trim() == "stable" { "stable" } else { "beta" };
+    let releases = github_releases().await?;
+    let mut artifacts = releases
+        .iter()
+        .flat_map(|release| firmware_artifacts_from_release_channel(release, normalized_channel))
+        .collect::<Vec<_>>();
+    artifacts.sort_by_key(|artifact| {
         std::cmp::Reverse(firmware_version_key(
-            a.firmware_version.as_deref().unwrap_or(&a.tag),
+            artifact.firmware_version.as_deref().unwrap_or(&artifact.tag),
         ))
+    });
+    artifacts.dedup_by(|left, right| {
+        normalize_version(left.firmware_version.as_deref().unwrap_or(&left.tag))
+            == normalize_version(right.firmware_version.as_deref().unwrap_or(&right.tag))
     });
     Ok(artifacts)
 }
 
 async fn latest_firmware(config: &Config) -> Result<FirmwareArtifact, String> {
-    if config.firmware_update_channel.trim() != "beta" {
-        return Err(
-            "A stabil dedikált firmware-release még nincs konfigurálva; nincs beta fallback."
-                .into(),
-        );
-    }
-    let release = firmware_beta_release().await?;
-    firmware_artifacts_from_release(&release)
-        .into_iter()
-        .max_by_key(|a| firmware_version_key(a.firmware_version.as_deref().unwrap_or(&a.tag)))
-        .ok_or_else(|| {
-            "A dedikált Beta firmware-release nem tartalmaz teljes BIN + SHA-256 párt.".into()
+    let normalized_channel = if config.firmware_update_channel.trim() == "stable" { "stable" } else { "beta" };
+    github_releases()
+        .await?
+        .iter()
+        .flat_map(|release| firmware_artifacts_from_release_channel(release, normalized_channel))
+        .max_by_key(|artifact| {
+            firmware_version_key(artifact.firmware_version.as_deref().unwrap_or(&artifact.tag))
         })
+        .ok_or_else(|| format!(
+            "A(z) {} firmware-csatornán nincs teljes BIN + SHA-256 pár.",
+            normalized_channel
+        ))
 }
 fn app_asset_for_platform(release: &GitHubRelease) -> Option<&GitHubAsset> {
     let names: &[&str] = if cfg!(target_os = "macos") {
@@ -4006,6 +4043,37 @@ async fn firmware_install_release(
     state: State<'_, AppState>,
     tag: String,
 ) -> Result<FirmwareStatus, String> {
+    let normalized_channel = {
+        let config = state
+            .config
+            .lock()
+            .map_err(|_| "Beállítás zárolva".to_string())?;
+        if config.firmware_update_channel.trim() == "stable" {
+            "stable"
+        } else {
+            "beta"
+        }
+    };
+    let requested = normalize_version(tag.trim());
+    let allowed = github_releases()
+        .await?
+        .iter()
+        .flat_map(|release| firmware_artifacts_from_release_channel(release, normalized_channel))
+        .any(|artifact| {
+            normalize_version(
+                artifact
+                    .firmware_version
+                    .as_deref()
+                    .unwrap_or(&artifact.tag),
+            ) == requested
+        });
+    if !allowed {
+        return Err(format!(
+            "A(z) {} firmware nem telepíthető a(z) {} csatornáról.",
+            tag.trim(),
+            normalized_channel
+        ));
+    }
 
     match firmware_update_inner(&app, &state, Some(tag.trim())).await {
         Ok(status) => Ok(status),

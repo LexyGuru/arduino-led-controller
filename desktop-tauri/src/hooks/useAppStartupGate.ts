@@ -38,7 +38,7 @@ interface StartupGateOptions {
   connectionHealth: ConnectionHealthState;
 }
 
-const MIN_VISIBLE_MS = 1200;
+const MIN_VISIBLE_MS = 2200;
 const SOFT_NETWORK_WAIT_MS = 3200;
 const MAX_VISIBLE_MS = 4800;
 const EXIT_MS = 420;
@@ -110,13 +110,13 @@ export function useAppStartupGate({
   }, []);
 
   useEffect(() => {
-    if (appVersion && appVersion !== '…') {
-      update(
-        'version',
-        appVersion === '5.6.0-beta.1' ? 'pass' : 'warn',
-        appVersion === '5.6.0-beta.1' ? undefined : 'startup.detail.versionUnexpected'
-      );
-    }
+    if (!appVersion || appVersion === '…') return;
+    const validRuntimeVersion = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(appVersion);
+    update(
+      'version',
+      validRuntimeVersion ? 'pass' : 'warn',
+      validRuntimeVersion ? undefined : 'startup.detail.versionUnexpected'
+    );
   }, [appVersion]);
 
   useEffect(() => {

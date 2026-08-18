@@ -288,7 +288,8 @@
     "test:theme-performance-v587": "node scripts/test-theme-performance-v587.js",
     "audit:theme-colors-v587": "node scripts/audit-theme-hardcoded-colors-v587.js",
     "test:release-architecture-v2": "node scripts/test-release-architecture-v2.js",
-    "test:release-workflow-architecture-v2": "node scripts/test-release-workflow-architecture-v2.js"
+    "test:release-workflow-architecture-v2": "node scripts/test-release-workflow-architecture-v2.js",
+    "test:v615-firmware-channel-startup": "node scripts/test-v615-firmware-channel-startup-contract.js"
   },
   "engines": {
     "node": ">=20"

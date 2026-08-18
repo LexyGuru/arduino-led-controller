@@ -182,7 +182,11 @@ export function FirmwarePage({
   >(null);
   const externalFirmwareInputRef = useRef<HTMLInputElement | null>(null);
   const [externalFirmwareBusy, setExternalFirmwareBusy] = useState(false);
-  const firmwareCatalog = deduplicateFirmwareCatalog(releaseCatalog);
+  const selectedFirmwareChannel =
+    firmware?.firmwareUpdateChannel === 'stable' ? 'stable' : 'beta';
+  const firmwareCatalog = deduplicateFirmwareCatalog(releaseCatalog).filter(
+    (item) => (item.channel ?? '').trim().toLowerCase() === selectedFirmwareChannel
+  );
   const latestCatalogVersion = firmwareCatalog[0]?.firmwareVersion ?? firmwareCatalog[0]?.tag;
 
   const refreshCatalog = async () => {
@@ -789,7 +793,7 @@ export function FirmwarePage({
               firmware?.installedVersion &&
               compareVersions(version, firmware.installedVersion) < 0
             );
-            const relatedTags: string[] = [];
+            const relatedTags = item.relatedTags ?? [item.tag];
 
             return (
               <article key={`${version}-${item.name}`}>

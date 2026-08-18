@@ -20,13 +20,18 @@ assert.match(app,/key=\{page\}/);
 assert.match(app,/page-transition-stage/);
 assert.match(app,/app-shell--booting/);
 assert.match(controller,/busy,\s*\n\s*initialized,\s*\n\s*message,/);
-assert.match(startup,/MIN_VISIBLE_MS = 1200/);
+assert.match(startup,/MIN_VISIBLE_MS = 2200/);
 assert.match(startup,/SOFT_NETWORK_WAIT_MS = 3200/);
 assert.match(startup,/MAX_VISIBLE_MS = 4800/);
 assert.match(startup,/connectionHealth\.state === 'healthy'/);
 assert.match(startup,/startup\.detail\.arduinoBackground/);
 assert.match(startup,/localStorage/);
 assert.match(startup,/dataset\.themeEngine === '3\.0'/);
+assert.doesNotMatch(startup,/appVersion === '5\.6\.0-beta\.1'/);
+assert.match(startup,/validRuntimeVersion/);
+assert.match(screen,/appVersion: string/);
+assert.match(screen,/app-startup-version/);
+assert.match(app,/appVersion\s*=\s*\{\s*appVersion\s*\}/);
 
 for(const id of ['shell','theme','version','runtime','config','schedules','storage','arduino']){
   assert.match(startup,new RegExp(`id: '${id}'`));

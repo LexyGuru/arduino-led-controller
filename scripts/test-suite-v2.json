@@ -26,7 +26,8 @@
     "test:theme-engine-v3-completion-v586",
     "test:theme-hardening-v587",
     "test:theme-visual-contract-v587",
-    "test:theme-performance-v587"
+    "test:theme-performance-v587",
+    "test:v615-firmware-channel-startup"
   ],
   "regression": [
     "test:core",

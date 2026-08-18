@@ -13,13 +13,15 @@ interface AppStartupScreenProps {
   progress: number;
   warningCount: number;
   exiting: boolean;
+  appVersion: string;
 }
 
 export function AppStartupScreen({
   checks,
   progress,
   warningCount,
-  exiting
+  exiting,
+  appVersion
 }: AppStartupScreenProps) {
   const { t } = useI18n();
 
@@ -41,6 +43,9 @@ export function AppStartupScreen({
             <p className="eyebrow">{t('startup.eyebrow')}</p>
             <h1>{t('startup.title')}</h1>
             <p>{t('startup.subtitle')}</p>
+            <span className="app-startup-version">
+              {appVersion && appVersion !== '…' ? `v${appVersion}` : '…'}
+            </span>
           </div>
         </div>
 

@@ -367,6 +367,7 @@ export default function App() {
           progress={startup.progress}
           warningCount={startup.warningCount}
           exiting={startup.exiting}
+          appVersion={appVersion}
         />
       )}
     </>
