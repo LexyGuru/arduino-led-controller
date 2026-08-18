@@ -1,0 +1,165 @@
+/* Beta.5 Desktop Navigation Cleanup
+   Desktop-only presentation closure.
+   Keeps Sidebar markup, tablet layout and V565C mobile shell contracts intact. */
+
+@media (min-width: 1181px) {
+  /* Brand: one clear identity block. Version metadata already exists in the
+     topbar and footer, so the duplicate sidebar pills are visually suppressed. */
+  .beta4-ui-baseline .core-brand {
+    margin: 0 2px 12px;
+    padding: 7px 8px 16px;
+    gap: 10px;
+  }
+
+  .beta4-ui-baseline .core-brand .brand-mark {
+    width: 42px;
+    height: 42px;
+    flex-basis: 42px;
+    border-radius: 13px;
+  }
+
+  .beta4-ui-baseline .core-brand-copy strong {
+    font-size: 13px;
+    line-height: 1.15;
+  }
+
+  .beta4-ui-baseline .core-brand-copy small {
+    margin-top: 2px;
+    font-size: 9px;
+    line-height: 1.2;
+  }
+
+  .beta4-ui-baseline .core-version-pill,
+  .beta4-ui-baseline .beta4-version-pill {
+    display: none !important;
+  }
+
+  /* Navigation: calmer rhythm, one hierarchy, no nested-card look. */
+  .beta4-ui-baseline .core-nav-label {
+    padding: 8px 10px 7px;
+    font-size: 8px;
+    letter-spacing: .17em;
+    opacity: .72;
+  }
+
+  .beta4-ui-baseline .core-sidebar nav {
+    gap: 4px;
+  }
+
+  .beta4-ui-baseline .core-sidebar nav button {
+    position: relative;
+    min-height: 44px;
+    padding: 6px 9px;
+    gap: 9px;
+    border: 1px solid transparent;
+    border-radius: 12px;
+    color: var(--ds-text-muted);
+    background: transparent;
+    box-shadow: none !important;
+    transform: none;
+    transition:
+      color .16s ease,
+      border-color .16s ease,
+      background .16s ease;
+  }
+
+  .beta4-ui-baseline .core-sidebar nav button:hover {
+    transform: none;
+    color: var(--ds-text);
+    border-color:
+      color-mix(in srgb, var(--ds-accent) 12%, var(--ds-border));
+    background:
+      color-mix(in srgb, var(--ds-surface-hover) 54%, transparent);
+  }
+
+  .beta4-ui-baseline .core-sidebar nav button.active {
+    transform: none;
+    color: var(--ds-text);
+    border-color:
+      color-mix(in srgb, var(--ds-accent) 30%, var(--ds-border));
+    background:
+      linear-gradient(
+        90deg,
+        color-mix(in srgb, var(--ds-accent-soft) 82%, transparent),
+        color-mix(in srgb, var(--ds-surface-raised) 44%, transparent)
+      );
+    box-shadow:
+      inset 3px 0 0 var(--ds-accent),
+      inset 0 1px 0 color-mix(in srgb, white 4%, transparent) !important;
+  }
+
+  .beta4-ui-baseline .core-nav-icon {
+    width: 30px;
+    height: 30px;
+    flex: 0 0 30px;
+    border: 0;
+    border-radius: 9px;
+    color: var(--ds-text-muted);
+    background: transparent;
+    box-shadow: none;
+    transform: none;
+  }
+
+  .beta4-ui-baseline .core-sidebar nav button:hover .core-nav-icon {
+    color: var(--ds-text-secondary);
+    background:
+      color-mix(in srgb, var(--ds-surface-soft) 54%, transparent);
+  }
+
+  .beta4-ui-baseline .core-sidebar nav button.active .core-nav-icon {
+    color: var(--ds-accent);
+    background:
+      color-mix(in srgb, var(--ds-accent-soft) 72%, transparent);
+    box-shadow: none;
+    transform: none;
+  }
+
+  .beta4-ui-baseline .core-nav-indicator {
+    display: none;
+  }
+
+  .beta4-ui-baseline .core-sidebar nav button > span:not(.core-nav-icon):not(.core-nav-indicator) {
+    min-width: 0;
+    font-size: 13px;
+    font-weight: 720;
+    letter-spacing: -.01em;
+  }
+
+  /* Footer: preserve information but lower its visual weight. */
+  .beta4-ui-baseline .core-sidebar-footer {
+    margin: auto 2px 0;
+    padding: 13px 8px 4px;
+    gap: 9px;
+  }
+
+  .beta4-ui-baseline .core-device-line {
+    gap: 8px;
+  }
+
+  .beta4-ui-baseline .core-device-dot {
+    width: 7px;
+    height: 7px;
+  }
+
+  .beta4-ui-baseline .core-device-line small {
+    font-size: 10px;
+  }
+
+  .beta4-ui-baseline .core-device-line b {
+    margin-top: 2px;
+    font-size: 10px;
+  }
+
+  .beta4-ui-baseline .core-app-version {
+    gap: 4px;
+    font-size: 9px;
+    opacity: .78;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .beta4-ui-baseline .core-sidebar nav button,
+  .beta4-ui-baseline .core-nav-icon {
+    transition: none !important;
+  }
+}

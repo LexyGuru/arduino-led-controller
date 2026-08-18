@@ -5,25 +5,27 @@ import {
   WifiOff
 } from 'lucide-react';
 
+import { useI18n } from '../../i18n';
+
 export type V5DataSource =
   | 'api-v2'
   | 'api-v2-cache'
   | 'legacy-direct'
   | 'legacy-fallback';
 
-const labels:
+const labelKeys:
   Record<
     V5DataSource,
     string
   > = {
     'api-v2':
-      'API v2 élő adat',
+      'logs.sourceBadge.apiV2Live',
     'api-v2-cache':
-      'API v2 cache',
+      'logs.sourceBadge.apiV2Cache',
     'legacy-direct':
-      'Közvetlen Tauri',
+      'logs.sourceBadge.directTauri',
     'legacy-fallback':
-      'Tauri fallback'
+      'logs.sourceBadge.tauriFallback'
   };
 
 export function V5DataSourceBadge({
@@ -32,6 +34,7 @@ export function V5DataSourceBadge({
   source:
     V5DataSource;
 }) {
+  const { t } = useI18n();
   const Icon =
     source === 'api-v2'
       ? Server
@@ -50,7 +53,7 @@ export function V5DataSourceBadge({
       }
     >
       <Icon size={15} />
-      {labels[source]}
+      {t(labelKeys[source])}
     </span>
   );
 }

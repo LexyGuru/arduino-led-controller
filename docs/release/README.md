@@ -6,13 +6,13 @@
 
 | Terület | Érték |
 |---|---|
-| Branch | `main` |
-| Application | `5.1.0` |
-| App channel | `stable` |
-| App updater | `updater-stable` |
-| Firmware channel | `stable` |
-| Firmware available | `false` |
-| Recommended firmware | `nincs stabil firmware promótálva` |
+| Branch | `next/v5-rearchitecture` |
+| Application | `5.6.0-beta.2` |
+| App channel | `beta` |
+| App updater | `updater-beta` |
+| Firmware channel | `beta` |
+| Firmware available | `true` |
+| Recommended firmware | `5.0.0-beta.10` |
 | Direct API | `1.0.0` |
 
 ## A négy külön release-doboz

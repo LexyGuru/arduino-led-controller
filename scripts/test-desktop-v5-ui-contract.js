@@ -34,7 +34,7 @@ const settings = read(
 );
 
 const i18n = read(
-  'desktop-tauri/src/i18n/index.tsx'
+  'desktop-tauri/src/i18n/runtime.ts'
 );
 
 const archivedPage = read(

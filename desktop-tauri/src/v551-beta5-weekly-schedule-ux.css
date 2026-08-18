@@ -1,0 +1,257 @@
+/* V570 Beta.5 — Weekly Schedule UX */
+
+.v55-schedules-page .schedule-week-overview {
+  display: grid;
+  gap: 14px;
+}
+
+.v55-schedules-page .schedule-week-overview-head {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 2px 2px 0;
+}
+
+.v55-schedules-page .schedule-week-overview-head h2 {
+  margin: 3px 0 0;
+  font-size: clamp(20px, 2vw, 27px);
+  letter-spacing: -.035em;
+}
+
+.v55-schedules-page .schedule-week-overview-head .schedule-week-total {
+  flex: 0 0 auto;
+  padding: 7px 11px;
+  border: 1px solid color-mix(in srgb, var(--ds-accent) 18%, var(--ds-border));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ds-accent-soft) 68%, transparent);
+  color: var(--ds-text-secondary);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .04em;
+}
+
+.v55-schedules-page .schedule-week-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  align-items: start;
+}
+
+.v55-schedules-page .schedule-day-card {
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid color-mix(in srgb, var(--ds-accent) 12%, var(--ds-border));
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 100% 0,
+      color-mix(in srgb, var(--ds-accent) 8%, transparent),
+      transparent 35%),
+    linear-gradient(145deg,
+      color-mix(in srgb, var(--ds-surface-raised) 82%, transparent),
+      color-mix(in srgb, var(--ds-surface) 72%, transparent));
+  box-shadow:
+    0 12px 32px rgba(0, 0, 0, .11),
+    inset 0 1px 0 color-mix(in srgb, white 4%, transparent);
+}
+
+.v55-schedules-page .schedule-day-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 34px;
+  margin-bottom: 10px;
+  padding-bottom: 9px;
+  border-bottom: 1px solid color-mix(in srgb, var(--ds-border) 70%, transparent);
+}
+
+.v55-schedules-page .schedule-day-card-head h3 {
+  margin: 0;
+  font-size: 15px;
+  letter-spacing: -.02em;
+}
+
+.v55-schedules-page .schedule-day-card-head span {
+  min-width: 25px;
+  height: 25px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ds-accent-soft) 70%, transparent);
+  color: var(--ds-accent);
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.v55-schedules-page .schedule-day-items {
+  display: grid;
+  gap: 7px;
+}
+
+.v55-schedules-page .schedule-compact-card {
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr) 31px;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid color-mix(in srgb, var(--ds-border) 78%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--ds-surface-soft) 76%, transparent);
+  transition: border-color .16s ease, transform .16s ease, background .16s ease;
+}
+
+.v55-schedules-page .schedule-compact-card:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--ds-accent) 25%, var(--ds-border));
+  background: color-mix(in srgb, var(--ds-accent-soft) 28%, var(--ds-surface-soft));
+}
+
+.v55-schedules-page .schedule-compact-time {
+  width: 54px;
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 9px;
+  padding: 0;
+  background: color-mix(in srgb, var(--ds-accent) 9%, var(--ds-surface));
+  color: var(--ds-text-primary);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: -.02em;
+  cursor: pointer;
+}
+
+.v55-schedules-page .schedule-compact-time:disabled {
+  cursor: default;
+  opacity: .72;
+}
+
+.v55-schedules-page .schedule-led-chips {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.v55-schedules-page .schedule-led-chip {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 6px;
+  border: 1px solid color-mix(in srgb, var(--ds-border) 76%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ds-surface) 72%, transparent);
+  color: var(--ds-text-secondary);
+  font-size: 9px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.v55-schedules-page .schedule-color-dot {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 7px;
+  border-radius: 999px;
+  box-shadow: 0 0 0 1px color-mix(in srgb, white 18%, transparent);
+}
+
+.v55-schedules-page .schedule-led-chip.is-off {
+  opacity: .62;
+}
+
+.v55-schedules-page .schedule-no-action,
+.v55-schedules-page .schedule-day-empty {
+  color: var(--ds-text-muted);
+  font-size: 9px;
+}
+
+.v55-schedules-page .schedule-day-empty {
+  min-height: 53px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+  border: 1px dashed color-mix(in srgb, var(--ds-border) 75%, transparent);
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--ds-surface-soft) 40%, transparent);
+  text-align: center;
+}
+
+.v55-schedules-page .schedule-compact-delete {
+  width: 31px;
+  min-width: 31px;
+  height: 31px;
+  padding: 0;
+  border-radius: 9px;
+}
+
+.v55-schedules-page .schedule-editor {
+  scroll-margin-top: 20px;
+}
+
+@media (max-width: 1380px) {
+  .v55-schedules-page .schedule-week-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1040px) {
+  .v55-schedules-page .schedule-week-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 700px) {
+  .v55-schedules-page .schedule-week-overview-head {
+    align-items: flex-start;
+  }
+
+  .v55-schedules-page .schedule-week-grid {
+    grid-template-columns: 1fr;
+    gap: 9px;
+  }
+
+  .v55-schedules-page .schedule-day-card {
+    padding: 11px;
+    border-radius: 15px;
+  }
+
+  .v55-schedules-page .schedule-compact-card {
+    grid-template-columns: 50px minmax(0, 1fr) 30px;
+  }
+
+  .v55-schedules-page .schedule-compact-time {
+    width: 50px;
+  }
+}
+
+/* V570B — explicit edit action */
+.v55-schedules-page .schedule-compact-card {
+  grid-template-columns: 54px minmax(0, 1fr) 68px;
+}
+.v55-schedules-page .schedule-compact-actions {
+  display: grid;
+  grid-template-columns: repeat(2, 31px);
+  gap: 6px;
+  align-items: center;
+  justify-content: end;
+}
+.v55-schedules-page .schedule-compact-edit {
+  width: 31px;
+  min-width: 31px;
+  height: 31px;
+  padding: 0;
+  border-radius: 9px;
+}
+@media (max-width: 700px) {
+  .v55-schedules-page .schedule-compact-card {
+    grid-template-columns: 50px minmax(0, 1fr) 68px;
+  }
+}

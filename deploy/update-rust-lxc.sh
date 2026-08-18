@@ -102,6 +102,12 @@ if [[ -f "$LXC_ENV" ]]; then
   fi
   chmod 0600 "$LXC_ENV"
   log "LXC_OTA_ENV_MIGRATION=SUCCESS"
+# V590_GITHUB_FIRMWARE_CATALOG_ENV_MIGRATION
+grep -q '^GITHUB_FIRMWARE_CACHE_JSON=' "$LXC_ENV" || \
+  printf 'GITHUB_FIRMWARE_CACHE_JSON=/var/lib/arduino-led-controller/github-firmware-releases-cache.json\n' >> "$LXC_ENV"
+grep -q '^GITHUB_FIRMWARE_CACHE_TTL_SECONDS=' "$LXC_ENV" || \
+  printf 'GITHUB_FIRMWARE_CACHE_TTL_SECONDS=900\n' >> "$LXC_ENV"
+
 fi
 
 python3 - "${SRC}/release-versions.json" "${STATE_DIR}/firmware-catalog.json.new" <<'PYCAT'

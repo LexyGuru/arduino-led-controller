@@ -1,0 +1,177 @@
+/* Beta.5 Desktop Sidebar + Theme Readability Polish
+   Local candidate closure layered after V566 and before V565C mobile closure. */
+
+@media (min-width: 1181px) {
+  /* Sidebar: explicitly anchor all navigation content to one left edge. */
+  .beta4-ui-baseline .core-nav-label {
+    padding-left: 12px;
+    text-align: left;
+  }
+
+  .beta4-ui-baseline .core-sidebar nav button {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    justify-content: flex-start;
+    text-align: left;
+    padding-left: 12px;
+    padding-right: 12px;
+    color: var(--ds-text-secondary);
+  }
+
+  .beta4-ui-baseline .core-sidebar nav button > span:not(.core-nav-icon):not(.core-nav-indicator) {
+    flex: 0 1 auto;
+    min-width: 0;
+    text-align: left;
+  }
+
+  .beta4-ui-baseline .core-sidebar nav button .v55-sidebar-update-dot {
+    margin-left: auto;
+  }
+
+  .beta4-ui-baseline .core-sidebar nav button:not(.active) .core-nav-icon {
+    color: var(--ds-text-secondary);
+  }
+
+  .beta4-ui-baseline .core-sidebar-footer {
+    text-align: left;
+  }
+
+  .beta4-ui-baseline .core-device-line,
+  .beta4-ui-baseline .core-app-version {
+    justify-content: flex-start;
+  }
+
+  .beta4-ui-baseline .core-device-line small,
+  .beta4-ui-baseline .core-app-version {
+    color: var(--ds-text-secondary);
+    opacity: .92;
+  }
+
+  /* Settings typography: stop using tiny low-contrast metadata on glass. */
+  .beta4-settings-redesign .v55-settings-hub-copy span,
+  .beta4-settings-redesign .theme-engine-version,
+  .beta4-settings-redesign .appearance-control-grid > label,
+  .beta4-settings-redesign .settings-grid > label {
+    color: var(--ds-text-secondary);
+  }
+
+  .beta4-settings-redesign .theme-engine-version {
+    font-size: 12px;
+    line-height: 1.4;
+    font-weight: 720;
+  }
+
+  .beta4-settings-redesign .appearance-control-grid > label,
+  .beta4-settings-redesign .settings-grid > label {
+    font-size: 11px;
+    line-height: 1.35;
+    font-weight: 760;
+  }
+
+  /* Theme gallery: deterministic 3-column desktop rhythm.
+     This intentionally overrides Beta.4 auto-fit 165px closure. */
+  .beta4-settings-redesign .theme-gallery {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+    align-items: stretch;
+  }
+
+  .beta4-settings-redesign .theme-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: 112px auto;
+    align-content: start;
+    gap: 12px;
+    min-height: 222px;
+    padding: 14px;
+    text-align: left;
+  }
+
+  .beta4-settings-redesign .theme-card__visual {
+    width: 100%;
+    min-width: 0;
+    min-height: 112px;
+    height: 112px;
+    border-radius: 12px;
+  }
+
+  .beta4-settings-redesign .theme-card__orb {
+    width: 96px;
+    height: 96px;
+    right: -8px;
+    top: -18px;
+    filter: blur(5px);
+  }
+
+  .beta4-settings-redesign .theme-card__panel {
+    left: 12px;
+    right: 12px;
+    bottom: 11px;
+    height: 46px;
+    border-radius: 9px;
+  }
+
+  .beta4-settings-redesign .theme-card__chart {
+    left: 24px;
+    right: 24px;
+    bottom: 33px;
+  }
+
+  .beta4-settings-redesign .theme-card__copy {
+    display: grid;
+    align-self: start;
+    gap: 5px;
+    min-width: 0;
+  }
+
+  .beta4-settings-redesign .theme-card__copy strong {
+    color: var(--ds-text);
+    font-size: 15px;
+    line-height: 1.2;
+    font-weight: 820;
+    letter-spacing: -.015em;
+    overflow-wrap: normal;
+    word-break: normal;
+  }
+
+  .beta4-settings-redesign .theme-card__copy small {
+    margin: 0;
+    color: var(--ds-text-secondary);
+    font-size: 12px;
+    line-height: 1.45;
+    font-weight: 600;
+    overflow-wrap: normal;
+    word-break: normal;
+  }
+
+  .beta4-settings-redesign .theme-card__check {
+    top: 10px;
+    right: 10px;
+  }
+
+  .beta4-settings-redesign .theme-section-heading h3 {
+    color: var(--ds-text);
+  }
+
+  .beta4-settings-redesign .theme-reset-button {
+    color: var(--ds-text);
+  }
+}
+
+/* Medium desktop: retain 2 comfortable cards instead of squeezing 3. */
+@media (min-width: 901px) and (max-width: 1180px) {
+  .beta4-settings-redesign .theme-gallery {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .beta4-settings-redesign .theme-card {
+    grid-template-columns: minmax(120px, 34%) minmax(0, 1fr);
+  }
+
+  .beta4-settings-redesign .theme-card__copy small {
+    color: var(--ds-text-secondary);
+    font-size: 12px;
+    line-height: 1.45;
+  }
+}

@@ -4,6 +4,8 @@ import {
   RotateCcw
 } from 'lucide-react';
 
+import { useI18n } from '../../i18n';
+
 export function V5LedBulkActions({
   busy,
   onAllOn,
@@ -21,6 +23,8 @@ export function V5LedBulkActions({
   onRefresh:
     () => void;
 }) {
+  const { t } = useI18n();
+
   return (
     <div className="v5-led-bulk-actions">
       <button
@@ -28,7 +32,7 @@ export function V5LedBulkActions({
         onClick={onAllOn}
       >
         <Power size={17} />
-        Mind bekapcsol
+        {t('leds.bulkAllOn')}
       </button>
 
       <button
@@ -37,7 +41,7 @@ export function V5LedBulkActions({
         onClick={onAllOff}
       >
         <Power size={17} />
-        Mind kikapcsol
+        {t('leds.bulkAllOff')}
       </button>
 
       <button
@@ -48,7 +52,7 @@ export function V5LedBulkActions({
         <RotateCcw
           size={17}
         />
-        Reset
+        {t('leds.bulkReset')}
       </button>
 
       <button
@@ -59,7 +63,7 @@ export function V5LedBulkActions({
         <RefreshCw
           size={17}
         />
-        Frissítés
+        {t('leds.bulkRefresh')}
       </button>
     </div>
   );

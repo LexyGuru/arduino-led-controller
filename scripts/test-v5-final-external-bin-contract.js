@@ -4,7 +4,7 @@ const rust=fs.readFileSync('desktop-tauri/src-tauri/src/lib.rs','utf8');
 const api=fs.readFileSync('desktop-tauri/src/services/tauriApi.ts','utf8');
 const page=fs.readFileSync('desktop-tauri/src/pages/FirmwarePage.tsx','utf8');
 const settings=fs.readFileSync('desktop-tauri/src/pages/SettingsPage.tsx','utf8');
-const i18n=fs.readFileSync('desktop-tauri/src/i18n/index.tsx','utf8');
+const i18n=fs.readFileSync('desktop-tauri/src/i18n/runtime.ts','utf8');
 
 assert.match(rust,/async fn firmware_install_external_inner\(/);
 assert.match(rust,/async fn firmware_install_external\(/);

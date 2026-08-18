@@ -9,6 +9,7 @@ ROOT_DIR="$(
 )"
 RELEASE_TARGET_VERSION_DEFAULT="$(tr -d '[:space:]' < "${ROOT_DIR}/VERSION")"
 RELEASE_CANDIDATE_DEFAULT="${RELEASE_TARGET_VERSION_DEFAULT#*-}-gate"
+RELEASE_NAMESPACE_DEFAULT="$(printf '%s' "${RELEASE_TARGET_VERSION_DEFAULT}" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//')"
 UNIT_SOURCE="${UNIT_SOURCE:-${ROOT_DIR}/deploy/systemd/arduino-led-controller-staging.service}"
 UNIT_TARGET="${UNIT_TARGET:-/etc/systemd/system/arduino-led-controller-staging.service}"
 ENV_SOURCE="${ENV_SOURCE:-${ROOT_DIR}/deploy/staging.env.example}"
@@ -28,8 +29,8 @@ STAGING_PORT="${STAGING_PORT:-3100}"
 STAGING_BIND_HOST="${STAGING_BIND_HOST:-127.0.0.1}"
 STAGING_ARDUINO_IP="${STAGING_ARDUINO_IP:-127.0.0.1}"
 STAGING_ARDUINO_PORT="${STAGING_ARDUINO_PORT:-65535}"
-STAGING_ARDUINO_API_PATH="${STAGING_ARDUINO_API_PATH:-/__beta9_staging_disabled__}"
-STAGING_ARDUINO_API_KEY="${STAGING_ARDUINO_API_KEY:-<BETA9_STAGING_DISABLED_API_KEY>}"
+STAGING_ARDUINO_API_PATH="${STAGING_ARDUINO_API_PATH:-/__release_staging_disabled__}"
+STAGING_ARDUINO_API_KEY="${STAGING_ARDUINO_API_KEY:-<RELEASE_STAGING_DISABLED_API_KEY>}"
 ALLOW_PRODUCTION_ARDUINO="${ALLOW_PRODUCTION_ARDUINO:-0}"
 SYSTEMCTL_COMMAND="${SYSTEMCTL_COMMAND:-systemctl}"
 
@@ -98,19 +99,19 @@ upsert_env LEGACY_LOCAL_SCHEDULE_ADAPTERS_ENABLED 1
 upsert_env LEGACY_SUPPRESS_LOCAL_SCHEDULE_CRON 1
 upsert_env LEGACY_SUPPRESS_STATUS_CRON 1
 upsert_env RELEASE_CHANNEL beta
-upsert_env RELEASE_CANDIDATE beta.10-gate
-upsert_env RELEASE_TARGET_VERSION 5.0.0-beta.10
+upsert_env RELEASE_CANDIDATE "${RELEASE_CANDIDATE_DEFAULT}"
+upsert_env RELEASE_TARGET_VERSION "${RELEASE_TARGET_VERSION_DEFAULT}"
 upsert_env RELEASE_GATE_REPORT_DIR "${RELEASE_GATE_DIR}"
-upsert_env RELEASE_PROMOTION_APPROVAL_FILE "${RELEASE_GATE_DIR}/beta9-promotion-approval.json"
+upsert_env RELEASE_PROMOTION_APPROVAL_FILE "${RELEASE_GATE_DIR}/${RELEASE_NAMESPACE_DEFAULT}-promotion-approval.json"
 upsert_env RELEASE_GATE_MAX_AGE_HOURS 72
 upsert_env RELEASE_EXECUTION_RECEIPT_DIR "${RELEASE_EXECUTION_DIR}"
-upsert_env RELEASE_FINALIZATION_APPROVAL_FILE "${RELEASE_EXECUTION_DIR}/beta9-finalization-approval.json"
+upsert_env RELEASE_FINALIZATION_APPROVAL_FILE "${RELEASE_EXECUTION_DIR}/${RELEASE_NAMESPACE_DEFAULT}-finalization-approval.json"
 upsert_env RELEASE_EXECUTION_RECEIPT_MAX_AGE_HOURS 168
-upsert_env RELEASE_ORCHESTRATION_STATE_FILE "${RELEASE_EXECUTION_DIR}/beta9-orchestration-state.json"
+upsert_env RELEASE_ORCHESTRATION_STATE_FILE "${RELEASE_EXECUTION_DIR}/${RELEASE_NAMESPACE_DEFAULT}-orchestration-state.json"
 upsert_env RELEASE_ORCHESTRATION_ARTIFACT_DIR "${RELEASE_ARTIFACT_DIR}"
-upsert_env RELEASE_ORCHESTRATION_ARTIFACT_INDEX_FILE "${RELEASE_ARTIFACT_DIR}/beta9-index.json"
-upsert_env RELEASE_PRODUCTION_GUARD_FILE "${RELEASE_EXECUTION_DIR}/beta9-production-guard.json"
-upsert_env RELEASE_PRODUCTION_GUARD_VERIFICATION_FILE "${RELEASE_EXECUTION_DIR}/beta9-production-guard-verification.json"
+upsert_env RELEASE_ORCHESTRATION_ARTIFACT_INDEX_FILE "${RELEASE_ARTIFACT_DIR}/${RELEASE_NAMESPACE_DEFAULT}-index.json"
+upsert_env RELEASE_PRODUCTION_GUARD_FILE "${RELEASE_EXECUTION_DIR}/${RELEASE_NAMESPACE_DEFAULT}-production-guard.json"
+upsert_env RELEASE_PRODUCTION_GUARD_VERIFICATION_FILE "${RELEASE_EXECUTION_DIR}/${RELEASE_NAMESPACE_DEFAULT}-production-guard-verification.json"
 upsert_env RELEASE_ORCHESTRATION_MAX_AGE_HOURS 168
 
 install -d -m 0755 \
@@ -147,7 +148,7 @@ try {
 }
 NODE
 then
-  RUNTIME_SETTINGS_BACKUP="${CONFIG_DIR}/server-settings.pre-beta8-isolation.$(date -u +%Y%m%dT%H%M%SZ).json"
+  RUNTIME_SETTINGS_BACKUP="${CONFIG_DIR}/server-settings.pre-release-isolation.$(date -u +%Y%m%dT%H%M%SZ).json"
   mv "${RUNTIME_SETTINGS_FILE}" "${RUNTIME_SETTINGS_BACKUP}"
   chmod 0600 "${RUNTIME_SETTINGS_BACKUP}"
   echo "Staging runtime settings elkülönítve: ${RUNTIME_SETTINGS_BACKUP}"
@@ -156,7 +157,7 @@ fi
 "${SYSTEMCTL_COMMAND}" daemon-reload
 "${SYSTEMCTL_COMMAND}" enable arduino-led-controller-staging.service
 
-echo 'A Beta.8 staging systemd szolgáltatás telepítve és összehangolva.'
+echo 'A Beta staging systemd szolgáltatás telepítve és összehangolva.'
 echo "Környezeti fájl: ${ENV_TARGET}"
 echo "Staging release könyvtár: ${RELEASES_DIR}"
 echo "Staging adatkönyvtár: ${DATA_DIR}"

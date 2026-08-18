@@ -7,7 +7,7 @@ const sharedRust = fs.readFileSync('rust/arduino-led-core/src/lib.rs', 'utf8');
 const rust = `${tauriRust}\n${sharedRust}`;
 const types = fs.readFileSync('desktop-tauri/src/types/index.ts', 'utf8');
 const settings = fs.readFileSync('desktop-tauri/src/pages/SettingsPage.tsx', 'utf8');
-const i18n = fs.readFileSync('desktop-tauri/src/i18n/index.tsx', 'utf8');
+const i18n = fs.readFileSync('desktop-tauri/src/i18n/runtime.ts', 'utf8');
 const controller = fs.readFileSync('desktop-tauri/src/hooks/useController.ts', 'utf8');
 const profile = fs.readFileSync('desktop-tauri/src/api/runtime/direct-arduino-profile-store.mjs', 'utf8');
 const firmware = fs.readFileSync('firmware/ArduinoLedController/ArduinoLedController.ino', 'utf8');
@@ -69,15 +69,15 @@ for (const token of [
 ]) assert.ok(profile.includes(token), `Hiányzó profil-szerződés: ${token}`);
 
 for (const token of [
-  'base == "/api/v1/status" && method == "GET"',
-  'base == "/api/v1/logs" && method == "GET"',
-  'base.startsWith("/api/v1/leds/")',
-  'base == "/api/v1/schedules" && method == "GET"',
-  'base == "/api/v1/schedules/transactions" && method == "POST"',
-  'action=="chunks"&&method=="PUT"',
-  'action=="commit"&&method=="POST"',
-  'base == "/api/v1/ota/prepare" && method == "POST"',
-  'base == "/api/v1/ota/status" && method == "GET"'
+  'pathEquals(base, "/api/v1/status") && pathEquals(method, "GET")',
+  'pathEquals(base, "/api/v1/logs") && pathEquals(method, "GET")',
+  'pathStartsWith(base, LED_PREFIX)',
+  'pathEquals(base, "/api/v1/schedules") && pathEquals(method, "GET")',
+  'pathEquals(base, "/api/v1/schedules/transactions") && pathEquals(method, "POST")',
+  'pathEquals(action, "chunks") && pathEquals(method, "PUT")',
+  'pathEquals(action, "commit") && pathEquals(method, "POST")',
+  'pathEquals(base, "/api/v1/ota/prepare") && pathEquals(method, "POST")',
+  'pathEquals(base, "/api/v1/ota/status") && pathEquals(method, "GET")'
 ]) assert.ok(firmware.includes(token), `A firmware nem támogatja: ${token}`);
 
 assert.ok(!rust.includes('"/api/console/logs?after='));

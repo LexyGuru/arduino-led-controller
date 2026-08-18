@@ -2,6 +2,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState
 } from 'react';
 
@@ -20,7 +21,7 @@ import {
   normalizeEvents
 } from '../services/v5LogModels.mjs';
 
-import { translate } from '../i18n';
+import { translate } from '../i18n/runtime';
 
 import type {
   ArduinoLog,
@@ -45,6 +46,16 @@ export function useV5Logs({
     connectivity,
     auth
   } = useDesktopApi();
+
+  const legacyArduinoRef =
+    useRef(legacyArduino);
+  const legacyErrorRef =
+    useRef(legacyError);
+
+  legacyArduinoRef.current =
+    legacyArduino;
+  legacyErrorRef.current =
+    legacyError;
 
   const [
     consoleLogs,
@@ -134,25 +145,32 @@ export function useV5Logs({
         force = false
       } = {}) => {
         if (directFallback) {
+          const fallbackArduino =
+            legacyArduinoRef.current;
+          const fallbackError =
+            legacyErrorRef.current;
+
           setConsoleLogs(
-            legacyArduino
+            fallbackArduino
           );
           setSource(
             'legacy-direct'
           );
 
-          if (legacyError) {
-            setError({
-              code:
-                'LEGACY_CONSOLE_ERROR',
-              message:
-                legacyError,
-              status:
-                null,
-              details:
-                null
-            });
-          }
+          setError(
+            fallbackError
+              ? {
+                  code:
+                    'LEGACY_CONSOLE_ERROR',
+                  message:
+                    fallbackError,
+                  status:
+                    null,
+                  details:
+                    null
+                }
+              : null
+          );
 
           return;
         }
@@ -232,7 +250,7 @@ export function useV5Logs({
             'legacy-fallback'
           );
           setConsoleLogs(
-            legacyArduino
+            legacyArduinoRef.current
           );
         } finally {
           setBusy(false);
@@ -240,9 +258,7 @@ export function useV5Logs({
       },
       [
         api,
-        directFallback,
-        legacyArduino,
-        legacyError
+        directFallback
       ]
     );
 

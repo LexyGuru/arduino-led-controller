@@ -41,7 +41,7 @@ fn validate_scope(service: &str, account: &str) -> Result<(), String> {
     Ok(())
 }
 
-fn validate_secret(secret: &str) -> Result<(), String> {
+fn validate_secret(account: &str, secret: &str) -> Result<(), String> {
     if secret.trim() != secret {
         return Err(
             "CREDENTIAL_SECRET_WHITESPACE: a token nem kezdődhet vagy végződhet szóközzel."
@@ -50,9 +50,14 @@ fn validate_secret(secret: &str) -> Result<(), String> {
     }
 
     let bytes = secret.len();
+    let minimum_secret_bytes = if account.ends_with(":ota-password") {
+        1
+    } else {
+        MIN_SECRET_BYTES
+    };
 
-    if bytes < MIN_SECRET_BYTES {
-        return Err("CREDENTIAL_SECRET_TOO_SHORT: a token túl rövid.".to_string());
+    if bytes < minimum_secret_bytes {
+        return Err("CREDENTIAL_SECRET_TOO_SHORT: a titok túl rövid.".to_string());
     }
 
     if bytes > MAX_SECRET_BYTES {
@@ -358,7 +363,7 @@ pub async fn get_profile_secret(account: String) -> Result<Option<String>, Strin
 
 pub async fn set_profile_secret(account: String, secret: String) -> Result<(), String> {
     validate_scope(ALLOWED_SERVICE, &account)?;
-    validate_secret(&secret)?;
+    validate_secret(&account, &secret)?;
     #[cfg(any(
         target_os = "macos",
         target_os = "windows",
@@ -428,7 +433,7 @@ pub async fn credential_set(
 ) -> Result<(), String> {
     validate_scope(&service, &account)?;
 
-    validate_secret(&secret)?;
+    validate_secret(&account, &secret)?;
 
     #[cfg(any(
         target_os = "macos",
@@ -473,7 +478,9 @@ pub async fn credential_delete(service: String, account: String) -> Result<bool,
 #[cfg(test)]
 mod tests {
     use super::LEGACY_ACCOUNT;
-    use super::{validate_scope, validate_secret, ALLOWED_SERVICE, MAX_SECRET_BYTES};
+    use super::{
+        validate_scope, validate_secret, ALLOWED_SERVICE, DIRECT_PREFIX, MAX_SECRET_BYTES,
+    };
 
     #[test]
     fn only_fixed_scope_is_allowed() {
@@ -485,13 +492,17 @@ mod tests {
     }
 
     #[test]
-    fn secret_length_and_whitespace_are_checked() {
-        assert!(validate_secret("0123456789abcdef",).is_ok());
+    fn secret_length_and_whitespace_are_checked_per_account_kind() {
+        assert!(validate_secret("api-v2-bearer", "0123456789abcdef").is_ok());
+        assert!(validate_secret("api-v2-bearer", "too-short").is_err());
+        assert!(validate_secret("api-v2-bearer", " short-secret ").is_err());
+        assert!(
+            validate_secret("api-v2-bearer", &"x".repeat(MAX_SECRET_BYTES + 1)).is_err()
+        );
 
-        assert!(validate_secret(" short-secret ").is_err());
-
-        assert!(validate_secret("too-short",).is_err());
-
-        assert!(validate_secret(&"x".repeat(MAX_SECRET_BYTES + 1,),).is_err());
+        let ota_account = format!("{DIRECT_PREFIX}test:ota-password");
+        assert!(validate_secret(&ota_account, "1").is_ok());
+        assert!(validate_secret(&ota_account, "").is_err());
+        assert!(validate_secret(&ota_account, " short-secret ").is_err());
     }
 }

@@ -25,43 +25,96 @@ function githubHeaders(token = '') {
   return headers;
 }
 
+function firmwareVersionFromName(name) {
+  const value = String(name || '');
+  const match = value.match(
+    /(?:^|_)(\d+\.\d+\.\d+(?:-(?:alpha|beta|rc)\.\d+)?)(?:_|\.ino\.bin$)/i
+  );
+  return match ? match[1].toLowerCase() : null;
+}
+
+function firmwareVersionKey(version) {
+  const normalized = String(version || '').trim().toLowerCase();
+  const match = normalized.match(
+    /^(\d+)\.(\d+)\.(\d+)(?:-(alpha|beta|rc)\.(\d+))?$/
+  );
+  if (!match) return [0, 0, 0, -1, 0];
+
+  const prereleaseRank = { alpha: 0, beta: 1, rc: 2 };
+  return [
+    Number(match[1]),
+    Number(match[2]),
+    Number(match[3]),
+    match[4] ? prereleaseRank[match[4]] : 3,
+    match[5] ? Number(match[5]) : 0
+  ];
+}
+
+function compareFirmwareVersions(left, right) {
+  const a = firmwareVersionKey(left);
+  const b = firmwareVersionKey(right);
+  for (let index = 0; index < a.length; index += 1) {
+    if (a[index] !== b[index]) return a[index] - b[index];
+  }
+  return 0;
+}
+
+function isFirmwareBinaryAsset(name) {
+  const lower = String(name || '').toLowerCase();
+  return (
+    lower.endsWith('.ino.bin') ||
+    (
+      lower.startsWith('arduino_led_controller_firmware_') &&
+      lower.endsWith('_uno_r4_wifi.bin')
+    )
+  ) && !lower.endsWith('.sha256');
+}
+
 function parseReleaseArtifact(release) {
-  const assets = Array.isArray(release?.assets)
-    ? release.assets
-    : [];
+  const assets = Array.isArray(release?.assets) ? release.assets : [];
 
-  const binary = assets.find((asset) => (
-    String(asset?.name || '').endsWith('.ino.bin')
-  ));
+  const candidates = assets
+    .filter((asset) => isFirmwareBinaryAsset(asset?.name))
+    .map((binary) => {
+      const checksumName = `${binary.name}.sha256`;
+      const checksum = assets.find((asset) => (
+        String(asset?.name || '') === checksumName
+      ));
+      if (!checksum) return null;
 
-  const checksum = assets.find((asset) => (
-    String(asset?.name || '').endsWith('.ino.bin.sha256')
-  ));
+      const firmwareVersion = firmwareVersionFromName(binary.name);
+      if (!firmwareVersion) return null;
 
-  if (!binary || !checksum) {
+      return { binary, checksum, firmwareVersion };
+    })
+    .filter(Boolean)
+    .sort((left, right) => (
+      compareFirmwareVersions(right.firmwareVersion, left.firmwareVersion)
+    ));
+
+  const selected = candidates[0];
+
+  if (!selected) {
     throw new FirmwareServiceError(
       502,
       'FIRMWARE_ARTIFACT_INCOMPLETE',
-      'A firmware-kiadás nem tartalmaz teljes bináris és SHA-256 csomagot.'
+      'A firmware-kiadás nem tartalmaz teljes, verziózható BIN + SHA-256 párt.'
     );
   }
 
   const body = String(release.body || '');
-  const versionMatch = body.match(
-    /Firmware verzió:\s*([0-9]+(?:\.[0-9]+){1,3})/i
-  );
   const commitMatch = body.match(
     /Forrás commit:\s*([a-f0-9]{7,40})/i
   );
 
   return {
     id: release.id,
-    name: binary.name,
-    digest: binary.digest || '',
-    downloadUrl: binary.browser_download_url,
-    checksumUrl: checksum.browser_download_url,
+    name: selected.binary.name,
+    digest: selected.binary.digest || '',
+    downloadUrl: selected.binary.browser_download_url,
+    checksumUrl: selected.checksum.browser_download_url,
     commit: commitMatch ? commitMatch[1] : release.target_commitish,
-    firmwareVersion: versionMatch ? versionMatch[1] : null,
+    firmwareVersion: selected.firmwareVersion,
     createdAt: release.published_at || release.created_at,
     tag: release.tag_name
   };
@@ -195,6 +248,10 @@ class FirmwareReleaseClient {
 module.exports = {
   FirmwareReleaseClient,
   REPOSITORY_PATTERN,
+  compareFirmwareVersions,
+  firmwareVersionFromName,
+  firmwareVersionKey,
   githubHeaders,
+  isFirmwareBinaryAsset,
   parseReleaseArtifact
 };

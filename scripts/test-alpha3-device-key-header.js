@@ -42,7 +42,10 @@ assert.match(
   /#define API_DEVICE_KEY_HEADER "X-Device-Key"/,
 );
 assert.match(firmware, /constantTimeEquals/);
-assert.match(firmware, /DUPLICATE_DEVICE_KEY_HEADER/);
+assert.match(
+  firmware,
+  /present \? HTTP_HEADERS_DUPLICATE_DEVICE_KEY : HTTP_HEADERS_INVALID/,
+);
 assert.match(firmware, /MISSING_DEVICE_KEY/);
 assert.match(firmware, /INVALID_DEVICE_KEY/);
 assert.match(firmware, /httpHeaderAuthAccepted/);

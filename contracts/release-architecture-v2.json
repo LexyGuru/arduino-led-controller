@@ -1,18 +1,18 @@
 {
   "schemaVersion": 2,
   "product": "Arduino LED Controller",
-  "branch": "main",
+  "branch": "next/v5-rearchitecture",
   "application": {
-    "version": "5.1.0",
-    "channel": "stable",
-    "updaterAlias": "updater-stable",
-    "githubReleaseType": "release"
+    "version": "5.6.0-beta.2",
+    "channel": "beta",
+    "updaterAlias": "updater-beta",
+    "githubReleaseType": "prerelease"
   },
   "firmware": {
-    "channel": "stable",
-    "available": false,
-    "recommendedVersion": null,
-    "releaseFamily": "firmware-stable"
+    "channel": "beta",
+    "available": true,
+    "recommendedVersion": "5.0.0-beta.10",
+    "releaseFamily": "firmware-beta"
   },
   "directApi": "1.0.0",
   "rules": {

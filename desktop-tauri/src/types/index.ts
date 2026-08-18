@@ -12,6 +12,20 @@ export interface RuntimeCapabilities {
   otaSupported: boolean;
 }
 
+export interface ConnectionHealthState {
+  state:
+    | 'healthy'
+    | 'recovering'
+    | 'offline'
+    | 'unconfigured';
+  consecutiveFailures: number;
+  lastSuccessAt: number | null;
+  lastFailureAt: number | null;
+  nextRetryAt: number | null;
+  pollIntervalMs: number;
+  lastError: string | null;
+}
+
 export interface ConnectionConfig {
   profileName: string;
   language: 'hu' | 'en' | 'de';
@@ -129,6 +143,20 @@ export interface ScheduleSyncSnapshot {
   recoveredLegacyActionCount: number;
 }
 
+export interface ScheduleSaveProgressEvent {
+  timestamp: number;
+  stage: 'preparing' | 'transaction' | 'uploading' | 'committing' | 'verifying' | 'readback' | 'success' | 'error';
+  level: 'info' | 'success' | 'error';
+  message: string;
+  current: number;
+  total: number;
+  progress?: number | null;
+  revisionBefore?: number | null;
+  revisionAfter?: number | null;
+  checksum?: string | null;
+  durationMs?: number | null;
+}
+
 export interface ScheduleSaveResult extends ScheduleSyncSnapshot {
   success: boolean;
   verifiedCount: number;
@@ -176,6 +204,11 @@ export interface FirmwareArtifact {
   metadataConflict?: string;
 }
 
+
+export interface NativeAppUpdateInfo {
+  version: string;
+  body?: string;
+}
 
 export interface AppUpdateArtifact {
   version: string;

@@ -113,6 +113,7 @@ node scripts/test-ntp-timezone-contract.js
 node scripts/test-firmware-ota-maintenance-mode.js
 node scripts/test-firmware-ota-production-regression.js
 node scripts/test-firmware-430-beta4-scheduler-hotfix.js
+node scripts/test-test-architecture-v2.js
 node scripts/test-v5-documentation-status.js
 node scripts/test-beta-release-workflow.js
 node scripts/test-f14-final-reboot-api.js

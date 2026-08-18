@@ -14,8 +14,8 @@
 #include <stdarg.h>
 #include "secrets.h"
 
-#define FIRMWARE_VERSION "5.0.0-beta.7"
-#define FIRMWARE_FEATURE "f14-direct-api-v1-only-storage-udp-ntp-dst-ota-exclusive-v191-matrix-neopixel-stable"
+#define FIRMWARE_VERSION "5.0.0"
+#define FIRMWARE_FEATURE "f14-direct-api-v1-only-storage-udp-ntp-dst-ota-exclusive-v191-matrix-neopixel-stable-bootgen-sizeopt-schedule-progress-diag"
 #define OTA_MAINTENANCE_MODE_V1 1
 #define DIRECT_API_VERSION "1.0.0"
 #define DEVICE_NAME "arduino-led-controller"
@@ -50,6 +50,10 @@ constexpr uint8_t SCHEDULE_MAX = 60;
 constexpr uint16_t SCHEDULE_EEPROM_OFFSET = 256;
 constexpr uint16_t API_SETTINGS_EEPROM_OFFSET = 2300;
 constexpr uint16_t TIME_SETTINGS_EEPROM_OFFSET = 4608;
+constexpr uint16_t BOOT_GENERATION_EEPROM_OFFSET = 5120;
+constexpr uint8_t BOOT_GENERATION_SLOT_COUNT = 64;
+constexpr uint32_t BOOT_GENERATION_PUBLIC_MAX = 1000000UL;
+constexpr uint32_t BOOT_GENERATION_CHECK_MAGIC = 0xB007C0DEUL;
 // F14 Complete A/B storage layout (UNO R4 WiFi 8192-byte EEPROM).
 constexpr uint16_t CONFIG_SLOT_A_OFFSET = 0;
 constexpr uint16_t CONFIG_SLOT_B_OFFSET = 384;
@@ -83,7 +87,7 @@ constexpr unsigned long NTP_VALID_EPOCH_MIN = 1700000000UL;
 constexpr uint8_t HTTP_CLIENTS_PER_LOOP = 1;
 constexpr uint8_t LOG_CAPACITY = 12;
 constexpr uint8_t CONSOLE_LOGS_PER_RESPONSE = 8;
-constexpr size_t HTTP_BODY_BUFFER_SIZE = 2560;
+constexpr size_t HTTP_BODY_BUFFER_SIZE = 3072;
 constexpr size_t HTTP_RESPONSE_HEADER_SIZE = 192;
 constexpr size_t HTTP_WRITE_CHUNK_SIZE = 512;
 constexpr unsigned long HTTP_WRITE_INTER_CHUNK_DELAY_MS = 1UL;
@@ -174,7 +178,15 @@ struct __attribute__((packed)) ConfigPayload {
   NetworkSettings network;
   ApiSettings api;
 };
+struct __attribute__((packed)) BootGenerationRecord {
+  uint32_t sequence;
+  uint32_t checksum;
+};
 static_assert(sizeof(StorageSlotHeader) == 24, "StorageSlotHeader layout changed");
+static_assert(sizeof(BootGenerationRecord) == 8, "BootGenerationRecord layout changed");
+static_assert(BOOT_GENERATION_EEPROM_OFFSET +
+    BOOT_GENERATION_SLOT_COUNT * sizeof(BootGenerationRecord) <= 8192,
+  "Boot generation ring exceeds UNO R4 EEPROM");
 static_assert(sizeof(ConfigPayload) + sizeof(StorageSlotHeader) <= CONFIG_SLOT_SIZE,
   "Config A/B slot too small");
 static_assert(sizeof(StoredSchedule) * SCHEDULE_MAX + sizeof(StorageSlotHeader) <= SCHEDULE_SLOT_SIZE,
@@ -183,7 +195,7 @@ static_assert(sizeof(StoredLed) == 8, "StoredLed EEPROM layout changed");
 static_assert(sizeof(StoredSchedule) == 27, "StoredSchedule EEPROM layout changed");
 static_assert(sizeof(ScheduleHeader) == 10, "ScheduleHeader EEPROM layout changed");
 static_assert(LOG_CAPACITY <= 32, "F14.1 RAM log capacity is too large");
-static_assert(HTTP_BODY_BUFFER_SIZE <= 2560, "F14.1 HTTP buffer is too large");
+static_assert(HTTP_BODY_BUFFER_SIZE <= 3072, "F14.1 HTTP buffer is too large");
 static_assert(HTTP_WRITE_CHUNK_SIZE <= 512, "UNO R4 WiFi response chunk is too large");
 struct FixedBuffer {
   char* data;
@@ -219,36 +231,11 @@ ArduinoLEDMatrix matrix;
 WiFiServer server(HTTP_API_PORT);
 WiFiUDP ntpUdp;
 
-uint8_t MATRIX_BOOT[8][12] = {
- {0,0,0,0,1,1,1,1,0,0,0,0},{0,0,0,1,0,0,0,0,1,0,0,0},
- {0,0,1,0,1,0,0,1,0,1,0,0},{0,1,0,0,0,1,1,0,0,0,1,0},
- {0,1,0,0,0,1,1,0,0,0,1,0},{0,0,1,0,1,0,0,1,0,1,0,0},
- {0,0,0,1,0,0,0,0,1,0,0,0},{0,0,0,0,1,1,1,1,0,0,0,0}
-};
-uint8_t MATRIX_WIFI[8][12] = {
- {0,0,0,0,0,1,1,0,0,0,0,0},{0,0,0,1,1,0,0,1,1,0,0,0},
- {0,0,1,0,0,0,0,0,0,1,0,0},{0,1,0,0,1,1,1,1,0,0,1,0},
- {1,0,0,1,0,0,0,0,1,0,0,1},{0,0,0,0,0,1,1,0,0,0,0,0},
- {0,0,0,0,1,0,0,1,0,0,0,0},{0,0,0,0,0,1,1,0,0,0,0,0}
-};
-uint8_t MATRIX_OK[8][12] = {
- {0,0,0,0,0,0,0,0,0,0,0,0},{0,0,0,0,0,0,0,0,0,0,1,0},
- {0,0,0,0,0,0,0,0,0,1,0,0},{0,0,0,0,0,0,0,0,1,0,0,0},
- {1,0,0,0,0,0,0,1,0,0,0,0},{0,1,0,0,0,0,1,0,0,0,0,0},
- {0,0,1,0,0,1,0,0,0,0,0,0},{0,0,0,1,1,0,0,0,0,0,0,0}
-};
-uint8_t MATRIX_OTA[8][12] = {
- {0,0,0,0,0,1,1,0,0,0,0,0},{0,0,0,0,1,1,1,1,0,0,0,0},
- {0,0,0,1,1,0,0,1,1,0,0,0},{0,0,1,1,1,0,0,1,1,1,0,0},
- {0,0,0,0,1,1,1,1,0,0,0,0},{0,0,0,0,0,1,1,0,0,0,0,0},
- {0,0,0,0,0,1,1,0,0,0,0,0},{0,0,0,0,0,1,1,0,0,0,0,0}
-};
-uint8_t MATRIX_ERROR[8][12] = {
- {1,0,0,0,0,0,0,0,0,0,0,1},{0,1,0,0,0,0,0,0,0,0,1,0},
- {0,0,1,0,0,0,0,0,0,1,0,0},{0,0,0,1,0,0,0,0,1,0,0,0},
- {0,0,0,0,1,0,0,1,0,0,0,0},{0,0,0,0,1,0,0,1,0,0,0,0},
- {0,0,0,1,0,0,0,0,1,0,0,0},{0,0,1,0,0,0,0,0,0,1,0,0}
-};
+const uint8_t MATRIX_BOOT[12] = {0x0F,0x01,0x08,0x29,0x44,0x62,0x46,0x22,0x94,0x10,0x80,0xF0};
+const uint8_t MATRIX_WIFI[12] = {0x06,0x01,0x98,0x20,0x44,0xF2,0x90,0x90,0x60,0x09,0x00,0x60};
+const uint8_t MATRIX_OK[12] = {0x00,0x00,0x02,0x00,0x40,0x08,0x81,0x04,0x20,0x24,0x01,0x80};
+const uint8_t MATRIX_OTA[12] = {0x06,0x00,0xF0,0x19,0x83,0x9C,0x0F,0x00,0x60,0x06,0x00,0x60};
+const uint8_t MATRIX_ERROR[12] = {0x80,0x14,0x02,0x20,0x41,0x08,0x09,0x00,0x90,0x10,0x82,0x04};
 
 Led leds[STRIP_COUNT];
 Log logs[LOG_CAPACITY];
@@ -280,6 +267,8 @@ IPAddress cachedWifiIp(0,0,0,0);
 long cachedWifiRssi = 0;
 uint8_t logStart = 0, logSize = 0, scheduleCount = 0, httpMaxBatch = 0;
 uint32_t nextLogId = 1, nextHttpRequestId = 1, bootId = 0;
+uint32_t bootSequence = 0, bootGeneration = 0;
+uint8_t activeBootGenerationSlot = 0;
 uint32_t deviceKeyFingerprint = 0, scheduleRevision = 0;
 uint32_t configGeneration = 0;
 uint16_t activeConfigSlotOffset = 0, activeScheduleSlotOffset = 0;
@@ -327,7 +316,14 @@ size_t serialCommandLength = 0;
 size_t currentContentLength = 0;
 bool currentContentTypeJson = false;
 
-void showMatrix(uint8_t frame[8][12]) { matrix.renderBitmap(frame, 8, 12); }
+uint8_t matrixFrame[8][12] = {};
+void showMatrix(const uint8_t packed[12]) {
+  for (uint8_t index = 0; index < 96; index++) {
+    matrixFrame[index / 12][index % 12] =
+      (packed[index / 8] >> (7 - (index % 8))) & 1U;
+  }
+  matrix.renderBitmap(matrixFrame, 8, 12);
+}
 void copyText(char* target, size_t size, const char* source) {
   if (!target || !size) return;
   strncpy(target, source ? source : "", size - 1);
@@ -419,8 +415,27 @@ void logEvent(const char* type, const char* message) {
   if (otaExclusiveMode) return;
   storeConsoleLine(type, message, true);
 }
+void logCode(const char* type, const char* code) {
+  logEvent(type, code);
+}
+void logCodef(const char* type, const char* code, const char* format, ...) {
+  char message[80];
+  int prefix = snprintf(message, sizeof(message), "%s", code);
+  if (prefix < 0 || static_cast<size_t>(prefix) >= sizeof(message)) return;
+  if (format && format[0]) {
+    size_t used = static_cast<size_t>(prefix);
+    if (used + 1 >= sizeof(message)) return;
+    message[used++] = ':';
+    message[used] = 0;
+    va_list args;
+    va_start(args, format);
+    vsnprintf(message + used, sizeof(message) - used, format, args);
+    va_end(args);
+  }
+  logEvent(type, message);
+}
 void consoleLine(const char* message) {
-  storeConsoleLine("console", message, false);
+  Serial.println(message);
 }
 void clearRamLogs() { logStart = 0; logSize = 0; }
 
@@ -440,6 +455,71 @@ void eepromWriteBytes(uint16_t offset, const uint8_t* data, size_t length) {
 }
 void eepromReadBytes(uint16_t offset, uint8_t* data, size_t length) {
   for (size_t i = 0; i < length; i++) data[i] = EEPROM.read(offset + i);
+}
+
+uint32_t bootGenerationChecksum(uint32_t sequence) {
+  return fnv1a(reinterpret_cast<const uint8_t*>(&sequence), sizeof(sequence)) ^
+    BOOT_GENERATION_CHECK_MAGIC;
+}
+bool bootSequenceNewer(uint32_t candidate, uint32_t current) {
+  return static_cast<int32_t>(candidate - current) > 0;
+}
+bool bootGenerationRecordValid(const BootGenerationRecord& record) {
+  return record.sequence != 0 &&
+    record.checksum == bootGenerationChecksum(record.sequence);
+}
+void initializeBootGeneration() {
+  bool found = false;
+  uint32_t latestSequence = 0;
+  uint8_t latestSlot = 0;
+
+  for (uint8_t slot = 0; slot < BOOT_GENERATION_SLOT_COUNT; slot++) {
+    BootGenerationRecord record = {};
+    const uint16_t offset = BOOT_GENERATION_EEPROM_OFFSET +
+      static_cast<uint16_t>(slot) * sizeof(BootGenerationRecord);
+    eepromReadBytes(offset, reinterpret_cast<uint8_t*>(&record), sizeof(record));
+    if (!bootGenerationRecordValid(record)) continue;
+    if (!found || bootSequenceNewer(record.sequence, latestSequence)) {
+      found = true;
+      latestSequence = record.sequence;
+      latestSlot = slot;
+    }
+  }
+
+  uint32_t nextSequence = found ? latestSequence + 1UL : 1UL;
+  if (!nextSequence) nextSequence = 1UL;
+  const uint8_t targetSlot = found
+    ? static_cast<uint8_t>((latestSlot + 1U) % BOOT_GENERATION_SLOT_COUNT)
+    : 0U;
+  BootGenerationRecord next = {
+    nextSequence,
+    bootGenerationChecksum(nextSequence)
+  };
+  const uint16_t targetOffset = BOOT_GENERATION_EEPROM_OFFSET +
+    static_cast<uint16_t>(targetSlot) * sizeof(BootGenerationRecord);
+  eepromWriteBytes(
+    targetOffset,
+    reinterpret_cast<const uint8_t*>(&next),
+    sizeof(next)
+  );
+
+  BootGenerationRecord verify = {};
+  eepromReadBytes(
+    targetOffset,
+    reinterpret_cast<uint8_t*>(&verify),
+    sizeof(verify)
+  );
+
+  if (bootGenerationRecordValid(verify) && verify.sequence == nextSequence) {
+    bootSequence = nextSequence;
+    activeBootGenerationSlot = targetSlot;
+  } else {
+    bootSequence = found ? latestSequence : 1UL;
+    activeBootGenerationSlot = found ? latestSlot : 0U;
+  }
+
+  bootGeneration =
+    ((bootSequence - 1UL) % BOOT_GENERATION_PUBLIC_MAX) + 1UL;
 }
 uint32_t eepromChecksum(uint16_t offset, size_t length) {
   uint32_t value = 2166136261UL;
@@ -548,14 +628,14 @@ void loadPersistentConfig() {
     apiSettingsStored = apiSettingsValid(apiSettings);
     if (networkSettingsStored && apiSettingsStored && saveConfigAb()) {
       legacyStorageMigrated = true;
-      logEvent("success", "Legacy konfiguracio A/B storage-ba migralva");
+      logCode("success", "X1001");
     }
   }
   deviceKeyFingerprint = apiSettingsStored ? fnv1aText(apiSettings.sharedSecret) : 0;
-  logEvent(networkSettingsStored && apiSettingsStored ? "success" : "error",
-    networkSettingsStored && apiSettingsStored
-      ? "A/B WiFi, OTA es API konfiguracio betoltve"
-      : "Nincs ervenyes konfiguracio");
+  if (networkSettingsStored && apiSettingsStored)
+    logCode("success", "X1002");
+  else
+    logCode("error", "X1003");
 }
 
 uint32_t settingsChecksum(const NetworkSettings& s) {
@@ -614,16 +694,16 @@ void loadNetworkSettings() {
     strcmp(networkSettings.otaPassword, OTA_PASSWORD));
   if (compiled && (!stored || differs)) {
     saveCompiledNetworkSettings();
-    logEvent("success", "WiFi es OTA beallitas EEPROM-be mentve");
+    logCode("success", "X1101");
   } else if (stored) {
     networkSettingsStored = true;
-    logEvent("success", "WiFi es OTA beallitas EEPROM-bol betoltve");
+    logCode("success", "X1102");
   } else {
     memset(&networkSettings, 0, sizeof(networkSettings));
     copyText(networkSettings.ssid, sizeof(networkSettings.ssid), WIFI_SSID);
     copyText(networkSettings.password, sizeof(networkSettings.password), WIFI_PASSWORD);
     copyText(networkSettings.otaPassword, sizeof(networkSettings.otaPassword), OTA_PASSWORD);
-    logEvent("error", "Nincs ervenyes WiFi beallitas; USB-s feltoltes kell");
+    logCode("error", "X1103");
   }
 }
 void saveCompiledApiSettings() {
@@ -645,14 +725,14 @@ void loadApiSettings() {
     strcmp(apiSettings.sharedSecret, API_SHARED_SECRET));
   if (compiled && (!stored || differs)) {
     saveCompiledApiSettings();
-    logEvent("success", "Vedett API beallitas EEPROM-be mentve");
+    logCode("success", "X1201");
   } else if (stored) {
     apiSettingsStored = true;
     deviceKeyFingerprint = fnv1aText(apiSettings.sharedSecret);
-    logEvent("success", "Vedett API beallitas EEPROM-bol betoltve");
+    logCode("success", "X1202");
   } else {
     memset(&apiSettings, 0, sizeof(apiSettings));
-    logEvent("error", "Vedett API nincs beallitva; USB-s feltoltes kell");
+    logCode("error", "X1203");
   }
 }
 
@@ -679,7 +759,7 @@ void loadSchedules() {
     activeScheduleSlotOffset = selectedOffset;
     schedulesStored = true;
     scheduleReconcileRequested = true;
-    logEvent("success", "A/B schedule EEPROM-bol betoltve");
+    logCode("success", "X1301");
     return;
   }
   ScheduleHeader legacy = {};
@@ -692,7 +772,7 @@ void loadSchedules() {
       scheduleRevision = 0;
       if (saveSchedules(scheduleCount)) {
         legacyStorageMigrated = true;
-        logEvent("success", "Legacy schedule A/B storage-ba migralva");
+        logCode("success", "X1302");
         return;
       }
     }
@@ -701,7 +781,7 @@ void loadSchedules() {
   scheduleCount = 0;
   scheduleRevision = 0;
   schedulesStored = false;
-  logEvent("warn", "Nincs ervenyes schedule; ures allapot indul");
+  logCode("warn", "X1303");
 }
 void reconcileArduinoSchedules(bool force);
 
@@ -725,7 +805,7 @@ bool saveSchedules(uint8_t count) {
   refreshManualOverrideDeadlines();
   lastScheduleAudit = 0;
   if (timeSynced) reconcileArduinoSchedules(true);
-  logEvent("success", "Schedule A/B slotba mentve es visszaellenorizve");
+  logCode("success", "X1304");
   return true;
 }
 int hexValue(char v) {
@@ -734,50 +814,53 @@ int hexValue(char v) {
   if (v >= 'A' && v <= 'F') return v - 'A' + 10;
   return -1;
 }
-bool decodeScheduleHex(const String& payload, StoredSchedule& entry) {
-  if (payload.length() != sizeof(StoredSchedule) * 2) return false;
+bool decodeScheduleHex(const char* payload, StoredSchedule& entry) {
+  if (!payload || strlen(payload) != sizeof(StoredSchedule) * 2) return false;
   uint8_t* target = reinterpret_cast<uint8_t*>(&entry);
-  for (size_t i = 0; i < payload.length(); i += 2) {
+  for (size_t i = 0; i < sizeof(StoredSchedule) * 2; i += 2) {
     int hi = hexValue(payload[i]), lo = hexValue(payload[i + 1]);
     if (hi < 0 || lo < 0) return false;
-    target[i / 2] = (hi << 4) | lo;
+    target[i / 2] = static_cast<uint8_t>((hi << 4) | lo);
   }
   return entry.day >= 1 && entry.day <= 7 && entry.hour <= 23 &&
     entry.minute <= 59;
 }
-String encodeScheduleHex(const StoredSchedule& entry) {
+bool encodeScheduleHex(const StoredSchedule& entry, char* output, size_t size) {
   static const char HEX_DIGITS[] = "0123456789abcdef";
+  constexpr size_t REQUIRED = sizeof(StoredSchedule) * 2 + 1;
+  if (!output || size < REQUIRED) return false;
   const uint8_t* source = reinterpret_cast<const uint8_t*>(&entry);
-  String out;
-  if (!out.reserve(sizeof(StoredSchedule) * 2)) return "";
   for (size_t i = 0; i < sizeof(StoredSchedule); i++) {
-    out += HEX_DIGITS[(source[i] >> 4) & 15];
-    out += HEX_DIGITS[source[i] & 15];
+    output[i * 2] = HEX_DIGITS[(source[i] >> 4) & 15];
+    output[i * 2 + 1] = HEX_DIGITS[source[i] & 15];
   }
-  return out;
+  output[REQUIRED - 1] = 0;
+  return true;
 }
-bool importSchedulesHex(const String& payload) {
-  size_t chars = sizeof(StoredSchedule) * 2;
-  if (payload.length() % chars) return false;
-  uint8_t count = payload.length() / chars;
+bool importSchedulesHex(const char* payload) {
+  if (!payload) return false;
+  const size_t chars = sizeof(StoredSchedule) * 2;
+  const size_t length = strlen(payload);
+  if (length % chars) return false;
+  uint8_t count = static_cast<uint8_t>(length / chars);
   if (count > SCHEDULE_MAX) return false;
-  // Kétmenetes ellenőrzés: nem foglalunk 1620 bájtos lokális tömböt a stacken.
+
+  char record[sizeof(StoredSchedule) * 2 + 1] = {};
   StoredSchedule decoded = {};
   for (uint8_t i = 0; i < count; i++) {
-    if (!decodeScheduleHex(payload.substring(i * chars, (i + 1) * chars),
-      decoded)) return false;
+    memcpy(record, payload + i * chars, chars);
+    record[chars] = 0;
+    if (!decodeScheduleHex(record, decoded)) return false;
   }
-
   for (uint8_t i = 0; i < count; i++) {
-    if (!decodeScheduleHex(payload.substring(i * chars, (i + 1) * chars),
-      schedules[i])) return false;
+    memcpy(record, payload + i * chars, chars);
+    record[chars] = 0;
+    if (!decodeScheduleHex(record, schedules[i])) return false;
   }
-
   if (count < SCHEDULE_MAX) {
     memset(schedules + count, 0,
       sizeof(StoredSchedule) * (SCHEDULE_MAX - count));
   }
-
   return saveSchedules(count);
 }
 
@@ -820,7 +903,7 @@ void loadTimeSettings() {
   if (timeSettingsValid(timeSettings)) {
     timeSettingsStored = true;
     scheduleReconcileRequested = true;
-    logEvent("success", "Idozona beallitas EEPROM-bol betoltve");
+    logCode("success", "X1401");
     return;
   }
   memset(&timeSettings, 0, sizeof(timeSettings));
@@ -831,7 +914,7 @@ void loadTimeSettings() {
   timeSettings.nextTransitionEpoch = 0;
   timeSettings.nextUtcOffsetMinutes = 60;
   saveTimeSettings();
-  logEvent("warn", "Idozona alapertelmezett: Europe/Vienna");
+  logCodef("warn", "X1402", "%s", "Europe/Vienna");
 }
 int64_t daysFromCivil(int year, unsigned month, unsigned day) {
   year -= month <= 2;
@@ -916,7 +999,7 @@ void refreshAutonomousTimezoneState(unsigned long epoch, bool persist) {
   timeSettings.nextUtcOffsetMinutes = nextOffset;
   if (changed && persist) {
     saveTimeSettings();
-    logEvent("info", "Idozona es DST szabaly autonom modon frissitve");
+    logCode("info", "X1403");
   }
 }
 int16_t utcOffsetMinutesForEpoch(unsigned long epoch) {
@@ -1122,7 +1205,7 @@ void reconcileArduinoSchedules(bool force = false) {
       manualOverride[led] = false;
       manualOverrideUntilMinute[led] = 0;
       manualOverrideFallbackUntilMillis[led] = 0;
-      logEvent("info", "Kezi LED felulbiralas lejart");
+      logCode("info", "X3001");
     }
     int16_t selected = -1;
     int32_t selectedRelative = -MINUTES_PER_WEEK - 1;
@@ -1156,7 +1239,7 @@ void reconcileArduinoSchedules(bool force = false) {
   if (changed) {
     renderAll(true);
     schedulerLastAppliedAt = now;
-    logEvent("info", "LED allapot schedule alapjan egyeztetve");
+    logCode("info", "X3002");
   }
 }
 
@@ -1198,8 +1281,7 @@ void serviceClockSync(bool force = false) {
     ntpFailureCount++;
     ntpLastFailureAt = now;
     if (!timeSynced || ntpFailureCount == 1 || ntpFailureCount % 10 == 0) {
-      logEvent("warn",
-        "NTP ido lekerese sikertelen minden szerverrol; ujraprobalas");
+      logCode("warn", "X2101");
     }
     return;
   }
@@ -1214,10 +1296,7 @@ void serviceClockSync(bool force = false) {
   ntpLastSuccessAt = now;
 
   if (first) {
-    logEvent("success",
-      usedUdpFallback
-        ? "UDP NTP ido szinkronizalva"
-        : "WiFi.getTime ido szinkronizalva");
+    logCode("success", usedUdpFallback ? "X2102" : "X2103");
     refreshManualOverrideDeadlines();
     lastScheduleMinute = 0xFFFFFFFFUL;
     reconcileArduinoSchedules(true);
@@ -1275,7 +1354,7 @@ void connectWifi() {
   if (wifiHasAddress()) return;
   if (!networkSettingsStored) { showMatrix(MATRIX_ERROR); return; }
   showMatrix(MATRIX_WIFI);
-  logEvent("info", "WiFi kapcsolodas inditva");
+  logCode("info", "X2001");
   WiFi.begin(networkSettings.ssid, networkSettings.password);
 }
 void printConnectionBlock() {
@@ -1334,13 +1413,10 @@ void reportWifiConnected() {
   if (!wifiHasAddress() || wifiReported) return;
   wifiReported = true;
   showMatrix(MATRIX_OK);
-  char ip[16], message[128];
+  char ip[16];
   ipToText(cachedWifiIp, ip, sizeof(ip));
-  snprintf(message, sizeof(message),
-    "WiFi kesz: %s, jel: %ld dBm, HTTP: %u, OTA: %u",
+  logCodef("success", "X2002", "%s:%ld:%u:%u",
     ip, cachedWifiRssi, HTTP_API_PORT, OTA_UPLOAD_PORT);
-  logEvent("success", message);
-  printConnectionBlock();
 }
 
 bool otaPrepareModeActive() {
@@ -1393,10 +1469,8 @@ void otaTransferError(int code, const char*) {
   otaLastErrorAt = millis();
   otaErrorIndicatorUntil = millis() + OTA_ERROR_INDICATOR_TIME;
   leaveOtaExclusiveMode();
-  char message[96];
-  snprintf(message, sizeof(message), "OTA hiba: %d - piros jelzes %lu mp", code,
+  logCodef("error", "X5003", "%d:%lu", code,
     OTA_ERROR_INDICATOR_TIME / 1000UL);
-  logEvent("error", message);
   showMatrix(MATRIX_ERROR);
 }
 void startOta() {
@@ -1408,11 +1482,9 @@ void startOta() {
   ArduinoOTA.begin(otaIp, DEVICE_NAME, networkSettings.otaPassword,
     InternalStorage);
   otaReady = true;
-  char ip[16], message[112];
+  char ip[16];
   ipToText(otaIp, ip, sizeof(ip));
-  snprintf(message, sizeof(message), "OTA fogado aktiv: %s:%u", ip,
-    OTA_UPLOAD_PORT);
-  logEvent("success", message);
+  logCodef("success", "X5001", "%s:%u", ip, OTA_UPLOAD_PORT);
 }
 bool prepareOtaService() {
   if (!wifiHasAddress()) return false;
@@ -1426,15 +1498,21 @@ bool prepareOtaService() {
   return true;
 }
 
-float effectScale(uint8_t speed) {
-  return 0.25f + constrain(static_cast<int>(speed), 1, 100) / 100.0f * 3.75f;
+uint16_t effectScaleQ8(uint8_t speed) {
+  const uint16_t normalized = constrain(static_cast<int>(speed), 1, 100);
+  return static_cast<uint16_t>(64U + (normalized * 960UL + 50UL) / 100UL);
 }
 unsigned long effectDuration(unsigned long base, uint8_t speed) {
-  return max(1UL, static_cast<unsigned long>(base / effectScale(speed)));
+  const uint16_t scaleQ8 = effectScaleQ8(speed);
+  const unsigned long duration = (base * 256UL + scaleQ8 / 2U) / scaleQ8;
+  return max(1UL, duration);
 }
-uint32_t ledColor(uint8_t i, float scale = 1.0f) {
-  return strip[i].Color(leds[i].red * scale, leds[i].green * scale,
-    leds[i].blue * scale);
+uint32_t ledColor(uint8_t i, uint8_t scale = 255) {
+  return strip[i].Color(
+    static_cast<uint8_t>((static_cast<uint16_t>(leds[i].red) * scale + 127U) / 255U),
+    static_cast<uint8_t>((static_cast<uint16_t>(leds[i].green) * scale + 127U) / 255U),
+    static_cast<uint8_t>((static_cast<uint16_t>(leds[i].blue) * scale + 127U) / 255U)
+  );
 }
 void render(uint8_t i) {
   if (!leds[i].enabled) { strip[i].clear(); strip[i].show(); return; }
@@ -1443,15 +1521,14 @@ void render(uint8_t i) {
   switch (leds[i].effect) {
     case BLINK: {
       bool on = (now / effectDuration(700, leds[i].speed)) % 2 == 0;
-      strip[i].fill(on ? ledColor(i) : 0);
-      break;
+      strip[i].fill(on ? ledColor(i) : 0); break;
     }
     case BREATHE: {
       unsigned long period = effectDuration(2500, leds[i].speed);
-      float phase = (now % period) / static_cast<float>(period);
-      float level = phase < .5f ? phase * 2 : (1 - phase) * 2;
-      strip[i].fill(ledColor(i, .08f + .92f * level));
-      break;
+      uint16_t phase = static_cast<uint16_t>(((now % period) * 510UL) / period);
+      uint8_t level = phase <= 255U ? static_cast<uint8_t>(phase) : static_cast<uint8_t>(510U - phase);
+      uint8_t scale = static_cast<uint8_t>(20U + (static_cast<uint16_t>(235U) * level + 127U) / 255U);
+      strip[i].fill(ledColor(i, scale)); break;
     }
     case RAINBOW: {
       uint16_t offset = now / effectDuration(12, leds[i].speed);
@@ -1464,9 +1541,10 @@ void render(uint8_t i) {
     case CHASE: {
       strip[i].clear();
       uint16_t head = (now / effectDuration(35, leds[i].speed)) % PIXELS;
-      for (uint8_t tail = 0; tail < 8; tail++)
-        strip[i].setPixelColor((head + PIXELS - tail) % PIXELS,
-          ledColor(i, (8 - tail) / 8.0f));
+      for (uint8_t tail = 0; tail < 8; tail++) {
+        uint8_t scale = static_cast<uint8_t>((static_cast<uint16_t>(8U - tail) * 255U) / 8U);
+        strip[i].setPixelColor((head + PIXELS - tail) % PIXELS, ledColor(i, scale));
+      }
       break;
     }
     default: strip[i].fill(ledColor(i)); break;
@@ -1675,7 +1753,7 @@ void finalizeHttpAudit(HttpRequestContext& r) {
 void updateHttpTraceTimeout() {
   if (httpTraceEnabled && millis() - httpTraceStartedAt >= HTTP_TRACE_MAX_TIME) {
     httpTraceEnabled = false;
-    logEvent("info", "HTTP trace automatikusan kikapcsolva 10 perc utan");
+    logCode("info", "X4001");
   }
 }
 
@@ -1723,8 +1801,9 @@ bool buildStatusJson(size_t& bodyLength, uint32_t requestId) {
     schedulerLastRunAt ? (millis() - schedulerLastRunAt) / 1000UL : 0,
     schedulerLastAppliedAt ? (millis() - schedulerLastAppliedAt) / 1000UL : 0);
   appendFormat(b,
-    "\"deviceId\":\"%s\",\"bootId\":\"%08lX\",",
-    deviceId, static_cast<unsigned long>(bootId));
+    "\"deviceId\":\"%s\",\"bootId\":\"%08lX\",\"bootGeneration\":%lu,",
+    deviceId, static_cast<unsigned long>(bootId),
+    static_cast<unsigned long>(bootGeneration));
   appendFormat(b,
     "\"deviceName\":\"%s\",\"hostname\":\"\",\"localHostname\":\"\",",
     DEVICE_NAME);
@@ -1853,8 +1932,9 @@ void sendPingJson(WiFiClient& c, uint32_t requestId) {
     "{\"success\":true,\"requestId\":%lu,\"deviceId\":\"%s\",",
     static_cast<unsigned long>(requestId), deviceId);
   appendFormat(b,
-    "\"bootId\":\"%08lX\",\"firmwareVersion\":\"%s\",",
-    static_cast<unsigned long>(bootId), FIRMWARE_VERSION);
+    "\"bootId\":\"%08lX\",\"bootGeneration\":%lu,\"firmwareVersion\":\"%s\",",
+    static_cast<unsigned long>(bootId),
+    static_cast<unsigned long>(bootGeneration), FIRMWARE_VERSION);
   appendFormat(b,
     "\"directApiVersion\":\"%s\",\"uptime\":%lu}",
     DIRECT_API_VERSION, millis() / 1000UL);
@@ -1964,93 +2044,149 @@ void sendOtaStatusJson(WiFiClient& c, uint32_t requestId) {
   }
   sendJsonBuffer(c, b.data, b.length, 200, requestId);
 }
-int valueInt(const String& query, const char* name, int fallback,
-    int low, int high) {
-  int from = query.indexOf(String(name) + '=');
-  if (from < 0) return fallback;
-  from += strlen(name) + 1;
-  int to = query.indexOf('&', from);
-  if (to < 0) to = query.length();
-  return constrain(static_cast<int>(query.substring(from, to).toInt()), low, high);
+char* trimAscii(char* value) {
+  if (!value) return value;
+  while (*value == ' ' || *value == '\t') value++;
+  char* end = value + strlen(value);
+  while (end > value && (end[-1] == ' ' || end[-1] == '\t')) *--end = 0;
+  return value;
 }
-bool valueBool(const String& query, const char* name, bool fallback) {
-  int from = query.indexOf(String(name) + '=');
-  if (from < 0) return fallback;
-  from += strlen(name) + 1;
-  int to = query.indexOf('&', from);
-  if (to < 0) to = query.length();
-  String value = query.substring(from, to);
-  return value == "1" || value == "true";
+bool asciiEqualIgnoreCase(const char* left, const char* right) {
+  if (!left || !right) return false;
+  while (*left && *right) {
+    char a = *left++, b = *right++;
+    if (a >= 'A' && a <= 'Z') a += 'a' - 'A';
+    if (b >= 'A' && b <= 'Z') b += 'a' - 'A';
+    if (a != b) return false;
+  }
+  return !*left && !*right;
 }
-bool extractQueryValue(const String& query, const char* name, String& value) {
-  String prefix = String(name) + "=";
-  size_t start = 0;
-  while (start < query.length()) {
-    const int separator = query.indexOf('&', static_cast<unsigned int>(start));
-    const size_t end = separator < 0
-      ? query.length()
-      : static_cast<size_t>(separator);
-    String item = query.substring(
-      static_cast<unsigned int>(start),
-      static_cast<unsigned int>(end)
-    );
-    if (item.startsWith(prefix)) {
-      value = item.substring(prefix.length());
+bool queryValueSpan(const char* query, const char* name,
+    const char*& value, size_t& length) {
+  if (!query || !name) return false;
+  const size_t nameLength = strlen(name);
+  const char* item = query;
+  while (*item) {
+    const char* end = strchr(item, '&');
+    if (!end) end = item + strlen(item);
+    const char* equal = static_cast<const char*>(memchr(item, '=', end - item));
+    if (equal && static_cast<size_t>(equal - item) == nameLength &&
+        !strncmp(item, name, nameLength)) {
+      value = equal + 1;
+      length = static_cast<size_t>(end - value);
       return true;
     }
-    start = end + 1;
+    if (!*end) break;
+    item = end + 1;
   }
   return false;
 }
-bool constantTimeEquals(const String& supplied, const char* expected) {
-  size_t length = strlen(expected);
-  if (supplied.length() != length) return false;
-  uint8_t difference = 0;
-  for (size_t i = 0; i < length; i++) difference |= supplied[i] ^ expected[i];
-  return difference == 0;
+int valueInt(const char* query, const char* name, int fallback,
+    int low, int high) {
+  const char* value = nullptr;
+  size_t length = 0;
+  if (!queryValueSpan(query, name, value, length) || !length || length >= 24)
+    return fallback;
+  char number[24] = {};
+  memcpy(number, value, length);
+  char* end = nullptr;
+  long parsed = strtol(number, &end, 10);
+  if (end == number) return fallback;
+  return constrain(static_cast<int>(parsed), low, high);
 }
-String cleanQueryWithoutKey(const String& query) {
-  String output;
-  size_t start = 0;
-  while (start < query.length()) {
-    const int separator = query.indexOf('&', static_cast<unsigned int>(start));
-    const size_t end = separator < 0
-      ? query.length()
-      : static_cast<size_t>(separator);
-    String item = query.substring(
-      static_cast<unsigned int>(start),
-      static_cast<unsigned int>(end)
-    );
-    if (!item.startsWith("k=")) {
-      if (output.length()) output += '&';
-      output += item;
-    }
-    start = end + 1;
-  }
-  return output;
+bool valueBool(const char* query, const char* name, bool fallback) {
+  const char* value = nullptr;
+  size_t length = 0;
+  if (!queryValueSpan(query, name, value, length)) return fallback;
+  return (length == 1 && value[0] == '1') ||
+    (length == 4 && !strncmp(value, "true", 4));
 }
-bool unwrapProtectedPath(const String& requested, String& apiPath,
-    String& queryKey, bool& queryPresent) {
-  if (!apiSettingsStored) return false;
-  int queryAt = requested.indexOf('?');
-  String base = queryAt < 0 ? requested : requested.substring(0, queryAt);
-  String prefix = String(apiSettings.privatePath) + "/api/";
-  if (!base.startsWith(prefix)) return false;
-  apiPath = base.substring(strlen(apiSettings.privatePath));
-  String query = queryAt < 0 ? "" : requested.substring(queryAt + 1);
-  queryPresent = extractQueryValue(query, "k", queryKey);
-  String clean = cleanQueryWithoutKey(query);
-  if (clean.length()) apiPath += "?" + clean;
+bool extractQueryValue(const char* query, const char* name,
+    char* output, size_t outputSize) {
+  const char* value = nullptr;
+  size_t length = 0;
+  if (!output || !outputSize ||
+      !queryValueSpan(query, name, value, length) ||
+      length >= outputSize) return false;
+  memcpy(output, value, length);
+  output[length] = 0;
   return true;
 }
-HttpHeaderReadResult readHttpHeaders(WiFiClient& c, String& key, bool& present, size_t& contentLength, bool& jsonType) {
+bool constantTimeEquals(const char* supplied, const char* expected) {
+  if (!supplied || !expected) return false;
+  size_t expectedLength = strlen(expected);
+  size_t suppliedLength = strlen(supplied);
+  if (suppliedLength != expectedLength) return false;
+  uint8_t difference = 0;
+  for (size_t i = 0; i < expectedLength; i++)
+    difference |= static_cast<uint8_t>(supplied[i] ^ expected[i]);
+  return difference == 0;
+}
+bool cleanQueryWithoutKey(const char* query, char* output, size_t outputSize) {
+  if (!output || !outputSize) return false;
+  output[0] = 0;
+  if (!query || !*query) return true;
+  size_t used = 0;
+  const char* item = query;
+  while (*item) {
+    const char* end = strchr(item, '&');
+    if (!end) end = item + strlen(item);
+    const size_t length = static_cast<size_t>(end - item);
+    const bool isKey = length >= 2 && item[0] == 'k' && item[1] == '=';
+    if (!isKey && length) {
+      if (used && used + 1 >= outputSize) return false;
+      if (used) output[used++] = '&';
+      if (used + length >= outputSize) return false;
+      memcpy(output + used, item, length);
+      used += length;
+      output[used] = 0;
+    }
+    if (!*end) break;
+    item = end + 1;
+  }
+  return true;
+}
+bool unwrapProtectedPath(const char* requested, char* apiPath, size_t apiPathSize,
+    char* queryKey, size_t queryKeySize, bool& queryPresent) {
+  if (!apiSettingsStored || !requested || !apiPath || !apiPathSize) return false;
+  const char* queryAt = strchr(requested, '?');
+  const size_t baseLength = queryAt
+    ? static_cast<size_t>(queryAt - requested)
+    : strlen(requested);
+  const size_t privateLength = strlen(apiSettings.privatePath);
+  if (baseLength < privateLength + 5 ||
+      strncmp(requested, apiSettings.privatePath, privateLength) ||
+      strncmp(requested + privateLength, "/api/", 5)) return false;
+
+  const char* apiStart = requested + privateLength;
+  const size_t apiBaseLength = baseLength - privateLength;
+  if (apiBaseLength + 1 >= apiPathSize) return false;
+  memcpy(apiPath, apiStart, apiBaseLength);
+  apiPath[apiBaseLength] = 0;
+
+  const char* query = queryAt ? queryAt + 1 : "";
+  queryPresent = extractQueryValue(query, "k", queryKey, queryKeySize);
+  char clean[HTTP_REQUEST_LINE_SIZE] = {};
+  if (!cleanQueryWithoutKey(query, clean, sizeof(clean))) return false;
+  if (*clean) {
+    const size_t used = strlen(apiPath);
+    const size_t cleanLength = strlen(clean);
+    if (used + 1 + cleanLength + 1 > apiPathSize) return false;
+    apiPath[used] = '?';
+    memcpy(apiPath + used + 1, clean, cleanLength + 1);
+  }
+  return true;
+}
+HttpHeaderReadResult readHttpHeaders(WiFiClient& c, char* key, size_t keySize,
+    bool& present, size_t& contentLength, bool& jsonType) {
   char line[HTTP_HEADER_LINE_SIZE];
   size_t length = 0;
   unsigned long started = millis();
-  key = "";
+  if (key && keySize) key[0] = 0;
   present = false;
   contentLength = 0;
   jsonType = false;
+
   while (millis() - started < HTTP_READ_TIMEOUT) {
     if (!c.available()) { delay(1); continue; }
     char value = c.read();
@@ -2058,26 +2194,24 @@ HttpHeaderReadResult readHttpHeaders(WiFiClient& c, String& key, bool& present, 
     if (value == '\n') {
       if (!length) return HTTP_HEADERS_OK;
       line[length] = 0;
-      String header(line);
-      int separator = header.indexOf(':');
-      if (separator <= 0) return HTTP_HEADERS_INVALID;
-      String name = header.substring(0, separator);
-      name.trim();
-      if (name.equalsIgnoreCase(API_DEVICE_KEY_HEADER)) {
-        if (present) return HTTP_HEADERS_DUPLICATE_DEVICE_KEY;
-        key = header.substring(separator + 1);
-        key.trim();
-        if (!key.length() || key.length() >= sizeof(apiSettings.sharedSecret))
-          return HTTP_HEADERS_INVALID;
+      char* separator = strchr(line, ':');
+      if (!separator || separator == line) return HTTP_HEADERS_INVALID;
+      *separator = 0;
+      char* name = trimAscii(line);
+      char* supplied = trimAscii(separator + 1);
+
+      if (asciiEqualIgnoreCase(name, API_DEVICE_KEY_HEADER)) {
+        if (present || !*supplied || strlen(supplied) >= keySize)
+          return present ? HTTP_HEADERS_DUPLICATE_DEVICE_KEY : HTTP_HEADERS_INVALID;
+        copyText(key, keySize, supplied);
         present = true;
-      } else if (name.equalsIgnoreCase("Content-Length")) {
-        String supplied = header.substring(separator + 1);
-        supplied.trim();
-        contentLength = static_cast<size_t>(supplied.toInt());
-      } else if (name.equalsIgnoreCase("Content-Type")) {
-        String supplied = header.substring(separator + 1);
-        supplied.trim();
-        jsonType = supplied.startsWith("application/json");
+      } else if (asciiEqualIgnoreCase(name, "Content-Length")) {
+        char* end = nullptr;
+        unsigned long parsed = strtoul(supplied, &end, 10);
+        if (end == supplied) return HTTP_HEADERS_INVALID;
+        contentLength = static_cast<size_t>(parsed);
+      } else if (asciiEqualIgnoreCase(name, "Content-Type")) {
+        jsonType = !strncmp(supplied, "application/json", 16);
       }
       length = 0;
     } else {
@@ -2087,8 +2221,8 @@ HttpHeaderReadResult readHttpHeaders(WiFiClient& c, String& key, bool& present, 
   }
   return HTTP_HEADERS_TIMEOUT;
 }
-HttpAuthResult authenticateDeviceRequest(const String& header, bool headerPresent,
-    const String& query, bool queryPresent) {
+HttpAuthResult authenticateDeviceRequest(const char* header, bool headerPresent,
+    const char* query, bool queryPresent) {
   if (headerPresent)
     return constantTimeEquals(header, apiSettings.sharedSecret)
       ? HTTP_AUTH_OK_HEADER : HTTP_AUTH_INVALID;
@@ -2287,37 +2421,45 @@ void cancelScheduleTransaction() {
   scheduleTransactionTotal = 0;
 }
 
-int routeV1(WiFiClient& c, const String& method, const String& base,
-    const String& query, const char* body, uint32_t requestId) {
-  if (base == "/api/v1/ping" && method == "GET") { sendPingJson(c, requestId); return 200; }
-  if (base == "/api/v1/capabilities" && method == "GET") { sendCapabilitiesJson(c, requestId); return 200; }
-  if (base == "/api/v1/status" && method == "GET") { sendStatusJson(c, requestId); return 200; }
-  if (base == "/api/v1/time/config" && method == "GET") {
-    FixedBuffer b; resetBuffer(b, httpBodyBuffer, sizeof(httpBodyBuffer));
-    appendFormat(b,
-      "{\"success\":true,\"timezoneId\":\"%s\",\"currentUtcOffsetMinutes\":%d,",
-      timeSettings.timezoneId, timeSettings.currentUtcOffsetMinutes);
-    appendFormat(b,
-      "\"nextTransitionEpoch\":%lu,\"nextUtcOffsetMinutes\":%d}",
-      static_cast<unsigned long>(timeSettings.nextTransitionEpoch),
-      timeSettings.nextUtcOffsetMinutes);
-    sendJsonBuffer(c, b.data, b.length, 200, requestId);
-    return 200;
+uint8_t scheduleTransactionReceivedCount() {
+  uint64_t mask = scheduleTransactionReceivedMask;
+  uint8_t count = 0;
+  while (mask) {
+    count += static_cast<uint8_t>(mask & 1ULL);
+    mask >>= 1;
   }
-  if (base == "/api/v1/time/config" && method == "PUT") {
+  return count;
+}
+
+bool pathEquals(const char* left, const char* right) {
+  return left && right && strcmp(left, right) == 0;
+}
+bool pathStartsWith(const char* value, const char* prefix) {
+  return value && prefix && strncmp(value, prefix, strlen(prefix)) == 0;
+}
+int routeV1(WiFiClient& c, const char* method, const char* base,
+    const char* query, const char* body, uint32_t requestId) {
+  if (pathEquals(base, "/api/v1/ping") && pathEquals(method, "GET")) { sendPingJson(c, requestId); return 200; }
+  if (pathEquals(base, "/api/v1/capabilities") && pathEquals(method, "GET")) { sendCapabilitiesJson(c, requestId); return 200; }
+  if (pathEquals(base, "/api/v1/status") && pathEquals(method, "GET")) { sendStatusJson(c, requestId); return 200; }
+  if (pathEquals(base, "/api/v1/time/config") && pathEquals(method, "GET")) {
+    FixedBuffer b; resetBuffer(b, httpBodyBuffer, sizeof(httpBodyBuffer));
+    appendFormat(b, "{\"success\":true,\"timezoneId\":\"%s\",\"currentUtcOffsetMinutes\":%d,",
+      timeSettings.timezoneId, timeSettings.currentUtcOffsetMinutes);
+    appendFormat(b, "\"nextTransitionEpoch\":%lu,\"nextUtcOffsetMinutes\":%d}",
+      static_cast<unsigned long>(timeSettings.nextTransitionEpoch), timeSettings.nextUtcOffsetMinutes);
+    sendJsonBuffer(c, b.data, b.length, 200, requestId); return 200;
+  }
+  if (pathEquals(base, "/api/v1/time/config") && pathEquals(method, "PUT")) {
     char timezoneId[48] = {};
     long currentOffset = 0, nextTransition = 0, nextOffset = 0;
     if (!jsonReadString(body, "timezoneId", timezoneId, sizeof(timezoneId)) ||
         !jsonReadInt(body, "currentUtcOffsetMinutes", currentOffset) ||
         !jsonReadInt(body, "nextTransitionEpoch", nextTransition) ||
         !jsonReadInt(body, "nextUtcOffsetMinutes", nextOffset) ||
-        !timezoneIdValid(timezoneId) ||
-        currentOffset < -840 || currentOffset > 840 ||
-        nextOffset < -840 || nextOffset > 840 ||
-        nextTransition < 0) {
-      sendErrorJson(c, 422, "VALIDATION_FAILED",
-        "Ervenytelen idozona konfiguracio.", requestId);
-      return 422;
+        !timezoneIdValid(timezoneId) || currentOffset < -840 || currentOffset > 840 ||
+        nextOffset < -840 || nextOffset > 840 || nextTransition < 0) {
+      sendErrorJson(c, 422, "VALIDATION_FAILED", "Ervenytelen idozona konfiguracio.", requestId); return 422;
     }
     copyText(timeSettings.timezoneId, sizeof(timeSettings.timezoneId), timezoneId);
     timeSettings.currentUtcOffsetMinutes = static_cast<int16_t>(currentOffset);
@@ -2325,137 +2467,168 @@ int routeV1(WiFiClient& c, const String& method, const String& base,
     timeSettings.nextUtcOffsetMinutes = static_cast<int16_t>(nextOffset);
     saveTimeSettings();
     if (!timeSettingsStored) {
-      sendErrorJson(c, 500, "EEPROM_VERIFY_FAILED",
-        "Idozona EEPROM mentes sikertelen.", requestId);
-      return 500;
+      sendErrorJson(c, 500, "EEPROM_VERIFY_FAILED", "Idozona EEPROM mentes sikertelen.", requestId); return 500;
     }
     lastScheduleMinute = 0xFFFFFFFFUL;
     reconcileArduinoSchedules(true);
-    sendJsonLiteral(c, "{\"success\":true}", 200, requestId);
-    return 200;
+    sendJsonLiteral(c, "{\"success\":true}", 200, requestId); return 200;
   }
-  if (base == "/api/v1/logs" && method == "GET") {
+  if (pathEquals(base, "/api/v1/logs") && pathEquals(method, "GET")) {
     sendLogsJson(c, valueInt(query, "afterId", 0, 0, 2147483647), requestId); return 200;
   }
-  if (base == "/api/v1/logs/clear" && method == "POST") {
+  if (pathEquals(base, "/api/v1/logs/clear") && pathEquals(method, "POST")) {
     clearRamLogs(); sendJsonLiteral(c, "{\"success\":true}", 200, requestId); return 200;
   }
-  if (base == "/api/v1/ota/status" && method == "GET") { sendOtaStatusJson(c, requestId); return 200; }
-  if (base == "/api/v1/ota/prepare" && method == "POST") {
+  if (pathEquals(base, "/api/v1/ota/status") && pathEquals(method, "GET")) { sendOtaStatusJson(c, requestId); return 200; }
+  if (pathEquals(base, "/api/v1/ota/prepare") && pathEquals(method, "POST")) {
     bool prepared = prepareOtaService();
-    sendJsonLiteral(c, prepared ? "{\"success\":true}" : "{\"success\":false}",
-      prepared ? 200 : 503, requestId); return prepared ? 200 : 503;
+    sendJsonLiteral(c, prepared ? "{\"success\":true}" : "{\"success\":false}", prepared ? 200 : 503, requestId);
+    return prepared ? 200 : 503;
   }
-  if (base == "/api/v1/system/reboot" && method == "POST") {
+  if (pathEquals(base, "/api/v1/system/reboot") && pathEquals(method, "POST")) {
     if (remoteRebootPending) {
-      sendErrorJson(c, 409, "REBOOT_ALREADY_PENDING",
-        "Az eszkoz ujrainditasa mar folyamatban van.", requestId);
-      return 409;
+      sendErrorJson(c, 409, "REBOOT_ALREADY_PENDING", "Az eszkoz ujrainditasa mar folyamatban van.", requestId); return 409;
     }
     remoteRebootPending = true;
     remoteRebootAt = millis() + REMOTE_REBOOT_DELAY_MS;
-    sendJsonLiteral(c,
-      "{\"success\":true,\"accepted\":true,\"rebooting\":true,"
-      "\"delayMs\":750}", 202, requestId);
+    sendJsonLiteral(c, "{\"success\":true,\"accepted\":true,\"rebooting\":true,\"delayMs\":750}", 202, requestId);
     return 202;
   }
-  if (base == "/api/v1/leds" && method == "GET") { sendStatusJson(c, requestId); return 200; }
-  if (base.startsWith("/api/v1/leds/") && base != "/api/v1/leds/all") {
-    int id = base.substring(strlen("/api/v1/leds/")).toInt();
-    if (id < 1 || id > STRIP_COUNT) { sendErrorJson(c,404,"LED_NOT_FOUND","Ismeretlen LED.",requestId); return 404; }
-    if (method == "GET") { sendLedJson(c, id-1, requestId); return 200; }
-    if (method == "PUT") {
-      if (!applyLedJson(id-1, body)) { sendErrorJson(c,422,"VALIDATION_FAILED","Ervenytelen LED JSON.",requestId); return 422; }
-      sendLedJson(c, id-1, requestId); return 200;
+  if (pathEquals(base, "/api/v1/leds") && pathEquals(method, "GET")) { sendStatusJson(c, requestId); return 200; }
+
+  static const char LED_PREFIX[] = "/api/v1/leds/";
+  if (pathStartsWith(base, LED_PREFIX) && !pathEquals(base, "/api/v1/leds/all")) {
+    char* end = nullptr;
+    long id = strtol(base + strlen(LED_PREFIX), &end, 10);
+    if (end == base + strlen(LED_PREFIX) || *end || id < 1 || id > STRIP_COUNT) {
+      sendErrorJson(c, 404, "LED_NOT_FOUND", "Ismeretlen LED.", requestId); return 404;
+    }
+    if (pathEquals(method, "GET")) { sendLedJson(c, id - 1, requestId); return 200; }
+    if (pathEquals(method, "PUT")) {
+      if (!applyLedJson(id - 1, body)) {
+        sendErrorJson(c, 422, "VALIDATION_FAILED", "Ervenytelen LED JSON.", requestId); return 422;
+      }
+      sendLedJson(c, id - 1, requestId); return 200;
     }
   }
-  if (base == "/api/v1/leds/all" && method == "POST") {
-    for (uint8_t i=0;i<STRIP_COUNT;i++) if (!applyLedJson(i, body)) {
-      sendErrorJson(c,422,"VALIDATION_FAILED","Ervenytelen kozos LED JSON.",requestId); return 422;
+  if (pathEquals(base, "/api/v1/leds/all") && pathEquals(method, "POST")) {
+    for (uint8_t i = 0; i < STRIP_COUNT; i++) {
+      if (!applyLedJson(i, body)) {
+        sendErrorJson(c, 422, "VALIDATION_FAILED", "Ervenytelen kozos LED JSON.", requestId); return 422;
+      }
     }
     sendStatusJson(c, requestId); return 200;
   }
-  if (base == "/api/v1/schedules/status" && method == "GET") {
-    FixedBuffer b; resetBuffer(b,httpBodyBuffer,sizeof(httpBodyBuffer));
-    appendFormat(b,"{\"success\":true,\"requestId\":%lu,\"count\":%u,\"max\":%u,",
-      static_cast<unsigned long>(requestId),scheduleCount,SCHEDULE_MAX);
-    appendFormat(b,"\"revision\":%lu,\"checksum\":\"%08lX\",\"stored\":%s,",
+
+  if (pathEquals(base, "/api/v1/schedules/status") && pathEquals(method, "GET")) {
+    FixedBuffer b; resetBuffer(b, httpBodyBuffer, sizeof(httpBodyBuffer));
+    appendFormat(b, "{\"success\":true,\"requestId\":%lu,\"count\":%u,\"max\":%u,",
+      static_cast<unsigned long>(requestId), scheduleCount, SCHEDULE_MAX);
+    appendFormat(b, "\"revision\":%lu,\"checksum\":\"%08lX\",\"stored\":%s,",
       static_cast<unsigned long>(scheduleRevision),
-      static_cast<unsigned long>(scheduleChecksum(schedules,scheduleCount)),schedulesStored?"true":"false");
-    appendFormat(b,"\"storageLayout\":\"ab-v2\",\"activeSlot\":%u,\"abSlots\":true,",
-      activeScheduleSlotOffset);
-    appendFormat(b,"\"readbackAfterWrite\":true,\"transactionActive\":%s}",
-      scheduleTransactionActive?"true":"false");
-    sendJsonBuffer(c,b.data,b.length,200,requestId); return 200;
+      static_cast<unsigned long>(scheduleChecksum(schedules, scheduleCount)), schedulesStored ? "true" : "false");
+    appendFormat(b, "\"storageLayout\":\"ab-v2\",\"activeSlot\":%u,\"abSlots\":true,", activeScheduleSlotOffset);
+    appendFormat(b, "\"readbackAfterWrite\":true,\"transactionActive\":%s,",
+      scheduleTransactionActive ? "true" : "false");
+    appendFormat(b, "\"transactionId\":%lu,\"transactionTotal\":%u,\"transactionReceived\":%u,",
+      static_cast<unsigned long>(scheduleTransactionId),
+      scheduleTransactionTotal,
+      scheduleTransactionReceivedCount());
+    appendFormat(b, "\"transactionGeneration\":%lu}",
+      static_cast<unsigned long>(scheduleTransactionGeneration));
+    sendJsonBuffer(c, b.data, b.length, 200, requestId); return 200;
   }
-  if (base == "/api/v1/schedules" && method == "GET") {
-    int legacyIndex=valueInt(query,"index",0,0,SCHEDULE_MAX);
-    int index=valueInt(query,"offset",legacyIndex,0,SCHEDULE_MAX);
-    int limit=valueInt(query,"limit",8,1,8);
-    FixedBuffer b; resetBuffer(b,httpBodyBuffer,sizeof(httpBodyBuffer));
-    appendFormat(b,"{\"success\":true,\"requestId\":%lu,\"revision\":%lu,\"count\":%u,\"entries\":[",
-      static_cast<unsigned long>(requestId),static_cast<unsigned long>(scheduleRevision),scheduleCount);
-    bool first=true;
-    for(int i=index;i<scheduleCount && i<index+limit;i++) {
-      String payload=encodeScheduleHex(schedules[i]);
-      if(!first) appendChar(b,','); first=false;
-      appendFormat(b,"{\"index\":%d,\"payload\":\"%s\"}",i,payload.c_str());
-    }
-    appendRaw(b,"]}"); sendJsonBuffer(c,b.data,b.length,200,requestId); return 200;
-  }
-  if (base == "/api/v1/schedules" && method == "DELETE") {
-    memset(schedules,0,sizeof(schedules));
-    if(!saveSchedules(0)){sendErrorJson(c,500,"EEPROM_VERIFY_FAILED","Schedule torles sikertelen.",requestId);return 500;}
-    sendJsonLiteral(c,"{\"success\":true,\"count\":0}",200,requestId);return 200;
-  }
-  if (base == "/api/v1/schedules/transactions" && method == "POST") {
-    long revision,total;
-    if(!jsonReadInt(body,"expectedRevision",revision)||!jsonReadInt(body,"total",total)||
-       revision<0||total<0||total>SCHEDULE_MAX) {
-      sendErrorJson(c,422,"VALIDATION_FAILED","expectedRevision es total kotelezo.",requestId);return 422;
-    }
-    if(!beginScheduleTransaction(revision,total)) {
-      sendErrorJson(c,409,"REVISION_CONFLICT","Schedule revision elteres vagy aktiv tranzakcio.",requestId);return 409;
-    }
-    FixedBuffer b;resetBuffer(b,httpBodyBuffer,sizeof(httpBodyBuffer));
-    appendFormat(b,"{\"success\":true,\"requestId\":%lu,\"transactionId\":%lu,\"total\":%u}",
-      static_cast<unsigned long>(requestId),static_cast<unsigned long>(scheduleTransactionId),scheduleTransactionTotal);
-    sendJsonBuffer(c,b.data,b.length,200,requestId);return 200;
-  }
-  String txPrefix="/api/v1/schedules/transactions/";
-  if(base.startsWith(txPrefix)) {
-    String rest=base.substring(txPrefix.length());
-    int slash=rest.indexOf('/');
-    uint32_t txId=static_cast<uint32_t>((slash<0?rest:rest.substring(0,slash)).toInt());
-    String action=slash<0?"":rest.substring(slash+1);
-    if(!scheduleTransactionActive||txId!=scheduleTransactionId){sendErrorJson(c,404,"TRANSACTION_NOT_FOUND","Nincs ilyen schedule tranzakcio.",requestId);return 404;}
-    if(action=="chunks"&&method=="PUT") {
-      long index; char payload[64]; StoredSchedule entry={};
-      if(!jsonReadInt(body,"index",index)||!jsonReadString(body,"payload",payload,sizeof(payload))||
-         index<0||index>=scheduleTransactionTotal||!decodeScheduleHex(String(payload),entry)||
-         !writeScheduleTransactionRecord(index,entry)) {
-        sendErrorJson(c,422,"INVALID_SCHEDULE_CHUNK","Ervenytelen schedule chunk.",requestId);return 422;
+  if (pathEquals(base, "/api/v1/schedules") && pathEquals(method, "GET")) {
+    int legacyIndex = valueInt(query, "index", 0, 0, SCHEDULE_MAX);
+    int index = valueInt(query, "offset", legacyIndex, 0, SCHEDULE_MAX);
+    int limit = valueInt(query, "limit", 8, 1, 8);
+    FixedBuffer b; resetBuffer(b, httpBodyBuffer, sizeof(httpBodyBuffer));
+    appendFormat(b, "{\"success\":true,\"requestId\":%lu,\"revision\":%lu,\"count\":%u,\"entries\":[",
+      static_cast<unsigned long>(requestId), static_cast<unsigned long>(scheduleRevision), scheduleCount);
+    bool first = true;
+    char payload[sizeof(StoredSchedule) * 2 + 1] = {};
+    for (int i = index; i < scheduleCount && i < index + limit; i++) {
+      if (!encodeScheduleHex(schedules[i], payload, sizeof(payload))) {
+        sendErrorJson(c, 500, "ENCODE_FAILED", "Schedule kodolas sikertelen.", requestId); return 500;
       }
-      sendJsonLiteral(c,"{\"success\":true}",200,requestId);return 200;
+      if (!first) appendChar(b, ',');
+      first = false;
+      appendFormat(b, "{\"index\":%d,\"payload\":\"%s\"}", i, payload);
     }
-    if(action=="commit"&&method=="POST") {
-      if(!commitScheduleTransaction()){sendErrorJson(c,500,"EEPROM_VERIFY_FAILED","Schedule commit vagy readback sikertelen.",requestId);return 500;}
-      sendJsonLiteral(c,"{\"success\":true}",200,requestId);return 200;
-    }
-    if(action==""&&method=="DELETE") {cancelScheduleTransaction();sendJsonLiteral(c,"{\"success\":true}",200,requestId);return 200;}
+    appendRaw(b, "]}"); sendJsonBuffer(c, b.data, b.length, 200, requestId); return 200;
   }
-  sendErrorJson(c,405,"METHOD_NOT_ALLOWED","Ismeretlen vegpont vagy hibas metodus.",requestId);
+  if (pathEquals(base, "/api/v1/schedules") && pathEquals(method, "DELETE")) {
+    memset(schedules, 0, sizeof(schedules));
+    if (!saveSchedules(0)) {
+      sendErrorJson(c, 500, "EEPROM_VERIFY_FAILED", "Schedule torles sikertelen.", requestId); return 500;
+    }
+    sendJsonLiteral(c, "{\"success\":true,\"count\":0}", 200, requestId); return 200;
+  }
+  if (pathEquals(base, "/api/v1/schedules/transactions") && pathEquals(method, "POST")) {
+    long revision, total;
+    if (!jsonReadInt(body, "expectedRevision", revision) || !jsonReadInt(body, "total", total) ||
+        revision < 0 || total < 0 || total > SCHEDULE_MAX) {
+      sendErrorJson(c, 422, "VALIDATION_FAILED", "expectedRevision es total kotelezo.", requestId); return 422;
+    }
+    if (!beginScheduleTransaction(revision, total)) {
+      sendErrorJson(c, 409, "REVISION_CONFLICT", "Schedule revision elteres vagy aktiv tranzakcio.", requestId); return 409;
+    }
+    FixedBuffer b; resetBuffer(b, httpBodyBuffer, sizeof(httpBodyBuffer));
+    appendFormat(b, "{\"success\":true,\"requestId\":%lu,\"transactionId\":%lu,\"total\":%u}",
+      static_cast<unsigned long>(requestId), static_cast<unsigned long>(scheduleTransactionId), scheduleTransactionTotal);
+    sendJsonBuffer(c, b.data, b.length, 200, requestId); return 200;
+  }
+  static const char TX_PREFIX[] = "/api/v1/schedules/transactions/";
+  if (pathStartsWith(base, TX_PREFIX)) {
+    const char* rest = base + strlen(TX_PREFIX);
+    char* end = nullptr;
+    uint32_t txId = static_cast<uint32_t>(strtoul(rest, &end, 10));
+    if (end == rest) {
+      sendErrorJson(c, 404, "TRANSACTION_NOT_FOUND", "Nincs ilyen schedule tranzakcio.", requestId); return 404;
+    }
+    const char* action = *end == '/' ? end + 1 : "";
+    if (*end && *end != '/') {
+      sendErrorJson(c, 404, "TRANSACTION_NOT_FOUND", "Nincs ilyen schedule tranzakcio.", requestId); return 404;
+    }
+    if (!scheduleTransactionActive || txId != scheduleTransactionId) {
+      sendErrorJson(c, 404, "TRANSACTION_NOT_FOUND", "Nincs ilyen schedule tranzakcio.", requestId); return 404;
+    }
+    if (pathEquals(action, "chunks") && pathEquals(method, "PUT")) {
+      long index; char payload[64]; StoredSchedule entry = {};
+      if (!jsonReadInt(body, "index", index) || !jsonReadString(body, "payload", payload, sizeof(payload)) ||
+          index < 0 || index >= scheduleTransactionTotal || !decodeScheduleHex(payload, entry) ||
+          !writeScheduleTransactionRecord(index, entry)) {
+        sendErrorJson(c, 422, "INVALID_SCHEDULE_CHUNK", "Ervenytelen schedule chunk.", requestId); return 422;
+      }
+      sendJsonLiteral(c, "{\"success\":true}", 200, requestId); return 200;
+    }
+    if (pathEquals(action, "commit") && pathEquals(method, "POST")) {
+      if (!commitScheduleTransaction()) {
+        sendErrorJson(c, 500, "EEPROM_VERIFY_FAILED", "Schedule commit vagy readback sikertelen.", requestId); return 500;
+      }
+      sendJsonLiteral(c, "{\"success\":true}", 200, requestId); return 200;
+    }
+    if (!*action && pathEquals(method, "DELETE")) {
+      cancelScheduleTransaction(); sendJsonLiteral(c, "{\"success\":true}", 200, requestId); return 200;
+    }
+  }
+  sendErrorJson(c, 405, "METHOD_NOT_ALLOWED", "Ismeretlen vegpont vagy hibas metodus.", requestId);
   return 405;
 }
-int routeRequest(WiFiClient& c, const String& method, const String& path,
+int routeRequest(WiFiClient& c, const char* method, const char* path,
     const char* body, uint32_t requestId) {
-  int queryAt = path.indexOf('?');
-  String base = queryAt < 0 ? path : path.substring(0, queryAt);
-  String query = queryAt < 0 ? "" : path.substring(queryAt + 1);
-  if (!base.startsWith("/api/v1/")) {
-    sendErrorJson(c, 404, "DIRECT_API_V1_REQUIRED",
-      "Direct API v1 endpoint required.", requestId);
-    return 404;
+  char base[HTTP_REQUEST_LINE_SIZE] = {};
+  char query[HTTP_REQUEST_LINE_SIZE] = {};
+  const char* queryAt = strchr(path, '?');
+  const size_t baseLength = queryAt ? static_cast<size_t>(queryAt - path) : strlen(path);
+  if (baseLength >= sizeof(base)) {
+    sendErrorJson(c, 404, "DIRECT_API_V1_REQUIRED", "Direct API v1 endpoint required.", requestId); return 404;
+  }
+  memcpy(base, path, baseLength);
+  base[baseLength] = 0;
+  if (queryAt) copyText(query, sizeof(query), queryAt + 1);
+  if (!pathStartsWith(base, "/api/v1/")) {
+    sendErrorJson(c, 404, "DIRECT_API_V1_REQUIRED", "Direct API v1 endpoint required.", requestId); return 404;
   }
   return routeV1(c, method, base, query, body, requestId);
 }
@@ -2465,8 +2638,7 @@ void handleHttp() {
   while (batch < HTTP_CLIENTS_PER_LOOP) {
     WiFiClient c = server.available();
     if (!c) break;
-    batch++;
-    httpRequests++;
+    batch++; httpRequests++;
     HttpRequestContext request = {};
     request.requestId = nextHttpRequestId++;
     request.startedAt = millis();
@@ -2477,121 +2649,99 @@ void handleHttp() {
     IPAddress remote = c.remoteIP();
     ipToText(remote, request.clientIp, sizeof(request.clientIp));
 
-    while (!c.available() &&
-        millis() - request.startedAt < HTTP_FIRST_BYTE_TIMEOUT) delay(1);
+    while (!c.available() && millis() - request.startedAt < HTTP_FIRST_BYTE_TIMEOUT) delay(1);
     if (!c.available()) {
-      httpTimeouts++;
-      request.responseCode = 408;
-      sendErrorJson(c, 408, "REQUEST_TIMEOUT",
-        "A kliens nem kuldott request line-t idoben.", request.requestId);
-      finalizeHttpAudit(request);
-      c.stop();
-      continue;
+      httpTimeouts++; request.responseCode = 408;
+      sendErrorJson(c, 408, "REQUEST_TIMEOUT", "A kliens nem kuldott request line-t idoben.", request.requestId);
+      finalizeHttpAudit(request); c.stop(); continue;
     }
 
-    char requestLine[HTTP_REQUEST_LINE_SIZE];
+    char requestLine[HTTP_REQUEST_LINE_SIZE] = {};
     if (!readRequestLine(c, requestLine, sizeof(requestLine))) {
-      httpRejected++;
-      request.responseCode = 400;
-      sendErrorJson(c, 400, "INVALID_REQUEST_LINE",
-        "Ervenytelen vagy tul hosszu request line.", request.requestId);
-      finalizeHttpAudit(request);
-      c.stop();
-      continue;
-    }
-    String line(requestLine);
-    line.trim();
-    int first = line.indexOf(' '), second = line.indexOf(' ', first + 1);
-    if (first <= 0 || second <= first + 1) {
-      httpRejected++;
-      request.responseCode = 400;
-      sendErrorJson(c, 400, "INVALID_REQUEST_LINE",
-        "A request line nem bonthato.", request.requestId);
-      finalizeHttpAudit(request);
-      c.stop();
-      continue;
-    }
-    String method = line.substring(0, first);
-    String requestedPath = line.substring(first + 1, second);
-    method.trim();
-    requestedPath.trim();
-    copyText(request.method, sizeof(request.method), method.c_str());
-
-    if (method != "GET" && method != "POST" &&
-        method != "PUT" && method != "DELETE") {
-      httpRejected++;
-      request.responseCode = 405;
-      sendErrorJson(c, 405, "METHOD_NOT_ALLOWED",
-        "Tamogatott metodusok: GET, POST, PUT, DELETE.", request.requestId);
-      finalizeHttpAudit(request);
-      c.stop();
-      continue;
+      httpRejected++; request.responseCode = 400;
+      sendErrorJson(c, 400, "INVALID_REQUEST_LINE", "Ervenytelen vagy tul hosszu request line.", request.requestId);
+      finalizeHttpAudit(request); c.stop(); continue;
     }
 
-    String path, queryKey;
+    char* line = trimAscii(requestLine);
+    char* first = strchr(line, ' ');
+    if (!first) {
+      httpRejected++; request.responseCode = 400;
+      sendErrorJson(c, 400, "INVALID_REQUEST_LINE", "A request line nem bonthato.", request.requestId);
+      finalizeHttpAudit(request); c.stop(); continue;
+    }
+    *first++ = 0;
+    while (*first == ' ') first++;
+    char* second = strchr(first, ' ');
+    if (!second) {
+      httpRejected++; request.responseCode = 400;
+      sendErrorJson(c, 400, "INVALID_REQUEST_LINE", "A request line nem bonthato.", request.requestId);
+      finalizeHttpAudit(request); c.stop(); continue;
+    }
+    *second = 0;
+    char* method = trimAscii(line);
+    char* requestedPath = trimAscii(first);
+    copyText(request.method, sizeof(request.method), method);
+
+    if (!pathEquals(method, "GET") && !pathEquals(method, "POST") &&
+        !pathEquals(method, "PUT") && !pathEquals(method, "DELETE")) {
+      httpRejected++; request.responseCode = 405;
+      sendErrorJson(c, 405, "METHOD_NOT_ALLOWED", "Tamogatott metodusok: GET, POST, PUT, DELETE.", request.requestId);
+      finalizeHttpAudit(request); c.stop(); continue;
+    }
+
+    char path[HTTP_REQUEST_LINE_SIZE] = {};
+    char queryKey[sizeof(apiSettings.sharedSecret)] = {};
     bool queryPresent = false;
-    if (!unwrapProtectedPath(requestedPath, path, queryKey, queryPresent)) {
-      httpRejected++;
-      request.authResult = HTTP_AUTH_PATH_REJECTED;
-      request.responseCode = 404;
+    if (!unwrapProtectedPath(requestedPath, path, sizeof(path), queryKey, sizeof(queryKey), queryPresent)) {
+      httpRejected++; request.authResult = HTTP_AUTH_PATH_REJECTED; request.responseCode = 404;
       copyText(request.path, sizeof(request.path), "/private-path-not-found");
-      sendErrorJson(c, 404, "PRIVATE_PATH_NOT_FOUND",
-        "A privat API-utvonal hibas vagy nincs beallitva.", request.requestId);
-      finalizeHttpAudit(request);
-      c.stop();
-      continue;
+      sendErrorJson(c, 404, "PRIVATE_PATH_NOT_FOUND", "A privat API-utvonal hibas vagy nincs beallitva.", request.requestId);
+      finalizeHttpAudit(request); c.stop(); continue;
     }
-    int queryAt = path.indexOf('?');
-    String base = queryAt < 0 ? path : path.substring(0, queryAt);
-    copyText(request.path, sizeof(request.path), base.c_str());
 
-    String headerKey;
+    char baseForAudit[sizeof(request.path)] = {};
+    const char* queryAt = strchr(path, '?');
+    const size_t auditLength = queryAt ? static_cast<size_t>(queryAt - path) : strlen(path);
+    const size_t copyLength = auditLength < sizeof(baseForAudit) - 1 ? auditLength : sizeof(baseForAudit) - 1;
+    memcpy(baseForAudit, path, copyLength); baseForAudit[copyLength] = 0;
+    copyText(request.path, sizeof(request.path), baseForAudit);
+
+    char headerKey[sizeof(apiSettings.sharedSecret)] = {};
     bool headerPresent = false;
     c.setTimeout(HTTP_READ_TIMEOUT);
     size_t contentLength = 0; bool jsonType = false;
-    HttpHeaderReadResult headerResult = readHttpHeaders(c, headerKey, headerPresent, contentLength, jsonType);
+    HttpHeaderReadResult headerResult = readHttpHeaders(
+      c, headerKey, sizeof(headerKey), headerPresent, contentLength, jsonType);
     if (headerResult != HTTP_HEADERS_OK) {
       request.authResult = HTTP_AUTH_HEADER_INVALID;
       if (headerResult == HTTP_HEADERS_TIMEOUT) {
-        httpTimeouts++;
-        request.responseCode = 408;
-        sendErrorJson(c, 408, "HEADER_TIMEOUT",
-          "A HTTP fejlecek nem erkeztek meg idoben.", request.requestId);
-      } else if (headerResult == HTTP_HEADERS_DUPLICATE_DEVICE_KEY) {
-        httpRejected++;
-        request.responseCode = 400;
-        sendErrorJson(c, 400, "DUPLICATE_DEVICE_KEY_HEADER",
-          "Az X-Device-Key csak egyszer szerepelhet.", request.requestId);
+        httpTimeouts++; request.responseCode = 408;
+        sendErrorJson(c, 408, "HEADER_TIMEOUT", "A HTTP fejlecek olvasasa idotullepesbe futott.", request.requestId);
       } else {
-        httpRejected++;
-        request.responseCode = 400;
-        sendErrorJson(c, 400, "INVALID_HEADER",
-          "Ervenytelen vagy tul hosszu HTTP fejlec.", request.requestId);
+        httpRejected++; request.responseCode = 400;
+        sendErrorJson(c, 400, "INVALID_HEADERS",
+          headerResult == HTTP_HEADERS_DUPLICATE_DEVICE_KEY
+            ? "Az X-Device-Key fejlec tobbszor szerepel." : "Ervenytelen HTTP fejlec.",
+          request.requestId);
       }
-      finalizeHttpAudit(request);
-      c.stop();
-      continue;
+      finalizeHttpAudit(request); c.stop(); continue;
     }
 
-    request.authResult = authenticateDeviceRequest(
-      headerKey, headerPresent, queryKey, queryPresent);
-    if (request.authResult != HTTP_AUTH_OK_HEADER) {
-      httpRejected++;
-      request.responseCode = 401;
+    request.authResult = authenticateDeviceRequest(headerKey, headerPresent, queryKey, queryPresent);
+    if (request.authResult != HTTP_AUTH_OK_HEADER && request.authResult != HTTP_AUTH_OK_QUERY_FALLBACK) {
+      httpRejected++; request.responseCode = 401;
       sendErrorJson(c, 401,
+        request.authResult == HTTP_AUTH_MISSING ? "MISSING_DEVICE_KEY" : "INVALID_DEVICE_KEY",
         request.authResult == HTTP_AUTH_MISSING
-          ? "MISSING_DEVICE_KEY" : "INVALID_DEVICE_KEY",
-        request.authResult == HTTP_AUTH_MISSING
-          ? "Az X-Device-Key fejlec hianyzik."
-          : "Az X-Device-Key erteke hibas.",
+          ? "Az X-Device-Key fejlec hianyzik." : "Az X-Device-Key erteke hibas.",
         request.requestId);
-      finalizeHttpAudit(request);
-      c.stop();
-      continue;
+      finalizeHttpAudit(request); c.stop(); continue;
     }
+    if (request.authResult == HTTP_AUTH_OK_HEADER) httpHeaderAuthAccepted++;
+    else httpQueryFallbackAccepted++;
 
-    httpHeaderAuthAccepted++;
-    bool bodyRequired = method == "POST" || method == "PUT";
+    const bool bodyRequired = pathEquals(method, "POST") || pathEquals(method, "PUT");
     if (contentLength >= HTTP_BODY_BUFFER_SIZE) {
       request.responseCode = 413;
       sendErrorJson(c, 413, "PAYLOAD_TOO_LARGE", "A JSON body tul nagy.", request.requestId);
@@ -2602,15 +2752,16 @@ void handleHttp() {
       sendErrorJson(c, 400, "CONTENT_TYPE_REQUIRED", "Content-Type: application/json kotelezo.", request.requestId);
       finalizeHttpAudit(request); c.stop(); continue;
     }
+
     httpBodyBuffer[0] = 0;
     if (contentLength > 0 && !readHttpBody(c, contentLength)) {
       request.responseCode = 400;
       sendErrorJson(c, 400, "INCOMPLETE_BODY", "A JSON body hianyos.", request.requestId);
       finalizeHttpAudit(request); c.stop(); continue;
     }
+
     request.responseCode = routeRequest(c, method, path, httpBodyBuffer, request.requestId);
-    finalizeHttpAudit(request);
-    c.stop();
+    finalizeHttpAudit(request); c.stop();
   }
   if (batch > httpMaxBatch) httpMaxBatch = batch;
 }
@@ -2799,6 +2950,8 @@ void printEepromStatus() {
   Serial.println(apiSettingsValid(apiSettings) ? "OK" : "FAILED");
   Serial.print("A/B config slot: "); Serial.println(activeConfigSlotOffset);
   Serial.print("A/B schedule slot: "); Serial.println(activeScheduleSlotOffset);
+  Serial.print("Boot generation: "); Serial.println(bootGeneration);
+  Serial.print("Boot ring slot: "); Serial.println(activeBootGenerationSlot);
   Serial.println("A/B slots: IMPLEMENTED (schema v2)");
   Serial.println("Write readback: IMPLEMENTED");
 }
@@ -2875,7 +3028,7 @@ void processPendingRemoteReboot() {
   if (!remoteRebootPending) return;
   if (static_cast<long>(millis() - remoteRebootAt) < 0) return;
   remoteRebootPending = false;
-  logEvent("cmd", "Tavoli API ujrainditas vegrehajtasa");
+  logCode("cmd", "X6001");
   rebootDevice();
 }
 void rebootDevice() {
@@ -2901,10 +3054,10 @@ void executeSerialCommand(const char* command) {
   else if (!strcmp(command, "http trace on")) {
     httpTraceEnabled = true;
     httpTraceStartedAt = millis();
-    logEvent("info", "HTTP trace bekapcsolva, maximum 10 percre");
+    logCode("info", "X4002");
   } else if (!strcmp(command, "http trace off")) {
     httpTraceEnabled = false;
-    logEvent("info", "HTTP trace kikapcsolva");
+    logCode("info", "X4003");
   } else if (!strcmp(command, "profile show")) printProfileShow();
   else if (!strcmp(command, "profile export secrets")) exportSecretProfile();
   else if (!strcmp(command, "eeprom status")) printEepromStatus();
@@ -2944,6 +3097,7 @@ void handleSerialCommands() {
 void setup() {
   Serial.begin(115200);
   delay(300);
+  initializeBootGeneration();
   buildDeviceIdentity();
   for (uint8_t i = 0; i < STRIP_COUNT; i++) {
     strip[i].begin();
@@ -2961,22 +3115,17 @@ void setup() {
 #endif
   matrix.begin();
   showMatrix(MATRIX_BOOT);
-  logEvent("success", "Arduino LED Controller indul");
-  char info[160];
-  snprintf(info, sizeof(info), "Firmware: %s | Arduino UNO R4 WiFi",
-    FIRMWARE_VERSION);
-  logEvent("info", info);
-  snprintf(info, sizeof(info), "Build: %s %s | funkcio: %s",
-    __DATE__, __TIME__, FIRMWARE_FEATURE);
-  logEvent("info", info);
+  logCode("success", "X0001");
+  logCodef("info", "X0002", "%s", FIRMWARE_VERSION);
+  logCodef("info", "X0003", "%s", FIRMWARE_FEATURE);
   loadPersistentConfig();
   loadTimeSettings();
   loadSchedules();
   connectWifi();
   startNtpUdpService();
   server.begin();
-  logEvent("success", "HTTP szerver elinditva a 80/TCP porton");
-  logEvent("info", "Serial diagnosztika aktiv; parancslista: help");
+  logCodef("success", "X0004", "%u", HTTP_API_PORT);
+  logCode("info", "X0005");
 }
 void loop() {
   if (wifiHasAddress()) {

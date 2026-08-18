@@ -3,7 +3,6 @@
 
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const CURRENT_APP_VERSION = require('../package.json').version;
 
 const fw = fs.readFileSync(
   'firmware/ArduinoLedController/ArduinoLedController.ino',
@@ -81,7 +80,7 @@ assert.match(types, /timezoneId: string/);
 assert.match(api, /syncTimeConfig/);
 assert.match(settings, /resolvedOptions\(\)\.timeZone/);
 
-// README current-state contract: Beta.9 + dynamic GitHub Actions badges.
+// README current-state contract: manifest-driven current versions + dynamic GitHub Actions badges.
 assert.ok(
   readme.includes(
     'firmware-beta-release.yml/badge.svg?branch=next%2Fv5-rearchitecture',
@@ -90,16 +89,16 @@ assert.ok(
 );
 assert.ok(
   readme.includes(
-    'beta-release.yml/badge.svg?branch=next%2Fv5-rearchitecture',
+    'app-beta-release.yml/badge.svg?branch=next%2Fv5-rearchitecture',
   ),
   'Hiányzó dinamikus V5 Beta workflow badge',
 );
 assert.ok(readme.includes('actions/workflows/firmware-beta-release.yml'));
-assert.ok(readme.includes('actions/workflows/beta-release.yml'));
+assert.ok(readme.includes('actions/workflows/app-beta-release.yml'));
 
 for (const marker of [
-  CURRENT_APP_VERSION,
-  '5.0.0-beta.7',
+  versions.application,
+  versions.firmware,
   'next/v5-rearchitecture',
   'Stabil ág | `main`',
   'Debian 13 Rust LXC',
@@ -108,7 +107,7 @@ for (const marker of [
 ]) {
   assert.ok(
     readme.includes(marker),
-    `README aktuális Beta.9 marker hiányzik: ${marker}`,
+    `README current marker hiányzik: ${marker}`,
   );
 }
 
@@ -229,13 +228,23 @@ assert.ok(!fw.includes('"America/New_York"'));
 
 for (const file of [
   'README.md',
+  'docs/v5/CURRENT_STATE.md',
+]) {
+  const content = fs.readFileSync(file, 'utf8');
+  assert.ok(
+    content.includes(versions.firmware),
+    `${file}: current firmware version mismatch`,
+  );
+}
+
+for (const file of [
   'docs/v5/BETA7_CURRENT_STATE.md',
   'docs/v5/BETA7_UI_FREEZE.md',
 ]) {
   const content = fs.readFileSync(file, 'utf8');
   assert.ok(
-    content.includes(versions.firmware),
-    `${file}: current Beta.7 firmware version mismatch`,
+    content.includes('5.0.0-beta.6'),
+    `${file}: historical Beta.7 firmware pairing changed`,
   );
 }
 

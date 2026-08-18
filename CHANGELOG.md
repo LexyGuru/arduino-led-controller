@@ -1,3 +1,89 @@
+# 5.6.1 — 2026-08-18
+
+### Stable promotion
+- Promoted the manually validated 5.6.1-beta.2 application to Stable 5.6.1.
+- Promoted firmware identity 5.0.0-beta.10 to Stable 5.0.0 without functional firmware logic changes.
+- Stable updater alias: `updater-stable`.
+- Direct API remains `1.0.0`.
+
+# 5.6.1-beta.2 — 2026-08-18
+
+### Device Key transport recovery
+- Unified the Device Key minimum length across secure credential storage and HTTP `X-Device-Key` transport.
+- Valid printable-ASCII Device Keys of 16–64 characters are accepted consistently.
+- HTTP header safety remains strict.
+- Firmware remains `5.0.0-beta.10`; Direct API remains `1.0.0`.
+
+# 5.6.1-beta.1 — 2026-08-18
+
+### Release/channel identity
+- Running application build identity is separated from the selected application update channel.
+- Installed firmware identity is separated from the selected firmware update channel.
+- Stable/Beta firmware catalogs are strictly channel-filtered.
+
+### Startup and diagnostics
+- Real startup warnings persist on Dashboard after the startup screen closes.
+- Recovered healthy macOS Keychain/bootstrap noise no longer dominates Latest Error.
+- Startup card scrolling is disabled.
+- Persistent Sidebar application-update visibility was added.
+
+### GitHub Actions cleanup
+- Canonical workflow set reduced to seven clear application/firmware build and release workflows.
+- Removed `beta-release.yml` and `tauri-desktop.yml`.
+- Renamed staging workflow to `app-staging-build.yml`.
+- Stable application publishing is self-contained in `app-stable-release.yml`.
+- Beta firmware publishing reuses `firmware-build.yml`.
+
+### Versions
+- Application: `5.6.1-beta.1`
+- Firmware: `5.0.0-beta.10`
+- Direct API: `1.0.0`
+- Current Stable application before promotion: `5.1.0`
+- Planned Stable promotion after accepted Beta: application `5.6.1`, firmware `5.0.0`
+
+# 5.6.0-beta.2
+
+### Theme Engine 3.0
+- 12 factory themes plus custom theme profiles.
+- Expanded accent palette and material / gradient / contrast dimensions.
+- JSON import/export, clone-current workflow and contrast validation.
+- Shared desktop/mobile/web-LXC ThemeProvider with v1/v2 storage migration.
+- Frozen Beta.7 macOS OTA contract remains untouched.
+
+# 5.5.0-beta.1
+
+## V5.5 — Next Generation UI & Shared Runtime — 2026-08-12
+
+### Theme Engine 2.0
+- Teljes preset galéria, v1 → v2 migráció, glass/glow/motion és perzisztált megjelenés.
+
+### Core UI 1.5
+- Új reszponzív Sidebar, Topbar és mobil BottomNav alkalmazáshéj.
+
+### Dashboard 2.0 / Statistics 1.0
+- Valós runtime snapshotok, schedule összesítések és audit-alapú aktivitás.
+- Nincs szintetikus/fake history.
+
+### Activity & Logs 2.0
+- Egységes Arduino/audit/network log szűrés és export.
+
+### Management UI 2.0
+- Újratervezett Firmware, Schedules és Settings felületek.
+
+### App Update Center 1.0
+- Stable/beta csatorna, manuális ellenőrzés, 6 órás automatikus check és külön error state.
+
+### Shared Desktop / Mobile / LXC Runtime
+- Közös React frontend forrás minden célplatformhoz.
+- LXC runtime isolation: natív Tauri core/window API csak valódi Tauri runtime-ban aktiválódik.
+- Javítva a `window.__TAURI_INTERNALS__.metadata` böngészős startup crash.
+
+### Verziók
+- Application: `5.5.0-beta.1`
+- Firmware: `5.0.0-beta.7`
+- Direct API: `1.0.0`
+- Stable baseline: `5.0.0`
+
 # 5.0.0-beta.9
 
 ## 5.0.0-beta.9

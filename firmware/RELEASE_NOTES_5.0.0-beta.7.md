@@ -1,6 +1,6 @@
 # Arduino LED Controller Firmware 5.0.0-beta.7
 
-Application release: **5.0.0-beta.10**
+Application release: **5.5.0-beta.1**
 Direct API: **1.0.0**
 
 ## Fő változások

@@ -1,0 +1,32 @@
+/* Beta.4 UI/UX redesign baseline.
+   Neutral tokens only: this layer intentionally does not alter page geometry yet. */
+.beta4-ui-baseline {
+  --beta4-shell-max: 1760px;
+  --beta4-shell-gap: clamp(18px, 2vw, 30px);
+  --beta4-panel-gap: clamp(14px, 1.6vw, 22px);
+  --beta4-panel-pad: clamp(18px, 2vw, 28px);
+  --beta4-control-height: 40px;
+  --beta4-radius-sm: 10px;
+  --beta4-radius-md: 14px;
+  --beta4-radius-lg: 18px;
+  --beta4-sidebar-width: 248px;
+  --beta4-content-reading-max: 1680px;
+  --beta4-grid-min: 220px;
+  --beta4-focus-ring-width: 2px;
+}
+
+@media (max-width: 1180px) {
+  .beta4-ui-baseline {
+    --beta4-sidebar-width: 224px;
+    --beta4-grid-min: 200px;
+  }
+}
+
+@media (max-width: 760px) {
+  .beta4-ui-baseline {
+    --beta4-shell-gap: 16px;
+    --beta4-panel-gap: 12px;
+    --beta4-panel-pad: 16px;
+    --beta4-grid-min: 180px;
+  }
+}

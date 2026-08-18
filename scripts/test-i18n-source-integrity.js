@@ -6,7 +6,7 @@ const fs = require('node:fs');
 
 const read = (file) => fs.readFileSync(file, 'utf8');
 
-const i18n = read('desktop-tauri/src/i18n/index.tsx');
+const i18n = read('desktop-tauri/src/i18n/runtime.ts');
 const dashboard = read(
   'desktop-tauri/src/pages/DashboardPage.tsx'
 );

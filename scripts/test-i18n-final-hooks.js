@@ -3,7 +3,7 @@
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const read=p=>fs.readFileSync(p,'utf8');
-const i18n=read('desktop-tauri/src/i18n/index.tsx');
+const i18n=read('desktop-tauri/src/i18n/runtime.ts');
 for(const token of ['export function translate','activeLanguage = next','activeLanguage = language']) assert.ok(i18n.includes(token),token);
 const hooks=['useController.ts','useV5Leds.ts','useV5Logs.ts','useV5Schedules.ts','useV5Firmware.ts','useV5System.ts'];
 for(const name of hooks){const source=read(`desktop-tauri/src/hooks/${name}`);assert.ok(source.includes("import { translate } from '../i18n';"),`Hiányzó translate import: ${name}`);}

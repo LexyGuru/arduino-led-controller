@@ -581,7 +581,7 @@ export function LedsPage({
     });
 
   return (
-    <div className="page">
+    <div className="page beta4-leds-page">
       <div className="page-heading">
         <div>
           <p className="eyebrow">
@@ -645,6 +645,43 @@ export function LedsPage({
             void state.refresh()
         }
       />
+
+      <section className="panel beta2-scene-panel">
+        <div>
+          <p className="eyebrow">
+            {t('beta2.scene.eyebrow')}
+          </p>
+          <h2>
+            {t('beta2.scene.title')}
+          </h2>
+          <p className="muted">
+            {t('beta2.scene.subtitle')}
+          </p>
+        </div>
+
+        <div className="beta2-scene-actions">
+          <button className="secondary" disabled={state.busy} onClick={() => void state.applyScene('relax')}>
+            <Moon size={17} />
+            {t('beta2.scene.relax')}
+          </button>
+          <button className="secondary" disabled={state.busy} onClick={() => void state.applyScene('movie')}>
+            <Square size={16} />
+            {t('beta2.scene.movie')}
+          </button>
+          <button className="secondary" disabled={state.busy} onClick={() => void state.applyScene('gaming')}>
+            <Sparkles size={17} />
+            {t('beta2.scene.gaming')}
+          </button>
+          <button className="secondary" disabled={state.busy} onClick={() => void state.applyScene('party')}>
+            <Waves size={17} />
+            {t('beta2.scene.party')}
+          </button>
+          <button className="danger" disabled={state.busy} onClick={() => void state.applyScene('all-off')}>
+            <Power size={17} />
+            {t('beta2.scene.allOff')}
+          </button>
+        </div>
+      </section>
 
       <section className="panel test-panel">
         <div>

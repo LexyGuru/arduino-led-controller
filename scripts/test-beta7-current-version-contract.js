@@ -1,27 +1,31 @@
 "use strict";
 const assert=require("node:assert/strict");
 const fs=require("node:fs");
-const CURRENT_APP_VERSION=require('../package.json').version;
 const pkg=JSON.parse(fs.readFileSync("package.json","utf8"));
+const versions=JSON.parse(fs.readFileSync("release-versions.json","utf8"));
 const fw=fs.readFileSync("firmware/ArduinoLedController/ArduinoLedController.ino","utf8");
 const readme=fs.readFileSync("README.md","utf8");
-const state=fs.readFileSync("docs/v5/BETA8_CURRENT_STATE.md","utf8");
 
-assert.equal(pkg.version,CURRENT_APP_VERSION);
-assert.match(CURRENT_APP_VERSION,/^\d+\.\d+\.\d+$/);
-assert.ok(
-  readme.includes(`| Stabil alkalmazás | \`${CURRENT_APP_VERSION}\` |`),
-  `README Stable app identity is not current: ${CURRENT_APP_VERSION}`
-);
+function releaseDocPrefix(version){
+  const match=String(version).match(/^(\d+)\.(\d+)\.\d+-beta\.(\d+)$/);
+  assert.ok(match,`Unsupported Beta version: ${version}`);
+  const [,major,minor,beta]=match;
+  return major==="5"&&minor==="0"
+    ? `BETA${beta}`
+    : `V${major}${minor}_BETA${beta}`;
+}
 
-assert.ok(fw.includes('#define FIRMWARE_VERSION "5.0.0-beta.7"'));
-assert.ok(fw.includes('#define DIRECT_API_VERSION "1.0.0"'));
-assert.ok(readme.includes('| Firmware | `5.0.0-beta.7` |'));
+const prefix=releaseDocPrefix(versions.application);
+const currentReleaseNotesPath=`docs/v5/${prefix}_RELEASE_NOTES.md`;
+assert.ok(fs.existsSync(currentReleaseNotesPath),`Missing current release notes: ${currentReleaseNotesPath}`);
+const currentReleaseNotes=fs.readFileSync(currentReleaseNotesPath,"utf8");
 
-assert.ok(
-  state.includes('`5.0.0-beta.10`') &&
-  state.includes('`5.0.0-beta.7`') &&
-  state.includes('`1.0.0`')
-);
-
-console.log(`OK: Stable app ${CURRENT_APP_VERSION}, historical firmware 5.0.0-beta.7, Direct API 1.0.0`);
+assert.equal(pkg.version,versions.application);
+assert.ok(fw.includes(`#define FIRMWARE_VERSION "${versions.firmware}"`));
+assert.ok(fw.includes(`#define DIRECT_API_VERSION "${versions.directApi}"`));
+assert.ok(readme.includes(`| Alkalmazás | **\`${versions.application}\`** |`));
+assert.ok(readme.includes(`| Firmware | **\`${versions.firmware}\`** |`));
+assert.ok(currentReleaseNotes.includes(`\`${versions.application}\``));
+assert.ok(currentReleaseNotes.includes(`\`${versions.firmware}\``));
+assert.ok(currentReleaseNotes.includes(`\`${versions.directApi}\``));
+console.log(`OK: app ${versions.application}, firmware ${versions.firmware}, Direct API ${versions.directApi}, release docs ${prefix}`);

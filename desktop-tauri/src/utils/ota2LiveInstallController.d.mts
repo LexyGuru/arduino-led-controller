@@ -1,0 +1,7 @@
+import type { Ota2ProgressLikeEvent,Ota2RuntimeState } from "./ota2RuntimeState.mjs";
+import type { Ota2NativeBridgeResult } from "./ota2NativeBridge.mjs";
+export interface Ota2LivePolicyResult{ready:boolean;code:string;relation:"newer"|"same"|"older"|"unknown";mode:"update"|"reinstall"|"restore"|"unknown";installedVersion:string|null;availableVersion:string|null;checks:Readonly<Record<string,boolean>>;delegatedChecks:readonly string[];}
+export interface Ota2RecoveryDescriptor{backupId:string;count:number;revision:number|null;checksum:string;}
+export interface Ota2LiveControllerResult{ok:boolean;code:string;policy:Ota2LivePolicyResult|null;bridge:Ota2NativeBridgeResult|null;recovery:Ota2RecoveryDescriptor|null;error?:string;}
+export const OTA2_LIVE_CONTROLLER_CODES:Readonly<Record<string,string>>;
+export function createOta2LiveInstallController(input?:{firmwareInstallRelease?:(tag:string)=>unknown|Promise<unknown>;firmwareStatus?:()=>unknown|Promise<unknown>;subscribeProgress?:(listener:(entry:Ota2ProgressLikeEvent)=>void)=>(()=>void|Promise<void>)|Promise<()=>void|Promise<void>>;createBackup?:()=>Promise<Ota2RecoveryDescriptor>|Ota2RecoveryDescriptor;}):Readonly<{readonly busy:boolean;install(input?:{firmware?:unknown;artifact?:unknown;version?:string;onRuntime?:(runtime:Ota2RuntimeState)=>void;}):Promise<Ota2LiveControllerResult>}>;

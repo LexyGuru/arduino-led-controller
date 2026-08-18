@@ -338,7 +338,7 @@ const logger =
     dataDir:
       config.paths.dataDir,
     enableFileLogging:
-      false,
+      true,
     silent:
       config.service.environment ===
       'test'

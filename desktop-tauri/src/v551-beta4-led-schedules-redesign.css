@@ -1,0 +1,443 @@
+/* Beta.4 — LED + Schedules Modern Glass Redesign
+   Presentation only. Existing controller, debounce, schedule persistence,
+   conflict, backup and Direct API behavior remain authoritative. */
+
+/* Shared page heading */
+.beta4-leds-page .page-heading,
+.beta4-schedules-redesign .page-heading {
+  position: relative;
+  overflow: hidden;
+  padding: clamp(22px, 2.5vw, 30px);
+  border: 1px solid color-mix(in srgb, var(--ds-accent) 16%, var(--ds-border));
+  border-radius: 22px;
+  background:
+    radial-gradient(
+      circle at 90% 0%,
+      color-mix(in srgb, var(--ds-accent) 15%, transparent),
+      transparent 32%
+    ),
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--ds-surface-raised) 80%, transparent),
+      color-mix(in srgb, var(--ds-surface) 66%, transparent)
+    );
+  box-shadow:
+    0 20px 52px rgba(0,0,0,.15),
+    inset 0 1px 0 color-mix(in srgb, white 5%, transparent);
+  backdrop-filter: blur(22px) saturate(140%);
+  -webkit-backdrop-filter: blur(22px) saturate(140%);
+}
+
+.beta4-leds-page .page-heading::after,
+.beta4-schedules-redesign .page-heading::after {
+  content: "";
+  position: absolute;
+  left: 24px;
+  right: 24px;
+  bottom: 0;
+  height: 1px;
+  background:
+    linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in srgb, var(--ds-accent) 62%, transparent),
+      transparent
+    );
+}
+
+/* LED page */
+.beta4-leds-page {
+  --beta4-led-glow:
+    color-mix(in srgb, var(--ds-accent) 22%, transparent);
+}
+
+.beta4-leds-page .v5-led-bulk-actions,
+.beta4-leds-page .beta2-scene-panel,
+.beta4-leds-page .test-panel {
+  border-color: color-mix(in srgb, var(--ds-accent) 12%, var(--ds-border));
+  box-shadow:
+    0 16px 42px rgba(0,0,0,.13),
+    inset 0 1px 0 color-mix(in srgb, white 4%, transparent);
+}
+
+.beta4-leds-page .beta2-scene-panel,
+.beta4-leds-page .test-panel {
+  position: relative;
+  overflow: hidden;
+  background:
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--ds-surface-raised) 78%, transparent),
+      color-mix(in srgb, var(--ds-surface) 68%, transparent)
+    );
+  backdrop-filter: blur(18px);
+}
+
+.beta4-leds-page .beta2-scene-panel::before,
+.beta4-leds-page .test-panel::before {
+  content: "";
+  position: absolute;
+  width: 150px;
+  height: 150px;
+  right: -65px;
+  top: -80px;
+  pointer-events: none;
+  border-radius: 50%;
+  background:
+    radial-gradient(
+      circle,
+      color-mix(in srgb, var(--ds-accent) 14%, transparent),
+      transparent 68%
+    );
+}
+
+.beta4-leds-page .beta2-scene-actions,
+.beta4-leds-page .test-actions {
+  gap: 10px;
+}
+
+.beta4-leds-page .beta2-scene-actions button,
+.beta4-leds-page .test-actions button {
+  min-height: 42px;
+  border-radius: 13px;
+  transition:
+    transform .18s ease,
+    border-color .18s ease,
+    box-shadow .18s ease;
+}
+
+.beta4-leds-page .beta2-scene-actions button:hover:not(:disabled),
+.beta4-leds-page .test-actions button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  border-color:
+    color-mix(in srgb, var(--ds-accent) 26%, var(--ds-border));
+  box-shadow:
+    0 10px 24px rgba(0,0,0,.13),
+    0 0 18px color-mix(in srgb, var(--ds-accent) 7%, transparent);
+}
+
+.beta4-leds-page .led-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.beta4-leds-page .led-card {
+  position: relative;
+  overflow: hidden;
+  min-width: 0;
+  padding: 20px;
+  border:
+    1px solid color-mix(in srgb, var(--ds-accent) 14%, var(--ds-border));
+  border-radius: 20px;
+  background:
+    radial-gradient(
+      circle at 100% 0,
+      color-mix(in srgb, var(--ds-accent) 10%, transparent),
+      transparent 32%
+    ),
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--ds-surface-raised) 80%, transparent),
+      color-mix(in srgb, var(--ds-surface) 66%, transparent)
+    );
+  box-shadow:
+    0 20px 48px rgba(0,0,0,.15),
+    inset 0 1px 0 color-mix(in srgb, white 5%, transparent);
+  backdrop-filter: blur(20px);
+  transition:
+    transform .2s ease,
+    border-color .2s ease,
+    box-shadow .2s ease;
+}
+
+.beta4-leds-page .led-card::before {
+  content: "";
+  position: absolute;
+  left: 20px;
+  right: 20px;
+  top: 0;
+  height: 1px;
+  background:
+    linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in srgb, var(--ds-accent) 70%, transparent),
+      transparent
+    );
+}
+
+.beta4-leds-page .led-card:hover {
+  transform: translateY(-3px);
+  border-color:
+    color-mix(in srgb, var(--ds-accent) 30%, var(--ds-border));
+  box-shadow:
+    0 26px 58px rgba(0,0,0,.2),
+    inset 0 1px 0 color-mix(in srgb, white 7%, transparent),
+    0 0 28px color-mix(in srgb, var(--ds-accent) 8%, transparent);
+}
+
+.beta4-leds-page .led-card-head {
+  align-items: center;
+}
+
+.beta4-leds-page .led-card-head h3 {
+  margin-top: 4px;
+  font-size: 22px;
+  letter-spacing: -.03em;
+}
+
+.beta4-leds-page .led-card-head > div > span {
+  color: var(--ds-text-muted);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.beta4-leds-page .led-card .power {
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background:
+    color-mix(in srgb, var(--ds-surface-soft) 82%, transparent);
+  border:
+    1px solid color-mix(in srgb, var(--ds-border) 74%, transparent);
+}
+
+.beta4-leds-page .led-card .power.on {
+  color: var(--ds-success);
+  border-color:
+    color-mix(in srgb, var(--ds-success) 34%, var(--ds-border));
+  background:
+    color-mix(in srgb, var(--ds-success) 10%, var(--ds-surface));
+  box-shadow:
+    0 0 24px color-mix(in srgb, var(--ds-success) 12%, transparent);
+}
+
+.beta4-leds-page .color-preview {
+  position: relative;
+  min-height: 72px;
+  margin: 18px 0;
+  border:
+    1px solid color-mix(in srgb, white 12%, var(--ds-border));
+  border-radius: 16px;
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, white 18%, transparent),
+    0 14px 32px rgba(0,0,0,.18),
+    0 0 34px color-mix(in srgb, currentColor 12%, transparent);
+}
+
+.beta4-leds-page .color-preview::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    linear-gradient(
+      120deg,
+      color-mix(in srgb, white 18%, transparent),
+      transparent 38% 72%,
+      color-mix(in srgb, black 12%, transparent)
+    );
+}
+
+.beta4-leds-page .led-card label {
+  display: grid;
+  gap: 8px;
+  margin-top: 15px;
+  color: var(--ds-text-secondary);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.beta4-leds-page .color-row,
+.beta4-leds-page .slider-number-row {
+  padding: 8px;
+  border:
+    1px solid color-mix(in srgb, var(--ds-accent) 8%, var(--ds-border));
+  border-radius: 13px;
+  background:
+    color-mix(in srgb, var(--ds-surface-soft) 74%, transparent);
+}
+
+.beta4-leds-page .color-row code {
+  color: var(--ds-accent);
+  font-weight: 800;
+  letter-spacing: .04em;
+}
+
+.beta4-leds-page input[type="range"] {
+  accent-color: var(--ds-accent);
+}
+
+.beta4-leds-page .value-number {
+  border-radius: 10px;
+}
+
+.beta4-leds-page .send-hint {
+  color: var(--ds-text-muted);
+  font-size: 9px;
+}
+
+/* Schedules page */
+.beta4-schedules-redesign .v55-management-heading {
+  gap: 22px;
+}
+
+.beta4-schedules-redesign .page-actions {
+  gap: 9px;
+}
+
+.beta4-schedules-redesign .page-actions button {
+  min-height: 42px;
+  border-radius: 13px;
+}
+
+.beta4-schedules-redesign > .panel,
+.beta4-schedules-redesign .panel {
+  border-color:
+    color-mix(in srgb, var(--ds-accent) 11%, var(--ds-border));
+  box-shadow:
+    0 18px 46px rgba(0,0,0,.13),
+    inset 0 1px 0 color-mix(in srgb, white 4%, transparent);
+}
+
+.beta4-schedules-redesign .panel-title h2 {
+  letter-spacing: -.025em;
+}
+
+.beta4-schedules-redesign .schedule-sync-grid,
+.beta4-schedules-redesign .v55-detail-grid {
+  gap: 11px;
+}
+
+.beta4-schedules-redesign .schedule-sync-grid > *,
+.beta4-schedules-redesign .v55-detail-grid > div {
+  border-color:
+    color-mix(in srgb, var(--ds-accent) 9%, var(--ds-border));
+  background:
+    color-mix(in srgb, var(--ds-surface-soft) 72%, transparent);
+  border-radius: 13px;
+}
+
+.beta4-schedules-redesign .schedule-form,
+.beta4-schedules-redesign .schedule-editor,
+.beta4-schedules-redesign .schedule-copy-panel,
+.beta4-schedules-redesign .schedule-backups {
+  border-color:
+    color-mix(in srgb, var(--ds-accent) 11%, var(--ds-border));
+}
+
+.beta4-schedules-redesign .day-selector,
+.beta4-schedules-redesign .day-buttons {
+  gap: 7px;
+}
+
+.beta4-schedules-redesign .day-selector button,
+.beta4-schedules-redesign .day-buttons button {
+  border-radius: 11px;
+}
+
+.beta4-schedules-redesign .day-selector button.active,
+.beta4-schedules-redesign .day-buttons button.active {
+  color: var(--ds-accent);
+  background:
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--ds-accent-soft) 92%, transparent),
+      color-mix(in srgb, var(--ds-accent) 9%, transparent)
+    );
+  border-color:
+    color-mix(in srgb, var(--ds-accent) 32%, var(--ds-border));
+  box-shadow:
+    0 0 18px color-mix(in srgb, var(--ds-accent) 10%, transparent);
+}
+
+.beta4-schedules-redesign .schedule-card,
+.beta4-schedules-redesign .schedule-item {
+  border-color:
+    color-mix(in srgb, var(--ds-accent) 10%, var(--ds-border));
+  border-radius: 15px;
+  background:
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--ds-surface-raised) 72%, transparent),
+      color-mix(in srgb, var(--ds-surface) 70%, transparent)
+    );
+  transition:
+    transform .18s ease,
+    border-color .18s ease,
+    box-shadow .18s ease;
+}
+
+.beta4-schedules-redesign .schedule-card:hover,
+.beta4-schedules-redesign .schedule-item:hover {
+  transform: translateY(-2px);
+  border-color:
+    color-mix(in srgb, var(--ds-accent) 24%, var(--ds-border));
+  box-shadow:
+    0 14px 30px rgba(0,0,0,.13),
+    0 0 20px color-mix(in srgb, var(--ds-accent) 6%, transparent);
+}
+
+.beta4-schedules-redesign input,
+.beta4-schedules-redesign select {
+  border-radius: 11px;
+}
+
+.beta4-schedules-redesign input[type="color"] {
+  overflow: hidden;
+  padding: 2px;
+}
+
+.beta4-schedules-redesign .notice,
+.beta4-schedules-redesign .console-warning {
+  border-radius: 14px;
+}
+
+@media (max-width: 1280px) {
+  .beta4-leds-page .led-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .beta4-leds-page .led-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .beta4-schedules-redesign .v55-management-heading {
+    align-items: stretch;
+  }
+
+  .beta4-schedules-redesign .page-actions {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 620px) {
+  .beta4-leds-page .page-heading,
+  .beta4-schedules-redesign .page-heading {
+    padding: 18px;
+    border-radius: 18px;
+  }
+
+  .beta4-leds-page .led-card {
+    padding: 17px;
+    border-radius: 17px;
+  }
+
+  .beta4-schedules-redesign .page-actions button {
+    flex: 1 1 145px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .beta4-leds-page *,
+  .beta4-schedules-redesign * {
+    transition-duration: .001ms !important;
+    animation-duration: .001ms !important;
+  }
+}

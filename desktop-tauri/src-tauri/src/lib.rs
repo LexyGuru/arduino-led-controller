@@ -5,7 +5,7 @@ use serde_json::Value;
 use sha2::{Digest, Sha256};
 use std::{
     fs,
-    io::{ErrorKind, Read, Write},
+    io::Write,
     net::{Ipv4Addr, TcpStream, ToSocketAddrs},
     path::{Path, PathBuf},
     process::Command,
@@ -18,6 +18,7 @@ use std::{
 use tauri::{AppHandle, Emitter, Manager, State};
 
 mod credential_bridge;
+mod diagnostic_logging;
 
 const ARDUINO_CONNECT_TIMEOUT: Duration = Duration::from_secs(5);
 const ARDUINO_RESPONSE_TIMEOUT: Duration = Duration::from_secs(30);
@@ -317,6 +318,22 @@ struct OtaProgressEvent {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
+struct ScheduleSaveProgressEvent {
+    timestamp: u64,
+    stage: String,
+    level: String,
+    message: String,
+    current: usize,
+    total: usize,
+    progress: Option<u8>,
+    revision_before: Option<u64>,
+    revision_after: Option<u64>,
+    checksum: Option<String>,
+    duration_ms: Option<u64>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 struct RuntimeCapabilities {
     platform: String,
     mobile: bool,
@@ -370,14 +387,45 @@ fn emit_ota_progress(
     message: impl Into<String>,
     progress: Option<u8>,
 ) {
+    let message = message.into();
+    diagnostic_logging::log_ota_progress(app, stage, level, &message, progress);
     let payload = OtaProgressEvent {
         timestamp: unix_millis(),
         stage: stage.to_string(),
         level: level.to_string(),
-        message: message.into(),
+        message,
         progress,
     };
     let _ = app.emit("ota-progress", payload);
+}
+
+fn emit_schedule_save_progress(
+    app: &AppHandle,
+    stage: &str,
+    level: &str,
+    message: impl Into<String>,
+    current: usize,
+    total: usize,
+    progress: Option<u8>,
+    revision_before: Option<u64>,
+    revision_after: Option<u64>,
+    checksum: Option<String>,
+    duration_ms: Option<u64>,
+) {
+    let payload = ScheduleSaveProgressEvent {
+        timestamp: unix_millis(),
+        stage: stage.to_string(),
+        level: level.to_string(),
+        message: message.into(),
+        current,
+        total,
+        progress,
+        revision_before,
+        revision_after,
+        checksum,
+        duration_ms,
+    };
+    let _ = app.emit("schedule-save-progress", payload);
 }
 
 fn validate_host(host: &str, label: &str) -> Result<(), String> {
@@ -462,7 +510,7 @@ fn protected_path(c: &Config, path: &str) -> Result<String, String> {
 
 fn device_key_header_value(c: &Config) -> Result<&str, String> {
     let value = c.arduino_api_key.trim();
-    if value.len() < 24
+    if value.len() < 16
         || value.len() > 64
         || !value.bytes().all(|byte| (0x21..=0x7e).contains(&byte))
     {
@@ -1143,7 +1191,7 @@ fn firmware_version_is_prerelease(version: &str) -> bool {
 }
 
 fn firmware_artifacts_from_release(release: &GitHubRelease) -> Vec<FirmwareArtifact> {
-    if release.draft || release.tag_name != FIRMWARE_BETA_RELEASE_TAG {
+    if release.draft {
         return Vec::new();
     }
     release
@@ -1151,14 +1199,13 @@ fn firmware_artifacts_from_release(release: &GitHubRelease) -> Vec<FirmwareArtif
         .iter()
         .filter_map(|binary| {
             let version = firmware_version_from_asset_name(&binary.name)?;
-            if !firmware_version_is_prerelease(&version) {
-                return None;
-            }
             let checksum_name = format!("{}.sha256", binary.name);
-            let checksum = release
-                .assets
-                .iter()
-                .find(|asset| asset.name == checksum_name)?;
+            let checksum = release.assets.iter().find(|asset| asset.name == checksum_name)?;
+            let channel = if firmware_version_is_prerelease(&version) {
+                "beta"
+            } else {
+                "stable"
+            };
             Some(FirmwareArtifact {
                 name: binary.name.clone(),
                 download_url: binary.browser_download_url.clone(),
@@ -1166,12 +1213,31 @@ fn firmware_artifacts_from_release(release: &GitHubRelease) -> Vec<FirmwareArtif
                 firmware_version: Some(version.clone()),
                 tag: version,
                 created_at: release.published_at.clone(),
-                summary: Some("Dedikált Arduino LED Controller Beta firmware-katalógus".into()),
-                channel: "beta".into(),
+                summary: Some(format!(
+                    "Arduino LED Controller {} firmware-katalógus",
+                    if channel == "stable" { "Stable" } else { "Beta" }
+                )),
+                channel: channel.into(),
                 expected_firmware_version: None,
                 metadata_conflict: None,
             })
         })
+        .collect()
+}
+
+fn firmware_artifacts_from_release_channel(
+    release: &GitHubRelease,
+    channel: &str,
+) -> Vec<FirmwareArtifact> {
+    let normalized_channel = if channel.trim() == "stable" { "stable" } else { "beta" };
+    let firmware_surface = release.tag_name == FIRMWARE_BETA_RELEASE_TAG
+        || release.tag_name.to_ascii_lowercase().contains("firmware");
+    if !firmware_surface || !release_matches_channel(release, normalized_channel) {
+        return Vec::new();
+    }
+    firmware_artifacts_from_release(release)
+        .into_iter()
+        .filter(|artifact| artifact.channel == normalized_channel)
         .collect()
 }
 
@@ -1190,53 +1256,78 @@ fn firmware_version_key(version: &str) -> (u64, u64, u64, u64) {
 }
 
 async fn firmware_beta_release() -> Result<GitHubRelease, String> {
-    github_releases()
-        .await?
-        .into_iter()
-        .find(|release| release.tag_name == FIRMWARE_BETA_RELEASE_TAG && !release.draft)
-        .ok_or_else(|| {
-            format!(
-                "A dedikált {} GitHub release nem található.",
-                FIRMWARE_BETA_RELEASE_TAG
-            )
-        })
+    let releases = github_releases().await?;
+    let mut assets = Vec::new();
+    let mut published_at = None;
+    for release in releases.into_iter().filter(|release| !release.draft) {
+        let firmware_surface = release.tag_name == FIRMWARE_BETA_RELEASE_TAG
+            || release.tag_name.to_ascii_lowercase().contains("firmware");
+        if !firmware_surface {
+            continue;
+        }
+        if published_at.is_none() {
+            published_at = release.published_at.clone();
+        }
+        assets.extend(release.assets);
+    }
+    if assets.is_empty() {
+        return Err("Nem található firmware release asset-katalógus.".into());
+    }
+    Ok(GitHubRelease {
+        tag_name: FIRMWARE_BETA_RELEASE_TAG.into(),
+        published_at,
+        html_url: None,
+        prerelease: true,
+        draft: false,
+        assets,
+    })
 }
 
 #[tauri::command]
-async fn firmware_releases(state: State<'_, AppState>) -> Result<Vec<FirmwareArtifact>, String> {
-    let channel = state
-        .config
-        .lock()
-        .map_err(|_| "Beállítás zárolva".to_string())?
-        .firmware_update_channel
-        .clone();
-    if channel.trim() != "beta" {
-        return Ok(Vec::new());
-    }
-    let release = firmware_beta_release().await?;
-    let mut artifacts = firmware_artifacts_from_release(&release);
-    artifacts.sort_by_key(|a| {
+async fn firmware_releases(
+    state: State<'_, AppState>,
+    channel: Option<String>,
+) -> Result<Vec<FirmwareArtifact>, String> {
+    let channel = match channel {
+        Some(channel) => channel,
+        None => state
+            .config
+            .lock()
+            .map_err(|_| "Beállítás zárolva".to_string())?
+            .firmware_update_channel
+            .clone(),
+    };
+    let normalized_channel = if channel.trim() == "stable" { "stable" } else { "beta" };
+    let releases = github_releases().await?;
+    let mut artifacts = releases
+        .iter()
+        .flat_map(|release| firmware_artifacts_from_release_channel(release, normalized_channel))
+        .collect::<Vec<_>>();
+    artifacts.sort_by_key(|artifact| {
         std::cmp::Reverse(firmware_version_key(
-            a.firmware_version.as_deref().unwrap_or(&a.tag),
+            artifact.firmware_version.as_deref().unwrap_or(&artifact.tag),
         ))
+    });
+    artifacts.dedup_by(|left, right| {
+        normalize_version(left.firmware_version.as_deref().unwrap_or(&left.tag))
+            == normalize_version(right.firmware_version.as_deref().unwrap_or(&right.tag))
     });
     Ok(artifacts)
 }
 
 async fn latest_firmware(config: &Config) -> Result<FirmwareArtifact, String> {
-    if config.firmware_update_channel.trim() != "beta" {
-        return Err(
-            "A stabil dedikált firmware-release még nincs konfigurálva; nincs beta fallback."
-                .into(),
-        );
-    }
-    let release = firmware_beta_release().await?;
-    firmware_artifacts_from_release(&release)
-        .into_iter()
-        .max_by_key(|a| firmware_version_key(a.firmware_version.as_deref().unwrap_or(&a.tag)))
-        .ok_or_else(|| {
-            "A dedikált Beta firmware-release nem tartalmaz teljes BIN + SHA-256 párt.".into()
+    let normalized_channel = if config.firmware_update_channel.trim() == "stable" { "stable" } else { "beta" };
+    github_releases()
+        .await?
+        .iter()
+        .flat_map(|release| firmware_artifacts_from_release_channel(release, normalized_channel))
+        .max_by_key(|artifact| {
+            firmware_version_key(artifact.firmware_version.as_deref().unwrap_or(&artifact.tag))
         })
+        .ok_or_else(|| format!(
+            "A(z) {} firmware-csatornán nincs teljes BIN + SHA-256 pár.",
+            normalized_channel
+        ))
 }
 fn app_asset_for_platform(release: &GitHubRelease) -> Option<&GitHubAsset> {
     let names: &[&str] = if cfg!(target_os = "macos") {
@@ -1258,9 +1349,15 @@ async fn latest_app_release(config: &Config) -> Result<AppUpdateArtifact, String
     let releases = github_releases().await?;
     let release = releases
         .iter()
-        .find(|release| {
+        .filter(|release| {
             release_matches_channel(release, config.update_channel.trim())
                 && app_asset_for_platform(release).is_some()
+        })
+        .max_by(|left, right| {
+            compare_app_versions(
+                &normalize_version(&left.tag_name),
+                &normalize_version(&right.tag_name),
+            )
         })
         .ok_or_else(|| {
             format!(
@@ -1290,6 +1387,66 @@ fn ensure_not_cancelled(state: &AppState) -> Result<(), String> {
 
 fn normalize_version(value: &str) -> String {
     value.trim().trim_start_matches('v').to_ascii_lowercase()
+}
+
+fn compare_app_versions(left: &str, right: &str) -> std::cmp::Ordering {
+    fn parse(value: &str) -> (Vec<u64>, Option<(u8, u64, String)>) {
+        let normalized = normalize_version(value);
+        let (core, prerelease) = normalized
+            .split_once('-')
+            .map(|(core, pre)| (core, Some(pre)))
+            .unwrap_or((normalized.as_str(), None));
+
+        let core = core
+            .split('.')
+            .map(|part| part.parse::<u64>().unwrap_or(0))
+            .collect::<Vec<_>>();
+
+        let prerelease = prerelease.map(|pre| {
+            let mut label = String::new();
+            let mut digits = String::new();
+            for ch in pre.chars() {
+                if ch.is_ascii_alphabetic() && digits.is_empty() {
+                    label.push(ch);
+                } else if ch.is_ascii_digit() {
+                    digits.push(ch);
+                }
+            }
+            let rank = match label.as_str() {
+                "alpha" => 0,
+                "beta" => 1,
+                "rc" => 2,
+                _ => 3,
+            };
+            (rank, digits.parse::<u64>().unwrap_or(0), label)
+        });
+
+        (core, prerelease)
+    }
+
+    let (left_core, left_pre) = parse(left);
+    let (right_core, right_pre) = parse(right);
+    let length = left_core.len().max(right_core.len());
+
+    for index in 0..length {
+        let left_part = *left_core.get(index).unwrap_or(&0);
+        let right_part = *right_core.get(index).unwrap_or(&0);
+        match left_part.cmp(&right_part) {
+            std::cmp::Ordering::Equal => {}
+            order => return order,
+        }
+    }
+
+    match (left_pre, right_pre) {
+        (None, None) => std::cmp::Ordering::Equal,
+        (None, Some(_)) => std::cmp::Ordering::Greater,
+        (Some(_), None) => std::cmp::Ordering::Less,
+        (Some((lr, ln, ll)), Some((rr, rn, rl))) => {
+            lr.cmp(&rr)
+                .then_with(|| ln.cmp(&rn))
+                .then_with(|| ll.cmp(&rl))
+        }
+    }
 }
 
 fn safe_firmware_filename(name: &str) -> String {
@@ -1776,24 +1933,6 @@ async fn upload_firmware_in_terminal(
     Err("A Terminal + arduinoOTA feltöltési mód csak macOS-en használható.".into())
 }
 
-fn parse_ota_http_response(response: &[u8]) -> Result<(u16, String), String> {
-    let split = response
-        .windows(4)
-        .position(|part| part == b"\r\n\r\n")
-        .ok_or_else(|| "Az Arduino OTA-válaszából hiányzik a HTTP fejléc vége.".to_string())?;
-    let headers = String::from_utf8_lossy(&response[..split]);
-    let status_line = headers.lines().next().unwrap_or_default();
-    let status_code = status_line
-        .split_whitespace()
-        .nth(1)
-        .and_then(|value| value.parse::<u16>().ok())
-        .ok_or_else(|| format!("Érvénytelen Arduino OTA HTTP-státusz: {status_line}"))?;
-    let body = String::from_utf8_lossy(&response[split + 4..])
-        .trim()
-        .to_string();
-    Ok((status_code, body))
-}
-
 async fn upload_firmware_native(
     app: &AppHandle,
     request_lock: Arc<Mutex<()>>,
@@ -1826,21 +1965,93 @@ async fn upload_firmware_native(
 
         let addresses = (address.as_str(), port)
             .to_socket_addrs()
-            .map_err(|error| format!("Az OTA-cím nem oldható fel: {error}"))?;
+            .map_err(|error| format!("Az OTA-cím nem oldható fel: {error}"))?
+            .collect::<Vec<_>>();
+        if addresses.is_empty() {
+            return Err(format!("Az OTA-cím nem adott használható socket címet: {address}:{port}"));
+        }
+
+        // A /api/v1/ota/prepare sikeres válasza és az OTA TCP-listener tényleges
+        // bind/listen állapota között UNO R4 WiFi-n rövid késleltetés lehet. Mobilon
+        // ez könnyebben látszik Connection refused hibaként. Az első elutasítás
+        // ezért nem végleges OTA-hiba: rövid, korlátozott újrapróbálkozási ablakot
+        // adunk a listenernek. A firmware küldése csak létrejött TCP-kapcsolat után indul.
+        const OTA_LISTENER_STARTUP_TIMEOUT: Duration = Duration::from_secs(5);
+        const OTA_CONNECT_RETRY_DELAY: Duration = Duration::from_secs(1);
+        const OTA_CONNECT_TIMEOUT: Duration = Duration::from_secs(3);
+
+        let connect_started = Instant::now();
+        let mut attempt: u32 = 0;
         let mut stream = None;
         let mut last_error = String::new();
-        for socket in addresses {
-            match TcpStream::connect_timeout(&socket, Duration::from_secs(6)) {
-                Ok(value) => {
-                    stream = Some(value);
-                    break;
+
+        'connect_attempts: loop {
+            attempt += 1;
+            for socket in &addresses {
+                let elapsed = connect_started.elapsed();
+                if elapsed >= OTA_LISTENER_STARTUP_TIMEOUT {
+                    break 'connect_attempts;
                 }
-                Err(error) => last_error = format!("{socket}: {error}"),
+                let remaining = OTA_LISTENER_STARTUP_TIMEOUT - elapsed;
+                let connect_timeout = OTA_CONNECT_TIMEOUT.min(remaining);
+
+                match TcpStream::connect_timeout(socket, connect_timeout) {
+                    Ok(value) => {
+                        stream = Some(value);
+                        if attempt > 1 {
+                            emit_ota_progress(
+                                &app,
+                                "Kapcsolat",
+                                "success",
+                                format!(
+                                    "Az OTA-listener elérhető lett a(z) {attempt}. próbálkozásra, {} másodperc után: {socket}",
+                                    connect_started.elapsed().as_secs()
+                                ),
+                                Some(53),
+                            );
+                        }
+                        break 'connect_attempts;
+                    }
+                    Err(error) => {
+                        last_error = format!("{socket}: {error}");
+                        #[cfg(target_os = "macos")]
+                        if error.raw_os_error() == Some(65) {
+                            return Err(format!(
+                                "OTA_TRANSPORT_CONNECT_FAILED: a(z) {address}:{port} OTA-cél nem érhető el a Tauri folyamatból. 0 firmware bájt került átvitelre. Utolsó transport hiba: {last_error}"
+                            ));
+                        }
+                    }
+                }
             }
+
+            let elapsed = connect_started.elapsed();
+            if elapsed >= OTA_LISTENER_STARTUP_TIMEOUT {
+                break;
+            }
+
+            emit_ota_progress(
+                &app,
+                "Kapcsolat",
+                "info",
+                format!(
+                    "Az OTA-listener még nem áll készen. Várakozás az Arduino előkészítésére: {} / {} másodperc. Következő próba rövidesen. Részlet: {last_error}",
+                    elapsed.as_secs(),
+                    OTA_LISTENER_STARTUP_TIMEOUT.as_secs()
+                ),
+                Some(52),
+            );
+            let remaining = OTA_LISTENER_STARTUP_TIMEOUT - elapsed;
+            std::thread::sleep(OTA_CONNECT_RETRY_DELAY.min(remaining));
         }
-        let mut stream = stream.ok_or_else(|| {
-            format!("A Tauri beépített OTA-kliense nem tudott kapcsolódni a(z) {address}:{port} címhez. {last_error}")
-        })?;
+
+        let Some(mut stream) = stream else {
+            let message = format!(
+                "OTA_TRANSPORT_CONNECT_FAILED: a(z) {address}:{port} OTA-célhoz {} másodperc alatt nem jött létre TCP-kapcsolat. 0 firmware bájt került átvitelre; API-confirmation nem indul. Utolsó transport hiba: {last_error}",
+                OTA_LISTENER_STARTUP_TIMEOUT.as_secs()
+            );
+            emit_ota_progress(&app, "Kapcsolat", "error", &message, Some(52));
+            return Err(message);
+        };
         stream.set_nodelay(true).ok();
         let ota_timeout =
             Duration::from_secs(normalized_ota_timeout_seconds(timeout_seconds));
@@ -1912,196 +2123,175 @@ Connection: close\r\n\r\n"
         emit_ota_progress(
             &app,
             "Feltöltés",
-            "info",
-            "A teljes bináris elküldve; várakozás az Arduino HTTP-válaszára…",
-            Some(89),
-        );
-
-        let mut response = Vec::with_capacity(512);
-        let mut buffer = [0u8; 512];
-        loop {
-            match stream.read(&mut buffer) {
-                Ok(0) => break,
-                Ok(length) => {
-                    response.extend_from_slice(&buffer[..length]);
-                    if response.len() > 8192 {
-                        return Err("Az Arduino OTA-válasza váratlanul túl nagy.".into());
-                    }
-                }
-                Err(error) if error.kind() == ErrorKind::Interrupted => continue,
-                Err(error)
-                    if error.kind() == ErrorKind::TimedOut
-                        || error.kind() == ErrorKind::WouldBlock
-                        || error.kind() == ErrorKind::ConnectionReset
-                        || error.kind() == ErrorKind::ConnectionAborted
-                        || error.kind() == ErrorKind::UnexpectedEof =>
-                {
-                    if response.is_empty() {
-                        return Err(format!("Az Arduino nem küldött OTA HTTP-választ: {error}"));
-                    }
-                    break;
-                }
-                Err(error) => return Err(format!("Az Arduino OTA-válasza nem olvasható: {error}")),
-            }
-        }
-        if response.is_empty() {
-            return Err("Az Arduino üres OTA-választ adott.".into());
-        }
-
-        let (status_code, response_text) = parse_ota_http_response(&response)?;
-        if status_code != 200 {
-            let explanation = match status_code {
-                401 => "Az OTA-jelszó hibás.",
-                404 => "Az Arduino OTA /sketch végpontja nem található.",
-                413 => "A firmware nagyobb, mint az Arduino OTA-tárhelye.",
-                414 => "A firmware mérete nem egyezik a Content-Length értékével.",
-                500 => "Az Arduino nem tudta megnyitni az ideiglenes firmware-tárhelyet.",
-                _ => "Az Arduino elutasította az OTA-feltöltést.",
-            };
-            return Err(format!(
-                "{explanation} HTTP {status_code} {}",
-                if response_text.is_empty() { "" } else { response_text.as_str() }
-            )
-            .trim()
-            .to_string());
-        }
-
-        emit_ota_progress(
-            &app,
-            "Feltöltés",
             "success",
-            format!(
-                "Az Arduino elfogadta a teljes firmware-t ({total} bájt). Válasz: {}",
-                if response_text.is_empty() { "HTTP 200 OK" } else { response_text.as_str() }
-            ),
+            "A teljes BIN transport-szinten elküldve és flush-olva. A 65280-as OTA kapcsolatot lezárom; innentől kizárólag a Direct API /api/v1/status ellenőrzés dönt a végeredményről.",
             Some(91),
         );
-        Ok(response_text)
+
+        // TRANSFER -> API_CONFIRMATION state boundary.
+        // A BIN teljes write + flush után a külső OTA-port többé nem mérvadó:
+        // nem várunk HTTP 200-ra, socket close-ra vagy további 65280-as eseményre.
+        // A rebootot, Boot ID-t, firmware-verziót és persistence-t kizárólag
+        // a normál Direct API igazolja.
+        drop(stream);
+        Ok("OTA_TRANSFER_COMPLETE_API_CONFIRMATION".to_string())
     })
     .await
     .map_err(|error| format!("A beépített OTA háttérfeladat megszakadt: {error}"))?
+}
+
+fn ota_confirm_status_path(attempt: u32) -> String {
+    let nonce = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis();
+    format!("/api/v1/status?otaConfirm={attempt}-{nonce}")
 }
 
 async fn confirm_restart(
     app: &AppHandle,
     state: &AppState,
     expected: Option<String>,
-) -> Result<Option<String>, String> {
+    installed_before: Option<&str>,
+    boot_id_before: Option<&str>,
+    boot_generation_before: Option<u64>,
+) -> Result<Value, String> {
     const CONFIRM_TIMEOUT: Duration = Duration::from_secs(180);
     const POLL_INTERVAL: Duration = Duration::from_secs(3);
 
     let started = Instant::now();
     let mut attempt: u32 = 0;
     let mut last_seen_version: Option<String> = None;
+    let mut last_seen_boot_id: Option<String> = None;
+    let mut last_seen_boot_generation: Option<u64> = None;
     let mut last_error: Option<String> = None;
 
     emit_ota_progress(
         app,
-        "Újraindítás",
+        "API ellenőrzés",
         "info",
-        "Az Arduino alkalmazza a firmware-t. Legfeljebb 3 percig, 3 másodpercenként ellenőrzöm az életjelet és a telepített verziót…",
+        "OTA transport lezárva. Legfeljebb 3 percig kizárólag friss Direct API státuszt ellenőrzök. A bootGeneration az elsődleges reboot-bizonyíték; a Boot ID csak régi firmware fallback.",
         Some(92),
     );
 
     while started.elapsed() < CONFIRM_TIMEOUT {
         tokio::time::sleep(POLL_INTERVAL).await;
         attempt += 1;
-
         let elapsed = started.elapsed().as_secs().min(CONFIRM_TIMEOUT.as_secs());
         let progress = 92_u8
             .saturating_add(((elapsed * 7) / CONFIRM_TIMEOUT.as_secs()) as u8)
             .min(99);
+        let status_path = ota_confirm_status_path(attempt);
 
         emit_ota_progress(
-            app,
-            "Újraindítás",
-            "info",
-            format!(
-                "Arduino életjel ellenőrzése: {}. próba • eltelt {} / {} másodperc…",
-                attempt,
-                elapsed,
-                CONFIRM_TIMEOUT.as_secs()
-            ),
+            app, "API ellenőrzés", "info",
+            format!("Direct API életjel: {}. próba • eltelt {} / {} másodperc…",
+                attempt, elapsed, CONFIRM_TIMEOUT.as_secs()),
             Some(progress),
         );
 
-        match get_json(state, "/api/v1/status").await {
-            Ok(status) => {
-                last_error = None;
-                let installed = status
-                    .get("firmwareVersion")
-                    .and_then(Value::as_str)
-                    .map(str::to_string);
+        match get_json(state, &status_path).await {
+            Ok(value) => {
+                let version = value.get("firmwareVersion").and_then(Value::as_str).map(str::to_string);
+                let boot_id = value.get("bootId").and_then(Value::as_str).map(str::to_string);
+                let boot_generation = value.get("bootGeneration").and_then(Value::as_u64);
 
-                match (&expected, &installed) {
-                    (Some(wanted), Some(actual))
-                        if normalize_version(wanted) == normalize_version(actual) =>
-                    {
-                        emit_ota_progress(
-                            app,
-                            "Ellenőrzés",
-                            "success",
-                            format!(
-                                "Az Arduino visszatért és a várt firmware fut: {actual}. OTA sikeres."
-                            ),
-                            Some(100),
-                        );
-                        return Ok(installed.clone());
+                last_seen_version = version.clone();
+                last_seen_boot_id = boot_id.clone();
+                last_seen_boot_generation = boot_generation;
+                last_error = None;
+
+                let version_matches = expected.as_deref().map(|wanted| {
+                    version.as_deref()
+                        .map(|seen| normalize_version(seen) == normalize_version(wanted))
+                        .unwrap_or(false)
+                }).unwrap_or(true);
+
+                let generation_changed = boot_generation_before
+                    .zip(boot_generation)
+                    .map(|(before, after)| before != after)
+                    .unwrap_or(false);
+                let boot_id_changed = boot_id_before
+                    .zip(boot_id.as_deref())
+                    .map(|(before, after)| before != after)
+                    .unwrap_or(false);
+
+                if !version_matches {
+                    if generation_changed || boot_id_changed {
+                        return Err(format!(
+                            "OTA_ROLLBACK_OR_WRONG_FIRMWARE: reboot történt, de a várt firmware nem fut. Várt: {:?}, kapott: {:?}, bootGeneration: {:?} -> {:?}, Boot ID: {:?} -> {:?}.",
+                            expected, version, boot_generation_before, boot_generation, boot_id_before, boot_id
+                        ));
                     }
-                    (None, Some(actual)) => {
+                    continue;
+                }
+
+                if let Some(before_generation) = boot_generation_before {
+                    if generation_changed {
+                        let marker = match (installed_before, version.as_deref()) {
+                            (Some(before), Some(actual))
+                                if normalize_version(before) == normalize_version(actual) =>
+                            {
+                                "SAME_VERSION_REINSTALL_CONFIRMED"
+                            }
+                            _ => "NEW_FIRMWARE_BOOT_CONFIRMED",
+                        };
                         emit_ota_progress(
-                            app,
-                            "Ellenőrzés",
-                            "success",
-                            format!("Az Arduino visszatért, telepített firmware: {actual}."),
-                            Some(100),
+                            app, "Ellenőrzés", "success",
+                            format!("{marker}: bootGeneration {} -> {}, firmware: {}.",
+                                before_generation,
+                                boot_generation.unwrap_or_default(),
+                                version.clone().unwrap_or_else(|| "ismeretlen".into())),
+                            Some(97),
                         );
-                        return Ok(installed.clone());
+                        return Ok(value);
                     }
-                    (Some(wanted), Some(actual)) => {
-                        last_seen_version = Some(actual.clone());
+                    emit_ota_progress(
+                        app, "Ellenőrzés", "info",
+                        format!("Friss API-életjel érkezett, de a bootGeneration még nem változott ({before_generation}). Folytatom az ellenőrzést."),
+                        Some(progress),
+                    );
+                    continue;
+                }
+
+                if let (Some(before), Some(wanted)) = (installed_before, expected.as_deref()) {
+                    if normalize_version(before) != normalize_version(wanted) {
                         emit_ota_progress(
-                            app,
-                            "Ellenőrzés",
-                            "info",
-                            format!(
-                                "Életjel érkezett, de az Arduino még {actual} verziót jelent; várt verzió: {wanted}. Folytatom az ellenőrzést."
-                            ),
-                            Some(progress),
+                            app, "Ellenőrzés", "success",
+                            format!("NEW_FIRMWARE_VERSION_TRANSITION_CONFIRMED: {} -> {}. Az előző firmware még nem adott bootGeneration mezőt; az új verzió aktív státusza bizonyítja a sikeres migrációt.",
+                                before, version.clone().unwrap_or_else(|| wanted.to_string())),
+                            Some(97),
                         );
-                    }
-                    _ => {
-                        emit_ota_progress(
-                            app,
-                            "Ellenőrzés",
-                            "info",
-                            "Az Arduino válaszol, de a firmware-verzió még nem olvasható. Folytatom az ellenőrzést.",
-                            Some(progress),
-                        );
+                        return Ok(value);
                     }
                 }
-            }
-            Err(error) => {
-                last_error = Some(error.clone());
+
+                if boot_id_before.is_some() && boot_id_changed {
+                    emit_ota_progress(
+                        app, "Ellenőrzés", "success",
+                        "LEGACY_BOOT_ID_FALLBACK_CONFIRMED: a firmware még nem támogat bootGeneration mezőt, ezért a megváltozott Boot ID igazolja a rebootot.",
+                        Some(97),
+                    );
+                    return Ok(value);
+                }
+
                 emit_ota_progress(
-                    app,
-                    "Újraindítás",
-                    "info",
-                    format!(
-                        "Az Arduino még nem elérhető ({elapsed} / {} mp). Ez a flash és az újraindítás alatt normális. Részlet: {error}",
-                        CONFIRM_TIMEOUT.as_secs()
-                    ),
+                    app, "Ellenőrzés", "info",
+                    "A firmware-verzió megfelelő, de bootGeneration előérték nélkül a reboot még nem bizonyítható. Folytatom az ellenőrzést.",
                     Some(progress),
                 );
             }
+            Err(error) => last_error = Some(error),
         }
     }
 
-    let expected_text = expected.unwrap_or_else(|| "ismeretlen".into());
-    let last_seen_text = last_seen_version.unwrap_or_else(|| "nem érkezett verzió".into());
-    let last_error_text = last_error.unwrap_or_else(|| "nem érkezett további hálózati hiba".into());
     Err(format!(
-        "Az OTA ellenőrzési idő lejárt: az Arduino 3 percen belül nem igazolta a(z) {expected_text} firmware-t. Utoljára látott verzió: {last_seen_text}. Utolsó kapcsolati állapot: {last_error_text}."
+        "OTA API_CONFIRMATION időtúllépés {} másodperc után. Utolsó firmware: {:?}, Boot ID: {:?}, bootGeneration: {:?}, utolsó API-hiba: {:?}.",
+        CONFIRM_TIMEOUT.as_secs(),
+        last_seen_version,
+        last_seen_boot_id,
+        last_seen_boot_generation,
+        last_error
     ))
 }
 
@@ -2176,6 +2366,65 @@ fn macos_sync_app_icon(
     }
 }
 
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct NativeAppUpdateInfo {
+    version: String,
+    body: Option<String>,
+}
+
+#[tauri::command]
+async fn app_update_check(app: AppHandle) -> Result<Option<NativeAppUpdateInfo>, String> {
+    #[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
+    {
+        use tauri_plugin_updater::UpdaterExt;
+        let update = app
+            .updater()
+            .map_err(|error| format!("App updater initialization failed: {error}"))?
+            .check()
+            .await
+            .map_err(|error| format!("App update check failed: {error}"))?;
+        return Ok(update.map(|item| NativeAppUpdateInfo {
+            version: item.version.to_string(),
+            body: item.body,
+        }));
+    }
+
+    #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
+    {
+        let _ = app;
+        Ok(None)
+    }
+}
+
+#[tauri::command]
+async fn app_update_install(app: AppHandle) -> Result<bool, String> {
+    #[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
+    {
+        use tauri_plugin_updater::UpdaterExt;
+        let update = app
+            .updater()
+            .map_err(|error| format!("App updater initialization failed: {error}"))?
+            .check()
+            .await
+            .map_err(|error| format!("App update check failed: {error}"))?;
+        let Some(update) = update else {
+            return Ok(false);
+        };
+        update
+            .download_and_install(|_, _| {}, || {})
+            .await
+            .map_err(|error| format!("App update install failed: {error}"))?;
+        app.restart()
+    }
+
+    #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
+    {
+        let _ = app;
+        Err("Native application updater is desktop-only.".to_string())
+    }
+}
+
 #[tauri::command]
 fn runtime_capabilities() -> RuntimeCapabilities {
     let mobile = cfg!(any(target_os = "android", target_os = "ios"));
@@ -2224,18 +2473,6 @@ async fn migrate_native_credentials(
         .map_err(|_| "Beállítás zárolva".to_string())?
         .clone();
     let mut changed = false;
-    if cfg!(any(target_os = "android", target_os = "ios")) {
-        fs::write(
-            config_path(&app)?,
-            serde_json::to_vec_pretty(&config).map_err(|e| e.to_string())?,
-        )
-        .map_err(|e| e.to_string())?;
-        *state
-            .config
-            .lock()
-            .map_err(|_| "Beállítás zárolva".to_string())? = config;
-        return Ok(false);
-    }
     if !config.arduino_api_key.trim().is_empty() {
         credential_bridge::set_profile_secret(
             profile_account(&config, "device-key"),
@@ -2284,21 +2521,6 @@ async fn save_config(
         config.ota_tool_path.clear();
     }
     validate_config(&config)?;
-    if cfg!(any(target_os = "android", target_os = "ios")) {
-        fs::write(
-            config_path(&app)?,
-            serde_json::to_vec_pretty(&config).map_err(|e| e.to_string())?,
-        )
-        .map_err(|e| e.to_string())?;
-        *state
-            .config
-            .lock()
-            .map_err(|_| "Beállítás zárolva".to_string())? = config;
-        if let Ok(mut cached) = state.last_known_local_ip.lock() {
-            *cached = None;
-        }
-        return Ok(());
-    }
     if !config.arduino_api_key.trim().is_empty() {
         credential_bridge::set_profile_secret(
             profile_account(&config, "device-key"),
@@ -2448,7 +2670,13 @@ async fn save_and_sync_schedules(
     expected_revision: Option<u64>,
     force: Option<bool>,
 ) -> Result<Value, String> {
+    let started_at = Instant::now();
     let schedules = normalize_schedules(schedules)?;
+    let total = schedules.len();
+    emit_schedule_save_progress(
+        &app, "preparing", "info", "Időzítések ellenőrzése és Arduino állapot lekérése.",
+        0, total, None, expected_revision, None, None, None
+    );
     let before = schedule_status(&state).await?;
     let force = force.unwrap_or(false);
 
@@ -2474,7 +2702,15 @@ async fn save_and_sync_schedules(
     }
 
     if schedules.is_empty() {
+        emit_schedule_save_progress(
+            &app, "committing", "info", "Az Arduino időzítéseinek törlése folyamatban.",
+            0, 0, None, Some(before.revision), None, None, None
+        );
         delete_json(&state, "/api/v1/schedules").await?;
+        emit_schedule_save_progress(
+            &app, "readback", "info", "Törlés utáni Arduino visszaellenőrzés.",
+            0, 0, None, Some(before.revision), None, None, None
+        );
         let verified = fetch_schedule_snapshot(&state).await?;
         if verified.count != 0 || !verified.schedules.is_empty() {
             return Err(format!(
@@ -2483,6 +2719,11 @@ async fn save_and_sync_schedules(
             ));
         }
         write_schedule_cache(&app, verified.schedules.clone())?;
+        emit_schedule_save_progress(
+            &app, "success", "success", "Arduino mentés és visszaellenőrzés kész.",
+            0, 0, Some(100), Some(before.revision), Some(verified.revision),
+            Some(verified.checksum.clone()), Some(started_at.elapsed().as_millis() as u64)
+        );
         return Ok(serde_json::json!({
             "success": true,
             "schedules": verified.schedules.clone(),
@@ -2499,6 +2740,10 @@ async fn save_and_sync_schedules(
         }));
     }
 
+    emit_schedule_save_progress(
+        &app, "transaction", "info", "Schedule tranzakció megnyitása az Arduinón.",
+        0, total, None, Some(before.revision), None, None, None
+    );
     let transaction: ArduinoScheduleTransaction = serde_json::from_value(
         post_json(
             &state,
@@ -2524,6 +2769,10 @@ async fn save_and_sync_schedules(
         "/api/v1/schedules/transactions/{}",
         transaction.transaction_id
     );
+    emit_schedule_save_progress(
+        &app, "uploading", "info", format!("0/{total} időzítés elküldve az Arduinónak."),
+        0, total, Some(0), Some(before.revision), None, None, None
+    );
     let upload_result: Result<(), String> = async {
         for (index, schedule) in schedules.iter().enumerate() {
             put_json(
@@ -2535,19 +2784,38 @@ async fn save_and_sync_schedules(
                 }),
             )
             .await?;
+            let current = index + 1;
+            let progress = if total == 0 { 100 } else { ((current * 100) / total).min(100) as u8 };
+            emit_schedule_save_progress(
+                &app, "uploading", "info", format!("{current}/{total} időzítés elküldve az Arduinónak."),
+                current, total, Some(progress), Some(before.revision), None, None, None
+            );
         }
+        emit_schedule_save_progress(
+            &app, "committing", "info", "EEPROM A/B tranzakció commit és readback.",
+            total, total, None, Some(before.revision), None, None, None
+        );
         post_json(&state, &format!("{tx_base}/commit"), None).await?;
         Ok(())
     }
     .await;
 
     if let Err(error) = upload_result {
+        emit_schedule_save_progress(
+            &app, "error", "error", format!("Schedule tranzakció hiba: {error}"),
+            0, total, None, Some(before.revision), None, None,
+            Some(started_at.elapsed().as_millis() as u64)
+        );
         let _ = delete_json(&state, &tx_base).await;
         return Err(format!(
             "A schedule tranzakció megszakadt és vissza lett vonva: {error}"
         ));
     }
 
+    emit_schedule_save_progress(
+        &app, "verifying", "info", "Commit utáni revision és checksum ellenőrzése.",
+        total, total, None, Some(before.revision), None, None, None
+    );
     let after = schedule_status(&state).await?;
     if after.count as usize != schedules.len() || after.revision <= before.revision {
         return Err(format!(
@@ -2556,6 +2824,10 @@ async fn save_and_sync_schedules(
         ));
     }
 
+    emit_schedule_save_progress(
+        &app, "readback", "info", "Teljes schedule visszaolvasás az Arduinóról.",
+        total, total, None, Some(before.revision), Some(after.revision), Some(after.checksum.clone()), None
+    );
     let verified = fetch_schedule_snapshot(&state).await?;
     let expected_payloads: Vec<String> = schedules
         .iter()
@@ -2582,6 +2854,11 @@ async fn save_and_sync_schedules(
     }
 
     write_schedule_cache(&app, verified.schedules.clone())?;
+    emit_schedule_save_progress(
+        &app, "success", "success", "Arduino mentés és teljes readback kész.",
+        total, total, Some(100), Some(before.revision), Some(verified.revision),
+        Some(verified.checksum.clone()), Some(started_at.elapsed().as_millis() as u64)
+    );
 
     Ok(serde_json::json!({
         "success": true,
@@ -2664,12 +2941,22 @@ fn list_schedule_backups(app: AppHandle) -> Result<Vec<ScheduleBackup>, String> 
 async fn firmware_status(
     app: AppHandle,
     state: State<'_, AppState>,
+    update_channel: Option<String>,
+    firmware_update_channel: Option<String>,
 ) -> Result<FirmwareStatus, String> {
-    let config = state
+    let mut config = state
         .config
         .lock()
         .map_err(|_| "Beállítás zárolva".to_string())?
         .clone();
+    if let Some(channel) = update_channel {
+        config.update_channel =
+            if channel.trim().eq_ignore_ascii_case("stable") { "stable" } else { "beta" }.into();
+    }
+    if let Some(channel) = firmware_update_channel {
+        config.firmware_update_channel =
+            if channel.trim().eq_ignore_ascii_case("stable") { "stable" } else { "beta" }.into();
+    }
     let mut status = FirmwareStatus {
         state: "idle".into(),
         message: "Nincs folyamatban firmware-frissítés.".into(),
@@ -2775,8 +3062,8 @@ async fn firmware_status(
 
     match latest_app_release(&config).await {
         Ok(app_release) => {
-            status.app_update_available = normalize_version(env!("CARGO_PKG_VERSION"))
-                != normalize_version(&app_release.version);
+            status.app_update_available =
+                compare_app_versions(&app_release.version, env!("CARGO_PKG_VERSION")).is_gt();
             status.available_app = Some(app_release);
         }
         Err(error) => {
@@ -2913,6 +3200,9 @@ async fn firmware_update_inner(
         .get("bootId")
         .and_then(Value::as_str)
         .map(str::to_string);
+    let boot_generation_before = status_json
+        .get("bootGeneration")
+        .and_then(Value::as_u64);
     let schedule_revision_before = status_json.get("scheduleRevision").and_then(Value::as_u64);
     let schedule_checksum_before = status_json
         .get("scheduleChecksum")
@@ -3177,9 +3467,9 @@ async fn firmware_update_inner(
             &binary_path,
         )
         .await
-        .map(|_| "Terminal + arduinoOTA".to_string())
+        .map(|tool| format!("Terminal + arduinoOTA ({tool})"))
     } else {
-        upload_firmware_native(
+        match upload_firmware_native(
             app,
             Arc::clone(&state.arduino_request_lock),
             &ota_address,
@@ -3189,8 +3479,49 @@ async fn firmware_update_inner(
             config.ota_timeout_seconds,
         )
         .await
+        {
+            Ok(result) => Ok(result),
+            Err(native_error) => {
+                #[cfg(target_os = "macos")]
+                {
+                    let auto_mode = matches!(config.ota_upload_mode.trim(), "auto" | "bundled");
+                    if auto_mode && native_error.starts_with("OTA_TRANSPORT_CONNECT_FAILED") {
+                        let (terminal_address, terminal_port) = status_ota_target(&status_json)?;
+                        let tool = find_ota_tool(app, &config).ok_or_else(|| {
+                            format!("{native_error}\nAUTO_TERMINAL_FALLBACK_UNAVAILABLE: nem található működő arduinoOTA.")
+                        })?;
+                        emit_ota_progress(
+                            app,
+                            "Terminal fallback",
+                            "info",
+                            format!(
+                                "A beépített OTA nem éri el a helyi célt. Automatikus macOS Terminal fallback indul: {}:{} • feltöltő: {}",
+                                terminal_address, terminal_port, tool.to_string_lossy()
+                            ),
+                            Some(53),
+                        );
+                        upload_firmware_in_terminal(
+                            app,
+                            &config,
+                            &terminal_address,
+                            terminal_port,
+                            &password,
+                            &binary_path,
+                        )
+                        .await
+                        .map(|tool| format!("AUTO_TERMINAL_FALLBACK:{tool}"))
+                    } else {
+                        Err(native_error)
+                    }
+                }
+                #[cfg(not(target_os = "macos"))]
+                {
+                    Err(native_error)
+                }
+            }
+        }
     };
-    upload_result?;
+    let transfer_result = upload_result?;
 
     {
         let mut current = state
@@ -3198,25 +3529,36 @@ async fn firmware_update_inner(
             .lock()
             .map_err(|_| "Firmware állapot zárolva".to_string())?;
         current.state = "restarting".into();
-        current.phase = Some("Újraindítás".into());
+        current.phase = Some("API ellenőrzés".into());
         current.progress = Some(92);
-        current.message = "Az Arduino alkalmazza a firmware-t és újraindul…".into();
+        current.message =
+            "OTA transport lezárva; innentől kizárólag a Direct API igazolja a telepítést.".into();
     }
     emit_ota_progress(
         app,
-        "Újraindítás",
+        "API ellenőrzés",
         "info",
-        "A teljes bináris átadva. Várakozás az Arduino újraindulására és az új verzió visszajelzésére…",
+        format!(
+            "TRANSFER -> API_CONFIRMATION. A külső OTA-port többé nem mérvadó. Transport eredmény: {transfer_result}"
+        ),
         Some(92),
     );
 
     ensure_not_cancelled(state)?;
-    let installed_after_restart =
-        confirm_restart(app, state, artifact.firmware_version.clone()).await?;
+    let after_status = confirm_restart(
+        app,
+        state,
+        artifact.firmware_version.clone(),
+        installed.as_deref(),
+        boot_id_before.as_deref(),
+        boot_generation_before,
+    )
+    .await?;
+    let installed_after_restart = after_status
+        .get("firmwareVersion")
+        .and_then(Value::as_str)
+        .map(str::to_string);
     ensure_not_cancelled(state)?;
-    let after_status = get_json(state, "/api/v1/status")
-        .await
-        .map_err(|error| format!("Az OTA utáni persistence ellenőrzés sikertelen: {error}"))?;
     let boot_id_after = after_status
         .get("bootId")
         .and_then(Value::as_str)
@@ -3226,7 +3568,6 @@ async fn firmware_update_inner(
         .get("scheduleChecksum")
         .and_then(Value::as_str)
         .map(str::to_string);
-    let boot_id_changed = boot_id_before.is_some() && boot_id_before != boot_id_after;
     if schedule_revision_before != schedule_revision_after
         || schedule_checksum_before != schedule_checksum_after
     {
@@ -3235,21 +3576,11 @@ async fn firmware_update_inner(
             schedule_revision_before, schedule_revision_after, schedule_checksum_before, schedule_checksum_after
         ));
     }
-    if boot_id_before.is_some() && !boot_id_changed {
-        return Err(format!(
-            "OTA SIKERTELEN: a várt firmware-verzió elérhető, de a Boot ID nem változott. Boot ID előtte: {:?}, utána: {:?}. Az újraindítás és a flash alkalmazása nem igazolható.",
-            boot_id_before, boot_id_after
-        ));
-    }
     emit_ota_progress(
         app,
         "Persistence",
         "success",
-        if boot_id_changed {
-            "Boot ID megváltozott, a firmware-verzió és a schedule revision/checksum megmaradása igazolt."
-        } else {
-            "A firmware és a schedule persistence ellenőrzése sikeres; indulás előtti Boot ID nem állt rendelkezésre."
-        },
+        "A firmware telepítését az API-confirmation state machine igazolta; a schedule revision/checksum persistence ellenőrzése sikeres.",
         Some(98),
     );
     state.ota_in_progress.store(false, Ordering::SeqCst);
@@ -3359,6 +3690,9 @@ async fn firmware_install_external_inner(
         .get("bootId")
         .and_then(Value::as_str)
         .map(str::to_string);
+    let boot_generation_before = status_json
+        .get("bootGeneration")
+        .and_then(Value::as_u64);
     let schedule_revision_before =
         status_json.get("scheduleRevision").and_then(Value::as_u64);
     let schedule_checksum_before = status_json
@@ -3504,7 +3838,7 @@ async fn firmware_install_external_inner(
         )
         .await?;
     } else {
-        upload_firmware_native(
+        match upload_firmware_native(
             app,
             Arc::clone(&state.arduino_request_lock),
             &ota_address,
@@ -3513,7 +3847,47 @@ async fn firmware_install_external_inner(
             firmware,
             config.ota_timeout_seconds,
         )
-        .await?;
+        .await
+        {
+            Ok(_) => {}
+            Err(native_error) => {
+                #[cfg(target_os = "macos")]
+                {
+                    let auto_mode = matches!(config.ota_upload_mode.trim(), "auto" | "bundled");
+                    if auto_mode && native_error.starts_with("OTA_TRANSPORT_CONNECT_FAILED") {
+                        let (terminal_address, terminal_port) = status_ota_target(&status_json)?;
+                        let tool = find_ota_tool(app, &config).ok_or_else(|| {
+                            format!("{native_error}\nAUTO_TERMINAL_FALLBACK_UNAVAILABLE: nem található működő arduinoOTA.")
+                        })?;
+                        emit_ota_progress(
+                            app,
+                            "Terminal fallback",
+                            "info",
+                            format!(
+                                "A beépített OTA nem éri el a helyi célt. Automatikus macOS Terminal fallback indul: {}:{} • feltöltő: {}",
+                                terminal_address, terminal_port, tool.to_string_lossy()
+                            ),
+                            Some(53),
+                        );
+                        upload_firmware_in_terminal(
+                            app,
+                            &config,
+                            &terminal_address,
+                            terminal_port,
+                            &password,
+                            &binary_path,
+                        )
+                        .await?;
+                    } else {
+                        return Err(native_error);
+                    }
+                }
+                #[cfg(not(target_os = "macos"))]
+                {
+                    return Err(native_error);
+                }
+            }
+        }
     }
 
     if let Ok(mut current) = state.firmware_status.lock() {
@@ -3523,14 +3897,30 @@ async fn firmware_install_external_inner(
         current.message = "Az Arduino alkalmazza a külső firmware-t és újraindul…".into();
     }
 
-    ensure_not_cancelled(state)?;
-    let installed_after_restart = confirm_restart(app, state, None).await?;
+    emit_ota_progress(
+        app,
+        "API ellenőrzés",
+        "info",
+        "TRANSFER -> API_CONFIRMATION. A külső OTA-port többé nem mérvadó; a Direct API reboot/Boot ID/firmware állapota dönt.",
+        Some(92),
+    );
 
     ensure_not_cancelled(state)?;
-    let after_status = get_json(state, "/api/v1/status")
-        .await
-        .map_err(|error| format!("A külső OTA utáni persistence ellenőrzés sikertelen: {error}"))?;
+    let after_status = confirm_restart(
+        app,
+        state,
+        None,
+        installed_before.as_deref(),
+        boot_id_before.as_deref(),
+        boot_generation_before,
+    )
+    .await?;
+    let installed_after_restart = after_status
+        .get("firmwareVersion")
+        .and_then(Value::as_str)
+        .map(str::to_string);
 
+    ensure_not_cancelled(state)?;
     let boot_id_after = after_status
         .get("bootId")
         .and_then(Value::as_str)
@@ -3554,14 +3944,6 @@ async fn firmware_install_external_inner(
         ));
     }
 
-    let boot_id_changed = boot_id_before.is_some() && boot_id_before != boot_id_after;
-    if boot_id_before.is_some() && !boot_id_changed {
-        return Err(format!(
-            "KÜLSŐ OTA SIKERTELEN: a Boot ID nem változott. Előtte: {:?}, utána: {:?}.",
-            boot_id_before,
-            boot_id_after
-        ));
-    }
 
     state.ota_in_progress.store(false, Ordering::SeqCst);
 
@@ -3676,7 +4058,45 @@ async fn firmware_install_release(
     app: AppHandle,
     state: State<'_, AppState>,
     tag: String,
+    channel: Option<String>,
 ) -> Result<FirmwareStatus, String> {
+    let normalized_channel = if let Some(channel) = channel.as_deref() {
+        if channel.trim().eq_ignore_ascii_case("stable") {
+            "stable"
+        } else {
+            "beta"
+        }
+    } else {
+        let config = state
+            .config
+            .lock()
+            .map_err(|_| "Beállítás zárolva".to_string())?;
+        if config.firmware_update_channel.trim() == "stable" {
+            "stable"
+        } else {
+            "beta"
+        }
+    };
+    let requested = normalize_version(tag.trim());
+    let allowed = github_releases()
+        .await?
+        .iter()
+        .flat_map(|release| firmware_artifacts_from_release_channel(release, normalized_channel))
+        .any(|artifact| {
+            normalize_version(
+                artifact
+                    .firmware_version
+                    .as_deref()
+                    .unwrap_or(&artifact.tag),
+            ) == requested
+        });
+    if !allowed {
+        return Err(format!(
+            "A(z) {} firmware nem telepíthető a(z) {} csatornáról.",
+            tag.trim(),
+            normalized_channel
+        ));
+    }
 
     match firmware_update_inner(&app, &state, Some(tag.trim())).await {
         Ok(status) => Ok(status),
@@ -3709,9 +4129,78 @@ fn firmware_cancel(state: State<'_, AppState>) -> Result<bool, String> {
     Ok(true)
 }
 
+
+fn validated_export_target(path: &Path, kind: &str) -> Result<(), String> {
+    if !matches!(kind, "zip" | "log") {
+        return Err(format!("Nem támogatott export formátum: {kind}"));
+    }
+    let file_name = path.file_name().and_then(|v| v.to_str())
+        .ok_or_else(|| "Az export célfájl neve érvénytelen.".to_string())?;
+    if file_name.trim().is_empty() {
+        return Err("Az export célfájl neve üres.".into());
+    }
+    let extension = path.extension().and_then(|v| v.to_str()).unwrap_or("").to_ascii_lowercase();
+    if extension != kind {
+        return Err(format!("Az export fájlkiterjesztése nem egyezik a formátummal: .{extension} != .{kind}"));
+    }
+    let parent = path.parent().ok_or_else(|| "Az export célkönyvtára nem állapítható meg.".to_string())?;
+    if !parent.is_dir() {
+        return Err(format!("Az export célkönyvtára nem létezik: {}", parent.to_string_lossy()));
+    }
+    Ok(())
+}
+
+#[tauri::command]
+fn write_export_file(path: String, bytes: Vec<u8>, kind: String) -> Result<String, String> {
+    const MAX_EXPORT_BYTES: usize = 16 * 1024 * 1024;
+    if bytes.is_empty() {
+        return Err("Az export fájl üres; mentés megszakítva.".into());
+    }
+    if bytes.len() > MAX_EXPORT_BYTES {
+        return Err(format!("Az export túl nagy: {} bájt. Maximum: {} bájt.", bytes.len(), MAX_EXPORT_BYTES));
+    }
+    let target = PathBuf::from(path.trim());
+    validated_export_target(&target, kind.trim())?;
+    let temporary = target.with_extension(format!("{}.part", kind.trim()));
+    fs::write(&temporary, &bytes).map_err(|error| {
+        let _ = fs::remove_file(&temporary);
+        format!("Az export ideiglenes fájlja nem írható: {error}")
+    })?;
+    if target.exists() {
+        fs::remove_file(&target).map_err(|error| {
+            let _ = fs::remove_file(&temporary);
+            format!("A meglévő export fájl nem cserélhető le: {error}")
+        })?;
+    }
+    fs::rename(&temporary, &target).map_err(|error| {
+        let _ = fs::remove_file(&temporary);
+        format!("Az export fájl nem aktiválható: {error}")
+    })?;
+    let persisted_len = fs::metadata(&target)
+        .map_err(|error| format!("Az export fájl nem ellenőrizhető: {error}"))?.len() as usize;
+    if persisted_len != bytes.len() {
+        return Err(format!("Az export readback mérete eltér. Várt: {} bájt, fájl: {} bájt.", bytes.len(), persisted_len));
+    }
+    Ok(target.to_string_lossy().to_string())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn native_export_target_validation_accepts_matching_extensions() {
+        let root = std::env::temp_dir();
+        assert!(validated_export_target(&root.join("diagnostics.zip"), "zip").is_ok());
+        assert!(validated_export_target(&root.join("activity.log"), "log").is_ok());
+    }
+
+    #[test]
+    fn native_export_target_validation_rejects_mismatch() {
+        let root = std::env::temp_dir();
+        assert!(validated_export_target(&root.join("diagnostics.log"), "zip").is_err());
+        assert!(validated_export_target(&root.join("diagnostics.zip"), "exe").is_err());
+    }
 
     #[test]
     fn console_object_is_normalized() {
@@ -3788,13 +4277,6 @@ mod tests {
         assert_ne!(normalized, legacy_payload);
     }
 
-    #[test]
-    fn native_ota_http_response_is_parsed() {
-        let response = b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\nOK";
-        let (status, body) = parse_ota_http_response(response).expect("érvényes OTA-válasz");
-        assert_eq!(status, 200);
-        assert_eq!(body, "OK");
-    }
 
     #[test]
     fn native_ota_auth_header_matches_arduino_library() {
@@ -3850,9 +4332,13 @@ mod tests {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let builder = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_dialog::init());
+    #[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
+    let builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
+
+    builder
         .setup(|app| {
             let config = fs::read(config_path(app.handle()).map_err(std::io::Error::other)?)
                 .ok()
@@ -3870,8 +4356,13 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            diagnostic_logging::diagnostic_log_event,
+            diagnostic_logging::diagnostic_log_paths,
+            write_export_file,
 
             macos_sync_app_icon,
+            app_update_check,
+            app_update_install,
             runtime_capabilities,
             load_config,
             migrate_native_credentials,

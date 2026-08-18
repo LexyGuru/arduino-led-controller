@@ -12,8 +12,16 @@ import {
 } from './components/Topbar';
 
 import {
+  BottomNav
+} from './components/BottomNav';
+
+import {
   useController
 } from './hooks/useController';
+
+import { useAppUpdateCenter } from './hooks/useAppUpdateCenter';
+import { useAppStartupGate } from './hooks/useAppStartupGate';
+import { AppStartupScreen } from './components/AppStartupScreen';
 
 import {
   DashboardPage
@@ -66,6 +74,24 @@ export default function App() {
   const controller =
     useController(page);
 
+  const appUpdate =
+    useAppUpdateCenter({
+      updateChannel: controller.config.updateChannel,
+      firmwareUpdateChannel: controller.config.firmwareUpdateChannel,
+      autoCheckUpdates: controller.config.autoCheckUpdates
+    });
+
+  const startup =
+    useAppStartupGate({
+      initialized: controller.initialized,
+      appVersion,
+      capabilities: controller.capabilities,
+      config: controller.config,
+      scheduleCount: controller.schedules.length,
+      connectionHealth: controller.connectionHealth
+    });
+
+
 
   useEffect(
     () => {
@@ -84,7 +110,8 @@ export default function App() {
   );
 
   return (
-    <div className="app-shell">
+    <>
+      <div className={`app-shell core-ui-v15 core-ui-v20 beta4-ui-baseline${startup.blocking ? ' app-shell--booting' : ''}`}>
       <Sidebar
         page={page}
         onChange={setPage}
@@ -99,6 +126,8 @@ export default function App() {
           controller.capabilities
             .otaSupported
         }
+        updateAvailable={appUpdate.updateAvailable}
+        latestAppVersion={appUpdate.latestVersion ?? undefined}
       />
       <div className="content-shell">
         <Topbar
@@ -120,7 +149,12 @@ export default function App() {
                 .refresh()
           }
         />
-        <main className="content">
+        <main className="content" data-page={page}>
+          <div
+            key={page}
+            className="page-transition-stage"
+            data-page-transition={page}
+          >
           {page ===
             'dashboard' && (
             <DashboardPage
@@ -133,6 +167,14 @@ export default function App() {
               scheduleSync={
                 controller.scheduleSync
               }
+              connectionHealth={
+                controller.connectionHealth
+              }
+              networkLogs={
+                controller.networkLogs
+              }
+              platform={controller.capabilities.platform}
+              startupIssues={startup.checks.filter((check) => check.state === 'warn')}
               busy={
                 controller.busy
               }
@@ -223,6 +265,9 @@ export default function App() {
               firmware={
                 controller.firmware
               }
+              appUpdate={appUpdate}
+              firmwareUpdateChannel={controller.config.firmwareUpdateChannel}
+              isMobile={controller.capabilities.mobile}
               busy={
                 controller.busy
               }
@@ -268,6 +313,12 @@ export default function App() {
               error={
                 controller.consoleError
               }
+              status={
+                controller.status
+              }
+              connectionHealth={
+                controller.connectionHealth
+              }
             />
           )}
 
@@ -305,10 +356,24 @@ export default function App() {
                 controller
                   .setOtaPassword
               }
+              appUpdate={appUpdate}
             />
           )}
+          </div>
         </main>
       </div>
-    </div>
+      <BottomNav page={page} onChange={setPage} />
+      </div>
+
+      {startup.visible && (
+        <AppStartupScreen
+          checks={startup.checks}
+          progress={startup.progress}
+          warningCount={startup.warningCount}
+          exiting={startup.exiting}
+          appVersion={appVersion}
+        />
+      )}
+    </>
   );
 }

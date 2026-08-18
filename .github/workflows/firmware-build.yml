@@ -1,29 +1,31 @@
 name: Build Arduino firmware
 
 on:
+  workflow_call:
+  workflow_dispatch:
   push:
+    branches:
+      - main
+      - next/v5-rearchitecture
+      - "feature/v5-*"
     paths:
       - "firmware/**"
       - "scripts/test-alpha3-device-key-header.js"
       - ".github/workflows/firmware-build.yml"
-  workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v5
+      - uses: actions/checkout@v5
 
-      - name: Verify Alpha.3 device-key contract
+      - name: Verify device-key contract
         run: node scripts/test-alpha3-device-key-header.js
 
-      - name: Install Arduino CLI
-        uses: arduino/setup-arduino-cli@v2
+      - uses: arduino/setup-arduino-cli@v2
         with:
           version: "1.x"
 
@@ -32,96 +34,32 @@ jobs:
           arduino-cli config init
           arduino-cli core update-index
           arduino-cli lib update-index
-
           arduino-cli core install arduino:renesas_uno
-
           arduino-cli lib install "Adafruit NeoPixel"
           arduino-cli lib install "ArduinoOTA"
 
-          echo "Installed Arduino cores:"
-          arduino-cli core list
-
-          echo "Installed Arduino libraries:"
-          arduino-cli lib list
-
       - name: Create non-secret CI configuration
-        run: |
-          cp \
-            firmware/ArduinoLedController/secrets.example.h \
-            firmware/ArduinoLedController/secrets.h
+        run: cp firmware/ArduinoLedController/secrets.example.h firmware/ArduinoLedController/secrets.h
 
       - name: Compile UNO R4 WiFi firmware
         run: |
+          set -euo pipefail
           mkdir -p build/firmware
-
           arduino-cli compile \
             --fqbn arduino:renesas_uno:unor4wifi \
             --output-dir build/firmware \
             --warnings all \
             firmware/ArduinoLedController
+          BIN="$(find build/firmware -type f -name '*.ino.bin' -print | sort | head -n 1)"
+          test -f "$BIN"
+          sha256sum "$BIN" > "$BIN.sha256"
 
-      - name: Show generated firmware files
-        run: |
-          find build/firmware -maxdepth 1 -type f -print
-
-      - name: Publish firmware artifact
-        uses: actions/upload-artifact@v5
+      - name: Upload firmware build artifact
+        uses: actions/upload-artifact@v6
         with:
           name: ArduinoLedController-UNO-R4-WiFi
-          path: build/firmware/*
-          if-no-files-found: error
-
-      - name: Create public firmware package
-        run: |
-          FIRMWARE_FILE="$(find build/firmware -type f -name '*.ino.bin' | head -n 1)"
-
-          if [ -z "${FIRMWARE_FILE}" ]; then
-            echo "ERROR: Nem található .ino.bin firmware fájl."
-            find build/firmware -type f -print
-            exit 1
-          fi
-
-          echo "Firmware file: ${FIRMWARE_FILE}"
-          sha256sum "${FIRMWARE_FILE}" > "${FIRMWARE_FILE}.sha256"
-
-          echo "SHA-256:"
-          cat "${FIRMWARE_FILE}.sha256"
-
-      - name: Read firmware version
-        run: |
-          VERSION="$(
-            sed -nE \
-              's/^#define[[:space:]]+FIRMWARE_VERSION[[:space:]]+"([^"]+)".*/\1/p' \
-              firmware/ArduinoLedController/ArduinoLedController.ino |
-            head -n 1
-          )"
-
-          if [ -z "${VERSION}" ]; then
-            echo "ERROR: Nem található a FIRMWARE_VERSION."
-            exit 1
-          fi
-
-          echo "FIRMWARE_VERSION=${VERSION}" >> "$GITHUB_ENV"
-          echo "Firmware version: ${VERSION}"
-
-      - name: Publish latest public firmware release
-        if: github.ref == 'refs/heads/main'
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: firmware-latest
-          name: Arduino LED Controller firmware (latest)
-          body: |
-            Automatikusan készített UNO R4 WiFi firmware.
-
-            Firmware verzió: ${{ env.FIRMWARE_VERSION }}
-            Forrás commit: ${{ github.sha }}
-
-            A csomag tartalmazza:
-            - ArduinoLedController.ino.bin
-            - SHA-256 ellenőrző fájl
-          prerelease: true
-          make_latest: false
-          overwrite_files: true
-          files: |
+          path: |
             build/firmware/*.ino.bin
             build/firmware/*.ino.bin.sha256
+          if-no-files-found: error
+          retention-days: 30

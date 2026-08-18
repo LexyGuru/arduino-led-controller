@@ -7,13 +7,13 @@ const path = require('path');
 const ROOT = path.resolve(__dirname, '..');
 const WORKFLOW = path.join(
   ROOT,
-  '.github/workflows/tauri-artifact-build.yml'
+  '.github/workflows/app-staging-build.yml'
 );
 
 function main() {
   const text = fs.readFileSync(WORKFLOW, 'utf8');
 
-  assert.match(text, /^name: Tauri staging artifact build$/m);
+  assert.match(text, /^name: Application staging build$/m);
   assert.match(text, /^\s*workflow_dispatch:\s*$/m);
   assert.ok(text.includes('- next/v5-rearchitecture'));
   assert.ok(text.includes('- "feature/v5-*"'));

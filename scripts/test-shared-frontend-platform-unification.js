@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 'use strict';
 const fs=require('fs'),assert=require('node:assert/strict');
-const CURRENT_APP_VERSION = require('../package.json').version;
 const api=fs.readFileSync('desktop-tauri/src/services/tauriApi.ts','utf8');
 const controller=fs.readFileSync('desktop-tauri/src/hooks/useController.ts','utf8');
 const schedules=fs.readFileSync('desktop-tauri/src/pages/SchedulesPage.tsx','utf8');
@@ -17,7 +16,7 @@ assert.ok(controller.includes("tauriApi.listenOtaProgress"));
 assert.ok(schedules.includes("pickBrowserJsonFile"));
 assert.ok(lxc.includes('/api/v1/server/firmware/releases'));
 assert.ok(lxc.includes('/api/v1/server/firmware/cancel'));
-assert.ok(readme.includes(CURRENT_APP_VERSION));
+assert.ok(readme.includes('5.5.1-beta.2'));
 console.log('SHARED_FRONTEND_SINGLE_SOURCE=YES');
 console.log('SEPARATE_LXC_UI=REMOVED');
 console.log('ALL_TARGET_UI_SHARED=YES');

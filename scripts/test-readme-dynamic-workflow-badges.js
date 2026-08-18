@@ -15,7 +15,7 @@ assert.ok(
 
 assert.ok(
   readme.includes(
-    'beta-release.yml/badge.svg?branch=next%2Fv5-rearchitecture'
+    'app-beta-release.yml/badge.svg?branch=next%2Fv5-rearchitecture'
   ),
   'V5 Beta dynamic workflow badge hiányzik'
 );

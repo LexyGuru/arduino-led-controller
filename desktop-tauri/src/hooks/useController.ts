@@ -9,12 +9,13 @@ import {
   tauriApi
 } from '../services/tauriApi';
 
-import { translate } from '../i18n';
+import { translate } from '../i18n/runtime';
 
 import type {
   ArduinoLog,
   ArduinoStatus,
   ConnectionConfig,
+  ConnectionHealthState,
   FirmwareStatus,
   LedSchedule,
   LedStrip,
@@ -211,6 +212,20 @@ export function useController(
     useState<ArduinoStatus | null>(
       null
     );
+
+  const [
+    connectionHealth,
+    setConnectionHealth
+  ] =
+    useState<ConnectionHealthState>({
+      state: 'unconfigured',
+      consecutiveFailures: 0,
+      lastSuccessAt: null,
+      lastFailureAt: null,
+      nextRetryAt: null,
+      pollIntervalMs: 15_000,
+      lastError: null
+    });
 
   const [
     logs,
@@ -543,6 +558,16 @@ export function useController(
             translate('controller.configureDetail')
           );
 
+          setConnectionHealth(
+            (current) => ({
+              ...current,
+              state: 'unconfigured',
+              consecutiveFailures: 0,
+              nextRetryAt: null,
+              lastError: null
+            })
+          );
+
           return;
         }
 
@@ -567,6 +592,18 @@ export function useController(
           consolePausedUntil.current =
             0;
 
+          setConnectionHealth(
+            (current) => ({
+              ...current,
+              state: 'healthy',
+              consecutiveFailures: 0,
+              lastSuccessAt: Date.now(),
+              nextRetryAt: Date.now() + 15_000,
+              pollIntervalMs: 15_000,
+              lastError: null
+            })
+          );
+
           const target =
             statusValue.ipAddress
               ? `${statusValue.ipAddress}:${config.localArduinoPort || 80}`
@@ -578,8 +615,11 @@ export function useController(
         } catch (
           error
         ) {
-          consecutiveStatusFailures.current +=
-            1;
+          const failures =
+            consecutiveStatusFailures.current + 1;
+
+          consecutiveStatusFailures.current =
+            failures;
 
           statusHealthy.current =
             false;
@@ -587,13 +627,36 @@ export function useController(
           const pause =
             Math.min(
               60_000,
-              10_000 *
-                consecutiveStatusFailures.current
+              5_000 *
+                2 ** Math.min(
+                  failures - 1,
+                  4
+                )
             );
 
           consolePausedUntil.current =
             Date.now() +
             pause;
+
+          setConnectionHealth(
+            (current) => ({
+              ...current,
+              state:
+                failures >= 5
+                  ? 'offline'
+                  : 'recovering',
+              consecutiveFailures:
+                failures,
+              lastFailureAt:
+                Date.now(),
+              nextRetryAt:
+                Date.now() + pause,
+              pollIntervalMs:
+                pause,
+              lastError:
+                String(error)
+            })
+          );
 
           setStatus(
             (
@@ -651,7 +714,10 @@ export function useController(
 
         try {
           const value =
-            await tauriApi.firmwareStatus();
+            await tauriApi.firmwareStatus(
+              config.updateChannel,
+              config.firmwareUpdateChannel
+            );
 
           setFirmware(
             value
@@ -672,7 +738,11 @@ export function useController(
           );
         }
       },
-      [capabilities.otaSupported]
+      [
+        capabilities.otaSupported,
+        config.updateChannel,
+        config.firmwareUpdateChannel
+      ]
     );
 
   useEffect(
@@ -886,25 +956,173 @@ export function useController(
         return;
       }
 
-      void refresh();
+      let disposed =
+        false;
 
-      const timer =
-        window.setInterval(
-          () =>
-            void refresh(),
-          20_000
+      let timer:
+        number |
+        null = null;
+
+      const scheduleNext =
+        () => {
+          if (disposed) {
+            return;
+          }
+
+          const failures =
+            consecutiveStatusFailures.current;
+
+          const visible =
+            document.visibilityState ===
+              'visible';
+
+          const delay =
+            visible
+              ? failures === 0
+                ? 15_000
+                : Math.min(
+                    60_000,
+                    5_000 *
+                      2 ** Math.min(
+                        failures - 1,
+                        4
+                      )
+                  )
+              : 60_000;
+
+          setConnectionHealth(
+            (current) => ({
+              ...current,
+              pollIntervalMs:
+                delay,
+              nextRetryAt:
+                Date.now() +
+                delay
+            })
+          );
+
+          timer =
+            window.setTimeout(
+              async () => {
+                await refresh();
+                scheduleNext();
+              },
+              delay
+            );
+        };
+
+      void refresh()
+        .finally(
+          scheduleNext
         );
 
-      return () =>
-        window.clearInterval(
-          timer
+      const onVisibility =
+        () => {
+          if (
+            document.visibilityState ===
+              'visible'
+          ) {
+            if (timer !== null) {
+              window.clearTimeout(
+                timer
+              );
+            }
+
+            void refresh()
+              .finally(
+                scheduleNext
+              );
+          }
+        };
+
+      document.addEventListener(
+        'visibilitychange',
+        onVisibility
+      );
+
+      return () => {
+        disposed =
+          true;
+
+        document.removeEventListener(
+          'visibilitychange',
+          onVisibility
         );
+
+        if (timer !== null) {
+          window.clearTimeout(
+            timer
+          );
+        }
+      };
     },
     [
       refresh,
       initialized,
       busy,
       config
+    ]
+  );
+
+  useEffect(
+    () => {
+      if (!initialized) {
+        return;
+      }
+
+      const onOnline =
+        () => {
+          if (
+            connectionReady(
+              config
+            )
+          ) {
+            void refresh();
+          }
+        };
+
+      const onOffline =
+        () => {
+          setConnectionHealth(
+            (current) => ({
+              ...current,
+              state: 'offline',
+              lastFailureAt:
+                Date.now(),
+              nextRetryAt:
+                null,
+              lastError:
+                'Browser/network offline'
+            })
+          );
+        };
+
+      window.addEventListener(
+        'online',
+        onOnline
+      );
+
+      window.addEventListener(
+        'offline',
+        onOffline
+      );
+
+      return () => {
+        window.removeEventListener(
+          'online',
+          onOnline
+        );
+
+        window.removeEventListener(
+          'offline',
+          onOffline
+        );
+      };
+    },
+    [
+      config,
+      initialized,
+      refresh
     ]
   );
 
@@ -1014,7 +1232,6 @@ export function useController(
         config
       );
 
-      await tauriApi.syncTimeConfig();
 
       if (
         capabilities.otaSupported &&
@@ -1028,6 +1245,7 @@ export function useController(
           ''
         );
       }
+      await tauriApi.syncTimeConfig();
     };
 
   const resetAfterConnectionChange =
@@ -1051,6 +1269,22 @@ export function useController(
 
       consolePausedUntil.current =
         0;
+
+      setConnectionHealth({
+        state:
+          connectionReady(config)
+            ? 'recovering'
+            : 'unconfigured',
+        consecutiveFailures: 0,
+        lastSuccessAt: null,
+        lastFailureAt: null,
+        nextRetryAt:
+          connectionReady(config)
+            ? Date.now() + 1_000
+            : null,
+        pollIntervalMs: 1_000,
+        lastError: null
+      });
     };
 
   const saveConfig =
@@ -1684,6 +1918,7 @@ export function useController(
     config,
     setConfig,
     status,
+    connectionHealth,
     logs,
     consoleError,
     networkLogs,
@@ -1696,6 +1931,7 @@ export function useController(
     otaPassword,
     setOtaPassword,
     busy,
+    initialized,
     message,
     refresh,
     refreshFirmware,

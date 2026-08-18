@@ -21,7 +21,10 @@ assert.ok(source.includes(`#define FIRMWARE_VERSION "${versions.firmware}"`));
 assert.match(source, /#define DIRECT_API_VERSION "1\.0\.0"/);
 assert.match(source, /#define API_ALLOW_QUERY_KEY_FALLBACK 0/);
 assert.match(source, /constexpr unsigned long REMOTE_REBOOT_DELAY_MS = 750UL;/);
-assert.match(source, /base == "\/api\/v1\/system\/reboot" && method == "POST"/);
+assert.match(
+  source,
+  /pathEquals\(base, \"\/api\/v1\/system\/reboot\"\) && pathEquals\(method, \"POST\"\)/,
+);
 assert.match(source, /REBOOT_ALREADY_PENDING/);
 assert.match(source, /sendJsonLiteral\(c,[\s\S]*?"delayMs\\":750}[\s\S]*?, 202, requestId\);/);
 assert.match(source, /void processPendingRemoteReboot\(\)/);

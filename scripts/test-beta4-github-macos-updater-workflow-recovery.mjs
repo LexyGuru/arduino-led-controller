@@ -1,0 +1,13 @@
+import fs from "node:fs";
+const beta=fs.readFileSync(".github/workflows/beta-release.yml","utf8");
+const staging=fs.readFileSync(".github/workflows/tauri-artifact-build.yml","utf8");
+const req=(ok,msg)=>{if(!ok)throw new Error(msg)};
+req(beta.includes("--target aarch64-apple-darwin --bundles dmg,app"),"arm64 dmg,app missing");
+req(beta.includes("--target x86_64-apple-darwin --bundles dmg,app"),"x64 dmg,app missing");
+req((beta.match(/MACOS_UPDATER_TAR=MISSING/g)||[]).length===2,"macOS tar diagnostics missing");
+req((beta.match(/MACOS_UPDATER_SIGNATURE=MISSING/g)||[]).length===2,"macOS sig diagnostics missing");
+req(staging.includes("bundles: dmg,app"),"staging dmg,app missing");
+req(staging.includes("TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}"),"staging private key env missing");
+req(staging.includes("TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}"),"staging password env missing");
+req(staging.includes("bundle/macos/*.app.tar.gz.sig"),"staging updater signature upload missing");
+console.log("BETA4_GITHUB_MACOS_UPDATER_WORKFLOW_RECOVERY=PASSED");

@@ -397,7 +397,7 @@ function loadRuntimeConfig(options = {}) {
       releaseTag:
         String(
           environment.FIRMWARE_RELEASE_TAG ||
-          'firmware-latest'
+          'Arduino_LED_Controller_Firmware_BETA'
         ).trim(),
       githubToken:
         String(environment.GITHUB_TOKEN || '').trim(),
