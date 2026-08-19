@@ -26,8 +26,9 @@ export function V5LedBulkActions({
   const { t } = useI18n();
 
   return (
-    <div className="v5-led-bulk-actions">
+    <div className="v5-led-bulk-actions core-v3-led-command-bar" role="toolbar" aria-label={t('leds.title')}>
       <button
+        className="core-v3-command-button"
         disabled={busy}
         onClick={onAllOn}
       >
@@ -36,7 +37,7 @@ export function V5LedBulkActions({
       </button>
 
       <button
-        className="danger"
+        className="danger core-v3-command-button"
         disabled={busy}
         onClick={onAllOff}
       >
@@ -45,7 +46,7 @@ export function V5LedBulkActions({
       </button>
 
       <button
-        className="secondary"
+        className="secondary core-v3-command-button"
         disabled={busy}
         onClick={onReset}
       >
@@ -56,7 +57,7 @@ export function V5LedBulkActions({
       </button>
 
       <button
-        className="secondary"
+        className="secondary core-v3-command-button"
         disabled={busy}
         onClick={onRefresh}
       >

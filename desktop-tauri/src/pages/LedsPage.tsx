@@ -283,8 +283,8 @@ function LedCard({
   };
 
   return (
-    <article className="panel led-card">
-      <div className="led-card-head">
+    <article className={`panel led-card core-v3-led-card ${draft.enabled ? 'is-enabled' : 'is-disabled'}`} data-led-id={draft.id}>
+      <div className="led-card-head core-v3-led-card-head">
         <div>
           <span>
             {t('leds.channel',{id:draft.id})}
@@ -296,7 +296,7 @@ function LedCard({
 
         <button
           className={
-            `power ${
+            `power core-v3-power-control ${
               draft.enabled
                 ? 'on'
                 : ''
@@ -317,7 +317,7 @@ function LedCard({
       </div>
 
       <div
-        className="color-preview"
+        className="color-preview core-v3-led-preview"
         style={{
           background:
             rgbToHex(
@@ -330,11 +330,12 @@ function LedCard({
         }}
       />
 
-      <label>
-        {t('leds.color')}
+      <label className="core-control-field core-control-field--color">
+        <span className="core-control-label">{t('leds.color')}</span>
 
-        <div className="color-row">
+        <div className="color-row core-control-row">
           <input
+            className="core-color-input"
             type="color"
             value={
               rgbToHex(
@@ -354,7 +355,7 @@ function LedCard({
             }
           />
 
-          <code>
+          <code className="core-value-pill">
             {rgbToHex(
               draft.color
             ).toUpperCase()}
@@ -362,11 +363,12 @@ function LedCard({
         </div>
       </label>
 
-      <label>
-        {t('leds.brightness')}
+      <label className="core-control-field">
+        <span className="core-control-label">{t('leds.brightness')}</span>
 
-        <div className="slider-number-row">
+        <div className="slider-number-row core-control-row core-range-row">
           <input
+            className="core-range-input"
             type="range"
             min="0"
             max="255"
@@ -391,7 +393,7 @@ function LedCard({
           />
 
           <input
-            className="value-number"
+            className="value-number core-number-input"
             type="number"
             min="0"
             max="255"
@@ -425,7 +427,7 @@ function LedCard({
           />
         </div>
 
-        <span className="send-hint">
+        <span className="send-hint core-control-hint">
           {pendingField ===
             'brightness'
             ? t('leds.delayedSend')
@@ -433,10 +435,11 @@ function LedCard({
         </span>
       </label>
 
-      <label>
-        {t('leds.effect')}
+      <label className="core-control-field">
+        <span className="core-control-label">{t('leds.effect')}</span>
 
         <select
+          className="core-select-input"
           value={
             draft.effect
           }
@@ -468,11 +471,12 @@ function LedCard({
         </select>
       </label>
 
-      <label>
-        {t('leds.speed')}
+      <label className="core-control-field">
+        <span className="core-control-label">{t('leds.speed')}</span>
 
         <div className="slider-number-row">
           <input
+            className="core-range-input"
             type="range"
             min="1"
             max="100"
@@ -497,7 +501,7 @@ function LedCard({
           />
 
           <input
-            className="value-number"
+            className="value-number core-number-input"
             type="number"
             min="1"
             max="100"
@@ -581,8 +585,8 @@ export function LedsPage({
     });
 
   return (
-    <div className="page beta4-leds-page">
-      <div className="page-heading">
+    <div className="page beta4-leds-page core-v3-leds-page" data-core-controls="3.0">
+      <div className="page-heading core-v3-leds-heading">
         <div>
           <p className="eyebrow">
             {t('leds.eyebrow')}
@@ -646,7 +650,7 @@ export function LedsPage({
         }
       />
 
-      <section className="panel beta2-scene-panel">
+      <section className="panel beta2-scene-panel core-v3-command-panel core-v3-scene-panel">
         <div>
           <p className="eyebrow">
             {t('beta2.scene.eyebrow')}
@@ -659,31 +663,31 @@ export function LedsPage({
           </p>
         </div>
 
-        <div className="beta2-scene-actions">
-          <button className="secondary" disabled={state.busy} onClick={() => void state.applyScene('relax')}>
+        <div className="beta2-scene-actions core-v3-command-grid">
+          <button className="secondary core-v3-command-chip" disabled={state.busy} onClick={() => void state.applyScene('relax')}>
             <Moon size={17} />
             {t('beta2.scene.relax')}
           </button>
-          <button className="secondary" disabled={state.busy} onClick={() => void state.applyScene('movie')}>
+          <button className="secondary core-v3-command-chip" disabled={state.busy} onClick={() => void state.applyScene('movie')}>
             <Square size={16} />
             {t('beta2.scene.movie')}
           </button>
-          <button className="secondary" disabled={state.busy} onClick={() => void state.applyScene('gaming')}>
+          <button className="secondary core-v3-command-chip" disabled={state.busy} onClick={() => void state.applyScene('gaming')}>
             <Sparkles size={17} />
             {t('beta2.scene.gaming')}
           </button>
-          <button className="secondary" disabled={state.busy} onClick={() => void state.applyScene('party')}>
+          <button className="secondary core-v3-command-chip" disabled={state.busy} onClick={() => void state.applyScene('party')}>
             <Waves size={17} />
             {t('beta2.scene.party')}
           </button>
-          <button className="danger" disabled={state.busy} onClick={() => void state.applyScene('all-off')}>
+          <button className="danger core-v3-command-chip" disabled={state.busy} onClick={() => void state.applyScene('all-off')}>
             <Power size={17} />
             {t('beta2.scene.allOff')}
           </button>
         </div>
       </section>
 
-      <section className="panel test-panel">
+      <section className="panel test-panel core-v3-command-panel core-v3-test-panel">
         <div>
           <p className="eyebrow">
             {t('leds.quickCheck')}
@@ -696,9 +700,9 @@ export function LedsPage({
           </p>
         </div>
 
-        <div className="test-actions">
+        <div className="test-actions core-v3-command-grid">
           <button
-            className="secondary"
+            className="secondary core-v3-command-chip"
             disabled={
               state.busy
             }
@@ -715,7 +719,7 @@ export function LedsPage({
           </button>
 
           <button
-            className="secondary"
+            className="secondary core-v3-command-chip"
             disabled={
               state.busy
             }
@@ -734,7 +738,7 @@ export function LedsPage({
           </button>
 
           <button
-            className="secondary"
+            className="secondary core-v3-command-chip"
             disabled={
               state.busy
             }
@@ -751,7 +755,7 @@ export function LedsPage({
           </button>
 
           <button
-            className="danger"
+            className="danger core-v3-command-chip"
             disabled={
               state.busy
             }
@@ -766,7 +770,7 @@ export function LedsPage({
         </div>
       </section>
 
-      <section className="led-grid">
+      <section className="led-grid core-v3-led-grid">
         {state.strips.map(
           (strip) => (
             <LedCard

@@ -1205,3 +1205,334 @@ html[data-core-ui='3.0'][data-radius='extra-rounded'] { --core-panel-radius:34px
     transform: none !important;
   }
 }
+
+/* V672 — Core UI 3.0 LED controls + reusable control primitives */
+:root {
+  --core-control-height: 44px;
+  --core-control-track-height: 8px;
+  --core-control-thumb-size: 20px;
+  --core-control-gap: 10px;
+  --core-control-surface: color-mix(in srgb, var(--ds-surface-soft) 82%, transparent);
+  --core-control-border: color-mix(in srgb, var(--ds-border) 88%, transparent);
+  --core-control-focus: color-mix(in srgb, var(--ds-accent) 34%, transparent);
+}
+
+.core-v3-leds-page {
+  position: relative;
+}
+
+.core-v3-leds-heading {
+  align-items: end;
+}
+
+.core-v3-led-command-bar {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--core-control-border);
+  border-radius: var(--core-panel-radius-small, var(--ds-radius-medium));
+  background:
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--ds-surface-raised) 90%, transparent),
+      color-mix(in srgb, var(--ds-surface-soft) 72%, transparent)
+    );
+  box-shadow:
+    0 14px 40px color-mix(in srgb, var(--ds-shadow) 25%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--ds-text) 4%, transparent);
+}
+
+.core-v3-command-button,
+.core-v3-command-chip {
+  min-height: var(--core-control-height);
+  border-radius: var(--core-control-radius, var(--ds-radius-medium));
+}
+
+.core-v3-command-button {
+  justify-content: center;
+}
+
+.core-v3-command-panel {
+  position: relative;
+  overflow: hidden;
+  border-color: color-mix(in srgb, var(--ds-accent) 12%, var(--ds-border));
+}
+
+.core-v3-command-panel::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  content: "";
+  background:
+    linear-gradient(
+      to bottom,
+      transparent,
+      color-mix(in srgb, var(--ds-accent) 70%, transparent),
+      transparent
+    );
+}
+
+.core-v3-command-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.core-v3-command-chip {
+  justify-content: flex-start;
+  padding-inline: 14px;
+  border-color: var(--core-control-border);
+  background:
+    linear-gradient(
+      140deg,
+      color-mix(in srgb, var(--ds-surface-raised) 84%, transparent),
+      color-mix(in srgb, var(--ds-surface-soft) 72%, transparent)
+    );
+}
+
+.core-v3-command-chip:hover:not(:disabled),
+.core-v3-command-button:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--ds-accent) 28%, var(--ds-border));
+  box-shadow: 0 10px 28px color-mix(in srgb, var(--ds-accent) 8%, transparent);
+}
+
+.core-v3-led-grid {
+  gap: clamp(14px, 1.8vw, 22px);
+}
+
+.core-v3-led-card {
+  position: relative;
+  overflow: hidden;
+  padding: clamp(18px, 2vw, 24px);
+  border-color: var(--core-control-border);
+  background:
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--ds-surface-raised) 93%, transparent),
+      color-mix(in srgb, var(--ds-surface) 82%, transparent)
+    );
+  box-shadow:
+    0 18px 50px color-mix(in srgb, var(--ds-shadow) 28%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--ds-text) 4%, transparent);
+  transition:
+    border-color var(--ds-duration-normal, 220ms) ease,
+    box-shadow var(--ds-duration-normal, 220ms) ease;
+}
+
+.core-v3-led-card::before {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 2px;
+  content: "";
+  opacity: .46;
+  background: var(--ds-text-muted);
+}
+
+.core-v3-led-card.is-enabled::before {
+  opacity: .9;
+  background:
+    linear-gradient(
+      90deg,
+      var(--ds-accent),
+      color-mix(in srgb, var(--ds-info) 78%, var(--ds-accent))
+    );
+  box-shadow: 0 0 18px color-mix(in srgb, var(--ds-accent) 52%, transparent);
+}
+
+.core-v3-led-card.is-enabled {
+  border-color: color-mix(in srgb, var(--ds-accent) 19%, var(--ds-border));
+}
+
+.core-v3-led-card-head {
+  align-items: center;
+}
+
+.core-v3-power-control {
+  position: relative;
+  width: 46px;
+  height: 46px;
+  border: 1px solid var(--core-control-border);
+  border-radius: 50%;
+  background: var(--core-control-surface);
+}
+
+.core-v3-power-control.on {
+  border-color: color-mix(in srgb, var(--ds-success) 36%, var(--ds-border));
+  color: var(--ds-success);
+  box-shadow:
+    0 0 0 4px color-mix(in srgb, var(--ds-success) 7%, transparent),
+    0 0 24px color-mix(in srgb, var(--ds-success) 18%, transparent);
+}
+
+.core-v3-led-preview {
+  position: relative;
+  min-height: 86px;
+  border: 1px solid color-mix(in srgb, var(--ds-border) 74%, transparent);
+  border-radius: var(--core-control-radius, var(--ds-radius-medium));
+  box-shadow:
+    inset 0 0 26px rgba(0,0,0,.2),
+    0 10px 32px color-mix(in srgb, var(--ds-shadow) 22%, transparent);
+}
+
+.core-v3-led-preview::after {
+  position: absolute;
+  inset: 8px;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: calc(var(--core-control-radius, var(--ds-radius-medium)) - 4px);
+  content: "";
+  pointer-events: none;
+}
+
+.core-control-field {
+  display: grid;
+  gap: 8px;
+  padding: 12px 0;
+  border-top: 1px solid color-mix(in srgb, var(--ds-border) 62%, transparent);
+}
+
+.core-control-field:first-of-type {
+  border-top: 0;
+}
+
+.core-control-label {
+  color: var(--ds-text-secondary);
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.core-control-row {
+  display: flex;
+  align-items: center;
+  gap: var(--core-control-gap);
+  min-width: 0;
+}
+
+.core-range-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 78px;
+}
+
+.core-range-input {
+  width: 100%;
+  min-width: 0;
+  height: var(--core-control-height);
+  accent-color: var(--ds-accent);
+}
+
+.core-range-input::-webkit-slider-runnable-track {
+  height: var(--core-control-track-height);
+  border: 1px solid color-mix(in srgb, var(--ds-accent) 12%, var(--ds-border));
+  border-radius: 999px;
+  background:
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--ds-accent) 16%, var(--ds-surface-soft)),
+      var(--ds-surface-soft)
+    );
+}
+
+.core-range-input::-webkit-slider-thumb {
+  width: var(--core-control-thumb-size);
+  height: var(--core-control-thumb-size);
+  margin-top: calc((var(--core-control-track-height) - var(--core-control-thumb-size)) / 2);
+  border: 2px solid var(--ds-surface-raised);
+  border-radius: 50%;
+  background: var(--ds-accent);
+  box-shadow:
+    0 0 0 4px color-mix(in srgb, var(--ds-accent) 10%, transparent),
+    0 0 18px color-mix(in srgb, var(--ds-accent) 28%, transparent);
+  -webkit-appearance: none;
+}
+
+.core-number-input,
+.core-select-input,
+.core-color-input {
+  min-height: var(--core-control-height);
+  border: 1px solid var(--core-control-border);
+  border-radius: var(--core-control-radius, var(--ds-radius-medium));
+  color: var(--ds-text);
+  background: var(--core-control-surface);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--ds-text) 3%, transparent);
+}
+
+.core-number-input {
+  width: 78px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+}
+
+.core-select-input {
+  width: 100%;
+}
+
+.core-color-input {
+  width: 58px;
+  padding: 5px;
+  cursor: pointer;
+}
+
+.core-number-input:focus,
+.core-select-input:focus,
+.core-color-input:focus {
+  border-color: color-mix(in srgb, var(--ds-accent) 45%, var(--ds-border));
+  box-shadow: 0 0 0 4px var(--core-control-focus);
+}
+
+.core-value-pill {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  padding: 0 10px;
+  border: 1px solid var(--core-control-border);
+  border-radius: 999px;
+  color: var(--ds-text-secondary);
+  background: var(--core-control-surface);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.core-control-hint {
+  color: var(--ds-text-muted);
+  font-size: 10px;
+}
+
+@media (max-width: 1100px) {
+  .core-v3-led-command-bar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .core-v3-command-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 620px) {
+  .core-v3-led-command-bar,
+  .core-v3-command-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .core-v3-command-chip {
+    justify-content: center;
+  }
+
+  .core-range-row {
+    grid-template-columns: minmax(0, 1fr) 70px;
+  }
+
+  .core-number-input {
+    width: 70px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .core-v3-led-card,
+  .core-v3-command-chip,
+  .core-v3-command-button {
+    transition: none !important;
+  }
+}

@@ -304,7 +304,8 @@
     "test:p1-release-runner-resilience": "node scripts/test-p1-release-runner-resilience-v660.js",
     "test:p1-release-asset-contract": "node scripts/test-p1-release-asset-contract-v662.js",
     "test:core-ui-v3": "node scripts/test-core-ui-v3-foundation-v668.js",
-    "test:core-ui-v3-shell-dashboard": "node scripts/test-core-ui-v3-shell-dashboard-v670.js"
+    "test:core-ui-v3-shell-dashboard": "node scripts/test-core-ui-v3-shell-dashboard-v670.js",
+    "test:core-ui-v3-led-controls": "node scripts/test-core-ui-v3-led-controls-v672.js"
   },
   "engines": {
     "node": ">=20"
