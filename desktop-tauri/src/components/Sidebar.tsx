@@ -46,8 +46,8 @@ export function Sidebar({
 
 
   return (
-    <aside className="sidebar core-sidebar">
-      <div className="brand core-brand">
+    <aside className="sidebar core-sidebar core-v3-sidebar">
+      <div className="brand core-brand core-v3-brand">
         <span className="brand-mark" aria-hidden="true">
           <img src="/v5-icon.png" alt="" />
         </span>
@@ -55,8 +55,8 @@ export function Sidebar({
           <strong>LED Controller</strong>
           <small>{t('brand.directArduino')}</small>
         </div>
-        <span className="core-version-pill">UI 2.0</span>
-        <span className="beta4-version-pill">Beta 5</span>
+        <span className="core-version-pill">UI 3.0</span>
+        <span className="beta4-version-pill core-v3-release-pill">5.7 Beta.1</span>
       </div>
 
       <div className="core-nav-label">{t('core.navigation')}</div>

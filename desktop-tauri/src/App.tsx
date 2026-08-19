@@ -111,7 +111,7 @@ export default function App() {
 
   return (
     <>
-      <div className={`app-shell core-ui-v3 core-ui-v20 beta4-ui-baseline${startup.blocking ? ' app-shell--booting' : ''}`}>
+      <div className={`app-shell core-ui-v3 core-ui-v20 core-ui-v3-shell beta4-ui-baseline${startup.blocking ? ' app-shell--booting' : ''}`}>
       <Sidebar
         page={page}
         onChange={setPage}
@@ -129,7 +129,7 @@ export default function App() {
         updateAvailable={appUpdate.updateAvailable}
         latestAppVersion={appUpdate.latestVersion ?? undefined}
       />
-      <div className="content-shell">
+      <div className="content-shell core-v3-content-shell">
         <Topbar
           online={
             Boolean(

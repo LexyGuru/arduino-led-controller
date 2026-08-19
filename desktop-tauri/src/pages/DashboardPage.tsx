@@ -158,8 +158,8 @@ export function DashboardPage({
       ).padStart(2, '0')}:${String(Math.abs(utcOffset) % 60).padStart(2, '0')}`;
 
   return (
-    <div className="page v55-dashboard beta4-dashboard-redesign">
-      <section className="v55-dashboard-hero">
+    <div className="page v55-dashboard beta4-dashboard-redesign core-v3-dashboard" data-core-dashboard="3.0">
+      <section className="v55-dashboard-hero core-v3-command-deck">
         <div className="v55-dashboard-hero-copy">
           <div className="v55-dashboard-kicker">
             <span className={`v55-live-dot ${status?.connected ? 'online' : 'offline'}`} />
@@ -184,7 +184,7 @@ export function DashboardPage({
         </div>
 
         <div className="v55-system-orbit">
-          <div className={`v55-orbit-core ${status?.connected ? 'online' : 'offline'}`}>
+          <div className={`v55-orbit-core ${status?.connected ? 'online' : 'offline'}`} data-device-state={status?.connected ? 'online' : 'offline'}>
             <Radio size={30} />
             <strong>{status?.connected ? t('common.online') : t('common.offline')}</strong>
             <small>{status?.hostname ?? status?.ipAddress ?? 'Arduino UNO R4 WiFi'}</small>
@@ -206,7 +206,7 @@ export function DashboardPage({
         />
       )}
 
-      <section className="v55-primary-metrics">
+      <section className="v55-primary-metrics core-v3-metric-row">
         <article className="v55-primary-card">
           <span><Cpu size={18}/>Firmware</span>
           <strong>{status?.firmwareVersion ?? '—'}</strong>

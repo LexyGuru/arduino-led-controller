@@ -20,7 +20,7 @@ export function Topbar({
   const { t } = useI18n();
 
   return (
-    <header className="topbar core-topbar">
+    <header className="topbar core-topbar core-v3-topbar">
       <div className="core-topbar-copy">
         <div className="core-topbar-kicker">
           <CircleDot size={13} />
@@ -33,7 +33,7 @@ export function Topbar({
       </div>
 
       <div className="core-topbar-actions">
-        <div className={`core-connection-chip ${online ? 'online' : 'offline'}`}>
+        <div className={`core-connection-chip ${online ? 'online' : 'offline'}`} data-connection-state={online ? 'online' : 'offline'} aria-live="polite">
           {online ? <Wifi size={16} /> : <WifiOff size={16} />}
           <div>
             <strong>{t(online ? 'common.online' : 'common.offline')}</strong>
