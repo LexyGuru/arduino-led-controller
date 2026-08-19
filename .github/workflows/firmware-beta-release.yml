@@ -28,7 +28,6 @@ concurrency:
 
 env:
   NODE_VERSION: "24"
-  EXPECTED_BRANCH: next/v5-rearchitecture
   FIRMWARE_RELEASE_TAG: Arduino_LED_Controller_Firmware_BETA
   FIRMWARE_RELEASE_NAME: Arduino LED Controller Firmware BETA
 
@@ -51,7 +50,12 @@ jobs:
         id: versions
         run: |
           set -euo pipefail
-          test "${GITHUB_REF_NAME}" = "${EXPECTED_BRANCH}"
+          CANONICAL_BRANCH="$(node -p "require('./release-versions.json').applicationRelease.branch")"
+          APP_CHANNEL="$(node -p "require('./release-versions.json').applicationRelease.channel")"
+          FW_CHANNEL="$(node -p "require('./release-versions.json').firmwareRelease.channel")"
+          test "${APP_CHANNEL}" = "beta"
+          test "${FW_CHANNEL}" = "beta"
+          test "${GITHUB_REF_NAME}" = "${CANONICAL_BRANCH}"
           APP_VERSION="$(node -p "require('./release-versions.json').application")"
           FW_VERSION="$(node -p "require('./release-versions.json').firmware")"
           API_VERSION="$(node -p "require('./release-versions.json').directApi")"

@@ -64,11 +64,16 @@ assert.equal(firmwareMeta.firmwareVersion, versions.firmware);
 assert.equal(firmwareMeta.directApiVersion, versions.directApi);
 
 // Teljes alkalmazásrelease: csak alkalmazás, mobil és LXC.
-assert.match(
-  appWorkflow,
-  new RegExp(`EXPECTED_VERSION: ${escapeRegex(versions.application)}`),
+assert.doesNotMatch(appWorkflow, /EXPECTED_VERSION:/);
+assert.doesNotMatch(appWorkflow, /EXPECTED_BRANCH:/);
+assert.match(appWorkflow, /release-versions\.json'\)\.application/);
+assert.match(appWorkflow, /release-versions\.json'\)\.applicationRelease\.branch/);
+assert.match(appWorkflow, /release-versions\.json'\)\.applicationRelease\.channel/);
+assert.equal(
+  versions.applicationRelease.branch,
+  'next/v5-rearchitecture',
+  'Canonical Beta branch identity must remain next/v5-rearchitecture',
 );
-assert.match(appWorkflow, /next\/v5-rearchitecture/);
 assert.match(appWorkflow, /workflow_dispatch:/);
 assert.doesNotMatch(appWorkflow, /\n  push:/);
 assert.match(appWorkflow, /npm test/);
@@ -109,6 +114,9 @@ assert.doesNotMatch(
 );
 
 // Dedikált firmware workflow: minden verzió dinamikus forrásból származik.
+assert.doesNotMatch(firmwareWorkflow, /EXPECTED_BRANCH:/);
+assert.match(firmwareWorkflow, /release-versions\.json'\)\.applicationRelease\.branch/);
+assert.match(firmwareWorkflow, /release-versions\.json'\)\.firmwareRelease\.channel/);
 assert.match(
   firmwareWorkflow,
   /FIRMWARE_RELEASE_TAG: Arduino_LED_Controller_Firmware_BETA/,

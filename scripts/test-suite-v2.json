@@ -34,7 +34,10 @@
     "test:v622-startup-no-scroll",
     "test:v623-workflow-cleanup",
     "test:v625-documentation-reality",
-    "test:v629-device-key-contract"
+    "test:v629-device-key-contract",
+    "test:firmware-device-key-channel-aware",
+    "test:version-single-source",
+    "test:architecture-consolidation"
   ],
   "regression": [
     "test:core",
@@ -80,6 +83,10 @@
     "scripts/test-v55-staging-runtime-normalization-v334.js",
     "scripts/test-v5-documentation-status.js",
     "scripts/test-beta-release-workflow.js",
+    "scripts/check-versions.py",
+    "scripts/test-firmware-device-key-channel-aware-v657.js",
+    "scripts/test-version-single-source-v657.js",
+    "scripts/test-p0-architecture-consolidation-v657.js",
     "scripts/run-test-suite-v2.js",
     "scripts/test-test-architecture-v2.js"
   ]

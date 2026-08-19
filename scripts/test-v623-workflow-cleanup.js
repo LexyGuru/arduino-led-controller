@@ -3,6 +3,7 @@
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const path=require('node:path');
+
 const dir='.github/workflows';
 const actual=fs.readdirSync(dir).filter(x=>x.endsWith('.yml')).sort();
 const expected=[
@@ -17,6 +18,7 @@ const expected=[
 assert.deepEqual(actual,expected,'workflow directory must contain exactly the canonical 7 workflows');
 
 const read=f=>fs.readFileSync(path.join(dir,f),'utf8');
+const release=JSON.parse(fs.readFileSync('release-versions.json','utf8'));
 const appBeta=read('app-beta-release.yml');
 const appStable=read('app-stable-release.yml');
 const staging=read('app-staging-build.yml');
@@ -25,8 +27,16 @@ const fwStable=read('firmware-stable-release.yml');
 const appBuild=read('app-build.yml');
 const fwBuild=read('firmware-build.yml');
 
+assert.equal(release.applicationRelease.channel,'beta');
+assert.equal(release.applicationRelease.branch,'next/v5-rearchitecture');
+
 assert.match(appBeta,/name: Application Beta release/);
-assert.match(appBeta,/EXPECTED_BRANCH: next\/v5-rearchitecture/);
+assert.doesNotMatch(appBeta,/EXPECTED_BRANCH:/);
+assert.doesNotMatch(appBeta,/EXPECTED_VERSION:/);
+assert.match(appBeta,/release-versions\.json/);
+assert.match(appBeta,/applicationRelease\.branch/);
+assert.match(appBeta,/CANONICAL_BRANCH/);
+assert.match(appBeta,/CANONICAL_VERSION/);
 assert.match(appBeta,/prerelease: true/);
 assert.match(appBeta,/make_latest: false/);
 
@@ -44,8 +54,13 @@ assert.doesNotMatch(staging,/tauri-artifact-build\.yml/);
 
 assert.match(appBuild,/workflow_call:/);
 assert.match(fwBuild,/workflow_call:/);
+
 assert.match(fwBeta,/uses: \.\/\.github\/workflows\/firmware-build\.yml/);
 assert.doesNotMatch(fwBeta,/arduino-cli compile/);
+assert.doesNotMatch(fwBeta,/EXPECTED_BRANCH:/);
+assert.match(fwBeta,/release-versions\.json/);
+assert.match(fwBeta,/applicationRelease\.branch/);
+
 assert.match(fwStable,/uses: \.\/\.github\/workflows\/firmware-build\.yml/);
 
 for(const legacy of ['beta-release.yml','tauri-desktop.yml','tauri-artifact-build.yml']){
@@ -53,6 +68,8 @@ for(const legacy of ['beta-release.yml','tauri-desktop.yml','tauri-artifact-buil
 }
 
 console.log('V623_CANONICAL_SEVEN_WORKFLOWS=PASSED');
+console.log('V623_BETA_BRANCH_SINGLE_SOURCE=PASSED');
+console.log('V623_BETA_VERSION_SINGLE_SOURCE=PASSED');
 console.log('V623_LEGACY_BETA_ENTRY_REMOVED=PASSED');
 console.log('V623_LEGACY_TAURI_DESKTOP_REMOVED=PASSED');
 console.log('V623_STAGING_RENAMED=PASSED');

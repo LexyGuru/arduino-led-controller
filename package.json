@@ -296,7 +296,10 @@
     "test:v622-startup-no-scroll": "node scripts/test-v622-startup-no-scroll.js",
     "test:v623-workflow-cleanup": "node scripts/test-v623-workflow-cleanup.js",
     "test:v625-documentation-reality": "node scripts/test-v625-documentation-reality.js",
-    "test:v629-device-key-contract": "node scripts/test-v629-device-key-contract.js"
+    "test:v629-device-key-contract": "node scripts/test-v629-device-key-contract.js",
+    "test:firmware-device-key-channel-aware": "node scripts/test-firmware-device-key-channel-aware-v657.js",
+    "test:version-single-source": "node scripts/test-version-single-source-v657.js",
+    "test:architecture-consolidation": "node scripts/test-p0-architecture-consolidation-v657.js"
   },
   "engines": {
     "node": ">=20"

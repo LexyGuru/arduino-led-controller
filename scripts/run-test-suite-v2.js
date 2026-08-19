@@ -6,16 +6,30 @@ const { spawnSync } = require('node:child_process');
 
 const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
 const manifest = JSON.parse(fs.readFileSync('scripts/test-suite-v2.json', 'utf8'));
+const release = JSON.parse(fs.readFileSync('release-versions.json', 'utf8'));
 const mode = process.argv[2] || 'default';
 const scripts = pkg.scripts || {};
 const currentVersion = fs.readFileSync('VERSION', 'utf8').trim();
-const currentMatch = currentVersion.match(/^(\d+)\.(\d+)\.(\d+)-beta\.(\d+)$/);
+
+const betaMatch = currentVersion.match(/^(\d+)\.(\d+)\.(\d+)-beta\.(\d+)$/);
+const stableMatch = currentVersion.match(/^(\d+)\.(\d+)\.(\d+)$/);
+const currentMatch = betaMatch || stableMatch;
 
 if (!currentMatch) {
   throw new Error(`Unsupported VERSION: ${currentVersion}`);
 }
 
-const appPrefix = `${currentMatch[1]}.${currentMatch[2]}.${currentMatch[3]}-beta.`;
+const expectedChannel = betaMatch ? 'beta' : 'stable';
+if (release.application !== currentVersion || release.channel !== expectedChannel) {
+  throw new Error(
+    `VERSION/release channel mismatch: VERSION=${currentVersion} ` +
+    `release.application=${release.application} release.channel=${release.channel}`
+  );
+}
+
+const betaFamilyPrefix = betaMatch
+  ? `${betaMatch[1]}.${betaMatch[2]}.${betaMatch[3]}-beta.`
+  : null;
 const historyPatterns = manifest.historyAliasPatterns.map((value) => new RegExp(value));
 
 function legacyAliases() {
@@ -37,11 +51,13 @@ function commandFiles(alias) {
 }
 
 function hasStaleApplicationVersion(alias) {
+  if (!betaFamilyPrefix) return null;
+
   for (const path of commandFiles(alias)) {
     const text = fs.readFileSync(path, 'utf8');
     const matches = text.match(/\b\d+\.\d+\.\d+-beta\.\d+\b/g) || [];
     for (const found of matches) {
-      if (found.startsWith(appPrefix) && found !== currentVersion) {
+      if (found.startsWith(betaFamilyPrefix) && found !== currentVersion) {
         return { path, found };
       }
     }
@@ -62,6 +78,7 @@ function ensureAliases(aliases) {
 function runAliases(aliases, label, options = {}) {
   ensureAliases(aliases);
   console.log(`\n===== TEST ARCHITECTURE V2 :: ${label} (${aliases.length}) =====`);
+  console.log(`TEST_SUITE_RUNTIME_IDENTITY=${currentVersion}:${expectedChannel}`);
   let ran = 0;
   let skipped = 0;
   for (const alias of aliases) {
@@ -110,6 +127,8 @@ switch (mode) {
     break;
   case 'inventory':
     console.log(JSON.stringify({
+      version: currentVersion,
+      channel: expectedChannel,
       current,
       regression,
       historyAudit: history,

@@ -68,10 +68,37 @@ def read_ts_app_version(path: str) -> str:
     return m.group(1)
 
 def main() -> int:
-    expected = read_version_file()
+    release_data = json.loads(
+        (ROOT / "release-versions.json").read_text(encoding="utf-8")
+    )
+    expected = release_data.get("application")
+    if not isinstance(expected, str) or not expected:
+        raise RuntimeError("Hiányzó kanonikus application verzió: release-versions.json")
+
+    application_release = release_data.get("applicationRelease", {})
+    if application_release.get("version") != expected:
+        raise RuntimeError(
+            "release-versions.json applicationRelease.version eltér a kanonikus application mezőtől"
+        )
+
+    channel = release_data.get("channel")
+    if channel not in {"beta", "stable"}:
+        raise RuntimeError(f"Nem támogatott release channel: {channel}")
+
+    if application_release.get("channel") != channel:
+        raise RuntimeError(
+            "release-versions.json applicationRelease.channel eltér a kanonikus channeltől"
+        )
+
+    if channel == "beta" and not re.fullmatch(r"\d+\.\d+\.\d+-beta\.\d+", expected):
+        raise RuntimeError(f"Beta application verzióformátum hibás: {expected}")
+    if channel == "stable" and not re.fullmatch(r"\d+\.\d+\.\d+", expected):
+        raise RuntimeError(f"Stable application verzióformátum hibás: {expected}")
+
+    version_file = read_version_file()
 
     versions = {
-        "VERSION": expected,
+        "VERSION": version_file,
         "package.json": read_json_version("package.json"),
         "package-lock.json": read_lock_version("package-lock.json"),
         "desktop-tauri/package.json": read_json_version("desktop-tauri/package.json"),
@@ -97,7 +124,8 @@ def main() -> int:
 
     mismatches = {k: v for k, v in versions.items() if v != expected}
 
-    print(f"Elvárt projektverzió: {expected}")
+    print(f"Kanonikus projektverzió (release-versions.json): {expected}")
+    print(f"Kanonikus release channel: {channel}")
     for path, value in versions.items():
         print(f"{'OK' if value == expected else 'ELTÉRÉS':8} {path}: {value}")
 
