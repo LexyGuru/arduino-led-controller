@@ -19,3 +19,10 @@ A publication requires, in the same release preparation:
 Firmware has an independent version. It is bumped only when firmware source or firmware release behavior changes.
 
 Commit/push happens only after the user has locally tested the release-prep package and explicitly approved publication.
+
+## Stable promotion
+
+A Stable promotion is a source publication and must carry the final Stable application
+identity across VERSION, package/Cargo/Tauri/OpenAPI surfaces, release metadata and
+mandatory release documentation. Firmware source identity changes only when firmware
+is intentionally promoted or otherwise changed.

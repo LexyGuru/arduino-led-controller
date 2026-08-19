@@ -22,6 +22,7 @@ import {
 import { applyAdvancedThemeSettings, loadAdvancedThemeSettings } from './theme-advanced';
 
 import {
+  CORE_UI_VERSION,
   DEFAULT_APPEARANCE,
   THEME_ENGINE_VERSION,
   THEME_ENGINE_PRODUCT_VERSION,
@@ -118,6 +119,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
     const root = document.documentElement;
     root.dataset.themeEngine = THEME_ENGINE_VERSION;
+    root.dataset.coreUi = CORE_UI_VERSION;
     root.dataset.themeProduct = THEME_ENGINE_PRODUCT_VERSION;
     root.dataset.themeSchema = String(THEME_SCHEMA_VERSION);
     root.dataset.themeProfile = appearance.theme;

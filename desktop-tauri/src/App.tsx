@@ -111,7 +111,7 @@ export default function App() {
 
   return (
     <>
-      <div className={`app-shell core-ui-v15 core-ui-v20 beta4-ui-baseline${startup.blocking ? ' app-shell--booting' : ''}`}>
+      <div className={`app-shell core-ui-v3 core-ui-v20 beta4-ui-baseline${startup.blocking ? ' app-shell--booting' : ''}`}>
       <Sidebar
         page={page}
         onChange={setPage}

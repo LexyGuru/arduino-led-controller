@@ -1,5 +1,18 @@
 # Arduino LED Controller V5.6
 
+## Current Beta development — 5.7.0-beta.1
+
+- Application: `5.7.0-beta.1`
+- Theme Engine: `2.0`
+- Core UI: `3.0`
+- Firmware: `5.0.0` Stable
+- Direct API: `1.0.0`
+- Release notes: `docs/v5/V57_BETA1_RELEASE_NOTES.md`
+- Installation guide: `docs/v5/V57_BETA1_INSTALLATION_GUIDE.md`
+- Release checklist: `docs/v5/V57_BETA1_RELEASE_CHECKLIST.md`
+- Root release notes: `RELEASE_NOTES_5.7.0-beta.1.md`
+
+
 <p align="center">
   <strong>Direct Arduino Control & Automation</strong>
 </p>
@@ -25,14 +38,14 @@ Arduino továbbra is önálló **Direct API v1** végpontként működik.
 
 | Komponens | Aktuális verzió / állapot |
 |---|---|
-| Alkalmazás | **`5.6.1-beta.6`** |
+| Alkalmazás | **`5.6.1`** |
 | Firmware | **`5.0.0-beta.10`** |
 | Direct API | **`1.0.0`** |
 | Beta ág | **`next/v5-rearchitecture`** |
-| Jelenlegi Stable alkalmazás (`main`) | **`5.1.0`** |
+| Jelenlegi Stable alkalmazás (`main`) | **`5.6.1`** |
 | Stabil ág | `main` |
-| Tervezett Stable promóció | `5.6.1` az elfogadott Beta után |
-| Stable firmware | jelenleg nincs publikálva; cél: `5.0.0` |
+| Stable promóció | `5.6.1` — elfogadva |
+| Stable firmware | **`5.0.0`** |
 | Arduino board | `arduino:renesas_uno:unor4wifi` |
 | OTA port | `65280` |
 | LXC rendszer | Debian 13 |
@@ -48,7 +61,7 @@ Stable/Beta firmware-csatornát. A Beta firmware változatlanul `5.0.0-beta.10`.
 - [V5.6 Beta.6 release notes](docs/v5/V56_BETA6_RELEASE_NOTES.md)
 - [V5.6 Beta.6 telepítési útmutató](docs/v5/V56_BETA6_INSTALLATION_GUIDE.md)
 - [V5.6 Beta.6 release checklist](docs/v5/V56_BETA6_RELEASE_CHECKLIST.md)
-- [Részletes gyökér release notes](RELEASE_NOTES_5.6.1-beta.6.md)
+- [Részletes gyökér release notes](RELEASE_NOTES_5.6.1.md)
 
 ### Korábbi kiadási dokumentumok
 - [V5.6 Beta.5 release notes](docs/v5/V56_BETA5_RELEASE_NOTES.md)
@@ -186,7 +199,7 @@ Az alkalmazásrelease és firmware-release külön folyamat. Egyik release workf
 ### Jelenlegi promóciós sorrend
 
 ```text
-NEXT / 5.6.1-beta.6
+NEXT / 5.6.1
         ↓
 teljes regresszió + manuális Beta QA
         ↓
@@ -495,3 +508,14 @@ When the installed app and latest beta are both `5.5.1-beta.4`, Update Center re
 the application as up to date and exposes update checking without requiring an install action.
 
 No publication is implied by this source state; release publication is a separate explicit step.
+
+
+## Current Stable release
+
+- Application: `5.6.1`
+- Firmware: `5.0.0`
+- Direct API: `1.0.0`
+- [Stable release notes](docs/v5/V56_STABLE_RELEASE_NOTES.md)
+- [Stable installation guide](docs/v5/V56_STABLE_INSTALLATION_GUIDE.md)
+- [Stable release checklist](docs/v5/V56_STABLE_RELEASE_CHECKLIST.md)
+- [Root release notes](RELEASE_NOTES_5.6.1.md)

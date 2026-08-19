@@ -493,11 +493,11 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
 
-      - name: Build versioned Beta LXC bundle
+      - name: Build versioned Stable LXC bundle
         env:
           OUTPUT_DIR: ${{ github.workspace }}/artifacts
           OUTPUT_BASENAME: Arduino_LED_Controller_${{ needs.validate.outputs.version }}_LXC_Server
-        run: bash deploy/build-beta-release-bundle.sh
+        run: bash deploy/build-stable-release-bundle.sh
 
       - name: Upload LXC artifact
         uses: actions/upload-artifact@v6
@@ -508,7 +508,7 @@ jobs:
           retention-days: 30
 
   publish:
-    name: Publish GitHub prerelease
+    name: Publish GitHub Stable release
     if: ${{ inputs.publish }}
     needs:
       - validate
@@ -542,9 +542,9 @@ jobs:
           test -f "release-assets/${DOC_PREFIX}_INSTALLATION_GUIDE.md"
           test -f "release-assets/${DOC_PREFIX}_RELEASE_NOTES.md"
           test -f "release-assets/${DOC_PREFIX}_RELEASE_CHECKLIST.md"
-          cp deploy/install-stable-lxc.sh release-assets/
-          cp deploy/stable-lxc.env.example release-assets/
-          chmod 0755 release-assets/install-stable-lxc.sh
+          cp deploy/install-rust-lxc-native.sh release-assets/
+          cp deploy/rust-lxc.env.example release-assets/
+          chmod 0755 release-assets/install-rust-lxc-native.sh
 
       - name: Verify expected release asset classes
         shell: bash
@@ -590,64 +590,17 @@ jobs:
           VERSION: ${{ needs.validate.outputs.version }}
           TAG: ${{ needs.validate.outputs.tag }}
         run: |
-          python3 - <<'PY'
-          import json
-          import os
-          from pathlib import Path
-
-          root = Path("release-assets")
-          version = os.environ["VERSION"]
-          tag = os.environ["TAG"]
-          base = f"https://github.com/LexyGuru/arduino-led-controller/releases/download/{tag}"
-          assets = {
-              "linux-x86_64": (
-                  f"Arduino_LED_Controller_{version}_Linux_x86_64.AppImage",
-                  f"Arduino_LED_Controller_{version}_Linux_x86_64.AppImage.sig",
-              ),
-              "windows-x86_64": (
-                  f"Arduino_LED_Controller_{version}_Windows_x86_64_Setup.exe",
-                  f"Arduino_LED_Controller_{version}_Windows_x86_64_Setup.exe.sig",
-              ),
-              "darwin-aarch64": (
-                  f"Arduino_LED_Controller_{version}_macOS_Apple_Silicon.app.tar.gz",
-                  f"Arduino_LED_Controller_{version}_macOS_Apple_Silicon.app.tar.gz.sig",
-              ),
-              "darwin-x86_64": (
-                  f"Arduino_LED_Controller_{version}_macOS_Intel.app.tar.gz",
-                  f"Arduino_LED_Controller_{version}_macOS_Intel.app.tar.gz.sig",
-              ),
-          }
-          platforms = {}
-          for platform, (artifact, signature_file) in assets.items():
-              artifact_path = root / artifact
-              signature_path = root / signature_file
-              if not artifact_path.is_file():
-                  raise SystemExit(f"Missing updater artifact: {artifact}")
-              if not signature_path.is_file():
-                  raise SystemExit(f"Missing updater signature: {signature_file}")
-              signature = signature_path.read_text(encoding="utf-8").strip()
-              if not signature:
-                  raise SystemExit(f"Empty updater signature: {signature_file}")
-              platforms[platform] = {
-                  "url": f"{base}/{artifact}",
-                  "signature": signature,
-              }
-          latest = {
-              "version": version,
-              "notes": "Arduino LED Controller Beta signed native application update.",
-              "platforms": platforms,
-          }
-          (root / "latest.json").write_text(
-              json.dumps(latest, indent=2, ensure_ascii=False) + "\n",
-              encoding="utf-8",
-          )
-          PY
-          test -f release-assets/latest.json
+          set -euo pipefail
+          node scripts/generate-stable-tauri-updater-feed-v650.js \
+            --root release-assets \
+            --version "${VERSION}" \
+            --tag "${TAG}"
 
       - name: Generate supply-chain evidence
         env:
           RELEASE_COMMIT: ${{ github.sha }}
         run: |
+          set -euo pipefail
           node scripts/generate-release-sbom.js \
             --root "${GITHUB_WORKSPACE}" \
             --output "${GITHUB_WORKSPACE}/release-assets/SBOM.cdx.json" \
@@ -657,7 +610,11 @@ jobs:
             --root "${GITHUB_WORKSPACE}" \
             --output "${GITHUB_WORKSPACE}/release-assets/PROVENANCE.json" \
             --commit "${GITHUB_SHA}" \
-            --phase beta
+            --phase stable \
+            --target-version "${{ needs.validate.outputs.version }}" \
+            --builder-id "https://github.com/LexyGuru/arduino-led-controller/actions/workflows/app-stable-release.yml" \
+            --dependency-install "npm-ci" \
+            --byproducts "SBOM.cdx.json,SECRET-SCAN.json,SHA256SUMS,latest.json,latest-stable.json,RELEASE-MANIFEST.json"
           node scripts/scan-release-secrets.js \
             --root "${GITHUB_WORKSPACE}/release-assets" \
             --output "${GITHUB_WORKSPACE}/release-assets/SECRET-SCAN.json"
@@ -668,134 +625,31 @@ jobs:
           TAG: ${{ needs.validate.outputs.tag }}
         run: |
           set -euo pipefail
-          (
-            cd release-assets
-            find . -maxdepth 1 -type f ! -name SHA256SUMS ! -name RELEASE-MANIFEST.json -printf '%f\0' \
-              | sort -z \
-              | xargs -0 sha256sum > SHA256SUMS
-          )
-          python3 - <<'PY'
-          import hashlib
-          import json
-          import os
-          from pathlib import Path
-
-          root = Path("release-assets")
-          files = []
-          for path in sorted(root.iterdir(), key=lambda item: item.name):
-              if not path.is_file() or path.name == "RELEASE-MANIFEST.json":
-                  continue
-              payload = path.read_bytes()
-              files.append({
-                  "name": path.name,
-                  "bytes": len(payload),
-                  "sha256": hashlib.sha256(payload).hexdigest(),
-              })
-
-          version = os.environ["VERSION"]
-          tag = os.environ["TAG"]
-          versions = json.loads(Path("release-versions.json").read_text(encoding="utf-8"))
-          manifest = {
-              "schemaVersion": 2,
-              "product": "Arduino LED Controller",
-              "version": version,
-              "tag": tag,
-              "commit": os.environ["GITHUB_SHA"],
-              "channel": "beta",
-              "prerelease": True,
-              "productionDeploymentIncluded": False,
-              "compatibility": {
-                  "board": "arduino-uno-r4-wifi",
-                  "directApiVersion": "1.0.0",
-                  "applicationVersion": version,
-              },
-              "files": files,
-          }
-          (root / "RELEASE-MANIFEST.json").write_text(
-              json.dumps(manifest, indent=2, ensure_ascii=False) + "\n",
-              encoding="utf-8",
-          )
-
-          base_url = f"https://github.com/LexyGuru/arduino-led-controller/releases/download/{tag}"
-          app_assets = {
-              "windows-x86_64": f"Arduino_LED_Controller_{version}_Windows_x86_64_Setup.exe",
-              "linux-x86_64-appimage": f"Arduino_LED_Controller_{version}_Linux_x86_64.AppImage",
-              "linux-x86_64-deb": f"Arduino_LED_Controller_{version}_Linux_x86_64.deb",
-              "macos-aarch64": f"Arduino_LED_Controller_{version}_macOS_Apple_Silicon.dmg",
-              "macos-x86_64": f"Arduino_LED_Controller_{version}_macOS_Intel.dmg",
-          }
-          latest = {
-              "schemaVersion": 1,
-              "channel": "beta",
-              "publishedAt": os.environ.get("GITHUB_RUN_ID", "github-actions"),
-              "app": {
-                  "version": version,
-                  "directApiVersion": "1.0.0",
-                  "releaseUrl": f"https://github.com/LexyGuru/arduino-led-controller/releases/tag/{tag}",
-                  "artifacts": {key: {"name": name, "url": f"{base_url}/{name}"} for key, name in app_assets.items()},
-              },
-          }
-          (root / "latest-beta.json").write_text(
-              json.dumps(latest, indent=2, ensure_ascii=False) + "\n",
-              encoding="utf-8",
-          )
-          PY
+          node scripts/generate-stable-release-metadata-v650.js \
+            --root release-assets \
+            --version "${VERSION}" \
+            --tag "${TAG}" \
+            --commit "${GITHUB_SHA}" \
+            --published-at "${GITHUB_RUN_ID}"
 
       - name: Enforce application-only release assets
         run: |
           set -euo pipefail
           if find release-assets -maxdepth 1 -type f \( -name 'Arduino_LED_Controller_Firmware_*' -o -name 'firmware-release.json' -o -name 'firmware-catalog.json' \) | grep -q .; then
-            echo "::error::Firmware asset nem kerülhet az alkalmazás Beta prerelease-be."
+            echo "::error::Firmware asset nem kerülhet az alkalmazás Stable release-be."
             exit 1
           fi
 
-      - name: Remove stale historical release documentation assets
+      - name: Verify Stable documentation assets
         env:
-          GH_TOKEN: ${{ github.token }}
-          TAG: ${{ needs.validate.outputs.tag }}
+          DOC_PREFIX: ${{ needs.validate.outputs.doc_prefix }}
         run: |
           set -euo pipefail
-          retry_gh() {
-            local n=1 delay=5
-            while true; do
-              local output rc
-              set +e
-              output="$("$@" 2>&1)"
-              rc=$?
-              set -e
-              if [ "$rc" -eq 0 ]; then
-                [ -n "$output" ] && printf '%s\n' "$output"
-                return 0
-              fi
-              if printf '%s\n' "$output" | grep -Eq 'HTTP 5[0-9][0-9]|No server is currently available|Bad Gateway|Service Unavailable|502|503|504'; then
-                if [ "$n" -ge 8 ]; then
-                  printf '%s\n' "$output" >&2
-                  return "$rc"
-                fi
-                echo "RETRY ${n}/8: transient GitHub/API failure, waiting ${delay}s..." >&2
-                sleep "$delay"
-                n=$((n + 1))
-                delay=$((delay * 2))
-                [ "$delay" -gt 40 ] && delay=40
-                continue
-              fi
-              printf '%s\n' "$output" >&2
-              return "$rc"
-            done
-          }
-          if retry_gh gh release view "${TAG}" >/dev/null 2>&1; then
-            for generation in 1 2 3 4 5 6 7 8; do
-              for kind in INSTALLATION_GUIDE RELEASE_NOTES RELEASE_CHECKLIST; do
-                name="BETA${generation}_${kind}.md"
-                asset_id="$(retry_gh gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${TAG}" --jq ".assets[] | select(.name==\"${name}\") | .id" | head -n 1)"
-                if [ -n "${asset_id}" ]; then
-                  retry_gh gh api --method DELETE "repos/${GITHUB_REPOSITORY}/releases/assets/${asset_id}"
-                fi
-              done
-            done
-          fi
+          test -f "release-assets/${DOC_PREFIX}_INSTALLATION_GUIDE.md"
+          test -f "release-assets/${DOC_PREFIX}_RELEASE_NOTES.md"
+          test -f "release-assets/${DOC_PREFIX}_RELEASE_CHECKLIST.md"
 
-      - name: Publish or update prerelease
+      - name: Publish or update Stable release
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ needs.validate.outputs.tag }}
@@ -807,7 +661,7 @@ jobs:
           overwrite_files: true
           files: release-assets/*
 
-      - name: Publish beta updater feed alias
+      - name: Publish stable updater feed alias
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -845,12 +699,18 @@ jobs:
           else
             retry_gh gh release create updater-stable release-assets/latest.json \
               --target "${GITHUB_SHA}" \
-              --title "Arduino LED Controller Beta Updater Feed" \
-              --notes "Machine-readable signed Beta updater feed. Use the versioned prerelease for human downloads." \
-              --prerelease
+              --title "Arduino LED Controller Stable Updater Feed" \
+              --notes "Machine-readable signed Stable updater feed. Use the versioned Stable release for human downloads." \
+              --latest=false
           fi
+          retry_gh gh release edit updater-stable \
+            --draft=false \
+            --prerelease=false \
+            --target "${GITHUB_SHA}" \
+            --title "Arduino LED Controller Stable Updater Feed" \
+            --notes "Machine-readable signed Stable updater feed. Use the versioned Stable release for human downloads."
 
-      - name: Verify beta updater feed alias
+      - name: Verify stable updater feed alias
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ needs.validate.outputs.version }}
@@ -885,10 +745,14 @@ jobs:
             done
           }
           TMP="$(mktemp -d)"
+          retry_gh gh release view updater-stable --json isDraft,isPrerelease,targetCommitish \
+            --jq '{isDraft,isPrerelease,targetCommitish}'
+          test "$(retry_gh gh release view updater-stable --json isDraft --jq '.isDraft')" = "false"
+          test "$(retry_gh gh release view updater-stable --json isPrerelease --jq '.isPrerelease')" = "false"
           retry_gh gh release download updater-stable --pattern latest.json --dir "${TMP}" --clobber
           node -e "const f=require('fs');const j=JSON.parse(f.readFileSync(process.argv[1],'utf8'));if(j.version!==process.env.VERSION)process.exit(1);for(const k of ['linux-x86_64','windows-x86_64','darwin-aarch64','darwin-x86_64']){if(!j.platforms?.[k]?.url||!j.platforms?.[k]?.signature)process.exit(2)}" "${TMP}/latest.json"
 
-      - name: Verify published prerelease
+      - name: Verify published Stable release
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ needs.validate.outputs.tag }}
@@ -924,14 +788,14 @@ jobs:
           }
           retry_gh gh release view "${TAG}" --json isPrerelease,targetCommitish,assets \
             --jq '{isPrerelease,targetCommitish,assetCount:(.assets|length),assets:[.assets[].name]}'
-          test "$(retry_gh gh release view "${TAG}" --json isPrerelease --jq '.isPrerelease')" = "true"
+          test "$(retry_gh gh release view "${TAG}" --json isPrerelease --jq '.isPrerelease')" = "false"
           test "$(retry_gh gh release view "${TAG}" --json assets --jq '.assets | length')" -ge 18
 
 
       - name: Upload complete release set as workflow artifact
         uses: actions/upload-artifact@v6
         with:
-          name: beta-complete-release-set
+          name: stable-complete-release-set
           path: release-assets/*
           if-no-files-found: error
           retention-days: 30

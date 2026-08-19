@@ -12,10 +12,32 @@ const deviceGate = read('scripts/test-alpha3-device-key-header.js');
 
 const currentVersion = read('VERSION').trim();
 assert.equal(versions.application, currentVersion);
-assert.match(currentVersion, /^\d+\.\d+\.\d+-beta\.\d+$/);
-assert.equal(versions.firmware, '5.0.0-beta.10');
 assert.equal(versions.directApi, '1.0.0');
-assert.equal(versions.channel, 'beta');
+
+if (versions.channel === 'beta') {
+  assert.match(currentVersion, /^\d+\.\d+\.\d+-beta\.\d+$/);
+  assert.equal(versions.applicationRelease.channel, 'beta');
+  assert.equal(versions.applicationRelease.branch, 'next/v5-rearchitecture');
+  assert.ok(['beta', 'stable'].includes(versions.firmwareRelease.channel));
+  assert.equal(versions.firmwareRelease.recommendedVersion, versions.firmware);
+  if (versions.firmwareRelease.channel === 'beta') {
+    assert.match(versions.firmware, /^\d+\.\d+\.\d+-beta\.\d+$/);
+  } else {
+    assert.equal(versions.firmwareRelease.channel, 'stable');
+    assert.match(versions.firmware, /^\d+\.\d+\.\d+$/);
+    assert.equal(versions.firmwareRelease.releaseFamily, 'firmware-stable');
+  }
+  console.log('P0_BETA_APP_FIRMWARE_CHANNEL_DECOUPLING=PASSED');
+} else {
+  assert.equal(versions.channel, 'stable');
+  assert.match(currentVersion, /^\d+\.\d+\.\d+$/);
+  assert.equal(versions.applicationRelease.channel, 'stable');
+  assert.equal(versions.applicationRelease.branch, 'main');
+  assert.equal(versions.firmware, '5.0.0');
+  assert.equal(versions.firmwareRelease.channel, 'stable');
+  assert.equal(versions.firmwareRelease.recommendedVersion, '5.0.0');
+  console.log('P0_STABLE_IDENTITY_PROMOTION=PASSED');
+}
 
 for (const alias of [
   'test:firmware-device-key-channel-aware',
@@ -35,4 +57,4 @@ assert.match(deviceGate, /firmwareChannel === 'stable' \|\| firmwareChannel === 
 console.log('P0_STABLE_FIX_FORWARD_SYNC=PASSED');
 console.log('P0_VERSION_SINGLE_SOURCE=PASSED');
 console.log('P0_TEST_ARCHITECTURE_CONSOLIDATION=PASSED');
-console.log('P0_BETA_IDENTITY_PRESERVED=PASSED');
+console.log(`P0_RELEASE_CHANNEL=${versions.channel}`);

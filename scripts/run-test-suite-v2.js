@@ -88,6 +88,7 @@ function runAliases(aliases, label, options = {}) {
       console.log(`HISTORY_AUTO_SKIP ${alias} -> ${stale.path} contains stale ${stale.found}`);
       continue;
     }
+
     console.log(`\n--- ${alias} ---`);
     const result = spawnSync('npm', ['run', alias], {
       stdio: 'inherit',
@@ -98,7 +99,10 @@ function runAliases(aliases, label, options = {}) {
     }
     ran += 1;
   }
-  console.log(`TEST_SUITE_${label.toUpperCase().replace(/[^A-Z0-9]+/g, '_')}=PASSED ran=${ran} skipped=${skipped}`);
+  console.log(
+    `TEST_SUITE_${label.toUpperCase().replace(/[^A-Z0-9]+/g, '_')}=PASSED ` +
+    `ran=${ran} skipped=${skipped}`
+  );
 }
 
 const current = uniq(manifest.current);

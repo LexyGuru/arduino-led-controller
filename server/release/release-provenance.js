@@ -14,6 +14,13 @@ function buildReleaseProvenance({
     'https://github.com/LexyGuru/arduino-led-controller/deploy/build-versioned-release.sh',
   phase =
     'staging',
+  dependencyInstall =
+    'npm-ci-omit-dev',
+  byproducts = [
+    'sbom.cdx.json',
+    'secret-scan.json',
+    'release-gate-report.json'
+  ],
   sourceUri =
     'git+https://github.com/LexyGuru/arduino-led-controller.git'
 }) {
@@ -65,8 +72,7 @@ function buildReleaseProvenance({
         internalParameters: {
           repositoryClean:
             true,
-          dependencyInstall:
-            'npm-ci-omit-dev'
+          dependencyInstall
         },
         resolvedDependencies: [
           {
@@ -95,20 +101,12 @@ function buildReleaseProvenance({
           finishedOn:
             generatedAt
         },
-        byproducts: [
-          {
-            name:
-              'sbom.cdx.json'
-          },
-          {
-            name:
-              'secret-scan.json'
-          },
-          {
-            name:
-              'release-gate-report.json'
-          }
-        ]
+        byproducts:
+          byproducts.map(
+            (name) => ({
+              name
+            })
+          )
       }
     }
   };

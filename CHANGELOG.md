@@ -1,3 +1,24 @@
+# 5.7.0-beta.1 — 2026-08-19
+
+### Core UI 3.0 Foundation
+- Start 5.7 UI/UX generation.
+- Theme Engine 2.0 preserved; Core UI 3.0.
+- Firmware 5.0.0 Stable and Direct API 1.0.0 unchanged.
+
+# 5.6.1 — 2026-08-19
+
+### Final Stable consolidation
+- Consolidate current MAIN Stable-only release fixes with validated Beta.6 P0/P1 changes.
+- Promote application `5.6.1` to Stable channel and `updater-stable`.
+- Promote firmware identity from `5.0.0-beta.10` to `5.0.0` with no behavioral feature change.
+- Preserve release asset validation and GitHub-hosted Linux APT mirror recovery.
+- Close the V5 architecture/release stabilization cycle after Stable runtime verification.
+
+### Versions
+- Application: `5.6.1`
+- Firmware: `5.0.0`
+- Direct API: `1.0.0`
+
 # 5.6.1-beta.6 — 2026-08-19
 
 ### P1 — APT Mirror Recovery

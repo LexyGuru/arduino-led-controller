@@ -14,16 +14,21 @@ const firmwarePage = read('desktop-tauri/src/pages/FirmwarePage.tsx');
 
 assert.ok(
   rv.channel === 'beta' || rv.channel === 'stable',
-  `Unsupported current release channel: ${rv.channel}`
+  `Unsupported application release channel: ${rv.channel}`
 );
 
-if (rv.channel === 'beta') {
+const firmwareChannel = rv.firmwareRelease?.channel;
+assert.ok(
+  firmwareChannel === 'beta' || firmwareChannel === 'stable',
+  `Unsupported firmware release channel: ${firmwareChannel}`
+);
+
+if (firmwareChannel === 'beta') {
   assert.match(rv.firmware, /^\d+\.\d+\.\d+-beta\.\d+$/);
-  assert.equal(rv.firmwareRelease.channel, 'beta');
 } else {
   assert.match(rv.firmware, /^\d+\.\d+\.\d+$/);
-  assert.equal(rv.firmwareRelease.channel, 'stable');
   assert.equal(rv.firmwareRelease.available, true);
+  assert.equal(rv.firmwareRelease.releaseFamily, 'firmware-stable');
 }
 
 assert.equal(rv.firmwareRelease.recommendedVersion, rv.firmware);
@@ -63,6 +68,8 @@ for (const token of [
 assert.match(rust, /fn firmware_version_from_asset_name/);
 assert.match(rust, /fn firmware_version_is_prerelease/);
 
-console.log(`CURRENT_FIRMWARE_RELEASE_CATALOG=PASSED:${rv.firmware}:${rv.channel}`);
+console.log(`CURRENT_FIRMWARE_RELEASE_CATALOG=PASSED:${rv.firmware}:${firmwareChannel}`);
+console.log(`CURRENT_APPLICATION_RELEASE_CHANNEL=${rv.channel}`);
 console.log('CURRENT_SCHEDULE_BACKUP_RESTORE=PASSED');
 console.log('CURRENT_FIRMWARE_CHANNEL_METADATA=PASSED');
+console.log('APP_FIRMWARE_CHANNEL_DECOUPLING=PASSED');

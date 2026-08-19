@@ -115,7 +115,7 @@ export const THEME_ENGINE_VERSION = '3.0';
 // Canonical user-visible product identity and portable profile schema.
 export const THEME_ENGINE_PRODUCT_VERSION = '2.0';
 export const THEME_SCHEMA_VERSION = 2;
-export const CORE_UI_VERSION = '2.0';
+export const CORE_UI_VERSION = '3.0';
 
 export const DEFAULT_APPEARANCE: AppearanceSettings = {
   mode: 'system',

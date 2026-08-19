@@ -117,9 +117,16 @@ import json,sys
 src,dst=sys.argv[1:3]
 with open(src,encoding="utf-8") as f:
     v=json.load(f)
+channel=v.get("channel","beta")
+if channel == "beta":
+    firmware_release_tag = "Arduino_LED_Controller_Firmware_BETA"
+elif channel == "stable":
+    firmware_release_tag = "Arduino_LED_Controller_Firmware_STABLE"
+else:
+    raise SystemExit(f"Unsupported firmware catalog channel: {channel}")
 catalog={
     "schemaVersion":1,
-    "channel":v.get("channel","beta"),
+    "channel":channel,
     "source":"release-versions.json",
     "available":True,
     "applicationVersion":v.get("application"),
@@ -132,8 +139,8 @@ catalog={
         "board":v.get("board"),
         "otaPort":v.get("otaPort"),
         "installMode":"native-rust-http",
-        "downloadUrl":"https://github.com/LexyGuru/arduino-led-controller/releases/download/Arduino_LED_Controller_Firmware_BETA/Arduino_LED_Controller_Firmware_"+str(v.get("firmware"))+"_UNO_R4_WiFi.bin",
-        "checksumUrl":"https://github.com/LexyGuru/arduino-led-controller/releases/download/Arduino_LED_Controller_Firmware_BETA/Arduino_LED_Controller_Firmware_"+str(v.get("firmware"))+"_UNO_R4_WiFi.bin.sha256"
+        "downloadUrl":"https://github.com/LexyGuru/arduino-led-controller/releases/download/"+firmware_release_tag+"/Arduino_LED_Controller_Firmware_"+str(v.get("firmware"))+"_UNO_R4_WiFi.bin",
+        "checksumUrl":"https://github.com/LexyGuru/arduino-led-controller/releases/download/"+firmware_release_tag+"/Arduino_LED_Controller_Firmware_"+str(v.get("firmware"))+"_UNO_R4_WiFi.bin.sha256"
     }]
 }
 with open(dst,"w",encoding="utf-8") as f:

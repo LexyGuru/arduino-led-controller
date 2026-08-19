@@ -27,8 +27,15 @@ const fwStable=read('firmware-stable-release.yml');
 const appBuild=read('app-build.yml');
 const fwBuild=read('firmware-build.yml');
 
-assert.equal(release.applicationRelease.channel,'beta');
-assert.equal(release.applicationRelease.branch,'next/v5-rearchitecture');
+assert.equal(release.applicationRelease.channel,release.channel);
+if(release.channel==='beta'){
+  assert.equal(release.applicationRelease.branch,'next/v5-rearchitecture');
+  console.log('V623_CURRENT_BRANCH_SSOT=PASSED:beta:next/v5-rearchitecture');
+}else{
+  assert.equal(release.channel,'stable');
+  assert.equal(release.applicationRelease.branch,'main');
+  console.log('V623_CURRENT_BRANCH_SSOT=PASSED:stable:main');
+}
 
 assert.match(appBeta,/name: Application Beta release/);
 assert.doesNotMatch(appBeta,/EXPECTED_BRANCH:/);
@@ -68,8 +75,8 @@ for(const legacy of ['beta-release.yml','tauri-desktop.yml','tauri-artifact-buil
 }
 
 console.log('V623_CANONICAL_SEVEN_WORKFLOWS=PASSED');
-console.log('V623_BETA_BRANCH_SINGLE_SOURCE=PASSED');
-console.log('V623_BETA_VERSION_SINGLE_SOURCE=PASSED');
+console.log('V623_RELEASE_BRANCH_SINGLE_SOURCE=PASSED');
+console.log('V623_RELEASE_VERSION_SINGLE_SOURCE=PASSED');
 console.log('V623_LEGACY_BETA_ENTRY_REMOVED=PASSED');
 console.log('V623_LEGACY_TAURI_DESKTOP_REMOVED=PASSED');
 console.log('V623_STAGING_RENAMED=PASSED');

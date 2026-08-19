@@ -20,7 +20,7 @@ import './beta7-theme.css';
 import './theme-engine-v2.css';
 import './theme-engine-v3.css';
 import './app-startup-motion.css';
-import './core-ui-v1.5.css';
+import './core-ui-v3.css';
 import './v55-dashboard-stats-logs.css';
 import './v55-management-ui.css';
 import './v55-app-update-center.css';
