@@ -12,6 +12,7 @@
     "test:core-ui-v3-shell-dashboard",
     "test:core-ui-v3-led-controls",
     "test:core-ui-v3-management-surfaces",
+    "test:core-ui-v3-final-sweep",
     "test:dashboard-stats-logs-v315",
     "test:app-update-center-v319",
     "test:current-firmware-management",

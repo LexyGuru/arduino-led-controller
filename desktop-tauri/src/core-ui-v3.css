@@ -1848,3 +1848,269 @@ html[data-core-ui='3.0'][data-radius='extra-rounded'] { --core-panel-radius:34px
     transition: none !important;
   }
 }
+
+/* V676 — Core UI 3.0 final responsive + accessibility + theme sweep */
+:root {
+  --core-a11y-focus-ring: 0 0 0 3px color-mix(in srgb, var(--ds-accent) 34%, transparent);
+  --core-a11y-target-min: 42px;
+}
+
+/* Keyboard focus contract */
+html[data-core-ui='3.0'] :where(
+  button,
+  a,
+  input,
+  select,
+  textarea,
+  [role='button'],
+  [role='tab']
+):focus-visible {
+  outline: 2px solid var(--ds-accent);
+  outline-offset: 2px;
+  box-shadow: var(--core-a11y-focus-ring);
+}
+
+html[data-core-ui='3.0'] :where(
+  button,
+  input,
+  select,
+  textarea,
+  [role='button'],
+  [role='tab']
+) {
+  min-height: var(--core-a11y-target-min);
+}
+
+/* Long values must never force horizontal page overflow. */
+html[data-core-ui='3.0'] :where(
+  .endpoint-preview,
+  .firmware-status-summary,
+  .v55-unified-line,
+  .tauri-audit-list,
+  .v5-observability-list,
+  .core-app-version,
+  .core-device-line,
+  code,
+  pre
+) {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+html[data-core-ui='3.0'] .content-shell,
+html[data-core-ui='3.0'] .content,
+html[data-core-ui='3.0'] .page,
+html[data-core-ui='3.0'] .panel {
+  min-width: 0;
+}
+
+/* Theme compatibility: light mode gets more explicit boundaries. */
+html[data-core-ui='3.0'][data-appearance='light'] {
+  --core-v3-panel-depth: 0 16px 44px color-mix(in srgb, var(--ds-shadow) 22%, transparent);
+  --core-v3-panel-depth-hover: 0 20px 54px color-mix(in srgb, var(--ds-shadow) 28%, transparent);
+  --core-management-panel-shadow: 0 12px 36px color-mix(in srgb, var(--ds-shadow) 20%, transparent);
+}
+
+html[data-core-ui='3.0'][data-appearance='light'] :where(
+  .panel,
+  .stat-card,
+  .core-v3-led-card,
+  .core-v3-command-deck,
+  .core-v3-led-command-bar,
+  .core-v3-observability-toolbar
+) {
+  border-color: color-mix(in srgb, var(--ds-border) 96%, var(--ds-text) 5%);
+}
+
+/* Glass-off must remove blur/translucent assumptions. */
+html[data-core-ui='3.0'][data-glass='off'] :where(
+  .core-v3-sidebar,
+  .core-v3-topbar,
+  .core-v3-settings-hub-nav,
+  .core-v3-settings-actions
+) {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  background: var(--ds-surface-raised) !important;
+}
+
+/* Background art and glow preferences are authoritative. */
+html[data-core-ui='3.0'][data-background-art='off'] .app-shell.core-ui-v3.core-ui-v3-shell::before {
+  display: none;
+}
+
+html[data-core-ui='3.0'][data-glow='off'] :where(
+  .core-v3-brand .brand-mark,
+  .core-v3-power-control.on,
+  .core-v3-command-deck,
+  .core-v3-led-card.is-enabled,
+  .core-v3-firmware-page .firmware-icon
+) {
+  box-shadow: none !important;
+}
+
+/* Compact/comfortable density remains layout-safe. */
+html[data-core-ui='3.0'][data-density='compact'] {
+  --core-v3-shell-gutter: clamp(12px, 1.8vw, 24px);
+  --core-management-gap: clamp(10px, 1.3vw, 16px);
+  --core-control-height: 40px;
+  --core-management-toolbar-height: 42px;
+  --core-a11y-target-min: 40px;
+}
+
+html[data-core-ui='3.0'][data-density='comfortable'] {
+  --core-v3-shell-gutter: clamp(20px, 2.7vw, 38px);
+  --core-management-gap: clamp(16px, 2vw, 24px);
+  --core-control-height: 46px;
+  --core-management-toolbar-height: 48px;
+  --core-a11y-target-min: 44px;
+}
+
+/* App-level animation and motion switches override component effects. */
+html[data-core-ui='3.0'][data-animations='off'] *,
+html[data-core-ui='3.0'][data-motion='off'] * {
+  animation: none !important;
+  transition-duration: 0s !important;
+  scroll-behavior: auto !important;
+}
+
+/* High contrast profile reinforces focus/state boundaries without new colors. */
+html[data-core-ui='3.0'][data-contrast='high'] :where(
+  .panel,
+  .stat-card,
+  button,
+  input,
+  select,
+  textarea,
+  .core-v3-led-card,
+  .core-v3-command-deck
+) {
+  border-width: 2px;
+}
+
+html[data-core-ui='3.0'][data-contrast='high'] :where(
+  .muted,
+  .core-control-hint,
+  .core-topbar-subtitle
+) {
+  color: var(--ds-text);
+  opacity: .82;
+}
+
+/* Native forced-colors accessibility fallback. */
+@media (forced-colors: active) {
+  html[data-core-ui='3.0'] :where(
+    .panel,
+    .stat-card,
+    button,
+    input,
+    select,
+    textarea,
+    .core-v3-led-card,
+    .core-v3-command-deck,
+    .core-v3-settings-hub-nav
+  ) {
+    forced-color-adjust: auto;
+    border: 1px solid CanvasText !important;
+    box-shadow: none !important;
+    background: Canvas !important;
+    color: CanvasText !important;
+  }
+
+  html[data-core-ui='3.0'] :where(button,[role='button'],[role='tab']):focus-visible {
+    outline: 3px solid Highlight !important;
+    outline-offset: 2px;
+  }
+
+  html[data-core-ui='3.0'] .core-device-dot,
+  html[data-core-ui='3.0'] .core-nav-indicator {
+    background: Highlight !important;
+  }
+}
+
+/* Responsive hardening */
+@media (max-width: 960px) {
+  html[data-core-ui='3.0'] .page-heading,
+  html[data-core-ui='3.0'] .core-v3-management-heading {
+    gap: 14px;
+  }
+
+  html[data-core-ui='3.0'] .page-actions,
+  html[data-core-ui='3.0'] .core-v3-management-actions {
+    max-width: 100%;
+  }
+
+  html[data-core-ui='3.0'] .v55-log-control-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0,1fr));
+    width: 100%;
+  }
+
+  html[data-core-ui='3.0'] .v55-log-control-actions > button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 720px) {
+  html[data-core-ui='3.0'] .core-v3-content-shell {
+    width: 100%;
+  }
+
+  html[data-core-ui='3.0'] .content {
+    padding-inline:
+      max(12px, env(safe-area-inset-left))
+      max(12px, env(safe-area-inset-right));
+    padding-bottom: max(64px, calc(24px + env(safe-area-inset-bottom)));
+  }
+
+  html[data-core-ui='3.0'] .core-v3-topbar .core-topbar-actions,
+  html[data-core-ui='3.0'] .core-v3-management-actions,
+  html[data-core-ui='3.0'] .settings-actions {
+    width: 100%;
+  }
+
+  html[data-core-ui='3.0'] .core-v3-topbar .core-connection-chip {
+    max-width: 100%;
+  }
+
+  html[data-core-ui='3.0'] .core-v3-command-deck {
+    overflow: clip;
+  }
+
+  html[data-core-ui='3.0'] .core-v3-observability-toolbar label {
+    grid-template-columns: auto minmax(0,1fr);
+  }
+
+  html[data-core-ui='3.0'] .core-v3-observability-toolbar label > select {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  html[data-core-ui='3.0'] .v55-log-control-actions {
+    grid-template-columns: 1fr;
+  }
+
+  html[data-core-ui='3.0'] .core-v3-command-deck,
+  html[data-core-ui='3.0'] .core-v3-led-card,
+  html[data-core-ui='3.0'] .core-v3-management-page .panel {
+    border-radius: min(var(--core-panel-radius-small, 18px), 22px);
+  }
+
+  html[data-core-ui='3.0'] .core-v3-dashboard .v55-dashboard-hero h2 {
+    font-size: clamp(27px, 11vw, 40px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-core-ui='3.0'] *,
+  html[data-core-ui='3.0'] *::before,
+  html[data-core-ui='3.0'] *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

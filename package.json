@@ -306,7 +306,8 @@
     "test:core-ui-v3": "node scripts/test-core-ui-v3-foundation-v668.js",
     "test:core-ui-v3-shell-dashboard": "node scripts/test-core-ui-v3-shell-dashboard-v670.js",
     "test:core-ui-v3-led-controls": "node scripts/test-core-ui-v3-led-controls-v672.js",
-    "test:core-ui-v3-management-surfaces": "node scripts/test-core-ui-v3-management-surfaces-v674.js"
+    "test:core-ui-v3-management-surfaces": "node scripts/test-core-ui-v3-management-surfaces-v674.js",
+    "test:core-ui-v3-final-sweep": "node scripts/test-core-ui-v3-final-sweep-v676.js"
   },
   "engines": {
     "node": ">=20"
