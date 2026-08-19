@@ -2114,3 +2114,275 @@ html[data-core-ui='3.0'][data-contrast='high'] :where(
     scroll-behavior: auto !important;
   }
 }
+
+/* V679 — Light theme visibility + contrast final pass */
+html[data-core-ui='3.0'][data-appearance='light'] {
+  --core-light-strong-border:
+    color-mix(in srgb, var(--ds-border) 82%, var(--ds-text) 18%);
+  --core-light-soft-border:
+    color-mix(in srgb, var(--ds-border) 91%, var(--ds-text) 9%);
+  --core-light-readable-muted:
+    color-mix(in srgb, var(--ds-text-secondary) 72%, var(--ds-text) 28%);
+  --core-light-control-surface:
+    color-mix(in srgb, var(--ds-surface-raised) 94%, var(--ds-background) 6%);
+  --core-light-disabled-surface:
+    color-mix(in srgb, var(--ds-surface-soft) 82%, var(--ds-background) 18%);
+}
+
+/* Secondary/help copy must remain readable on bright surfaces. */
+html[data-core-ui='3.0'][data-appearance='light'] :where(
+  .muted,
+  .notice-text,
+  .send-hint,
+  .core-control-hint,
+  .core-topbar-subtitle,
+  .core-brand-copy small,
+  .sidebar-footer small,
+  .panel small,
+  .stat-card small,
+  .details-grid span,
+  .v55-log-summary span,
+  .settings-grid label,
+  .core-control-label
+) {
+  color: var(--core-light-readable-muted);
+  opacity: 1;
+}
+
+/* Inputs/selects need explicit separation from white/light panels. */
+html[data-core-ui='3.0'][data-appearance='light'] :where(
+  input:not([type='checkbox']):not([type='radio']):not([type='range']),
+  select,
+  textarea,
+  .core-number-input,
+  .core-select-input,
+  .core-color-input
+) {
+  color: var(--ds-text);
+  border-color: var(--core-light-strong-border);
+  background: var(--core-light-control-surface);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--ds-background) 68%, transparent),
+    0 1px 2px color-mix(in srgb, var(--ds-shadow) 10%, transparent);
+}
+
+html[data-core-ui='3.0'][data-appearance='light'] :where(
+  input,
+  select,
+  textarea
+)::placeholder {
+  color: color-mix(in srgb, var(--ds-text-muted) 68%, var(--ds-text) 32%);
+  opacity: 1;
+}
+
+/* Checkbox rows and endpoint previews should not disappear into panels. */
+html[data-core-ui='3.0'][data-appearance='light'] :where(
+  .check-row,
+  .endpoint-preview,
+  .notice,
+  .core-value-pill,
+  .core-v3-observability-summary article
+) {
+  border-color: var(--core-light-soft-border);
+  background: color-mix(
+    in srgb,
+    var(--ds-surface-soft) 74%,
+    var(--ds-surface-raised) 26%
+  );
+}
+
+/* Buttons retain hierarchy and visible disabled state. */
+html[data-core-ui='3.0'][data-appearance='light'] :where(
+  button.secondary,
+  .secondary-button,
+  .core-v3-command-chip,
+  .core-v3-command-button
+) {
+  color: var(--ds-text);
+  border-color: var(--core-light-strong-border);
+  background: color-mix(
+    in srgb,
+    var(--ds-surface-raised) 88%,
+    var(--ds-surface-soft) 12%
+  );
+}
+
+html[data-core-ui='3.0'][data-appearance='light'] :where(
+  button.secondary,
+  .secondary-button,
+  .core-v3-command-chip,
+  .core-v3-command-button
+):hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--ds-accent) 38%, var(--ds-text) 10%);
+  background: color-mix(
+    in srgb,
+    var(--ds-accent-soft) 34%,
+    var(--ds-surface-raised) 66%
+  );
+}
+
+html[data-core-ui='3.0'][data-appearance='light'] :where(
+  button,
+  input,
+  select,
+  textarea
+):disabled {
+  color: color-mix(in srgb, var(--ds-text-muted) 72%, var(--ds-text) 28%);
+  border-color: var(--core-light-soft-border);
+  background: var(--core-light-disabled-surface);
+  opacity: .72;
+  box-shadow: none;
+}
+
+html[data-core-ui='3.0'][data-appearance='light'] :where(
+  button.danger,
+  .danger,
+  .console-warning,
+  .bad
+) {
+  text-shadow: none;
+}
+
+/* Navigation and release/status badges need stronger light-mode edges. */
+html[data-core-ui='3.0'][data-appearance='light'] :where(
+  .core-version-pill,
+  .core-v3-release-pill,
+  .v5-beta-badge,
+  .v5-data-source-badge,
+  .core-connection-chip,
+  .core-app-version
+) {
+  border-color: var(--core-light-strong-border);
+  background: color-mix(
+    in srgb,
+    var(--ds-surface-raised) 84%,
+    var(--ds-accent-soft) 16%
+  );
+}
+
+html[data-core-ui='3.0'][data-appearance='light'] .core-v3-sidebar nav button {
+  color: var(--core-light-readable-muted);
+}
+
+html[data-core-ui='3.0'][data-appearance='light'] .core-v3-sidebar nav button:hover {
+  color: var(--ds-text);
+  background: color-mix(
+    in srgb,
+    var(--ds-accent-soft) 28%,
+    var(--ds-surface-raised) 72%
+  );
+}
+
+html[data-core-ui='3.0'][data-appearance='light'] .core-v3-sidebar nav button.active {
+  color: var(--ds-text);
+  border-color: color-mix(in srgb, var(--ds-accent) 34%, var(--ds-border));
+  background: color-mix(
+    in srgb,
+    var(--ds-accent-soft) 48%,
+    var(--ds-surface-raised) 52%
+  );
+}
+
+/* Dashboard / LED cards: preserve hierarchy without relying on dark shadows. */
+html[data-core-ui='3.0'][data-appearance='light'] :where(
+  .core-v3-command-deck,
+  .core-v3-led-card,
+  .core-v3-management-page .panel,
+  .core-v3-management-page .stat-card
+) {
+  border-color: var(--core-light-strong-border);
+  box-shadow:
+    0 10px 30px color-mix(in srgb, var(--ds-shadow) 14%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--ds-background) 72%, transparent);
+}
+
+html[data-core-ui='3.0'][data-appearance='light'] .core-v3-led-preview {
+  border-color: var(--core-light-strong-border);
+}
+
+/* Logs/audit: separators and metadata remain legible. */
+html[data-core-ui='3.0'][data-appearance='light'] :where(
+  .v55-unified-log,
+  .tauri-audit-console,
+  .log-list,
+  .v5-observability-list
+) {
+  border-color: var(--core-light-strong-border);
+  background: color-mix(
+    in srgb,
+    var(--ds-surface-raised) 90%,
+    var(--ds-background) 10%
+  );
+}
+
+html[data-core-ui='3.0'][data-appearance='light'] :where(
+  .v55-unified-line,
+  .log-list > div,
+  .audit-entry,
+  .tauri-audit-list > div
+) {
+  border-bottom-color: var(--core-light-soft-border);
+}
+
+html[data-core-ui='3.0'][data-appearance='light'] :where(
+  .v55-unified-line time,
+  .v55-unified-line code,
+  .log-list time,
+  .audit-entry time
+) {
+  color: var(--core-light-readable-muted);
+}
+
+/* Status colors keep their semantic hue but gain readable text weight. */
+html[data-core-ui='3.0'][data-appearance='light'] :where(
+  .ok,
+  .bad,
+  .console-warning,
+  .notice-text,
+  .core-v3-power-control.on
+) {
+  font-weight: 650;
+}
+
+/* Focus should remain clearly visible even on pale accent themes. */
+html[data-core-ui='3.0'][data-appearance='light'] :where(
+  button,
+  a,
+  input,
+  select,
+  textarea,
+  [role='button'],
+  [role='tab']
+):focus-visible {
+  outline-width: 3px;
+  outline-color: color-mix(in srgb, var(--ds-accent) 72%, var(--ds-text) 28%);
+  box-shadow:
+    0 0 0 4px color-mix(in srgb, var(--ds-accent) 22%, transparent);
+}
+
+/* High contrast + light appearance must win over decorative translucency. */
+html[data-core-ui='3.0'][data-appearance='light'][data-contrast='high'] :where(
+  .panel,
+  .stat-card,
+  button,
+  input,
+  select,
+  textarea,
+  .endpoint-preview,
+  .notice,
+  .core-v3-led-card,
+  .core-v3-command-deck
+) {
+  border-color: color-mix(in srgb, var(--ds-border) 62%, var(--ds-text) 38%);
+}
+
+@media (max-width: 720px) {
+  html[data-core-ui='3.0'][data-appearance='light'] :where(
+    .core-v3-settings-actions,
+    .core-v3-settings-hub-nav,
+    .core-v3-observability-toolbar,
+    .core-v3-led-command-bar
+  ) {
+    border-color: var(--core-light-strong-border);
+  }
+}
