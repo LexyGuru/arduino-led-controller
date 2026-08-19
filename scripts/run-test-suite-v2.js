@@ -30,7 +30,6 @@ if (release.application !== currentVersion || release.channel !== expectedChanne
 const betaFamilyPrefix = betaMatch
   ? `${betaMatch[1]}.${betaMatch[2]}.${betaMatch[3]}-beta.`
   : null;
-
 const historyPatterns = manifest.historyAliasPatterns.map((value) => new RegExp(value));
 
 function legacyAliases() {
@@ -52,8 +51,6 @@ function commandFiles(alias) {
 }
 
 function hasStaleApplicationVersion(alias) {
-  // Historical auto-skip is only needed for prerelease-family snapshots.
-  // Stable active/regression tests are expected to be version/channel aware.
   if (!betaFamilyPrefix) return null;
 
   for (const path of commandFiles(alias)) {
@@ -82,7 +79,6 @@ function runAliases(aliases, label, options = {}) {
   ensureAliases(aliases);
   console.log(`\n===== TEST ARCHITECTURE V2 :: ${label} (${aliases.length}) =====`);
   console.log(`TEST_SUITE_RUNTIME_IDENTITY=${currentVersion}:${expectedChannel}`);
-
   let ran = 0;
   let skipped = 0;
   for (const alias of aliases) {

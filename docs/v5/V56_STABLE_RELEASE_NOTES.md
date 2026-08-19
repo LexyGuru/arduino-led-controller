@@ -1,46 +1,30 @@
-# Arduino LED Controller 5.6.1 — Stable
+# Arduino LED Controller 5.6.1
 
-## Release identity
+## Stable release identity
+
 - Application: `5.6.1`
-- Application channel: `stable`
-- Branch: `main`
-- Updater alias: `updater-stable`
 - Firmware: `5.0.0`
-- Firmware channel: `stable`
 - Direct API: `1.0.0`
-- Board: `arduino:renesas_uno:unor4wifi`
-- OTA port: `65280`
+- Channel: Stable
+- Branch: `main`
 
-## Promotion basis
-This Stable release is promoted from the manually validated `5.6.1-beta.2` application and `5.0.0-beta.10` firmware candidates.
+## Final V5.6.1 release
 
-Stable promotion validation includes:
-- full current and regression suites
-- repository validation
-- desktop frontend build
-- Rust check/test
-- immutable macOS OTA contract
-- manual Tauri runtime smoke test
-- Stable LXC archive, checksum and production metadata validation
+This Stable candidate consolidates the current `main` Stable-only release fixes with the fully validated Beta.6 P0/P1 line.
 
-## Device Key transport recovery
-Credential storage and HTTP transport use the same Device Key contract:
-- minimum 16 characters
-- maximum 64 characters
-- printable ASCII `0x21..0x7e`
-- whitespace/control/non-header-safe values rejected
+Validated before promotion:
+- Application updater worked from Beta.2 directly to Beta.6.
+- Beta.6 Application Beta release completed successfully.
+- Linux APT mirror recovery runtime gate passed.
+- Release asset contract runtime gate passed.
+- P0 release architecture consolidation is preserved.
+- Stable signed updater and Stable release workflow remain part of the merged release tree.
+- Device Key remains the primary Direct API authentication contract.
 
-## Release/channel identity
-Installed runtime identity and selected future update channel are separate.
-The installed `5.6.1` application and `5.0.0` firmware identify as Stable.
-Stable and Beta catalogs remain strictly separated.
+## Firmware
 
-## LXC Stable pipeline
-Stable LXC packaging uses a dedicated Stable builder and production metadata.
-Stable LXC firmware routing is channel-aware:
-- Beta → `Arduino_LED_Controller_Firmware_BETA`
-- Stable → `Arduino_LED_Controller_Firmware_STABLE`
+Firmware `5.0.0` promotes the validated `5.0.0-beta.10` code line to Stable identity without behavioral feature changes.
 
-## Release separation
-The Application Stable release contains application, mobile and LXC assets only.
-Firmware binaries are published separately by `firmware-stable-release.yml`.
+## Release closure
+
+After the Stable application and firmware workflows are both green, the V5 architecture/release stabilization cycle is closed. Future UI/UX work starts from the Stable `5.6.1` baseline.

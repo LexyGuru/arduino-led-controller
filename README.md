@@ -21,7 +21,7 @@ Arduino továbbra is önálló **Direct API v1** végpontként működik.
 
 ## Aktuális kiadás
 
-> **Jelenlegi Stable kiadás: Arduino LED Controller V5.6**
+> **Jelenlegi fejlesztési kiadás: Arduino LED Controller V5.6 Beta.6**
 
 | Komponens | Aktuális verzió / állapot |
 |---|---|
@@ -38,24 +38,42 @@ Arduino továbbra is önálló **Direct API v1** végpontként működik.
 | LXC rendszer | Debian 13 |
 | LXC web/API port | `3000` |
 
-A **V5.6 Beta.2** a release- és channel-identitás rendbetételének Beta kiadása.
+A **V5.6 Beta.6** a release- és channel-identitás rendbetételének Beta kiadása.
 Az alkalmazás külön mutatja a futó build típusát és a kiválasztott alkalmazásfrissítési csatornát.
 A firmware kezelése ugyanígy külön választja a telepített firmware típusát és a kiválasztott
 Stable/Beta firmware-csatornát. A Beta firmware változatlanul `5.0.0-beta.10`.
 
 ### Aktuális kiadási dokumentumok
 
-- [V5.6 Stable release notes](docs/v5/V56_STABLE_RELEASE_NOTES.md)
-- [V5.6 Stable telepítési útmutató](docs/v5/V56_STABLE_INSTALLATION_GUIDE.md)
-- [V5.6 Stable release checklist](docs/v5/V56_STABLE_RELEASE_CHECKLIST.md)
+- [V5.6 Beta.6 release notes](docs/v5/V56_BETA6_RELEASE_NOTES.md)
+- [V5.6 Beta.6 telepítési útmutató](docs/v5/V56_BETA6_INSTALLATION_GUIDE.md)
+- [V5.6 Beta.6 release checklist](docs/v5/V56_BETA6_RELEASE_CHECKLIST.md)
 - [Részletes gyökér release notes](RELEASE_NOTES_5.6.1.md)
 
 ### Korábbi kiadási dokumentumok
+- [V5.6 Beta.5 release notes](docs/v5/V56_BETA5_RELEASE_NOTES.md)
+- [V5.6 Beta.5 telepítési útmutató](docs/v5/V56_BETA5_INSTALLATION_GUIDE.md)
+- [V5.6 Beta.5 release checklist](docs/v5/V56_BETA5_RELEASE_CHECKLIST.md)
+- [V5.6 Beta.5 gyökér release notes](RELEASE_NOTES_5.6.1-beta.5.md)
+
+
+- [V5.6 Beta.4 release notes](docs/v5/V56_BETA4_RELEASE_NOTES.md)
+- [V5.6 Beta.4 telepítési útmutató](docs/v5/V56_BETA4_INSTALLATION_GUIDE.md)
+- [V5.6 Beta.4 release checklist](docs/v5/V56_BETA4_RELEASE_CHECKLIST.md)
+- [V5.6 Beta.4 gyökér release notes](RELEASE_NOTES_5.6.1-beta.4.md)
+
+
+- [V5.6 Beta.3 release notes](docs/v5/V56_BETA3_RELEASE_NOTES.md)
+- [V5.6 Beta.3 telepítési útmutató](docs/v5/V56_BETA3_INSTALLATION_GUIDE.md)
+- [V5.6 Beta.3 release checklist](docs/v5/V56_BETA3_RELEASE_CHECKLIST.md)
+- [V5.6 Beta.3 gyökér release notes](RELEASE_NOTES_5.6.1-beta.3.md)
+
 
 - [V5.6 Beta.2 release notes](docs/v5/V56_BETA2_RELEASE_NOTES.md)
 - [V5.6 Beta.2 telepítési útmutató](docs/v5/V56_BETA2_INSTALLATION_GUIDE.md)
 - [V5.6 Beta.2 release checklist](docs/v5/V56_BETA2_RELEASE_CHECKLIST.md)
 - [V5.6 Beta.2 gyökér release notes](RELEASE_NOTES_5.6.1-beta.2.md)
+
 
 - [V5.6 Beta.1 release notes](docs/v5/V56_BETA1_RELEASE_NOTES.md)
 - [V5.6 Beta.1 telepítési útmutató](docs/v5/V56_BETA1_INSTALLATION_GUIDE.md)
@@ -88,7 +106,26 @@ A korábbi Beta dokumentumok történeti snapshotok; nem az aktuális kiadás le
 
 ---
 
-## Mit tartalmaz a V5.6 Stable?
+## Mit tartalmaz a V5.6 Beta.6?
+
+### P1 — Release Runner Resilience
+
+- Közös Linux/Tauri dependency installer.
+- APT retry, network timeout és dpkg lock timeout.
+- Noninteractive install, parancs- és workflow-step timeout.
+- Beragadt dependency install helyett korlátozott idejű, diagnosztizálható release-lépés.
+
+
+
+### Beta.3 P0 architektúra-konszolidáció
+
+- A kanonikus alkalmazásverzió forrása a `release-versions.json`.
+- A Beta workflow verziója, ága és csatornája SSOT metadata alapján működik.
+- A default regresszió a current + regression tesztarchitektúrát futtatja; a történeti lánc külön auditként megmarad.
+- A Device Key contract Stable javítása Beta-identitás megtartásával került forward-syncre.
+- Minden GitHub alkalmazáspublikáció kötelező új alkalmazásverziót és teljes release-dokumentációt kap.
+- Firmware: `5.0.0-beta.10` változatlan; Direct API: `1.0.0`.
+
 
 ### Közös alkalmazásplatform
 
@@ -149,7 +186,7 @@ Az alkalmazásrelease és firmware-release külön folyamat. Egyik release workf
 ### Jelenlegi promóciós sorrend
 
 ```text
-main / 5.6.1
+NEXT / 5.6.1
         ↓
 teljes regresszió + manuális Beta QA
         ↓
@@ -193,7 +230,7 @@ A `main` jelenleg még `5.1.0`; a `5.6.1` Stable és a `5.0.0` Stable firmware c
                 │                                               │
                 ▼                                               ▼
 ┌───────────────────────────────┐             ┌────────────────────────────────┐
-│ Tauri V5.6 Stable client      │             │ Debian 13 Rust LXC             │
+│ Tauri V5.6 Beta.6 client      │             │ Debian 13 Rust LXC             │
 │                               │             │                                │
 │ macOS / Windows / Linux       │             │ Rust / Axum backend            │
 │ iOS / iPadOS / Android        │             │ React / Vite web UI            │
@@ -458,3 +495,14 @@ When the installed app and latest beta are both `5.5.1-beta.4`, Update Center re
 the application as up to date and exposes update checking without requiring an install action.
 
 No publication is implied by this source state; release publication is a separate explicit step.
+
+
+## Current Stable release
+
+- Application: `5.6.1`
+- Firmware: `5.0.0`
+- Direct API: `1.0.0`
+- [Stable release notes](docs/v5/V56_STABLE_RELEASE_NOTES.md)
+- [Stable installation guide](docs/v5/V56_STABLE_INSTALLATION_GUIDE.md)
+- [Stable release checklist](docs/v5/V56_STABLE_RELEASE_CHECKLIST.md)
+- [Root release notes](RELEASE_NOTES_5.6.1.md)

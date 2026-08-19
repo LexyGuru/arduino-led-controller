@@ -1,10 +1,66 @@
-# 5.6.1 — 2026-08-18
+# 5.6.1 — 2026-08-19
 
-### Stable promotion
-- Promoted the manually validated 5.6.1-beta.2 application to Stable 5.6.1.
-- Promoted firmware identity 5.0.0-beta.10 to Stable 5.0.0 without functional firmware logic changes.
-- Stable updater alias: `updater-stable`.
-- Direct API remains `1.0.0`.
+### Final Stable consolidation
+- Consolidate current MAIN Stable-only release fixes with validated Beta.6 P0/P1 changes.
+- Promote application `5.6.1` to Stable channel and `updater-stable`.
+- Promote firmware identity from `5.0.0-beta.10` to `5.0.0` with no behavioral feature change.
+- Preserve release asset validation and GitHub-hosted Linux APT mirror recovery.
+- Close the V5 architecture/release stabilization cycle after Stable runtime verification.
+
+### Versions
+- Application: `5.6.1`
+- Firmware: `5.0.0`
+- Direct API: `1.0.0`
+
+# 5.6.1-beta.6 — 2026-08-19
+
+### P1 — APT Mirror Recovery
+- Normalize GitHub-hosted Ubuntu Azure mirror references before APT.
+- Add bounded process-tree timeout/kill and residual apt cleanup.
+- Force IPv4 and tighten APT network timeout/retry behavior.
+- Verify required Tauri Linux dependencies after installation.
+
+### Versions
+- Application: `5.6.1-beta.6`
+- Firmware: `5.0.0-beta.10` unchanged
+- Direct API: `1.0.0` unchanged
+
+# 5.6.1-beta.5 — 2026-08-19
+
+### P1 — Release Asset Contract
+- Fixed missing `VERIFIED_VERSION` wiring in Beta and Stable application release asset verification.
+- Added diagnostic release asset class cardinality checks.
+- Added Beta/Stable semantic asset-contract parity regression.
+
+### Versions
+- Application: `5.6.1-beta.5`
+- Firmware: `5.0.0-beta.10` unchanged
+- Direct API: `1.0.0` unchanged
+
+# 5.6.1-beta.4 — 2026-08-19
+
+### P1 — Release Runner Resilience
+- Replaced duplicated raw Linux/Tauri APT installs with one shared CI installer.
+- Added bounded retries, network timeouts, dpkg lock timeout, noninteractive mode, command timeout and 15-minute workflow step timeout.
+- Hardened app build, staging, Beta and Stable release Linux dependency paths.
+
+### Versions
+- Application: `5.6.1-beta.4`
+- Firmware: `5.0.0-beta.10` unchanged
+- Direct API: `1.0.0` unchanged
+
+# 5.6.1-beta.3 — 2026-08-19
+
+### P0 architecture consolidation
+- Forward-synced the channel-aware Device Key gate while preserving Beta identity.
+- Made `release-versions.json` the canonical application release SSOT.
+- Consolidated current/regression/history test architecture.
+- Removed source-shape and duplicated workflow version/branch contracts from current gates.
+
+### Release discipline
+- Every GitHub application publication now requires a new application version.
+- Added complete Beta.3 release notes, installation guide, checklist and release-version policy.
+- Firmware remains `5.0.0-beta.10`; Direct API remains `1.0.0`.
 
 # 5.6.1-beta.2 — 2026-08-18
 

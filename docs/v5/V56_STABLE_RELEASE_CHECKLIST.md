@@ -1,39 +1,33 @@
-# Arduino LED Controller 5.6.1 — Stable release checklist
+# Arduino LED Controller 5.6.1 — final Stable checklist
 
-## Identity
-- [x] VERSION is `5.6.1`
-- [x] application channel is `stable`
-- [x] application release branch is `main`
-- [x] updater alias is `updater-stable`
-- [x] firmware is `5.0.0`
-- [x] firmware channel is `stable`
-- [x] Direct API is `1.0.0`
+## Versions
+- Application: `5.6.1`
+- Firmware: `5.0.0`
+- Direct API: `1.0.0`
 
-## Automated gates
-- [x] full current suite
-- [x] full default regression
-- [x] repository validation
-- [x] desktop frontend build
-- [x] Rust check/test
-- [x] immutable macOS OTA contract
-- [x] Stable LXC archive and checksum
-- [x] Stable LXC production metadata
-- [x] Stable LXC installer/updater channel routing
+## Consolidation
+- [ ] Current MAIN-only Stable fixes are preserved.
+- [ ] Beta.6 P0/P1 changes are preserved.
+- [ ] Stable application metadata points to `main` / `updater-stable`.
+- [ ] Stable firmware metadata points to firmware `5.0.0`.
+- [ ] Firmware source reports `5.0.0`.
 
-## Manual runtime QA
-- [x] Stable Tauri application launches
-- [x] Arduino connection works
-- [x] Latest Error is clear on healthy connection
-- [x] LED control works
-- [x] schedules load
-- [x] Stable application identity verified
-- [x] Stable firmware identity verified
+## Regression
+- [ ] release policy passes
+- [ ] release architecture passes
+- [ ] Stable workflow architecture passes
+- [ ] release asset contract passes
+- [ ] Linux runner resilience passes
+- [ ] macOS OTA immutable contract passes
+- [ ] full npm regression passes
+- [ ] repository validation passes
+- [ ] desktop frontend build passes
+- [ ] Rust check/test passes
+- [ ] UNO R4 firmware compile passes
 
-## Publication
-- [ ] Application Stable workflow succeeds on `main`
-- [ ] `v5.6.1` is non-prerelease and latest
-- [ ] `updater-stable` feed is published
-- [ ] application release contains no firmware binaries
-- [ ] Firmware Stable workflow succeeds separately
-- [ ] Stable firmware `5.0.0` is published
-- [ ] NEXT remains unchanged
+## Runtime after publication
+- [ ] Application Stable release workflow succeeds.
+- [ ] `v5.6.1` is a non-prerelease and latest Stable release.
+- [ ] `updater-stable` points to `5.6.1`.
+- [ ] Firmware Stable release workflow succeeds.
+- [ ] Stable firmware catalog exposes `5.0.0` only.

@@ -18,8 +18,6 @@ concurrency:
 
 env:
   NODE_VERSION: "24"
-  EXPECTED_BRANCH: next/v5-rearchitecture
-  EXPECTED_VERSION: 5.6.1-beta.2
 
 jobs:
   validate:
@@ -45,26 +43,31 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Install Linux system dependencies
+        timeout-minutes: 15
         run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            libwebkit2gtk-4.1-dev \
-            libappindicator3-dev \
-            librsvg2-dev \
-            patchelf
+          bash scripts/ci/install-linux-tauri-deps.sh
 
       - name: Verify release branch and version
         id: version
         shell: bash
         run: |
           set -euo pipefail
-          test "${GITHUB_REF_NAME}" = "${EXPECTED_BRANCH}" || {
-            echo "::error::A Beta release csak a ${EXPECTED_BRANCH} ágról indítható."
+          CANONICAL_VERSION="$(node -p "require('./release-versions.json').application")"
+          CANONICAL_BRANCH="$(node -p "require('./release-versions.json').applicationRelease.branch")"
+          CANONICAL_CHANNEL="$(node -p "require('./release-versions.json').applicationRelease.channel")"
+
+          test "${CANONICAL_CHANNEL}" = "beta" || {
+            echo "::error::A Beta workflow metadata channelje nem beta: ${CANONICAL_CHANNEL}"
             exit 1
           }
+          test "${GITHUB_REF_NAME}" = "${CANONICAL_BRANCH}" || {
+            echo "::error::A Beta release csak a kanonikus ${CANONICAL_BRANCH} ágról indítható."
+            exit 1
+          }
+
           VERSION="$(tr -d '[:space:]' < VERSION)"
-          test "${VERSION}" = "${EXPECTED_VERSION}" || {
-            echo "::error::Elvárt verzió: ${EXPECTED_VERSION}; tényleges: ${VERSION}"
+          test "${VERSION}" = "${CANONICAL_VERSION}" || {
+            echo "::error::Kanonikus verzió: ${CANONICAL_VERSION}; VERSION: ${VERSION}"
             exit 1
           }
           echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
@@ -174,13 +177,9 @@ jobs:
 
       - name: Install Linux system dependencies
         if: matrix.key == 'linux-x86_64'
+        timeout-minutes: 15
         run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            libwebkit2gtk-4.1-dev \
-            libappindicator3-dev \
-            librsvg2-dev \
-            patchelf
+          bash ../scripts/ci/install-linux-tauri-deps.sh
 
       - name: Install frontend dependencies
         run: npm ci --no-audit --no-fund
@@ -569,22 +568,41 @@ jobs:
 
       - name: Verify expected release asset classes
         shell: bash
+        env:
+          VERIFIED_VERSION: ${{ needs.validate.outputs.version }}
         run: |
-          set -euo pipefail
-          test "$(find release-assets -maxdepth 1 -type f -name '*.dmg' | wc -l | tr -d ' ')" -eq 2
-          test "$(find release-assets -maxdepth 1 -type f -name '*.exe' | wc -l | tr -d ' ')" -eq 1
-          test "$(find release-assets -maxdepth 1 -type f -name '*.AppImage' | wc -l | tr -d ' ')" -eq 1
-          test "$(find release-assets -maxdepth 1 -type f -name '*.deb' | wc -l | tr -d ' ')" -eq 1
-          test "$(find release-assets -maxdepth 1 -type f -name '*.apk' | wc -l | tr -d ' ')" -eq 1
-          test "$(find release-assets -maxdepth 1 -type f -name '*.aab' | wc -l | tr -d ' ')" -eq 1
-          test "$(find release-assets -maxdepth 1 -type f -name '*.ipa' | wc -l | tr -d ' ')" -eq 1
-          test "$(find release-assets -maxdepth 1 -type f -name '*.bin' | wc -l | tr -d ' ')" -eq 0
-          test "$(find release-assets -maxdepth 1 -type f -name '*.bin.sha256' | wc -l | tr -d ' ')" -eq 0
+          count_asset() {
+            pattern="$1"
+            find release-assets -maxdepth 1 -type f -name "${pattern}" | wc -l | tr -d ' '
+          }
+          require_count() {
+            label="$1"
+            pattern="$2"
+            expected="$3"
+            actual="$(count_asset "${pattern}")"
+            echo "RELEASE_ASSET_CLASS=${label} pattern=${pattern} expected=${expected} actual=${actual}"
+            test "${actual}" -eq "${expected}" || {
+              echo "::error::Release asset class mismatch: ${label}; expected=${expected}; actual=${actual}; pattern=${pattern}"
+              find release-assets -maxdepth 1 -type f -print | sort
+              exit 1
+            }
+          }
+
+          require_count "macos-dmg" "*.dmg" 2
+          require_count "windows-exe" "*.exe" 1
+          require_count "linux-appimage" "*.AppImage" 1
+          require_count "linux-deb" "*.deb" 1
+          require_count "android-apk" "*.apk" 1
+          require_count "android-aab" "*.aab" 1
+          require_count "ios-ipa" "*.ipa" 1
+          require_count "firmware-bin-forbidden" "*.bin" 0
+          require_count "firmware-bin-sha-forbidden" "*.bin.sha256" 0
           test -f release-assets/release-versions.json
-          node -e "const r=require('./release-assets/release-versions.json'); if(r.application!==process.env.EXPECTED_VERSION) process.exit(1)"
-          test "$(find release-assets -maxdepth 1 -type f -name '*_LXC_Server.tar.gz' | wc -l | tr -d ' ')" -eq 1
-          test "$(find release-assets -maxdepth 1 -type f -name '*.app.tar.gz' | wc -l | tr -d ' ')" -eq 2
-          test "$(find release-assets -maxdepth 1 -type f -name '*.sig' | wc -l | tr -d ' ')" -eq 4
+          node -e "const r=require('./release-assets/release-versions.json'); if(r.application!==process.env.VERIFIED_VERSION){console.error('Release version mismatch:', r.application, process.env.VERIFIED_VERSION);process.exit(1)}"
+          require_count "lxc-server" "*_LXC_Server.tar.gz" 1
+          require_count "tauri-updater-tar" "*.app.tar.gz" 2
+          require_count "tauri-signature" "*.sig" 4
+          echo "RELEASE_ASSET_VERSION=${VERIFIED_VERSION}"
           find release-assets -maxdepth 1 -type f -print | sort
 
       - name: Generate Tauri updater static feed

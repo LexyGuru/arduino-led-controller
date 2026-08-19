@@ -1,5 +1,5 @@
 /*
- * Arduino LED Controller – 4.3.0-beta.6
+ * Arduino LED Controller – 5.0.0
  * F14 Complete: Direct API v1, JSON body, header-only auth, A/B EEPROM és
  * tranzakciós schedule. A Tauri újratervezésének stabil firmware-alapja.
  */

@@ -30,22 +30,28 @@ for (const t of [appBeta, appStable]) {
   assert.doesNotMatch(t, /Dispatch and wait for dedicated firmware prerelease/);
 }
 
-assert.match(appBeta, /EXPECTED_BRANCH: next\/v5-rearchitecture/);
+/* P0: application release branch/version identity comes from release metadata, not duplicated constants. */
+assert.match(appBeta, /applicationRelease\.branch/);
+assert.match(appBeta, /applicationRelease\.channel/);
+assert.match(appBeta, /CANONICAL_BRANCH/);
+assert.doesNotMatch(appBeta, /EXPECTED_BRANCH:/);
+assert.doesNotMatch(appBeta, /EXPECTED_VERSION:/);
 assert.match(appBeta, /prerelease: true/);
 assert.match(appBeta, /make_latest: false/);
-assert.match(fwBeta, /uses: \.\/\.github\/workflows\/firmware-build\.yml/);
+
 assert.match(appStable, /GITHUB_REF_NAME/);
 assert.match(appStable, /updater-stable/);
+assert.match(appStable, /EXPECTED_BRANCH: main|applicationRelease.*branch.*main|branch.*main/s);
+assert.match(appStable, /prerelease: false/);
+assert.match(appStable, /make_latest: true/);
+assert.doesNotMatch(appStable, /tauri-desktop\.yml/);
+
+assert.match(fwBeta, /uses: \.\/\.github\/workflows\/firmware-build\.yml/);
 assert.match(appBuild, /workflow_call:/);
 assert.ok(!fs.existsSync('.github/workflows/beta-release.yml'));
 assert.ok(!fs.existsSync('.github/workflows/tauri-desktop.yml'));
 assert.ok(!fs.existsSync('.github/workflows/tauri-artifact-build.yml'));
 assert.ok(fs.existsSync('.github/workflows/app-staging-build.yml'));
-assert.match(appStable, /EXPECTED_BRANCH: main/);
-assert.match(appStable, /prerelease: false/);
-assert.match(appStable, /make_latest: true/);
-assert.match(appStable, /updater-stable/);
-assert.doesNotMatch(appStable, /tauri-desktop\.yml/);
 
 /* Firmware build is CI/build-only. Publishing belongs to dedicated release workflows. */
 assert.match(fwBuild, /workflow_call:/);
@@ -53,7 +59,7 @@ assert.match(fwBuild, /permissions:\s*\n\s*contents: read/);
 assert.doesNotMatch(fwBuild, /softprops\/action-gh-release/);
 assert.doesNotMatch(fwBuild, /tag_name:\s*firmware-latest/);
 
-/* Stable firmware workflow is now a real explicit-promotion path. */
+/* Stable firmware workflow is a real explicit-promotion path. */
 assert.match(fwStable, /GITHUB_REF_NAME.*main|test "\$\{GITHUB_REF_NAME\}" = "main"/s);
 assert.match(fwStable, /Arduino_LED_Controller_Firmware_STABLE/);
 assert.match(fwStable, /uses: \.\/\.github\/workflows\/firmware-build\.yml/);
@@ -79,6 +85,7 @@ if (r.applicationRelease.channel === 'beta') {
 
 console.log('CANONICAL_WORKFLOW_SET=PASSED');
 console.log('APP_FIRMWARE_RELEASE_DISPATCH_COUPLING=REMOVED');
+console.log('P0_RELEASE_BRANCH_SSOT=PASSED');
 console.log('FIRMWARE_BUILD_CI_ONLY=PASSED');
 console.log('STABLE_FIRMWARE_EXPLICIT_PROMOTION_PATH=PASSED');
 console.log('RELEASE_WORKFLOW_ARCHITECTURE_FOUNDATION=PASSED');
