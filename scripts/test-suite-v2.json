@@ -39,7 +39,8 @@
     "test:version-single-source",
     "test:architecture-consolidation",
     "test:release-version-policy",
-    "test:p1-release-runner-resilience"
+    "test:p1-release-runner-resilience",
+    "test:p1-release-asset-contract"
   ],
   "regression": [
     "test:core",
@@ -92,6 +93,7 @@
     "scripts/run-test-suite-v2.js",
     "scripts/test-test-architecture-v2.js",
     "scripts/test-release-version-policy-v658.js",
-    "scripts/test-p1-release-runner-resilience-v660.js"
+    "scripts/test-p1-release-runner-resilience-v660.js",
+    "scripts/test-p1-release-asset-contract-v662.js"
   ]
 }

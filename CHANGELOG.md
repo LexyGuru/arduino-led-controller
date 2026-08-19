@@ -1,3 +1,15 @@
+# 5.6.1-beta.5 — 2026-08-19
+
+### P1 — Release Asset Contract
+- Fixed missing `VERIFIED_VERSION` wiring in Beta and Stable application release asset verification.
+- Added diagnostic release asset class cardinality checks.
+- Added Beta/Stable semantic asset-contract parity regression.
+
+### Versions
+- Application: `5.6.1-beta.5`
+- Firmware: `5.0.0-beta.10` unchanged
+- Direct API: `1.0.0` unchanged
+
 # 5.6.1-beta.4 — 2026-08-19
 
 ### P1 — Release Runner Resilience

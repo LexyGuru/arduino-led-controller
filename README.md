@@ -21,11 +21,11 @@ Arduino továbbra is önálló **Direct API v1** végpontként működik.
 
 ## Aktuális kiadás
 
-> **Jelenlegi fejlesztési kiadás: Arduino LED Controller V5.6 Beta.4**
+> **Jelenlegi fejlesztési kiadás: Arduino LED Controller V5.6 Beta.5**
 
 | Komponens | Aktuális verzió / állapot |
 |---|---|
-| Alkalmazás | **`5.6.1-beta.4`** |
+| Alkalmazás | **`5.6.1-beta.5`** |
 | Firmware | **`5.0.0-beta.10`** |
 | Direct API | **`1.0.0`** |
 | Beta ág | **`next/v5-rearchitecture`** |
@@ -38,19 +38,25 @@ Arduino továbbra is önálló **Direct API v1** végpontként működik.
 | LXC rendszer | Debian 13 |
 | LXC web/API port | `3000` |
 
-A **V5.6 Beta.4** a release- és channel-identitás rendbetételének Beta kiadása.
+A **V5.6 Beta.5** a release- és channel-identitás rendbetételének Beta kiadása.
 Az alkalmazás külön mutatja a futó build típusát és a kiválasztott alkalmazásfrissítési csatornát.
 A firmware kezelése ugyanígy külön választja a telepített firmware típusát és a kiválasztott
 Stable/Beta firmware-csatornát. A Beta firmware változatlanul `5.0.0-beta.10`.
 
 ### Aktuális kiadási dokumentumok
 
+- [V5.6 Beta.5 release notes](docs/v5/V56_BETA5_RELEASE_NOTES.md)
+- [V5.6 Beta.5 telepítési útmutató](docs/v5/V56_BETA5_INSTALLATION_GUIDE.md)
+- [V5.6 Beta.5 release checklist](docs/v5/V56_BETA5_RELEASE_CHECKLIST.md)
+- [Részletes gyökér release notes](RELEASE_NOTES_5.6.1-beta.5.md)
+
+### Korábbi kiadási dokumentumok
+
 - [V5.6 Beta.4 release notes](docs/v5/V56_BETA4_RELEASE_NOTES.md)
 - [V5.6 Beta.4 telepítési útmutató](docs/v5/V56_BETA4_INSTALLATION_GUIDE.md)
 - [V5.6 Beta.4 release checklist](docs/v5/V56_BETA4_RELEASE_CHECKLIST.md)
-- [Részletes gyökér release notes](RELEASE_NOTES_5.6.1-beta.4.md)
+- [V5.6 Beta.4 gyökér release notes](RELEASE_NOTES_5.6.1-beta.4.md)
 
-### Korábbi kiadási dokumentumok
 
 - [V5.6 Beta.3 release notes](docs/v5/V56_BETA3_RELEASE_NOTES.md)
 - [V5.6 Beta.3 telepítési útmutató](docs/v5/V56_BETA3_INSTALLATION_GUIDE.md)
@@ -95,7 +101,7 @@ A korábbi Beta dokumentumok történeti snapshotok; nem az aktuális kiadás le
 
 ---
 
-## Mit tartalmaz a V5.6 Beta.4?
+## Mit tartalmaz a V5.6 Beta.5?
 
 ### P1 — Release Runner Resilience
 
@@ -175,7 +181,7 @@ Az alkalmazásrelease és firmware-release külön folyamat. Egyik release workf
 ### Jelenlegi promóciós sorrend
 
 ```text
-NEXT / 5.6.1-beta.4
+NEXT / 5.6.1-beta.5
         ↓
 teljes regresszió + manuális Beta QA
         ↓
@@ -219,7 +225,7 @@ A `main` jelenleg még `5.1.0`; a `5.6.1` Stable és a `5.0.0` Stable firmware c
                 │                                               │
                 ▼                                               ▼
 ┌───────────────────────────────┐             ┌────────────────────────────────┐
-│ Tauri V5.6 Beta.4 client      │             │ Debian 13 Rust LXC             │
+│ Tauri V5.6 Beta.5 client      │             │ Debian 13 Rust LXC             │
 │                               │             │                                │
 │ macOS / Windows / Linux       │             │ Rust / Axum backend            │
 │ iOS / iPadOS / Android        │             │ React / Vite web UI            │

@@ -548,22 +548,41 @@ jobs:
 
       - name: Verify expected release asset classes
         shell: bash
+        env:
+          VERIFIED_VERSION: ${{ needs.validate.outputs.version }}
         run: |
-          set -euo pipefail
-          test "$(find release-assets -maxdepth 1 -type f -name '*.dmg' | wc -l | tr -d ' ')" -eq 2
-          test "$(find release-assets -maxdepth 1 -type f -name '*.exe' | wc -l | tr -d ' ')" -eq 1
-          test "$(find release-assets -maxdepth 1 -type f -name '*.AppImage' | wc -l | tr -d ' ')" -eq 1
-          test "$(find release-assets -maxdepth 1 -type f -name '*.deb' | wc -l | tr -d ' ')" -eq 1
-          test "$(find release-assets -maxdepth 1 -type f -name '*.apk' | wc -l | tr -d ' ')" -eq 1
-          test "$(find release-assets -maxdepth 1 -type f -name '*.aab' | wc -l | tr -d ' ')" -eq 1
-          test "$(find release-assets -maxdepth 1 -type f -name '*.ipa' | wc -l | tr -d ' ')" -eq 1
-          test "$(find release-assets -maxdepth 1 -type f -name '*.bin' | wc -l | tr -d ' ')" -eq 0
-          test "$(find release-assets -maxdepth 1 -type f -name '*.bin.sha256' | wc -l | tr -d ' ')" -eq 0
+          count_asset() {
+            pattern="$1"
+            find release-assets -maxdepth 1 -type f -name "${pattern}" | wc -l | tr -d ' '
+          }
+          require_count() {
+            label="$1"
+            pattern="$2"
+            expected="$3"
+            actual="$(count_asset "${pattern}")"
+            echo "RELEASE_ASSET_CLASS=${label} pattern=${pattern} expected=${expected} actual=${actual}"
+            test "${actual}" -eq "${expected}" || {
+              echo "::error::Release asset class mismatch: ${label}; expected=${expected}; actual=${actual}; pattern=${pattern}"
+              find release-assets -maxdepth 1 -type f -print | sort
+              exit 1
+            }
+          }
+
+          require_count "macos-dmg" "*.dmg" 2
+          require_count "windows-exe" "*.exe" 1
+          require_count "linux-appimage" "*.AppImage" 1
+          require_count "linux-deb" "*.deb" 1
+          require_count "android-apk" "*.apk" 1
+          require_count "android-aab" "*.aab" 1
+          require_count "ios-ipa" "*.ipa" 1
+          require_count "firmware-bin-forbidden" "*.bin" 0
+          require_count "firmware-bin-sha-forbidden" "*.bin.sha256" 0
           test -f release-assets/release-versions.json
-          node -e "const r=require('./release-assets/release-versions.json'); if(r.application!==process.env.EXPECTED_VERSION) process.exit(1)"
-          test "$(find release-assets -maxdepth 1 -type f -name '*_LXC_Server.tar.gz' | wc -l | tr -d ' ')" -eq 1
-          test "$(find release-assets -maxdepth 1 -type f -name '*.app.tar.gz' | wc -l | tr -d ' ')" -eq 2
-          test "$(find release-assets -maxdepth 1 -type f -name '*.sig' | wc -l | tr -d ' ')" -eq 4
+          node -e "const r=require('./release-assets/release-versions.json'); if(r.application!==process.env.VERIFIED_VERSION){console.error('Release version mismatch:', r.application, process.env.VERIFIED_VERSION);process.exit(1)}"
+          require_count "lxc-server" "*_LXC_Server.tar.gz" 1
+          require_count "tauri-updater-tar" "*.app.tar.gz" 2
+          require_count "tauri-signature" "*.sig" 4
+          echo "RELEASE_ASSET_VERSION=${VERIFIED_VERSION}"
           find release-assets -maxdepth 1 -type f -print | sort
 
       - name: Generate Tauri updater static feed
