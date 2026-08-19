@@ -2,7 +2,7 @@
 
 ## Aktuális verziók
 
-- Alkalmazás: `5.6.1-beta.2`
+- Alkalmazás: `5.6.1-beta.3`
 - Firmware Beta: `5.0.0-beta.10`
 - Direct API: `1.0.0`
 - Fejlesztési ág: `next/v5-rearchitecture`
@@ -14,7 +14,7 @@
 
 A futó alkalmazás build-identitása és a kiválasztott alkalmazásfrissítési csatorna külön fogalom.
 
-- A `5.6.1-beta.2` futó build mindig Beta build marad.
+- A `5.6.1-beta.3` futó build mindig Beta build marad.
 - Application Update Channel = Stable csak a Stable update-katalógust választja.
 - Application Update Channel = Beta a Beta update-katalógust választja.
 
@@ -79,10 +79,21 @@ A Beta application release nem módosítja automatikusan a `main` ágat és nem 
 A shared React frontend desktopon, mobilon és Debian 13 Rust LXC környezetben közös.
 A Direct Arduino mód továbbra is elsődleges, LXC nélkül is használható.
 
+
+## P0 architecture consolidation / Beta.3
+
+- `release-versions.json` a kanonikus application release SSOT.
+- Current tesztek version-driven és channel-aware módon futnak.
+- Historical/legacy audit nem blokkolja a default current regressziót.
+- Beta workflow nem duplikál `EXPECTED_VERSION` / `EXPECTED_BRANCH` értékeket.
+- Device Key forward-sync Beta identitás mellett aktív.
+- Minden GitHub application publication új verziót és teljes dokumentációs készletet igényel.
+- Firmware változatlanul `5.0.0-beta.10`.
+
 ## Következő release-lépés
 
 1. Current dokumentáció + teljes regresszió zöld.
 2. Dokumentáció commit/push NEXT-re.
 3. `Application Beta release` kézi indítása `next/v5-rearchitecture` ágról.
-4. A publikált `5.6.1-beta.2` build tényleges telepítési és runtime QA-ja.
+4. A publikált `5.6.1-beta.3` build tényleges telepítési és runtime QA-ja.
 5. Csak sikeres Beta QA után készülhet Stable `5.6.1` + firmware `5.0.0` promóció a `main` ágra.

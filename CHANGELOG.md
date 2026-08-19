@@ -1,3 +1,16 @@
+# 5.6.1-beta.3 — 2026-08-19
+
+### P0 architecture consolidation
+- Forward-synced the channel-aware Device Key gate while preserving Beta identity.
+- Made `release-versions.json` the canonical application release SSOT.
+- Consolidated current/regression/history test architecture.
+- Removed source-shape and duplicated workflow version/branch contracts from current gates.
+
+### Release discipline
+- Every GitHub application publication now requires a new application version.
+- Added complete Beta.3 release notes, installation guide, checklist and release-version policy.
+- Firmware remains `5.0.0-beta.10`; Direct API remains `1.0.0`.
+
 # 5.6.1-beta.2 — 2026-08-18
 
 ### Device Key transport recovery

@@ -10,7 +10,9 @@ const runner = read('scripts/run-test-suite-v2.js');
 const architecture = read('scripts/test-test-architecture-v2.js');
 const deviceGate = read('scripts/test-alpha3-device-key-header.js');
 
-assert.equal(versions.application, '5.6.1-beta.2');
+const currentVersion = read('VERSION').trim();
+assert.equal(versions.application, currentVersion);
+assert.match(currentVersion, /^\d+\.\d+\.\d+-beta\.\d+$/);
 assert.equal(versions.firmware, '5.0.0-beta.10');
 assert.equal(versions.directApi, '1.0.0');
 assert.equal(versions.channel, 'beta');

@@ -2,7 +2,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { loadLxcSchedules, saveLxcSchedules } from './lxcScheduleCodec';
 import type { ArduinoConsoleResponse, ArduinoStatus, ConnectionConfig, FirmwareArtifact, FirmwareStatus, LedSchedule, LedStrip, NativeAppUpdateInfo, NetworkLog, OtaProgressEvent, RuntimeCapabilities, ScheduleBackup, ScheduleSaveProgressEvent, ScheduleSaveResult, ScheduleSyncSnapshot } from '../types';
 
-const APP_VERSION='5.6.1-beta.2',CFG='alc.shared.lxc.config.v1',BACKUPS='alc.shared.lxc.schedule-backups.v1',TOKEN='alc.shared.lxc.ota-control-token';
+const APP_VERSION='5.6.1-beta.3',CFG='alc.shared.lxc.config.v1',BACKUPS='alc.shared.lxc.schedule-backups.v1',TOKEN='alc.shared.lxc.ota-control-token';
 export const isTauriRuntime=()=>typeof globalThis!=='undefined'&&'__TAURI_INTERNALS__' in globalThis;
 
 async function json<T>(url:string,init?:RequestInit):Promise<T>{
