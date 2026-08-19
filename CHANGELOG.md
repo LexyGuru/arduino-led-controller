@@ -1,3 +1,15 @@
+# 5.6.1-beta.4 — 2026-08-19
+
+### P1 — Release Runner Resilience
+- Replaced duplicated raw Linux/Tauri APT installs with one shared CI installer.
+- Added bounded retries, network timeouts, dpkg lock timeout, noninteractive mode, command timeout and 15-minute workflow step timeout.
+- Hardened app build, staging, Beta and Stable release Linux dependency paths.
+
+### Versions
+- Application: `5.6.1-beta.4`
+- Firmware: `5.0.0-beta.10` unchanged
+- Direct API: `1.0.0` unchanged
+
 # 5.6.1-beta.3 — 2026-08-19
 
 ### P0 architecture consolidation

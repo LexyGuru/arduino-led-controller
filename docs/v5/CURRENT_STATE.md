@@ -2,7 +2,7 @@
 
 ## Aktuális verziók
 
-- Alkalmazás: `5.6.1-beta.3`
+- Alkalmazás: `5.6.1-beta.4`
 - Firmware Beta: `5.0.0-beta.10`
 - Direct API: `1.0.0`
 - Fejlesztési ág: `next/v5-rearchitecture`
@@ -14,7 +14,7 @@
 
 A futó alkalmazás build-identitása és a kiválasztott alkalmazásfrissítési csatorna külön fogalom.
 
-- A `5.6.1-beta.3` futó build mindig Beta build marad.
+- A `5.6.1-beta.4` futó build mindig Beta build marad.
 - Application Update Channel = Stable csak a Stable update-katalógust választja.
 - Application Update Channel = Beta a Beta update-katalógust választja.
 
@@ -90,10 +90,17 @@ A Direct Arduino mód továbbra is elsődleges, LXC nélkül is használható.
 - Minden GitHub application publication új verziót és teljes dokumentációs készletet igényel.
 - Firmware változatlanul `5.0.0-beta.10`.
 
+## P1 release runner resilience / Beta.4
+
+- P0 műszaki scope lezárva.
+- P1 első célja a build/release runner dependency telepítésének megbízhatósága.
+- Közös Linux/Tauri installer, APT retry/network timeout/dpkg lock timeout/noninteractive mód és step timeout aktív.
+- Firmware változatlanul `5.0.0-beta.10`.
+
 ## Következő release-lépés
 
 1. Current dokumentáció + teljes regresszió zöld.
 2. Dokumentáció commit/push NEXT-re.
 3. `Application Beta release` kézi indítása `next/v5-rearchitecture` ágról.
-4. A publikált `5.6.1-beta.3` build tényleges telepítési és runtime QA-ja.
+4. A publikált `5.6.1-beta.4` build tényleges telepítési és runtime QA-ja.
 5. Csak sikeres Beta QA után készülhet Stable `5.6.1` + firmware `5.0.0` promóció a `main` ágra.

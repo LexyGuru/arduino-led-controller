@@ -38,7 +38,8 @@
     "test:firmware-device-key-channel-aware",
     "test:version-single-source",
     "test:architecture-consolidation",
-    "test:release-version-policy"
+    "test:release-version-policy",
+    "test:p1-release-runner-resilience"
   ],
   "regression": [
     "test:core",
@@ -90,6 +91,7 @@
     "scripts/test-p0-architecture-consolidation-v657.js",
     "scripts/run-test-suite-v2.js",
     "scripts/test-test-architecture-v2.js",
-    "scripts/test-release-version-policy-v658.js"
+    "scripts/test-release-version-policy-v658.js",
+    "scripts/test-p1-release-runner-resilience-v660.js"
   ]
 }

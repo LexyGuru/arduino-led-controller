@@ -43,13 +43,9 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Install Linux system dependencies
+        timeout-minutes: 15
         run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            libwebkit2gtk-4.1-dev \
-            libappindicator3-dev \
-            librsvg2-dev \
-            patchelf
+          bash scripts/ci/install-linux-tauri-deps.sh
 
       - name: Verify release branch and version
         id: version
@@ -181,13 +177,9 @@ jobs:
 
       - name: Install Linux system dependencies
         if: matrix.key == 'linux-x86_64'
+        timeout-minutes: 15
         run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            libwebkit2gtk-4.1-dev \
-            libappindicator3-dev \
-            librsvg2-dev \
-            patchelf
+          bash ../scripts/ci/install-linux-tauri-deps.sh
 
       - name: Install frontend dependencies
         run: npm ci --no-audit --no-fund
