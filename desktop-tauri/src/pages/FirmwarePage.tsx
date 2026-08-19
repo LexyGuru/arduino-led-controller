@@ -353,8 +353,8 @@ export function FirmwarePage({
   );
 
   return (
-    <div className="page v55-firmware-page beta4-firmware-redesign">
-      <div className="page-heading v55-management-heading">
+    <div className="page v55-firmware-page beta4-firmware-redesign core-v3-management-page core-v3-firmware-page" data-core-management="firmware">
+      <div className="page-heading v55-management-heading core-v3-management-heading">
         <div>
           <p className="eyebrow">
             OTA 2.0 · ARDUINO FIRMWARE
@@ -364,7 +364,7 @@ export function FirmwarePage({
           </h2>
         </div>
 
-        <div className="v5-heading-actions">
+        <div className="v5-heading-actions core-v3-management-actions">
           <V5DataSourceBadge
             source={
               state.source

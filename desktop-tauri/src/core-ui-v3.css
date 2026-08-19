@@ -1536,3 +1536,315 @@ html[data-core-ui='3.0'][data-radius='extra-rounded'] { --core-panel-radius:34px
     transition: none !important;
   }
 }
+
+/* V674 — Core UI 3.0 management surfaces */
+:root {
+  --core-management-gap: clamp(14px, 1.8vw, 22px);
+  --core-management-toolbar-height: 46px;
+  --core-management-panel-shadow: 0 16px 48px color-mix(in srgb, var(--ds-shadow) 28%, transparent);
+  --core-management-panel-border: color-mix(in srgb, var(--ds-border) 86%, transparent);
+}
+
+.core-v3-management-page {
+  position: relative;
+  gap: var(--core-management-gap);
+}
+
+.core-v3-management-heading {
+  align-items: end;
+  padding: 4px 0 2px;
+}
+
+.core-v3-management-heading .eyebrow {
+  color: var(--ds-accent);
+  letter-spacing: .14em;
+}
+
+.core-v3-management-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 9px;
+}
+
+.core-v3-management-actions > button {
+  min-height: var(--core-management-toolbar-height);
+  border-radius: var(--core-control-radius, var(--ds-radius-medium));
+}
+
+.core-v3-management-page .panel,
+.core-v3-management-page .stat-card {
+  border-color: var(--core-management-panel-border);
+  background:
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--ds-surface-raised) 92%, transparent),
+      color-mix(in srgb, var(--ds-surface) 84%, transparent)
+    );
+  box-shadow:
+    var(--core-management-panel-shadow),
+    inset 0 1px 0 color-mix(in srgb, var(--ds-text) 4%, transparent);
+}
+
+.core-v3-management-page .panel-title {
+  padding-bottom: 12px;
+  border-bottom: 1px solid color-mix(in srgb, var(--ds-border) 62%, transparent);
+}
+
+.core-v3-management-page .details-grid > div,
+.core-v3-management-page .stats-grid .stat-card,
+.core-v3-management-page .settings-grid label {
+  min-width: 0;
+}
+
+/* Schedules */
+.core-v3-schedules-page .page-actions {
+  max-width: min(860px, 100%);
+}
+
+.core-v3-schedules-page .schedule-day,
+.core-v3-schedules-page .schedule-entry,
+.core-v3-schedules-page .schedule-card {
+  border-color: var(--core-management-panel-border);
+}
+
+.core-v3-schedules-page input,
+.core-v3-schedules-page select {
+  border-color: var(--core-control-border);
+  background: var(--core-control-surface);
+}
+
+.core-v3-schedules-page .day-picker button,
+.core-v3-schedules-page .schedule-day-picker button {
+  border-radius: var(--core-control-radius, var(--ds-radius-medium));
+}
+
+/* Firmware / OTA */
+.core-v3-firmware-page .firmware-panel {
+  position: relative;
+  overflow: hidden;
+}
+
+.core-v3-firmware-page .firmware-panel::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  content: "";
+  background:
+    linear-gradient(
+      to bottom,
+      transparent,
+      color-mix(in srgb, var(--ds-accent) 72%, transparent),
+      transparent
+    );
+}
+
+.core-v3-firmware-page .firmware-icon {
+  border: 1px solid color-mix(in srgb, var(--ds-accent) 22%, var(--ds-border));
+  background: color-mix(in srgb, var(--ds-accent-soft) 70%, transparent);
+  box-shadow: var(--core-v3-glow-soft);
+}
+
+.core-v3-firmware-page .ota-console,
+.core-v3-firmware-page .firmware-console,
+.core-v3-firmware-page .ota-log {
+  border: 1px solid var(--core-management-panel-border);
+  border-radius: var(--core-control-radius, var(--ds-radius-medium));
+  background: color-mix(in srgb, var(--ds-background) 88%, var(--ds-surface));
+}
+
+/* Logs / observability */
+.core-v3-observability-toolbar {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(180px, 1fr)) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid var(--core-management-panel-border);
+  border-radius: var(--core-panel-radius-small, var(--ds-radius-medium));
+  background:
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--ds-surface-raised) 90%, transparent),
+      color-mix(in srgb, var(--ds-surface-soft) 74%, transparent)
+    );
+}
+
+.core-v3-observability-toolbar label {
+  display: grid;
+  grid-template-columns: auto auto minmax(120px,1fr);
+  align-items: center;
+  gap: 8px;
+}
+
+.core-v3-observability-toolbar select {
+  min-height: var(--core-control-height);
+  border: 1px solid var(--core-control-border);
+  border-radius: var(--core-control-radius, var(--ds-radius-medium));
+  background: var(--core-control-surface);
+}
+
+.core-v3-observability-summary {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0,1fr));
+  gap: 10px;
+}
+
+.core-v3-observability-summary article {
+  padding: 14px 16px;
+  border: 1px solid var(--core-management-panel-border);
+  border-radius: var(--core-panel-radius-small, var(--ds-radius-medium));
+  background: color-mix(in srgb, var(--ds-surface-soft) 72%, transparent);
+}
+
+.core-v3-observability-summary strong {
+  display: block;
+  margin-top: 6px;
+  font-size: clamp(20px,2vw,30px);
+  font-variant-numeric: tabular-nums;
+}
+
+.core-v3-observability-layout .v55-unified-log {
+  border: 1px solid color-mix(in srgb, var(--ds-border) 72%, transparent);
+  border-radius: var(--core-control-radius, var(--ds-radius-medium));
+  background: color-mix(in srgb, var(--ds-background) 90%, var(--ds-surface));
+}
+
+.core-v3-observability-layout .v55-unified-line {
+  border-bottom-color: color-mix(in srgb, var(--ds-border) 55%, transparent);
+}
+
+/* Settings */
+.core-v3-settings-hub-nav {
+  position: sticky;
+  top: calc(var(--core-topbar-height) + 8px);
+  z-index: 8;
+  border: 1px solid var(--core-management-panel-border);
+  border-radius: var(--core-panel-radius-small, var(--ds-radius-medium));
+  backdrop-filter: blur(18px) saturate(1.12);
+  background: color-mix(in srgb, var(--ds-surface-raised) 84%, transparent);
+  box-shadow: 0 12px 34px color-mix(in srgb, var(--ds-shadow) 22%, transparent);
+}
+
+.core-v3-settings-tabs {
+  padding: 4px;
+  border: 1px solid var(--core-control-border);
+  border-radius: 999px;
+  background: var(--core-control-surface);
+}
+
+.core-v3-settings-tabs button {
+  min-height: 38px;
+  padding-inline: 14px;
+  border-radius: 999px;
+}
+
+.core-v3-settings-tabs button.active {
+  color: var(--ds-accent);
+  background: var(--ds-accent-soft);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ds-accent) 24%, transparent);
+}
+
+.core-v3-settings-page .settings-grid label {
+  gap: 7px;
+}
+
+.core-v3-settings-page .settings-grid input,
+.core-v3-settings-page .settings-grid select {
+  min-height: var(--core-control-height);
+  border: 1px solid var(--core-control-border);
+  border-radius: var(--core-control-radius, var(--ds-radius-medium));
+  background: var(--core-control-surface);
+}
+
+.core-v3-settings-page .check-row {
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--ds-border) 72%, transparent);
+  border-radius: var(--core-control-radius, var(--ds-radius-medium));
+  background: color-mix(in srgb, var(--ds-surface-soft) 58%, transparent);
+}
+
+.core-v3-settings-page .endpoint-preview {
+  border-color: color-mix(in srgb, var(--ds-accent) 14%, var(--ds-border));
+  background: color-mix(in srgb, var(--ds-accent-soft) 36%, var(--ds-surface-soft));
+}
+
+.core-v3-settings-actions {
+  position: sticky;
+  bottom: calc(12px + var(--core-safe-bottom));
+  z-index: 9;
+  padding: 12px;
+  border: 1px solid var(--core-management-panel-border);
+  border-radius: var(--core-panel-radius-small, var(--ds-radius-medium));
+  backdrop-filter: blur(20px);
+  background: color-mix(in srgb, var(--ds-surface-raised) 88%, transparent);
+  box-shadow: 0 18px 48px color-mix(in srgb, var(--ds-shadow) 32%, transparent);
+}
+
+@media (max-width: 1100px) {
+  .core-v3-observability-toolbar {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .core-v3-observability-toolbar .v55-log-control-actions {
+    grid-column: 1 / -1;
+  }
+
+  .core-v3-observability-summary {
+    grid-template-columns: repeat(3,minmax(0,1fr));
+  }
+}
+
+@media (max-width: 820px) {
+  .core-v3-management-heading {
+    align-items: stretch;
+  }
+
+  .core-v3-management-actions {
+    justify-content: stretch;
+  }
+
+  .core-v3-management-actions > button {
+    flex: 1 1 150px;
+  }
+
+  .core-v3-settings-hub-nav {
+    position: relative;
+    top: auto;
+  }
+
+  .core-v3-observability-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .core-v3-observability-toolbar .v55-log-control-actions {
+    grid-column: auto;
+  }
+
+  .core-v3-observability-summary {
+    grid-template-columns: repeat(2,minmax(0,1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .core-v3-observability-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .core-v3-management-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .core-v3-settings-actions {
+    position: relative;
+    bottom: auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .core-v3-management-page button,
+  .core-v3-settings-tabs button {
+    transition: none !important;
+  }
+}

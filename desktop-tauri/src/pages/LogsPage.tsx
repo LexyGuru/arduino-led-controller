@@ -209,8 +209,8 @@ export function LogsPage({
   };
 
   return (
-    <div className="page v55-logs-page beta4-logs-redesign">
-      <div className="page-heading">
+    <div className="page v55-logs-page beta4-logs-redesign core-v3-management-page core-v3-logs-page" data-core-management="logs">
+      <div className="page-heading core-v3-management-heading">
         <div>
           <p className="eyebrow">{t('logs2.eyebrow')}</p>
           <h2>{t('logs2.title')}</h2>
@@ -230,7 +230,7 @@ export function LogsPage({
         }}
       />
 
-      <section className="v55-log-controlbar">
+      <section className="v55-log-controlbar core-v3-observability-toolbar">
         <label>
           <Filter size={16}/>
           <span>{t('logs2.level')}</span>
@@ -297,7 +297,7 @@ export function LogsPage({
         </p>
       )}
 
-      <section className="v55-log-summary">
+      <section className="v55-log-summary core-v3-observability-summary">
         <article>
           <span>{t('logs2.visible')}</span>
           <strong>{visibleRows.length}</strong>
@@ -322,7 +322,7 @@ export function LogsPage({
         </article>
       </section>
 
-      <section className="v5-log-grid v55-log-layout">
+      <section className="v5-log-grid v55-log-layout core-v3-observability-layout">
         <article className="panel v55-unified-log-panel tauri-audit-console-panel" aria-label={t('logs2.unified')}>
           <div className="panel-title">
             <div>

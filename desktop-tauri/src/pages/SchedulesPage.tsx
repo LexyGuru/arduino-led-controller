@@ -917,8 +917,8 @@ export function SchedulesPage({
     };
 
   return (
-    <div className="page v55-schedules-page beta4-schedules-redesign">
-      <div className="page-heading v55-management-heading">
+    <div className="page v55-schedules-page beta4-schedules-redesign core-v3-management-page core-v3-schedules-page" data-core-management="schedules">
+      <div className="page-heading v55-management-heading core-v3-management-heading">
         <div>
           <p className="eyebrow">
             ARDUINO DIRECT API V1
@@ -931,7 +931,7 @@ export function SchedulesPage({
           </p>
         </div>
 
-        <div className="page-actions">
+        <div className="page-actions core-v3-management-actions">
           <button
             onClick={
               () =>
