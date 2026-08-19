@@ -2,7 +2,7 @@
 
 ## Aktuális verziók
 
-- Alkalmazás: `5.6.1-beta.5`
+- Alkalmazás: `5.6.1-beta.6`
 - Firmware Beta: `5.0.0-beta.10`
 - Direct API: `1.0.0`
 - Fejlesztési ág: `next/v5-rearchitecture`
@@ -14,7 +14,7 @@
 
 A futó alkalmazás build-identitása és a kiválasztott alkalmazásfrissítési csatorna külön fogalom.
 
-- A `5.6.1-beta.5` futó build mindig Beta build marad.
+- A `5.6.1-beta.6` futó build mindig Beta build marad.
 - Application Update Channel = Stable csak a Stable update-katalógust választja.
 - Application Update Channel = Beta a Beta update-katalógust választja.
 
@@ -110,5 +110,13 @@ A Direct Arduino mód továbbra is elsődleges, LXC nélkül is használható.
 1. Current dokumentáció + teljes regresszió zöld.
 2. Dokumentáció commit/push NEXT-re.
 3. `Application Beta release` kézi indítása `next/v5-rearchitecture` ágról.
-4. A publikált `5.6.1-beta.5` build tényleges telepítési és runtime QA-ja.
+4. A publikált `5.6.1-beta.6` build tényleges telepítési és runtime QA-ja.
 5. Csak sikeres Beta QA után készülhet Stable `5.6.1` + firmware `5.0.0` promóció a `main` ágra.
+
+
+## P1 APT mirror recovery / Beta.6
+
+- Beta.5 release asset contract source fix passed local regression and was published.
+- Beta.5 runtime release failed in the Linux dependency gate because the hosted Ubuntu runner stalled against `azure.archive.ubuntu.com`.
+- Beta.6 normalizes that mirror to HTTPS archive.ubuntu.com and adds process-tree kill enforcement.
+- Firmware remains `5.0.0-beta.10` and Direct API remains `1.0.0`.

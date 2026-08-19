@@ -1,3 +1,16 @@
+# 5.6.1-beta.6 — 2026-08-19
+
+### P1 — APT Mirror Recovery
+- Normalize GitHub-hosted Ubuntu Azure mirror references before APT.
+- Add bounded process-tree timeout/kill and residual apt cleanup.
+- Force IPv4 and tighten APT network timeout/retry behavior.
+- Verify required Tauri Linux dependencies after installation.
+
+### Versions
+- Application: `5.6.1-beta.6`
+- Firmware: `5.0.0-beta.10` unchanged
+- Direct API: `1.0.0` unchanged
+
 # 5.6.1-beta.5 — 2026-08-19
 
 ### P1 — Release Asset Contract
