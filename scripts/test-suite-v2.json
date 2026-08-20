@@ -54,7 +54,8 @@
     "test:p1-release-runner-resilience",
     "test:p1-release-asset-contract",
     "test:firmware-channel-single-resolver",
-    "test:v695-lxc-ota-release-gate"
+    "test:v695-lxc-ota-release-gate",
+    "test:v698h-lxc-auto-ota-catalog"
   ],
   "regression": [
     "test:core",

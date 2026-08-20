@@ -1255,34 +1255,6 @@ fn firmware_version_key(version: &str) -> (u64, u64, u64, u64) {
     )
 }
 
-async fn firmware_beta_release() -> Result<GitHubRelease, String> {
-    let releases = github_releases().await?;
-    let mut assets = Vec::new();
-    let mut published_at = None;
-    for release in releases.into_iter().filter(|release| !release.draft) {
-        let firmware_surface = release.tag_name == FIRMWARE_BETA_RELEASE_TAG
-            || release.tag_name.to_ascii_lowercase().contains("firmware");
-        if !firmware_surface {
-            continue;
-        }
-        if published_at.is_none() {
-            published_at = release.published_at.clone();
-        }
-        assets.extend(release.assets);
-    }
-    if assets.is_empty() {
-        return Err("Nem található firmware release asset-katalógus.".into());
-    }
-    Ok(GitHubRelease {
-        tag_name: FIRMWARE_BETA_RELEASE_TAG.into(),
-        published_at,
-        html_url: None,
-        prerelease: true,
-        draft: false,
-        assets,
-    })
-}
-
 #[tauri::command]
 async fn firmware_releases(
     state: State<'_, AppState>,

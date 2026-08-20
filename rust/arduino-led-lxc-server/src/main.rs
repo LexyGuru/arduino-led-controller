@@ -98,15 +98,43 @@ fn ota_update(state: &AppState, phase: &str, message: impl Into<String>, progres
     }
 }
 
+fn request_header<'a>(headers: &'a HeaderMap, name: &str) -> Option<&'a str> {
+    headers.get(name).and_then(|value| value.to_str().ok())
+}
+
+fn authority_from_url(value: &str) -> Option<&str> {
+    value
+        .strip_prefix("https://")
+        .or_else(|| value.strip_prefix("http://"))
+        .and_then(|rest| rest.split('/').next())
+        .filter(|authority| !authority.is_empty())
+}
+
+fn same_origin_browser_request(headers: &HeaderMap) -> bool {
+    if request_header(headers, "sec-fetch-site")
+        .is_some_and(|value| value.eq_ignore_ascii_case("same-origin"))
+    {
+        return true;
+    }
+    let Some(host) = request_header(headers, "host") else {
+        return false;
+    };
+    ["origin", "referer"].into_iter().any(|name| {
+        request_header(headers, name)
+            .and_then(authority_from_url)
+            .is_some_and(|authority| authority.eq_ignore_ascii_case(host))
+    })
+}
+
 fn ota_authorized(headers: &HeaderMap, state: &AppState) -> bool {
     let expected = state.ota_control_token.trim();
-    !expected.is_empty()
+    let legacy_control_token = !expected.is_empty()
         && expected != "CHANGE_ME"
         && headers
             .get("x-lxc-ota-token")
             .and_then(|value| value.to_str().ok())
-            .map(|value| value == expected)
-            .unwrap_or(false)
+            .is_some_and(|value| value == expected);
+    legacy_control_token || same_origin_browser_request(headers)
 }
 
 fn basic64(input: &[u8]) -> String {
@@ -588,7 +616,7 @@ async fn firmware_cancel(State(state): State<AppState>, headers: HeaderMap) -> A
     if !ota_authorized(&headers, &state) {
         return Err((
             StatusCode::UNAUTHORIZED,
-            Json(json!({"error":"Érvénytelen vagy hiányzó LXC OTA control token."})),
+            Json(json!({"error":"Az OTA kérés nem az LXC webfelület azonos originjéről érkezett, és érvényes X-LXC-OTA-Token fallback sincs."})),
         ));
     }
     state.ota_cancel.store(true, Ordering::SeqCst);
@@ -726,6 +754,8 @@ async fn ota_runtime_status(State(state): State<AppState>) -> Json<Value> {
         "runtime":runtime,
         "configured":!state.ota_password.trim().is_empty()&&state.ota_password.as_str()!="CHANGE_ME",
         "controlTokenConfigured":!state.ota_control_token.trim().is_empty()&&state.ota_control_token.as_str()!="CHANGE_ME",
+        "browserAuthorization":"same-origin",
+        "controlTokenRole":"headless-recovery-fallback",
         "engine":"native-rust-http",
         "supportedPlatforms":["windows","macos","linux","proxmox-lxc"],
         "mobileSupported":false
@@ -890,7 +920,7 @@ async fn firmware_install_start(
     if !ota_authorized(&headers, &state) {
         return Err((
             StatusCode::UNAUTHORIZED,
-            Json(json!({"error":"Érvénytelen vagy hiányzó LXC OTA control token."})),
+            Json(json!({"error":"Az OTA kérés nem az LXC webfelület azonos originjéről érkezett, és érvényes X-LXC-OTA-Token fallback sincs."})),
         ));
     }
     if state.ota_password.trim().is_empty() || state.ota_password.as_str() == "CHANGE_ME" {
