@@ -318,7 +318,8 @@
     "test:visual31-review-corrections": "node scripts/test-visual31-visual-review-corrections-v689.js",
     "test:firmware-channel-single-resolver": "node scripts/test-firmware-channel-single-resolver-v693.js",
     "test:v695-lxc-ota-release-gate": "node scripts/test-v695-lxc-ota-release-gate.js",
-    "test:v698h-lxc-auto-ota-catalog": "node scripts/test-v698h-lxc-auto-ota-catalog.js"
+    "test:v698h-lxc-auto-ota-catalog": "node scripts/test-v698h-lxc-auto-ota-catalog.js",
+    "test:v700-lxc-ota2-channel-unification": "node scripts/test-v700-lxc-ota2-channel-unification.js"
   },
   "engines": {
     "node": ">=20"

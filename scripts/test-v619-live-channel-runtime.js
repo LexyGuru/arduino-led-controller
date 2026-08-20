@@ -24,7 +24,7 @@ assert.match(controller,/tauriApi\.firmwareStatus\(\s*config\.updateChannel,\s*c
 assert.match(page,/firmwareUpdateChannel: 'stable' \| 'beta'/);
 assert.match(page,/const selectedFirmwareChannel = firmwareUpdateChannel/);
 assert.match(page,/firmwareReleases\(selectedFirmwareChannel\)/);
-assert.match(page,/firmwareInstallRelease\(tag, selectedFirmwareChannel\)/);
+assert.match(page,/firmwareInstallRelease\(\s*version,\s*channel \?\? selectedFirmwareChannel\s*\)/s);
 assert.match(page,/channel: selectedFirmwareChannel === 'stable' \? 'Stable' : 'Beta'/);
 assert.doesNotMatch(page,/restoreVersions[\s\S]{0,150}firmware\?\.firmwareUpdateChannel/);
 

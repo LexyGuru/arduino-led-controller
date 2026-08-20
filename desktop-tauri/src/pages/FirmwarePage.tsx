@@ -275,9 +275,10 @@ export function FirmwarePage({
 
 
     const controller = createOta2LiveInstallController({
-      firmwareInstallRelease: (tag) =>
-        tauriApi.firmwareInstallRelease(tag, selectedFirmwareChannel),
-      firmwareStatus: tauriApi.firmwareStatus,
+      firmwareInstallRelease: (version, channel) =>
+        tauriApi.firmwareInstallRelease(version, channel ?? selectedFirmwareChannel),
+      firmwareStatus: (_updateChannel, channel) =>
+        tauriApi.firmwareStatus(undefined, channel ?? selectedFirmwareChannel),
       subscribeProgress: tauriApi.listenOtaProgress,
       createBackup: () => recovery.prepare()
     });
@@ -504,7 +505,11 @@ export function FirmwarePage({
           () =>
             void checkBoth()
         }
-        onInstallFirmware={() => { void state.startUpdate(); }}
+        onInstallFirmware={() => {
+          const item = firmwareCatalog[0] ?? available;
+          const version = item?.firmwareVersion ?? item?.tag;
+          if (item && version) void installCatalogItem(item, version, 'update');
+        }}
       />
 
       <section className="stats-grid beta3-firmware-support-grid">

@@ -6,7 +6,7 @@ export const OTA2_NATIVE_BRIDGE_CODES=Object.freeze({
 });
 export function createOta2NativeBridge({firmwareInstallRelease,firmwareStatus,subscribeProgress}={}) {
   return Object.freeze({
-    async install({tag,expectedVersion,onRuntime}={}) {
+    async install({version,channel,expectedVersion,onRuntime}={}) {
       if(typeof firmwareInstallRelease!=="function") return Object.freeze({ok:false,code:OTA2_NATIVE_BRIDGE_CODES.INSTALL_API_MISSING});
       if(typeof firmwareStatus!=="function") return Object.freeze({ok:false,code:OTA2_NATIVE_BRIDGE_CODES.STATUS_API_MISSING});
       let runtime=createOta2RuntimeState();
@@ -18,9 +18,9 @@ export function createOta2NativeBridge({firmwareInstallRelease,firmwareStatus,su
         });
       }
       try{
-        const before=await firmwareStatus();
-        const installStatus=await firmwareInstallRelease(tag);
-        const after=installStatus ?? await firmwareStatus();
+        const before=await firmwareStatus(undefined,channel);
+        const installStatus=await firmwareInstallRelease(version,channel);
+        const after=installStatus ?? await firmwareStatus(undefined,channel);
         const postVerify=evaluateOta2PostVerify({before,after,expectedVersion});
         if(!postVerify.ok)return Object.freeze({ok:false,code:OTA2_NATIVE_BRIDGE_CODES.POSTVERIFY_FAILED,postVerify,before,after,runtime});
         return Object.freeze({ok:true,code:OTA2_NATIVE_BRIDGE_CODES.READY,postVerify,before,after,runtime});

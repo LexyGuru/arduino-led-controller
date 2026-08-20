@@ -23,14 +23,21 @@ export interface Ota2NativeBridgeResult {
 export const OTA2_NATIVE_BRIDGE_CODES: Readonly<Record<string, string>>;
 
 export function createOta2NativeBridge(input?: {
-  firmwareInstallRelease?: (tag: string) => unknown | Promise<unknown>;
-  firmwareStatus?: () => unknown | Promise<unknown>;
+  firmwareInstallRelease?: (
+    version: string,
+    channel?: "stable" | "beta"
+  ) => unknown | Promise<unknown>;
+  firmwareStatus?: (
+    updateChannel?: "stable" | "beta",
+    firmwareUpdateChannel?: "stable" | "beta"
+  ) => unknown | Promise<unknown>;
   subscribeProgress?: (
     listener: (entry: Ota2ProgressLikeEvent) => void
   ) => (() => void | Promise<void>) | Promise<() => void | Promise<void>>;
 }): Readonly<{
   install(input?: {
-    tag?: string;
+    version?: string;
+    channel?: "stable" | "beta";
     expectedVersion?: string;
     onRuntime?: (runtime: Ota2RuntimeState) => void;
   }): Promise<Ota2NativeBridgeResult>;

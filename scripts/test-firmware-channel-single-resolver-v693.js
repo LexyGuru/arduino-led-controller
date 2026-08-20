@@ -65,7 +65,7 @@ assert.match(
 
 assert.match(
   firmwarePage,
-  /tauriApi\.firmwareInstallRelease\(tag, selectedFirmwareChannel\)/
+  /tauriApi\.firmwareInstallRelease\(\s*version,\s*channel \?\? selectedFirmwareChannel\s*\)/s
 );
 
 assert.match(

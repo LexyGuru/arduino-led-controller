@@ -1,0 +1,28 @@
+#!/usr/bin/env node
+'use strict';
+const a=require('node:assert/strict'),fs=require('node:fs');
+const rust=fs.readFileSync('rust/arduino-led-lxc-server/src/main.rs','utf8');
+const api=fs.readFileSync('desktop-tauri/src/services/tauriApi.ts','utf8');
+const ctl=fs.readFileSync('desktop-tauri/src/utils/ota2LiveInstallController.mjs','utf8');
+const bridge=fs.readFileSync('desktop-tauri/src/utils/ota2NativeBridge.mjs','utf8');
+const page=fs.readFileSync('desktop-tauri/src/pages/FirmwarePage.tsx','utf8');
+const liveDecl=fs.readFileSync('desktop-tauri/src/utils/ota2LiveInstallController.d.mts','utf8');
+const bridgeDecl=fs.readFileSync('desktop-tauri/src/utils/ota2NativeBridge.d.mts','utf8');
+a.match(rust,/channel: Option<String>/);a.match(rust,/request\.channel\.as_deref\(\)/);
+a.match(rust,/Some\("stable"\)=>vec!\["stable"\]/);a.match(rust,/Some\("beta"\)=>vec!\["beta"\]/);
+a.doesNotMatch(rust,/github_firmware_artifacts\("beta"\)\?\s*\.into_iter\(\)\s*\.chain\(github_firmware_artifacts\("stable"\)\?\)/s);
+for(const x of ['boot_id_before','boot_id_after','schedule_revision_before','schedule_revision_after','schedule_checksum_before','schedule_checksum_after'])a.match(rust,new RegExp(x));
+a.match(api,/waitForLxcOtaCompletion/);a.match(api,/await waitForLxcOtaCompletion\(\);return fwStatus\(undefined,selected\)/);
+a.match(api,/bootIdBefore:r\?\.bootIdBefore/);a.match(api,/JSON\.stringify\(\{version:canonicalVersion,channel:selected\}\)/);
+a.match(ctl,/installVersion = artifact\?\.firmwareVersion \?\? selectedVersion/);a.match(ctl,/bridge\.install\(\{ version:installVersion, channel, expectedVersion, onRuntime \}\)/);
+a.match(bridge,/firmwareInstallRelease\(version,channel\)/);a.match(bridge,/firmwareStatus\(undefined,channel\)/);
+a.match(liveDecl,/firmwareInstallRelease\?:\(version:string,channel\?:"stable"\|"beta"\)/);
+a.match(liveDecl,/firmwareStatus\?:\(updateChannel\?:"stable"\|"beta",firmwareUpdateChannel\?:"stable"\|"beta"\)/);
+a.match(bridgeDecl,/version: string/);a.match(bridgeDecl,/channel\?: "stable" \| "beta"/);a.doesNotMatch(bridgeDecl,/tag\?: string/);
+a.doesNotMatch(page,/void state\.startUpdate\(\)/);a.match(page,/void installCatalogItem\(item, version, 'update'\)/);
+console.log('V700_LXC_INSTALL_REQUEST_CHANNEL=PASSED');
+console.log('V700_LXC_CHANNEL_ISOLATED_RESOLVER=PASSED');
+console.log('V700_OTA2_CANONICAL_VERSION_CHANNEL_PROPAGATION=PASSED');
+console.log('V700_ASYNC_OTA_COMPLETION_WAIT=PASSED');
+console.log('V700_OTA2_POSTVERIFY_EVIDENCE=PASSED');
+console.log('V700_UPDATE_CENTER_SINGLE_OTA2_PATH=PASSED');

@@ -54,6 +54,12 @@ struct OtaRuntimeStatus {
     busy: bool,
     expected_version: Option<String>,
     installed_version: Option<String>,
+    boot_id_before: Option<String>,
+    boot_id_after: Option<String>,
+    schedule_revision_before: Option<u64>,
+    schedule_revision_after: Option<u64>,
+    schedule_checksum_before: Option<String>,
+    schedule_checksum_after: Option<String>,
     last_error: Option<String>,
 }
 
@@ -67,6 +73,12 @@ impl Default for OtaRuntimeStatus {
             busy: false,
             expected_version: None,
             installed_version: None,
+            boot_id_before: None,
+            boot_id_after: None,
+            schedule_revision_before: None,
+            schedule_revision_after: None,
+            schedule_checksum_before: None,
+            schedule_checksum_after: None,
             last_error: None,
         }
     }
@@ -77,6 +89,8 @@ impl Default for OtaRuntimeStatus {
 struct FirmwareInstallRequest {
     #[serde(default)]
     version: Option<String>,
+    #[serde(default)]
+    channel: Option<String>,
 }
 
 fn normalize_ota_version(value: &str) -> String {
@@ -625,73 +639,61 @@ async fn firmware_cancel(State(state): State<AppState>, headers: HeaderMap) -> A
     ))
 }
 
+fn normalized_firmware_channel(value: Option<&str>) -> Result<Option<String>, String> {
+    let Some(value)=value else { return Ok(None); };
+    let normalized=value.trim().to_ascii_lowercase();
+    if normalized.is_empty(){ return Ok(None); }
+    match normalized.as_str(){
+        "stable"|"beta"=>Ok(Some(normalized)),
+        _=>Err(format!("Érvénytelen firmware csatorna: {value}")),
+    }
+}
+fn artifact_version_matches(artifact:&Value,requested:Option<&str>)->bool{
+    requested.map(|wanted|{
+        artifact.get("firmwareVersion").or_else(||artifact.get("version"))
+            .and_then(Value::as_str).map(normalize_ota_version)
+            ==Some(normalize_ota_version(wanted))
+    }).unwrap_or(true)
+}
 fn catalog_artifact(
-    state: &AppState,
-    requested: Option<&str>,
-) -> Result<(String, String, String, u16), String> {
-    let path = state
-        .firmware_catalog
-        .as_ref()
-        .ok_or("Firmware katalógus nincs konfigurálva.")?;
-    let value: Value = serde_json::from_slice(
-        &fs::read(path).map_err(|e| format!("Katalógus olvasási hiba: {e}"))?,
-    )
-    .map_err(|e| format!("Katalógus JSON hiba: {e}"))?;
-    let artifacts = value
-        .get("artifacts")
-        .and_then(Value::as_array)
-        .ok_or("Nincs artifacts lista.")?;
-    let local = artifacts.iter().find(|a| {
-        requested
-            .map(|wanted| {
-                a.get("version")
-                    .and_then(Value::as_str)
-                    .map(normalize_ota_version)
-                    == Some(normalize_ota_version(wanted))
-            })
-            .unwrap_or(true)
-    });
-    let remote;
-    let a = if let Some(local) = local {
-        local
-    } else {
-        remote = github_firmware_artifacts("beta")?
-            .into_iter()
-            .chain(github_firmware_artifacts("stable")?)
-            .find(|a| {
-                requested
-                    .map(|wanted| {
-                        a.get("firmwareVersion")
-                            .or_else(|| a.get("version"))
-                            .and_then(Value::as_str)
-                            .map(normalize_ota_version)
-                            == Some(normalize_ota_version(wanted))
-                    })
-                    .unwrap_or(false)
-            })
-            .ok_or_else(|| {
-                "A kért firmware nem található a GitHub release-katalógusban.".to_string()
-            })?;
-        &remote
+    state:&AppState,
+    requested:Option<&str>,
+    channel:Option<&str>,
+)->Result<(String,String,String,u16),String>{
+    let requested_channel=normalized_firmware_channel(channel)?;
+    let mut local_match:Option<Value>=None;
+    if let Some(path)=state.firmware_catalog.as_ref(){
+        if let Ok(bytes)=fs::read(path){
+            if let Ok(value)=serde_json::from_slice::<Value>(&bytes){
+                let local_channel=value.get("channel").and_then(Value::as_str)
+                    .unwrap_or("beta").trim().to_ascii_lowercase();
+                let channel_matches=requested_channel.as_deref()
+                    .map(|wanted|wanted==local_channel).unwrap_or(true);
+                if channel_matches{
+                    local_match=value.get("artifacts").and_then(Value::as_array)
+                        .and_then(|items|items.iter().find(|x|artifact_version_matches(x,requested))).cloned();
+                }
+            }
+        }
+    }
+    let artifact=if let Some(local)=local_match{local}else{
+        let channels:Vec<&str>=match requested_channel.as_deref(){
+            Some("stable")=>vec!["stable"],
+            Some("beta")=>vec!["beta"],
+            _=>vec!["beta","stable"],
+        };
+        let mut candidates=Vec::new();
+        for ch in channels{candidates.extend(github_firmware_artifacts(ch)?);}
+        candidates.into_iter().find(|x|artifact_version_matches(x,requested)).ok_or_else(||{
+            let ch=requested_channel.as_deref().map(|x|format!(" a(z) {x} csatornán")).unwrap_or_default();
+            format!("A kért firmware nem található{ch} a GitHub release-katalógusban.")
+        })?
     };
     Ok((
-        a.get("firmwareVersion")
-            .or_else(|| a.get("version"))
-            .and_then(Value::as_str)
-            .ok_or("version hiányzik")?
-            .to_string(),
-        a.get("downloadUrl")
-            .and_then(Value::as_str)
-            .ok_or("downloadUrl hiányzik")?
-            .to_string(),
-        a.get("checksumUrl")
-            .and_then(Value::as_str)
-            .ok_or("checksumUrl hiányzik")?
-            .to_string(),
-        a.get("otaPort")
-            .and_then(Value::as_u64)
-            .and_then(|v| u16::try_from(v).ok())
-            .unwrap_or(state.ota_port),
+        artifact.get("firmwareVersion").or_else(||artifact.get("version")).and_then(Value::as_str).ok_or("version hiányzik")?.to_string(),
+        artifact.get("downloadUrl").and_then(Value::as_str).ok_or("downloadUrl hiányzik")?.to_string(),
+        artifact.get("checksumUrl").and_then(Value::as_str).ok_or("checksumUrl hiányzik")?.to_string(),
+        artifact.get("otaPort").and_then(Value::as_u64).and_then(|v|u16::try_from(v).ok()).unwrap_or(state.ota_port),
     ))
 }
 
@@ -767,11 +769,20 @@ async fn firmware_install_job(
     request: FirmwareInstallRequest,
 ) -> Result<(), String> {
     state.ota_cancel.store(false, Ordering::SeqCst);
-    let (version, url, checksum_url, catalog_port) =
-        catalog_artifact(&state, request.version.as_deref())?;
+    let (version, url, checksum_url, catalog_port) = catalog_artifact(
+        &state,
+        request.version.as_deref(),
+        request.channel.as_deref(),
+    )?;
     if let Ok(mut r) = state.ota_runtime.lock() {
         r.expected_version = Some(version.clone());
         r.installed_version = None;
+        r.boot_id_before = None;
+        r.boot_id_after = None;
+        r.schedule_revision_before = None;
+        r.schedule_revision_after = None;
+        r.schedule_checksum_before = None;
+        r.schedule_checksum_after = None;
         r.last_error = None
     }
     ota_update(
@@ -817,6 +828,11 @@ async fn firmware_install_job(
         .get("scheduleChecksum")
         .and_then(Value::as_str)
         .map(str::to_string);
+    if let Ok(mut r) = state.ota_runtime.lock() {
+        r.boot_id_before = boot_before.clone();
+        r.schedule_revision_before = rev_before;
+        r.schedule_checksum_before = sum_before.clone();
+    }
 
     ota_update(
         &state,
@@ -890,6 +906,11 @@ async fn firmware_install_job(
         .get("scheduleChecksum")
         .and_then(Value::as_str)
         .map(str::to_string);
+    if let Ok(mut r) = state.ota_runtime.lock() {
+        r.boot_id_after = boot_after.clone();
+        r.schedule_revision_after = rev_after;
+        r.schedule_checksum_after = sum_after.clone();
+    }
     if boot_before.is_some() && boot_before == boot_after {
         return Err("Boot ID nem változott OTA után.".into());
     }

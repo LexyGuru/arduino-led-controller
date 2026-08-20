@@ -42,9 +42,14 @@ export function createOta2LiveInstallController({
         }
 
         const selectedVersion = policy.availableVersion;
-        const tag = artifact?.tag ?? selectedVersion;
-        const expectedVersion = artifact?.expectedFirmwareVersion ?? selectedVersion;
-        const result = await bridge.install({ tag, expectedVersion, onRuntime });
+        const installVersion = artifact?.firmwareVersion ?? selectedVersion;
+        const channel = artifact?.channel === "stable"
+          ? "stable"
+          : artifact?.channel === "beta"
+            ? "beta"
+            : undefined;
+        const expectedVersion = artifact?.expectedFirmwareVersion ?? installVersion;
+        const result = await bridge.install({ version:installVersion, channel, expectedVersion, onRuntime });
         return Object.freeze({
           ok:result.ok===true,
           code:result.ok===true?OTA2_LIVE_CONTROLLER_CODES.SUCCESS:OTA2_LIVE_CONTROLLER_CODES.BRIDGE_FAILED,
