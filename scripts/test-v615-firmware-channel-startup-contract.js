@@ -20,7 +20,7 @@ assert.doesNotMatch(rust,/stabil dedikált firmware-release még nincs konfigur�
 assert.match(page,/selectedFirmwareChannel/);
 assert.match(page,/\(item\.channel \?\? ''\)\.trim\(\)\.toLowerCase\(\) === selectedFirmwareChannel/);
 assert.match(page,/const relatedTags = item\.relatedTags \?\? \[item\.tag\]/);
-assert.match(startup,/MIN_VISIBLE_MS = 2200/);
+assert.match(startup, /MIN_VISIBLE_MS = 2600/);
 assert.match(startup,/validRuntimeVersion/);
 assert.doesNotMatch(startup,/5\.6\.0-beta\.1/);
 assert.match(screen,/appVersion: string/);
@@ -31,4 +31,4 @@ console.log('V615_FIRMWARE_BETA_STABLE_CHANNEL_ISOLATION=PASSED');
 console.log('V615_FIRMWARE_RESTORE_FRONTEND_CHANNEL_GUARD=PASSED');
 console.log('V615_FIRMWARE_RELATED_TAGS=PASSED');
 console.log('V615_STARTUP_RUNTIME_VERSION=PASSED');
-console.log('V615_STARTUP_MIN_VISIBLE_2200MS=PASSED');
+console.log('V615_STARTUP_MIN_VISIBLE_2600MS=PASSED');

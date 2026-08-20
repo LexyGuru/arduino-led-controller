@@ -6,10 +6,13 @@ import {
 
 import {
   Moon,
+  Palette,
   Power,
+  RadioTower,
   Sparkles,
   Square,
-  Waves
+  Waves,
+  Zap
 } from 'lucide-react';
 
 import {
@@ -38,6 +41,20 @@ const effectKeys = ['effects.0','effects.1','effects.2','effects.3','effects.4']
 
 const SEND_DELAY_MS =
   4000;
+
+const STRIP_TOPOLOGY: Record<number, { pin: number }> = {
+  1: { pin: 5 },
+  2: { pin: 6 },
+  3: { pin: 7 }
+};
+
+const EFFECT_VISUAL_KEYS = [
+  { id: 0, icon: Square, className: 'is-solid' },
+  { id: 1, icon: Zap, className: 'is-blink' },
+  { id: 2, icon: Waves, className: 'is-fade' },
+  { id: 3, icon: Sparkles, className: 'is-rainbow' },
+  { id: 4, icon: RadioTower, className: 'is-effect-extra' }
+] as const;
 
 const rgbToHex = (
   [
@@ -264,6 +281,28 @@ function LedCard({
       );
   };
 
+  const topology =
+    STRIP_TOPOLOGY[draft.id] ?? {
+      pin: draft.id
+    };
+
+  const brightnessPercent =
+    Math.round(
+      clamp(draft.brightness, 0, 255) /
+      255 *
+      100
+    );
+
+  const previewRgb =
+    `rgb(${draft.color.join(',')})`;
+
+  const previewStyle =
+    {
+      '--visual31-led-color': previewRgb,
+      '--visual31-led-brightness': `${Math.max(.12, brightnessPercent / 100)}`,
+      '--visual31-led-speed': `${Math.max(.45, 3.3 - draft.speed * .025)}s`
+    } as React.CSSProperties;
+
   const numberKeyDown = (
     event:
       React.KeyboardEvent<
@@ -316,19 +355,26 @@ function LedCard({
         </button>
       </div>
 
+      <div className="visual31-led-hardware-meta">
+        <span><RadioTower size={15} />PIN {topology.pin}</span>
+        <span><Palette size={15} />{rgbToHex(draft.color).toUpperCase()}</span>
+      </div>
+
       <div
-        className="color-preview core-v3-led-preview"
-        style={{
-          background:
-            rgbToHex(
-              draft.color
-            ),
-          opacity:
-            draft.enabled
-              ? 1
-              : .25
-        }}
-      />
+        className={`color-preview core-v3-led-preview visual31-led-preview effect-${draft.effect} ${draft.enabled ? 'is-live' : 'is-off'}`}
+        style={previewStyle}
+        aria-label={`LED ${draft.id} preview`}
+      >
+        <div className="visual31-led-preview__rail" aria-hidden="true">
+          {Array.from({ length: 18 }, (_, index) => (
+            <i key={index} style={{ '--led-index': index } as React.CSSProperties} />
+          ))}
+        </div>
+        <div className="visual31-led-preview__readout">
+          <strong>{brightnessPercent}%</strong>
+          <span>{t(effectKeys[draft.effect] ?? 'effects.0')}</span>
+        </div>
+      </div>
 
       <label className="core-control-field core-control-field--color">
         <span className="core-control-label">{t('leds.color')}</span>
@@ -435,41 +481,34 @@ function LedCard({
         </span>
       </label>
 
-      <label className="core-control-field">
-        <span className="core-control-label">{t('leds.effect')}</span>
-
-        <select
-          className="core-select-input"
-          value={
-            draft.effect
-          }
-          onChange={
-            (event) =>
-              sendNow({
-                ...draft,
-                effect:
-                  Number(
-                    event.target
-                      .value
-                  )
-              })
-          }
-        >
-          {effectKeys.map(
-            (
-              key,
-              index
-            ) => (
-              <option
-                key={key}
-                value={index}
+      <fieldset className="core-control-field visual31-effect-field">
+        <legend className="core-control-label">{t('leds.effect')}</legend>
+        <div className="visual31-effect-grid">
+          {EFFECT_VISUAL_KEYS.map((effect) => {
+            const Icon = effect.icon;
+            return (
+              <button
+                key={effect.id}
+                type="button"
+                className={`visual31-effect-tile ${effect.className} ${draft.effect === effect.id ? 'is-active' : ''}`}
+                disabled={busy}
+                aria-pressed={draft.effect === effect.id}
+                onClick={() => sendNow({ ...draft, effect: effect.id })}
               >
-                {t(key)}
-              </option>
-            )
-          )}
+                <Icon size={17} />
+                <span>{t(effectKeys[effect.id] ?? 'effects.0')}</span>
+              </button>
+            );
+          })}
+        </div>
+        <select
+          className="core-select-input visual31-effect-select"
+          value={draft.effect}
+          onChange={(event) => sendNow({ ...draft, effect: Number(event.target.value) })}
+        >
+          {effectKeys.map((key,index)=>(<option key={key} value={index}>{t(key)}</option>))}
         </select>
-      </label>
+      </fieldset>
 
       <label className="core-control-field">
         <span className="core-control-label">{t('leds.speed')}</span>
@@ -585,7 +624,7 @@ export function LedsPage({
     });
 
   return (
-    <div className="page beta4-leds-page core-v3-leds-page" data-core-controls="3.0">
+    <div className="page beta4-leds-page core-v3-leds-page visual31-led-control-center" data-core-controls="3.0" data-visual-layer="3.1">
       <div className="page-heading core-v3-leds-heading">
         <div>
           <p className="eyebrow">
@@ -605,6 +644,25 @@ export function LedsPage({
           }
         />
       </div>
+
+      <section className="visual31-led-workspace" aria-label={t('visual31.led.topologyAria')}>
+        <div className="visual31-led-workspace__copy">
+          <p className="eyebrow">{t('visual31.led.eyebrow')}</p>
+          <h3>{t('visual31.led.hardwareMatrix')}</h3>
+          <p className="muted">{t('visual31.led.previewMeta')}</p>
+        </div>
+        <div className="visual31-led-topology">
+          {state.strips.map((strip) => {
+            const topology = STRIP_TOPOLOGY[strip.id] ?? { pin: strip.id };
+            return (
+              <div key={strip.id} className={`visual31-led-topology__node ${strip.enabled ? 'is-live' : 'is-off'}`}>
+                <span>LED {strip.id}</span><strong>PIN {topology.pin}</strong>
+                <i style={{background:rgbToHex(strip.color),opacity:strip.enabled?1:.24}} />
+              </div>
+            );
+          })}
+        </div>
+      </section>
 
       {state.error && (
         <V5ConnectionWarning

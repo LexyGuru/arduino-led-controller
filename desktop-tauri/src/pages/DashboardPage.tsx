@@ -1,5 +1,6 @@
 import {
   Activity,
+  CheckCircle2,
   CalendarClock,
   Clock3,
   Cpu,
@@ -150,6 +151,18 @@ export function DashboardPage({
   const latestNetworkError =
     effectiveNetworkLogs.find((entry) => !entry.ok) ?? null;
 
+  const healthSignals = [
+    Boolean(status?.connected),
+    Boolean(status?.timesynced),
+    Boolean(status?.firmwareVersion),
+    status?.scheduleCount != null,
+    Boolean(status?.strips?.length)
+  ];
+  const verifiedHealthSignals = healthSignals.filter(Boolean).length;
+  const systemHealthScore = Math.round(
+    (verifiedHealthSignals / healthSignals.length) * 100
+  );
+
   const utcOffset = status?.utcOffsetMinutes;
   const offsetLabel = utcOffset == null
     ? '—'
@@ -183,7 +196,7 @@ export function DashboardPage({
           </div>
         </div>
 
-        <div className="v55-system-orbit">
+        <div className="v55-system-orbit visual31-device-core">
           <div className={`v55-orbit-core ${status?.connected ? 'online' : 'offline'}`} data-device-state={status?.connected ? 'online' : 'offline'}>
             <Radio size={30} />
             <strong>{status?.connected ? t('common.online') : t('common.offline')}</strong>
@@ -191,7 +204,20 @@ export function DashboardPage({
           </div>
           <span className="v55-orbit-ring ring-a" />
           <span className="v55-orbit-ring ring-b" />
+          <div className="visual31-health-orbit" aria-label="System health">
+            <strong>{systemHealthScore}%</strong>
+            <small>System Health</small>
+            <span>{verifiedHealthSignals}/{healthSignals.length}</span>
+          </div>
         </div>
+      </section>
+
+      <section className="visual31-status-ribbon" aria-label="Runtime status">
+        <div className={status?.connected ? 'is-ok' : 'is-offline'}><Wifi size={15}/><span>{status?.connected ? t('common.online') : t('common.offline')}</span></div>
+        <div className={status?.timesynced ? 'is-ok' : 'is-warn'}><Clock3 size={15}/><span>{status?.timesynced ? t('dashboard.synced') : t('dashboard.notSynced')}</span></div>
+        <div className={status?.firmwareVersion ? 'is-ok' : 'is-warn'}><Cpu size={15}/><span>{status?.firmwareVersion ?? '—'}</span></div>
+        <div className={status?.scheduleCount != null ? 'is-ok' : 'is-warn'}><CalendarClock size={15}/><span>{status?.scheduleCount ?? '—'}</span></div>
+        <div className={status?.strips?.length ? 'is-ok' : 'is-warn'}><CheckCircle2 size={15}/><span>{status?.strips?.length ?? 0} LED</span></div>
       </section>
 
       {dashboard.error && (

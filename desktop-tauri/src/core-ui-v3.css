@@ -2386,3 +2386,505 @@ html[data-core-ui='3.0'][data-appearance='light'][data-contrast='high'] :where(
     border-color: var(--core-light-strong-border);
   }
 }
+
+
+/* V683 — Visual 3.1 MEGA 1 command center */
+html[data-core-ui='3.0']{--visual31-hud-height:38px;--visual31-edge:color-mix(in srgb,var(--ds-accent) 18%,var(--ds-border));--visual31-grid:color-mix(in srgb,var(--ds-border) 13%,transparent)}
+html[data-core-ui='3.0'] .app-shell.core-ui-v3-shell::after{position:fixed;inset:0;z-index:-1;pointer-events:none;content:"";opacity:.52;background:linear-gradient(var(--visual31-grid) 1px,transparent 1px),linear-gradient(90deg,var(--visual31-grid) 1px,transparent 1px);background-size:48px 48px;mask-image:radial-gradient(circle at 55% 30%,#000 0,transparent 68%)}
+.visual31-topbar-hud{align-items:stretch}.visual31-hud-telemetry{display:flex;flex-wrap:wrap;align-items:center;gap:7px;min-width:0}.visual31-hud-node{display:inline-flex;align-items:center;gap:7px;min-height:var(--visual31-hud-height);max-width:210px;padding:0 10px;border:1px solid color-mix(in srgb,var(--ds-border) 72%,transparent);border-radius:12px;background:color-mix(in srgb,var(--ds-surface-soft) 72%,transparent);color:var(--ds-text-secondary)}.visual31-hud-node b{overflow:hidden;color:var(--ds-text);font-size:11px;text-overflow:ellipsis;white-space:nowrap}.visual31-hud-node.is-ok{border-color:color-mix(in srgb,var(--ds-success) 25%,var(--ds-border))}.visual31-hud-node.is-warn{border-color:color-mix(in srgb,var(--ds-warning) 30%,var(--ds-border))}.visual31-hud-node.is-offline{opacity:.72}
+.core-v3-sidebar nav button{position:relative;isolation:isolate;overflow:hidden}.core-v3-sidebar nav button::before{position:absolute;inset:7px auto 7px 0;width:3px;border-radius:999px;content:"";background:var(--ds-accent);box-shadow:0 0 16px color-mix(in srgb,var(--ds-accent) 56%,transparent);opacity:0;transform:scaleY(.3);transition:opacity 160ms ease,transform 180ms ease}.core-v3-sidebar nav button[data-nav-active='true']::before{opacity:1;transform:scaleY(1)}.core-v3-sidebar nav button[data-nav-active='true'] .core-nav-icon{border-color:color-mix(in srgb,var(--ds-accent) 35%,var(--ds-border));background:color-mix(in srgb,var(--ds-accent-soft) 52%,var(--ds-surface-soft));box-shadow:0 0 18px color-mix(in srgb,var(--ds-accent) 14%,transparent)}
+.core-v3-command-deck{min-height:330px;grid-template-columns:minmax(0,1.1fr) minmax(280px,.9fr)}.visual31-device-core{min-height:260px}.visual31-health-orbit{position:absolute;right:-12px;bottom:12px;display:grid;place-items:center;width:112px;aspect-ratio:1;padding:14px;border:1px solid color-mix(in srgb,var(--ds-accent) 32%,var(--ds-border));border-radius:50%;background:radial-gradient(circle,color-mix(in srgb,var(--ds-surface-raised) 94%,transparent) 54%,transparent 56%),conic-gradient(var(--ds-accent),var(--ds-chart-2),var(--ds-accent));box-shadow:0 16px 44px color-mix(in srgb,var(--ds-shadow) 36%,transparent),0 0 30px color-mix(in srgb,var(--ds-accent) 14%,transparent)}.visual31-health-orbit::before{position:absolute;inset:5px;border-radius:inherit;content:"";background:var(--ds-surface-raised)}.visual31-health-orbit>*{position:relative;z-index:1}.visual31-health-orbit strong{font-size:24px;font-variant-numeric:tabular-nums}.visual31-health-orbit small{color:var(--ds-text-secondary);font-size:10px;text-transform:uppercase;letter-spacing:.08em}.visual31-health-orbit span{color:var(--ds-text-muted);font-size:10px}
+.visual31-status-ribbon{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;padding:8px;border:1px solid var(--visual31-edge);border-radius:var(--core-panel-radius-small,var(--ds-radius-medium));background:linear-gradient(90deg,color-mix(in srgb,var(--ds-surface-raised) 90%,transparent),color-mix(in srgb,var(--ds-surface-soft) 72%,transparent));box-shadow:0 12px 34px color-mix(in srgb,var(--ds-shadow) 16%,transparent)}.visual31-status-ribbon>div{display:flex;align-items:center;justify-content:center;gap:7px;min-width:0;min-height:40px;padding:7px 9px;border:1px solid color-mix(in srgb,var(--ds-border) 55%,transparent);border-radius:11px;color:var(--ds-text-secondary);background:color-mix(in srgb,var(--ds-surface-soft) 56%,transparent)}.visual31-status-ribbon>div span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.visual31-status-ribbon>div.is-ok{border-color:color-mix(in srgb,var(--ds-success) 25%,var(--ds-border));color:var(--ds-text)}.visual31-status-ribbon>div.is-warn{border-color:color-mix(in srgb,var(--ds-warning) 28%,var(--ds-border))}.visual31-status-ribbon>div.is-offline{opacity:.7}
+@media(max-width:1180px){.visual31-hud-telemetry{display:none}.visual31-status-ribbon{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:820px){.core-v3-command-deck{min-height:0;grid-template-columns:1fr}.visual31-device-core{min-height:220px}.visual31-status-ribbon{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:520px){.visual31-status-ribbon{grid-template-columns:1fr}.visual31-health-orbit{width:96px;right:0}}@media(prefers-reduced-motion:reduce){.core-v3-sidebar nav button::before{transition:none}}
+
+
+/* V684 - Visual 3.1 MEGA 2 LED Control Center */
+.visual31-led-control-center{--visual31-led-gap:clamp(14px,1.6vw,22px)}
+.visual31-led-workspace{position:relative;display:grid;grid-template-columns:minmax(220px,.75fr) minmax(0,1.25fr);gap:var(--visual31-led-gap);align-items:center;padding:clamp(18px,2vw,28px);overflow:hidden;border:1px solid color-mix(in srgb,var(--ds-accent) 22%,var(--ds-border));border-radius:var(--core-panel-radius,var(--ds-radius-card));background:radial-gradient(circle at 88% 50%,color-mix(in srgb,var(--ds-accent) 13%,transparent),transparent 34%),linear-gradient(135deg,color-mix(in srgb,var(--ds-surface-raised) 94%,transparent),color-mix(in srgb,var(--ds-surface-soft) 82%,transparent));box-shadow:0 20px 56px color-mix(in srgb,var(--ds-shadow) 20%,transparent)}
+.visual31-led-workspace__copy h3{margin:4px 0 7px;font-size:clamp(20px,2.4vw,30px);letter-spacing:-.03em}.visual31-led-topology{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.visual31-led-topology__node{position:relative;display:grid;gap:3px;min-width:0;padding:14px 14px 18px;overflow:hidden;border:1px solid color-mix(in srgb,var(--ds-border) 70%,transparent);border-radius:16px;background:color-mix(in srgb,var(--ds-surface-soft) 72%,transparent)}.visual31-led-topology__node span,.visual31-led-topology__node small{color:var(--ds-text-secondary);font-size:11px}.visual31-led-topology__node strong{font-size:15px}.visual31-led-topology__node i{position:absolute;inset:auto 0 0;height:3px}.visual31-led-topology__node.is-off{opacity:.65}
+.visual31-led-control-center .core-v3-led-card{position:relative;overflow:hidden;padding:clamp(18px,1.7vw,24px);border-color:color-mix(in srgb,var(--ds-border) 75%,transparent);background:linear-gradient(145deg,color-mix(in srgb,var(--ds-surface-raised) 96%,transparent),color-mix(in srgb,var(--ds-surface-soft) 84%,transparent))}.visual31-led-control-center .core-v3-led-card.is-enabled{border-color:color-mix(in srgb,var(--ds-accent) 30%,var(--ds-border));box-shadow:0 18px 48px color-mix(in srgb,var(--ds-shadow) 20%,transparent),0 0 30px color-mix(in srgb,var(--ds-accent) 8%,transparent)}
+.visual31-led-hardware-meta{display:flex;flex-wrap:wrap;gap:7px;margin:2px 0 10px}.visual31-led-hardware-meta>span{display:inline-flex;align-items:center;gap:6px;min-height:30px;padding:0 9px;border:1px solid color-mix(in srgb,var(--ds-border) 65%,transparent);border-radius:999px;color:var(--ds-text-secondary);background:color-mix(in srgb,var(--ds-surface-soft) 72%,transparent);font-size:10px;font-weight:700}
+.visual31-led-preview{position:relative;min-height:126px;display:grid;align-content:center;gap:12px;overflow:hidden;padding:18px;border:1px solid color-mix(in srgb,var(--visual31-led-color) 42%,var(--ds-border));border-radius:20px;background:radial-gradient(circle at 50% 20%,color-mix(in srgb,var(--visual31-led-color) 18%,transparent),transparent 52%),color-mix(in srgb,var(--ds-surface-soft) 82%,transparent)!important;opacity:1!important}.visual31-led-preview.is-off{filter:saturate(.35);opacity:.58!important}.visual31-led-preview__rail{display:grid;grid-template-columns:repeat(18,minmax(0,1fr));gap:5px}.visual31-led-preview__rail i{aspect-ratio:1;min-width:0;border-radius:50%;background:var(--visual31-led-color);opacity:calc(var(--visual31-led-brightness)*.96);box-shadow:0 0 8px color-mix(in srgb,var(--visual31-led-color) 64%,transparent),0 0 18px color-mix(in srgb,var(--visual31-led-color) 28%,transparent)}.visual31-led-preview__readout{display:flex;align-items:end;justify-content:space-between;gap:12px}.visual31-led-preview__readout strong{font-size:clamp(24px,3vw,38px);font-variant-numeric:tabular-nums}.visual31-led-preview__readout span{color:var(--ds-text-secondary);font-size:11px;text-transform:uppercase;letter-spacing:.08em}
+.visual31-led-preview.is-live.effect-1 .visual31-led-preview__rail i{animation:visual31-led-blink var(--visual31-led-speed) steps(1,end) infinite}.visual31-led-preview.is-live.effect-2 .visual31-led-preview__rail i{animation:visual31-led-fade var(--visual31-led-speed) ease-in-out infinite alternate}.visual31-led-preview.is-live.effect-3 .visual31-led-preview__rail i{background:hsl(calc(var(--led-index)*20deg),90%,60%);box-shadow:0 0 12px hsl(calc(var(--led-index)*20deg),90%,60%);animation:visual31-led-rainbow calc(var(--visual31-led-speed)*1.4) linear infinite}@keyframes visual31-led-blink{0%,52%{opacity:var(--visual31-led-brightness)}53%,100%{opacity:.08}}@keyframes visual31-led-fade{from{opacity:.12;transform:scale(.82)}to{opacity:var(--visual31-led-brightness);transform:scale(1)}}@keyframes visual31-led-rainbow{to{filter:hue-rotate(360deg)}}
+.visual31-effect-field{min-width:0;margin:0;padding:0;border:0}.visual31-effect-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:7px}.visual31-effect-tile{display:grid;place-items:center;gap:6px;min-width:0;min-height:62px;padding:8px 6px;border:1px solid color-mix(in srgb,var(--ds-border) 70%,transparent);border-radius:13px;color:var(--ds-text-secondary);background:color-mix(in srgb,var(--ds-surface-soft) 72%,transparent)}.visual31-effect-tile span{max-width:100%;overflow:hidden;font-size:10px;font-weight:700;text-overflow:ellipsis;white-space:nowrap}.visual31-effect-tile.is-active{color:var(--ds-text);border-color:color-mix(in srgb,var(--ds-accent) 52%,var(--ds-border));background:color-mix(in srgb,var(--ds-accent-soft) 52%,var(--ds-surface-soft));box-shadow:0 0 20px color-mix(in srgb,var(--ds-accent) 11%,transparent)}.visual31-effect-select{margin-top:8px}
+@media(max-width:1050px){.visual31-led-workspace{grid-template-columns:1fr}.visual31-effect-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:700px){.visual31-led-topology{grid-template-columns:1fr}.visual31-effect-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.visual31-led-preview__rail{grid-template-columns:repeat(9,minmax(0,1fr))}}@media(prefers-reduced-motion:reduce){.visual31-led-preview__rail i,.visual31-effect-tile{animation:none!important;transition:none!important}}
+
+/* V685 - Visual 3.1 MEGA 3 Management Experience */
+.visual31-management-page{--visual31-management-gap:clamp(14px,1.5vw,22px)}
+.visual31-management-hero{position:relative;display:grid;grid-template-columns:minmax(220px,.72fr) minmax(0,1.28fr);gap:var(--visual31-management-gap);align-items:center;overflow:hidden;padding:clamp(18px,2vw,28px);border:1px solid color-mix(in srgb,var(--ds-accent) 22%,var(--ds-border));border-radius:var(--core-panel-radius,var(--ds-radius-card));background:radial-gradient(circle at 86% 20%,color-mix(in srgb,var(--ds-accent) 14%,transparent),transparent 34%),linear-gradient(140deg,color-mix(in srgb,var(--ds-surface-raised) 96%,transparent),color-mix(in srgb,var(--ds-surface-soft) 82%,transparent));box-shadow:0 20px 58px color-mix(in srgb,var(--ds-shadow) 20%,transparent)}
+.visual31-management-hero::after{position:absolute;right:-8%;bottom:-70px;width:46%;height:120px;content:"";pointer-events:none;background:radial-gradient(ellipse,color-mix(in srgb,var(--ds-accent) 15%,transparent),transparent 70%);filter:blur(10px)}
+.visual31-management-hero__copy{min-width:0;z-index:1}.visual31-management-hero__copy h3{margin:4px 0 7px;font-size:clamp(21px,2.5vw,32px);letter-spacing:-.035em}
+.visual31-management-kpis{z-index:1;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.visual31-management-kpis>div{display:grid;gap:5px;min-width:0;min-height:72px;padding:12px;border:1px solid color-mix(in srgb,var(--ds-border) 68%,transparent);border-radius:15px;background:color-mix(in srgb,var(--ds-surface-soft) 74%,transparent)}
+.visual31-management-kpis span{overflow:hidden;color:var(--ds-text-secondary);font-size:9px;font-weight:800;letter-spacing:.09em;text-overflow:ellipsis;white-space:nowrap}
+.visual31-management-kpis strong{overflow:hidden;font-size:clamp(15px,1.7vw,20px);font-variant-numeric:tabular-nums;text-overflow:ellipsis;white-space:nowrap}
+.visual31-management-section-title{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:14px}.visual31-management-section-title h3{margin:3px 0 0}
+.visual31-management-state{padding:6px 9px;border:1px solid color-mix(in srgb,var(--ds-border) 72%,transparent);border-radius:999px;font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase}
+.visual31-management-state.is-ok{color:var(--ds-success);border-color:color-mix(in srgb,var(--ds-success) 38%,var(--ds-border))}
+.visual31-management-state.is-warning{color:var(--ds-warning);border-color:color-mix(in srgb,var(--ds-warning) 40%,var(--ds-border))}
+.visual31-management-state.is-error{color:var(--ds-error);border-color:color-mix(in srgb,var(--ds-error) 40%,var(--ds-border))}
+.visual31-management-schedule-timeline{overflow:hidden}
+.visual31-week-grid{display:grid;grid-template-columns:repeat(7,minmax(110px,1fr));gap:7px;overflow-x:auto;padding-bottom:3px}
+.visual31-week-day{min-width:110px;overflow:hidden;border:1px solid color-mix(in srgb,var(--ds-border) 68%,transparent);border-radius:15px;background:color-mix(in srgb,var(--ds-surface-soft) 72%,transparent)}
+.visual31-week-day>header{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px;border-bottom:1px solid color-mix(in srgb,var(--ds-border) 54%,transparent)}
+.visual31-week-day>header strong{font-size:11px}.visual31-week-day>header span{display:grid;place-items:center;min-width:22px;height:22px;border-radius:999px;background:color-mix(in srgb,var(--ds-accent) 12%,transparent);font-size:10px;font-weight:800}
+.visual31-week-day.has-events{border-color:color-mix(in srgb,var(--ds-accent) 28%,var(--ds-border))}
+.visual31-week-day__rail{display:grid;gap:5px;min-height:100px;padding:8px}.visual31-week-event{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:6px 7px;border-radius:9px;background:color-mix(in srgb,var(--ds-accent-soft) 32%,var(--ds-surface))}
+.visual31-week-event time{font-family:var(--ds-font-mono,ui-monospace,monospace);font-size:11px;font-weight:800}.visual31-week-event span,.visual31-week-empty,.visual31-week-day__rail small{color:var(--ds-text-secondary);font-size:9px}
+.visual31-ota-pipeline{overflow:hidden}.visual31-ota-progress-value{font-family:var(--ds-font-mono,ui-monospace,monospace);font-size:18px}
+.visual31-ota-track{position:relative;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:7px}.visual31-ota-track::before{position:absolute;top:16px;left:7%;right:7%;height:1px;content:"";background:color-mix(in srgb,var(--ds-border) 72%,transparent)}
+.visual31-ota-step{z-index:1;display:grid;justify-items:center;gap:7px;min-width:0;color:var(--ds-text-secondary);text-align:center;font-size:9px;font-weight:700}
+.visual31-ota-step i{display:grid;place-items:center;width:32px;height:32px;border:1px solid color-mix(in srgb,var(--ds-border) 76%,transparent);border-radius:50%;background:var(--ds-surface-raised);font-style:normal;font-size:10px}
+.visual31-ota-step.is-active{color:var(--ds-text)}.visual31-ota-step.is-active i{border-color:color-mix(in srgb,var(--ds-accent) 58%,var(--ds-border));box-shadow:0 0 20px color-mix(in srgb,var(--ds-accent) 20%,transparent)}
+.visual31-ota-step.is-complete i{color:var(--ds-success);border-color:color-mix(in srgb,var(--ds-success) 48%,var(--ds-border))}
+.visual31-ota-progressbar{height:5px;margin-top:16px;overflow:hidden;border-radius:999px;background:color-mix(in srgb,var(--ds-surface-soft) 86%,transparent)}.visual31-ota-progressbar>span{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--ds-accent),var(--ds-chart-2),var(--ds-success));box-shadow:0 0 16px color-mix(in srgb,var(--ds-accent) 38%,transparent);transition:width var(--ds-duration-normal,220ms) ease}
+.visual31-logs-page .core-v3-observability-toolbar,.visual31-logs-page .v55-log-controlbar{position:sticky;top:0;z-index:3;backdrop-filter:blur(18px)}
+.visual31-settings-page .settings-panel{position:relative;overflow:hidden}.visual31-settings-page .core-v3-settings-hub-nav{position:sticky;top:0;z-index:4;backdrop-filter:blur(18px)}
+@media(max-width:1080px){.visual31-management-hero{grid-template-columns:1fr}.visual31-management-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:760px){.visual31-management-kpis{grid-template-columns:1fr 1fr}.visual31-ota-track{grid-template-columns:repeat(3,minmax(0,1fr));row-gap:14px}.visual31-ota-track::before{display:none}}
+@media(max-width:520px){.visual31-management-kpis{grid-template-columns:1fr}.visual31-ota-track{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(prefers-reduced-motion:reduce){.visual31-ota-progressbar>span{transition:none}}
+
+
+/* V686 - Visual 3.1 MEGA 4 Theme + Final Integration */
+html[data-background-art='on'] body::before{position:fixed;inset:0;z-index:-2;content:"";pointer-events:none;background:radial-gradient(circle at 14% 12%,color-mix(in srgb,var(--ds-accent) 11%,transparent),transparent 28%),radial-gradient(circle at 88% 18%,color-mix(in srgb,var(--ds-chart-2) 9%,transparent),transparent 31%),radial-gradient(circle at 70% 86%,color-mix(in srgb,var(--ds-chart-3) 8%,transparent),transparent 34%)}
+html[data-background-art='on'][data-visual-fx='tech-grid'] body::after{position:fixed;inset:0;z-index:-1;content:"";pointer-events:none;opacity:.28;background-image:linear-gradient(color-mix(in srgb,var(--ds-border) 26%,transparent) 1px,transparent 1px),linear-gradient(90deg,color-mix(in srgb,var(--ds-border) 26%,transparent) 1px,transparent 1px);background-size:42px 42px;mask-image:linear-gradient(to bottom,rgba(0,0,0,.7),transparent 88%)}
+html[data-background-art='off'] body::before,html[data-background-art='off'] body::after{display:none}
+html[data-glow='soft'] .panel,html[data-glow='soft'] .visual31-management-hero,html[data-glow='soft'] .visual31-led-workspace{box-shadow:0 18px 52px color-mix(in srgb,var(--ds-shadow) 18%,transparent),0 0 26px color-mix(in srgb,var(--ds-accent) 6%,transparent)}
+html[data-glow='strong'] .panel,html[data-glow='strong'] .visual31-management-hero,html[data-glow='strong'] .visual31-led-workspace{box-shadow:0 22px 62px color-mix(in srgb,var(--ds-shadow) 24%,transparent),0 0 36px color-mix(in srgb,var(--ds-accent) 10%,transparent)}
+html[data-glow='off'] .panel,html[data-glow='off'] .visual31-management-hero,html[data-glow='off'] .visual31-led-workspace{box-shadow:0 14px 42px color-mix(in srgb,var(--ds-shadow) 16%,transparent)}
+.visual31-theme-studio{overflow:hidden}
+.visual31-theme-preview{position:relative;overflow:hidden;min-height:96px;border:1px solid color-mix(in srgb,var(--ds-accent) 26%,var(--ds-border));background:radial-gradient(circle at 82% 22%,color-mix(in srgb,var(--ds-accent) 20%,transparent),transparent 30%),linear-gradient(135deg,color-mix(in srgb,var(--ds-surface-raised) 96%,transparent),color-mix(in srgb,var(--ds-surface-soft) 80%,transparent))}
+.visual31-theme-preview::after{position:absolute;right:-18px;bottom:-26px;width:160px;height:90px;content:"";pointer-events:none;background:radial-gradient(ellipse,color-mix(in srgb,var(--ds-accent) 18%,transparent),transparent 70%);filter:blur(8px)}
+.visual31-theme-gallery{grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}
+.visual31-theme-gallery .theme-card{position:relative;min-height:150px;overflow:hidden;padding:12px;border-color:color-mix(in srgb,var(--ds-border) 76%,transparent);background:linear-gradient(145deg,color-mix(in srgb,var(--ds-surface-raised) 94%,transparent),color-mix(in srgb,var(--ds-surface-soft) 80%,transparent));transition:transform var(--ds-duration-normal,220ms) ease,border-color var(--ds-duration-normal,220ms) ease,box-shadow var(--ds-duration-normal,220ms) ease}
+.visual31-theme-gallery .theme-card:hover{transform:translateY(-2px);border-color:color-mix(in srgb,var(--ds-accent) 34%,var(--ds-border))}
+.visual31-theme-gallery .theme-card.is-selected{border-color:color-mix(in srgb,var(--ds-accent) 62%,var(--ds-border));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--ds-accent) 20%,transparent),0 12px 34px color-mix(in srgb,var(--ds-accent) 11%,transparent)}
+.visual31-theme-gallery .theme-card__visual{min-height:78px;border-radius:13px;border:1px solid color-mix(in srgb,var(--ds-border) 62%,transparent);background:radial-gradient(circle at 72% 24%,color-mix(in srgb,var(--ds-accent) 22%,transparent),transparent 34%),linear-gradient(140deg,var(--ds-surface-soft),var(--ds-surface-raised))}
+.visual31-theme-gallery .theme-card__orb{box-shadow:0 0 22px color-mix(in srgb,var(--ds-accent) 28%,transparent)}
+.visual31-theme-gallery .theme-card__copy{margin-top:9px}.visual31-theme-gallery .theme-card__copy strong{font-size:13px}.visual31-theme-gallery .theme-card__copy small{line-height:1.35}
+.visual31-accent-studio{padding:14px;border:1px solid color-mix(in srgb,var(--ds-border) 70%,transparent);border-radius:16px;background:color-mix(in srgb,var(--ds-surface-soft) 62%,transparent)}
+.visual31-accent-studio .accent-picker__swatches{gap:9px}.visual31-accent-studio .accent-swatch{width:34px;height:34px;border-width:2px;box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--ds-background) 50%,transparent);transition:transform var(--ds-duration-fast,140ms) ease,box-shadow var(--ds-duration-fast,140ms) ease}.visual31-accent-studio .accent-swatch:hover{transform:scale(1.08)}
+.visual31-accent-studio .accent-swatch.is-selected{transform:scale(1.1);box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--ds-background) 55%,transparent),0 0 0 3px color-mix(in srgb,var(--ds-accent) 26%,transparent),0 0 20px color-mix(in srgb,var(--ds-accent) 22%,transparent)}
+.page-heading h1,.page-heading h2,.visual31-management-hero h3,.visual31-led-workspace h3{text-wrap:balance}.eyebrow{letter-spacing:.095em}
+[role='dialog']{border-color:color-mix(in srgb,var(--ds-accent) 20%,var(--ds-border));box-shadow:0 28px 90px color-mix(in srgb,var(--ds-shadow) 44%,transparent)}
+.empty-state,.core-empty-state,.v5-empty-state{border:1px dashed color-mix(in srgb,var(--ds-border) 80%,transparent);border-radius:var(--ds-radius-card);background:color-mix(in srgb,var(--ds-surface-soft) 56%,transparent)}
+.skeleton,.loading-skeleton{position:relative;overflow:hidden;background:color-mix(in srgb,var(--ds-surface-soft) 86%,transparent)}
+html[data-animations='on'] .skeleton::after,html[data-animations='on'] .loading-skeleton::after{position:absolute;inset:0;content:"";transform:translateX(-100%);background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--ds-text) 7%,transparent),transparent);animation:visual31-skeleton-sweep 1.4s ease-in-out infinite}
+@keyframes visual31-skeleton-sweep{to{transform:translateX(100%)}}
+html[data-animations='on'][data-motion='balanced'] .panel,html[data-animations='on'][data-motion='balanced'] button{transition:transform var(--ds-duration-fast,140ms) ease,border-color var(--ds-duration-fast,140ms) ease,background var(--ds-duration-fast,140ms) ease,box-shadow var(--ds-duration-fast,140ms) ease}
+html[data-animations='on'][data-motion='expressive'] .panel{transition:transform 260ms cubic-bezier(.2,.8,.2,1),border-color 220ms ease,box-shadow 260ms ease}
+:where(button,a,input,select,textarea,[tabindex]):focus-visible{outline:2px solid color-mix(in srgb,var(--ds-accent) 82%,white 8%);outline-offset:2px}
+html[data-appearance='light'] .visual31-management-hero,html[data-appearance='light'] .visual31-led-workspace,html[data-appearance='light'] .visual31-theme-preview,html[data-appearance='light'] .visual31-theme-gallery .theme-card{border-color:color-mix(in srgb,var(--ds-border) 88%,var(--ds-text) 12%);box-shadow:0 14px 38px color-mix(in srgb,var(--ds-shadow) 14%,transparent)}
+html[data-appearance='light'] .visual31-management-kpis>div,html[data-appearance='light'] .visual31-week-day,html[data-appearance='light'] .visual31-led-topology__node,html[data-appearance='light'] .visual31-led-hardware-meta>span,html[data-appearance='light'] .visual31-accent-studio{background:color-mix(in srgb,var(--ds-surface-raised) 90%,white 10%);border-color:color-mix(in srgb,var(--ds-border) 88%,var(--ds-text) 10%)}
+html[data-appearance='light'][data-contrast='high'] .panel,html[data-appearance='light'][data-contrast='high'] .visual31-management-hero,html[data-appearance='light'][data-contrast='high'] .visual31-led-workspace{border-width:2px}
+@media(max-width:720px){.visual31-theme-gallery{grid-template-columns:1fr 1fr}}
+@media(max-width:500px){.visual31-theme-gallery{grid-template-columns:1fr}.visual31-accent-studio .accent-swatch{width:38px;height:38px}}
+@media(prefers-reduced-motion:reduce){.visual31-theme-gallery .theme-card,.visual31-accent-studio .accent-swatch,.skeleton::after,.loading-skeleton::after{animation:none!important;transition:none!important;transform:none!important}}
+
+
+/* V688 - Visual 3.1 Final Beautification Polish */
+
+/* Shell depth and page rhythm */
+html[data-core-ui='3.0'] .app-shell.core-ui-v3-shell{
+  isolation:isolate;
+}
+html[data-core-ui='3.0'] .app-main,
+html[data-core-ui='3.0'] main{
+  position:relative;
+}
+html[data-core-ui='3.0'] .page{
+  gap:clamp(14px,1.45vw,22px);
+}
+html[data-core-ui='3.0'] .page-heading{
+  position:relative;
+  padding-bottom:2px;
+}
+html[data-core-ui='3.0'] .page-heading::after{
+  display:block;
+  width:min(120px,28vw);
+  height:1px;
+  margin-top:10px;
+  content:"";
+  background:linear-gradient(90deg,color-mix(in srgb,var(--ds-accent) 48%,transparent),transparent);
+}
+
+/* Topbar feels more like a system HUD without becoming noisy. */
+html[data-core-ui='3.0'] .core-v3-topbar{
+  border-bottom-color:color-mix(in srgb,var(--ds-border) 78%,transparent);
+  background:linear-gradient(180deg,color-mix(in srgb,var(--ds-surface-raised) 92%,transparent),color-mix(in srgb,var(--ds-surface) 76%,transparent));
+  box-shadow:0 10px 32px color-mix(in srgb,var(--ds-shadow) 10%,transparent);
+  backdrop-filter:blur(20px) saturate(120%);
+}
+.visual31-hud-node{
+  position:relative;
+  overflow:hidden;
+}
+.visual31-hud-node::after{
+  position:absolute;
+  inset:auto 10px 0;
+  height:1px;
+  content:"";
+  background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--ds-accent) 34%,transparent),transparent);
+  opacity:.5;
+}
+.visual31-hud-node.is-ok::after{
+  background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--ds-success) 44%,transparent),transparent);
+}
+.visual31-hud-node.is-warn::after{
+  background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--ds-warning) 48%,transparent),transparent);
+}
+
+/* Sidebar navigation: tighter hierarchy and calmer active glow. */
+html[data-core-ui='3.0'] .core-v3-sidebar{
+  border-right-color:color-mix(in srgb,var(--ds-border) 78%,transparent);
+  background:linear-gradient(180deg,color-mix(in srgb,var(--ds-surface-raised) 88%,transparent),color-mix(in srgb,var(--ds-surface) 74%,transparent));
+}
+.core-v3-sidebar nav{
+  gap:5px;
+}
+.core-v3-sidebar nav button{
+  border:1px solid transparent;
+  border-radius:13px;
+  transition:
+    transform var(--ds-duration-fast,140ms) ease,
+    background var(--ds-duration-fast,140ms) ease,
+    border-color var(--ds-duration-fast,140ms) ease;
+}
+.core-v3-sidebar nav button:hover{
+  transform:translateX(1px);
+  border-color:color-mix(in srgb,var(--ds-border) 62%,transparent);
+  background:color-mix(in srgb,var(--ds-surface-soft) 72%,transparent);
+}
+.core-v3-sidebar nav button[data-nav-active='true']{
+  border-color:color-mix(in srgb,var(--ds-accent) 25%,var(--ds-border));
+  background:linear-gradient(90deg,color-mix(in srgb,var(--ds-accent-soft) 46%,var(--ds-surface-soft)),color-mix(in srgb,var(--ds-surface-soft) 72%,transparent));
+  box-shadow:inset 0 1px 0 color-mix(in srgb,var(--ds-text) 4%,transparent);
+}
+
+/* Consistent card surface polish */
+html[data-core-ui='3.0'] .panel,
+.visual31-management-hero,
+.visual31-led-workspace,
+.visual31-status-ribbon{
+  position:relative;
+}
+html[data-core-ui='3.0'] .panel::before,
+.visual31-management-hero::before,
+.visual31-led-workspace::before{
+  position:absolute;
+  inset:0;
+  z-index:0;
+  border-radius:inherit;
+  content:"";
+  pointer-events:none;
+  box-shadow:inset 0 1px 0 color-mix(in srgb,var(--ds-text) 5%,transparent);
+}
+html[data-core-ui='3.0'] .panel>*,
+.visual31-management-hero>*,
+.visual31-led-workspace>*{
+  position:relative;
+  z-index:1;
+}
+
+/* Dashboard and command surfaces gain subtle lift only with animations enabled. */
+html[data-animations='on'] .core-v3-command-deck,
+html[data-animations='on'] .visual31-management-hero,
+html[data-animations='on'] .visual31-led-workspace{
+  transition:
+    border-color var(--ds-duration-normal,220ms) ease,
+    box-shadow var(--ds-duration-normal,220ms) ease,
+    transform var(--ds-duration-normal,220ms) ease;
+}
+html[data-animations='on'] .core-v3-command-deck:hover,
+html[data-animations='on'] .visual31-management-hero:hover,
+html[data-animations='on'] .visual31-led-workspace:hover{
+  transform:translateY(-1px);
+  border-color:color-mix(in srgb,var(--ds-accent) 28%,var(--ds-border));
+}
+
+/* Status ribbon: less flat, more readable at a glance. */
+.visual31-status-ribbon{
+  background:
+    linear-gradient(135deg,color-mix(in srgb,var(--ds-surface-raised) 94%,transparent),color-mix(in srgb,var(--ds-surface-soft) 70%,transparent));
+}
+.visual31-status-ribbon>div{
+  box-shadow:inset 0 1px 0 color-mix(in srgb,var(--ds-text) 4%,transparent);
+}
+.visual31-status-ribbon>div.is-ok{
+  background:linear-gradient(135deg,color-mix(in srgb,var(--ds-success) 5%,var(--ds-surface-soft)),color-mix(in srgb,var(--ds-surface-soft) 56%,transparent));
+}
+.visual31-status-ribbon>div.is-warn{
+  background:linear-gradient(135deg,color-mix(in srgb,var(--ds-warning) 5%,var(--ds-surface-soft)),color-mix(in srgb,var(--ds-surface-soft) 56%,transparent));
+}
+
+/* LED cards and previews */
+.visual31-led-card,
+.visual31-led-topology__node,
+.visual31-week-day,
+.visual31-management-kpis>div,
+.visual31-theme-gallery .theme-card{
+  box-shadow:inset 0 1px 0 color-mix(in srgb,var(--ds-text) 4%,transparent);
+}
+.visual31-led-preview{
+  border-color:color-mix(in srgb,var(--ds-accent) 22%,var(--ds-border));
+  background:
+    radial-gradient(circle at 72% 24%,color-mix(in srgb,var(--ds-accent) 10%,transparent),transparent 36%),
+    color-mix(in srgb,var(--ds-surface-soft) 74%,transparent);
+}
+
+/* Forms and controls */
+html[data-core-ui='3.0'] :where(input,select,textarea){
+  border-color:color-mix(in srgb,var(--ds-border) 82%,transparent);
+  background:color-mix(in srgb,var(--ds-surface-raised) 84%,transparent);
+  transition:
+    border-color var(--ds-duration-fast,140ms) ease,
+    box-shadow var(--ds-duration-fast,140ms) ease,
+    background var(--ds-duration-fast,140ms) ease;
+}
+html[data-core-ui='3.0'] :where(input,select,textarea):hover{
+  border-color:color-mix(in srgb,var(--ds-accent) 22%,var(--ds-border));
+}
+html[data-core-ui='3.0'] :where(input,select,textarea):focus{
+  border-color:color-mix(in srgb,var(--ds-accent) 56%,var(--ds-border));
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--ds-accent) 10%,transparent);
+}
+html[data-core-ui='3.0'] button:not(:disabled):active{
+  transform:translateY(1px);
+}
+
+/* Scrollbars fit the theme instead of looking native/default. */
+html[data-core-ui='3.0'] *{
+  scrollbar-width:thin;
+  scrollbar-color:color-mix(in srgb,var(--ds-accent) 34%,var(--ds-border)) transparent;
+}
+html[data-core-ui='3.0'] *::-webkit-scrollbar{
+  width:9px;
+  height:9px;
+}
+html[data-core-ui='3.0'] *::-webkit-scrollbar-track{
+  background:transparent;
+}
+html[data-core-ui='3.0'] *::-webkit-scrollbar-thumb{
+  border:2px solid transparent;
+  border-radius:999px;
+  background:color-mix(in srgb,var(--ds-accent) 30%,var(--ds-border));
+  background-clip:padding-box;
+}
+html[data-core-ui='3.0'] *::-webkit-scrollbar-thumb:hover{
+  background:color-mix(in srgb,var(--ds-accent) 48%,var(--ds-border));
+  background-clip:padding-box;
+}
+
+/* Management / OTA / timeline visual cleanup */
+.visual31-management-section-title{
+  padding-bottom:3px;
+}
+.visual31-ota-step i{
+  box-shadow:inset 0 1px 0 color-mix(in srgb,var(--ds-text) 5%,transparent);
+}
+.visual31-week-event{
+  border:1px solid color-mix(in srgb,var(--ds-border) 42%,transparent);
+}
+.visual31-week-day.has-events .visual31-week-day__rail{
+  background:linear-gradient(180deg,color-mix(in srgb,var(--ds-accent) 3%,transparent),transparent);
+}
+
+/* Theme studio final polish */
+.visual31-theme-gallery .theme-card__visual{
+  position:relative;
+  overflow:hidden;
+}
+.visual31-theme-gallery .theme-card__visual::after{
+  position:absolute;
+  inset:0;
+  content:"";
+  pointer-events:none;
+  background:linear-gradient(120deg,transparent 0 46%,color-mix(in srgb,var(--ds-text) 5%,transparent) 50%,transparent 54% 100%);
+  transform:translateX(-80%);
+  opacity:.6;
+}
+html[data-animations='on'] .visual31-theme-gallery .theme-card:hover .theme-card__visual::after{
+  transform:translateX(80%);
+  transition:transform 520ms ease;
+}
+
+/* Light theme: cleaner edges and less muddy translucency */
+html[data-appearance='light'] .core-v3-topbar,
+html[data-appearance='light'] .core-v3-sidebar{
+  background:color-mix(in srgb,var(--ds-surface-raised) 96%,white 4%);
+}
+html[data-appearance='light'] .visual31-hud-node,
+html[data-appearance='light'] .visual31-status-ribbon>div,
+html[data-appearance='light'] .visual31-week-event{
+  background:color-mix(in srgb,var(--ds-surface-raised) 94%,white 6%);
+}
+html[data-appearance='light'] .core-v3-sidebar nav button[data-nav-active='true']{
+  background:linear-gradient(90deg,color-mix(in srgb,var(--ds-accent) 8%,white),color-mix(in srgb,var(--ds-surface-raised) 96%,white 4%));
+}
+html[data-appearance='light'] :where(input,select,textarea){
+  background:color-mix(in srgb,var(--ds-surface-raised) 96%,white 4%);
+}
+
+/* Compact layouts */
+@media(max-width:1180px){
+  html[data-core-ui='3.0'] .page{
+    gap:16px;
+  }
+}
+@media(max-width:760px){
+  html[data-core-ui='3.0'] .page{
+    gap:13px;
+  }
+  html[data-core-ui='3.0'] .panel,
+  .visual31-management-hero,
+  .visual31-led-workspace{
+    border-radius:clamp(14px,4vw,18px);
+  }
+  .visual31-management-kpis{
+    gap:7px;
+  }
+}
+@media(max-width:520px){
+  html[data-core-ui='3.0'] .page-heading::after{
+    width:76px;
+  }
+  .visual31-status-ribbon{
+    padding:6px;
+  }
+}
+
+/* Respect both OS and app-level reduced motion. */
+@media(prefers-reduced-motion:reduce){
+  .core-v3-sidebar nav button,
+  .core-v3-command-deck,
+  .visual31-management-hero,
+  .visual31-led-workspace,
+  .visual31-theme-gallery .theme-card__visual::after{
+    transition:none!important;
+    transform:none!important;
+  }
+}
+html[data-motion='reduced'] .core-v3-sidebar nav button,
+html[data-motion='reduced'] .core-v3-command-deck,
+html[data-motion='reduced'] .visual31-management-hero,
+html[data-motion='reduced'] .visual31-led-workspace{
+  transition:none!important;
+  transform:none!important;
+}
+
+
+/* V689 - Visual review corrections */
+
+/* Dashboard: reserve real space for the Visual 3.1 health orbit instead of
+   overlaying it on the legacy device core/rings. */
+.visual31-device-core{
+  box-sizing:border-box;
+  min-height:278px;
+  padding-right:118px;
+}
+.visual31-device-core .v55-orbit-core{
+  position:relative;
+  z-index:3;
+}
+.visual31-device-core .visual31-health-orbit{
+  right:14px;
+  bottom:16px;
+  width:94px;
+  z-index:4;
+}
+
+/* Weekly schedule: close the awkward 4-column intermediate width earlier. */
+@media (max-width:1640px) and (min-width:1041px){
+  .v55-schedules-page .schedule-week-grid{
+    grid-template-columns:repeat(3,minmax(0,1fr));
+  }
+}
+
+/* If cards still get narrow in the intermediate desktop/tablet band,
+   put actions on their own row instead of letting chips and buttons collide. */
+@media (max-width:1320px) and (min-width:701px){
+  .v55-schedules-page .schedule-compact-card{
+    grid-template-columns:54px minmax(0,1fr);
+    grid-template-areas:
+      "time leds"
+      "time actions";
+    align-items:start;
+  }
+  .v55-schedules-page .schedule-compact-time{
+    grid-area:time;
+    align-self:stretch;
+    height:auto;
+    min-height:56px;
+  }
+  .v55-schedules-page .schedule-led-chips{
+    grid-area:leds;
+    overflow:hidden;
+  }
+  .v55-schedules-page .schedule-compact-actions{
+    grid-area:actions;
+    justify-content:end;
+    padding-top:2px;
+  }
+}
+
+/* On compact/mobile command decks, move health below the legacy orbit so
+   neither circle can cover the other. */
+@media (max-width:820px){
+  .visual31-device-core{
+    min-height:326px;
+    padding-right:0;
+    padding-bottom:108px;
+  }
+  .visual31-device-core .visual31-health-orbit{
+    right:50%;
+    bottom:10px;
+    width:90px;
+    transform:translateX(50%);
+  }
+}
+@media (max-width:520px){
+  .visual31-device-core{
+    min-height:312px;
+    padding-bottom:100px;
+  }
+  .visual31-device-core .visual31-health-orbit{
+    right:50%;
+    width:84px;
+  }
+}
+
+
+/* V690 - Orbit composition OCD alignment */
+html[data-core-ui='3.0'] .v55-system-orbit {
+  position: relative;
+}
+
+html[data-core-ui='3.0'] .v55-system-orbit .v55-orbit-core {
+  position: absolute !important;
+  left: 50% !important;
+  top: 50% !important;
+  right: auto !important;
+  bottom: auto !important;
+  margin: 0 !important;
+  transform: translate(-50%, -50%) !important;
+  z-index: 2;
+}
+
+html[data-core-ui='3.0'] .v55-system-orbit .visual31-health-orbit {
+  position: absolute !important;
+  left: calc(50% + 62px) !important;
+  top: calc(50% + 54px) !important;
+  right: auto !important;
+  bottom: auto !important;
+  margin: 0 !important;
+  transform: none !important;
+  z-index: 4;
+}
+
+@media (max-width: 720px) {
+  html[data-core-ui='3.0'] .v55-system-orbit .visual31-health-orbit {
+    left: calc(50% + 54px) !important;
+    top: calc(50% + 50px) !important;
+  }
+}

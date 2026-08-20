@@ -2,7 +2,8 @@ import {
   CheckCircle2,
   LoaderCircle,
   ShieldCheck,
-  TriangleAlert
+  TriangleAlert,
+  Waves
 } from 'lucide-react';
 
 import type { StartupCheck } from '../hooks/useAppStartupGate';
@@ -10,7 +11,9 @@ import { useI18n } from '../i18n';
 
 interface AppStartupScreenProps {
   checks: StartupCheck[];
-  progress: number;
+  verifiedCount: number;
+  pendingCount: number;
+  totalCount: number;
   warningCount: number;
   exiting: boolean;
   appVersion: string;
@@ -18,7 +21,9 @@ interface AppStartupScreenProps {
 
 export function AppStartupScreen({
   checks,
-  progress,
+  verifiedCount,
+  pendingCount,
+  totalCount,
   warningCount,
   exiting,
   appVersion
@@ -27,7 +32,7 @@ export function AppStartupScreen({
 
   return (
     <div
-      className={`app-startup-screen${exiting ? ' is-exiting' : ''}`}
+      className={`app-startup-screen visual31-startup${exiting ? ' is-exiting' : ''}`}
       role="status"
       aria-live="polite"
       aria-label={t('startup.title')}
@@ -49,15 +54,25 @@ export function AppStartupScreen({
           </div>
         </div>
 
-        <div className="app-startup-progress" aria-hidden="true">
-          <span style={{ width: `${progress}%` }} />
-        </div>
-        <div className="app-startup-progress-copy">
-          <span>{t('startup.progress')}</span>
-          <strong>{progress}%</strong>
+        <div className="app-startup-truth-rail" data-startup-truth="runtime">
+          <div className="app-startup-truth-stat">
+            <CheckCircle2 size={16} aria-hidden="true" />
+            <span>{t('startup.progress')}</span>
+            <strong>{verifiedCount}/{totalCount}</strong>
+          </div>
+          <div className="app-startup-truth-stat">
+            <Waves size={16} aria-hidden="true" />
+            <span>{t('startup.detail.backgroundContinue')}</span>
+            <strong>{pendingCount}</strong>
+          </div>
+          <div className="app-startup-truth-stat">
+            <TriangleAlert size={16} aria-hidden="true" />
+            <span>{t('startup.readyWithWarnings', { count: warningCount })}</span>
+            <strong>{warningCount}</strong>
+          </div>
         </div>
 
-        <div className="app-startup-checks">
+        <div className="app-startup-checks app-startup-checks--truthful">
           {checks.map((check) => (
             <div
               className={`app-startup-check is-${check.state}`}
@@ -85,9 +100,11 @@ export function AppStartupScreen({
         <div className="app-startup-footer">
           <ShieldCheck size={17} />
           <span>
-            {warningCount > 0
-              ? t('startup.readyWithWarnings', { count: warningCount })
-              : t('startup.ready')}
+            {pendingCount > 0
+              ? t('startup.detail.backgroundContinue')
+              : warningCount > 0
+                ? t('startup.readyWithWarnings', { count: warningCount })
+                : t('startup.ready')}
           </span>
         </div>
       </section>

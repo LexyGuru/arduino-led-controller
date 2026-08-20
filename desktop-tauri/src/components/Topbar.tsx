@@ -1,5 +1,7 @@
 import {
   CircleDot,
+  Clock3,
+  Cpu,
   RefreshCw,
   Wifi,
   WifiOff
@@ -8,11 +10,17 @@ import { useI18n } from '../i18n';
 
 export function Topbar({
   online,
+  deviceLabel,
+  firmwareVersion,
+  timeSynced,
   message,
   busy,
   onRefresh
 }: {
   online: boolean;
+  deviceLabel: string;
+  firmwareVersion?: string;
+  timeSynced: boolean;
   message: string;
   busy: boolean;
   onRefresh: () => void;
@@ -32,7 +40,21 @@ export function Topbar({
         <p className="topbar-tagline">Direct Arduino Control & Automation</p>
       </div>
 
-      <div className="core-topbar-actions">
+      <div className="core-topbar-actions visual31-topbar-hud">
+        <div className="visual31-hud-telemetry" aria-label={t('core.controlCenter')}>
+          <span className={`visual31-hud-node ${online ? 'is-ok' : 'is-offline'}`}>
+            {online ? <Wifi size={15} /> : <WifiOff size={15} />}
+            <b>{deviceLabel}</b>
+          </span>
+          <span className="visual31-hud-node">
+            <Cpu size={15} />
+            <b>{firmwareVersion ?? '—'}</b>
+          </span>
+          <span className={`visual31-hud-node ${timeSynced ? 'is-ok' : 'is-warn'}`}>
+            <Clock3 size={15} />
+            <b>{timeSynced ? t('dashboard.synced') : t('dashboard.notSynced')}</b>
+          </span>
+        </div>
         <div className={`core-connection-chip ${online ? 'online' : 'offline'}`} data-connection-state={online ? 'online' : 'offline'} aria-live="polite">
           {online ? <Wifi size={16} /> : <WifiOff size={16} />}
           <div>

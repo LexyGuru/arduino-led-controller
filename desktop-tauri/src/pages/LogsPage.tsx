@@ -120,6 +120,16 @@ export function LogsPage({
 
   const visibleRows = paused ? unified.slice(0, 100) : unified;
 
+  const visual31ErrorCount =
+    unified.filter((item) => item.level === 'error').length;
+  const visual31WarningCount =
+    unified.filter((item) => item.level === 'warning').length;
+  const visual31ArduinoCount =
+    unified.filter((item) => item.source === 'arduino').length;
+  const visual31NetworkCount =
+    unified.filter((item) => item.source === 'network').length;
+
+
   const exportDiagnostics =
     async () => {
       const createdAt =
@@ -209,7 +219,7 @@ export function LogsPage({
   };
 
   return (
-    <div className="page v55-logs-page beta4-logs-redesign core-v3-management-page core-v3-logs-page" data-core-management="logs">
+    <div className="page visual31-management-page visual31-logs-page v55-logs-page beta4-logs-redesign core-v3-management-page core-v3-logs-page" data-core-management="logs">
       <div className="page-heading core-v3-management-heading">
         <div>
           <p className="eyebrow">{t('logs2.eyebrow')}</p>
@@ -218,6 +228,21 @@ export function LogsPage({
         </div>
         <V5DataSourceBadge source={state.source} />
       </div>
+
+
+      <section className="visual31-management-hero visual31-observability-summary" data-visual31-management="logs">
+        <div className="visual31-management-hero__copy">
+          <p className="eyebrow">{t('visual31.logs.eyebrow')}</p>
+          <h3>{t('visual31.logs.title')}</h3>
+          <p className="muted">{t('visual31.logs.summary', { count: unified.length, mode: paused ? t('visual31.logs.paused') : t('visual31.logs.live') })}</p>
+        </div>
+        <div className="visual31-management-kpis">
+          <div><span>{t('visual31.logs.events')}</span><strong>{unified.length}</strong></div>
+          <div><span>{t('visual31.logs.errors')}</span><strong>{visual31ErrorCount}</strong></div>
+          <div><span>{t('visual31.logs.warnings')}</span><strong>{visual31WarningCount}</strong></div>
+          <div><span>{t('visual31.logs.arduinoNetwork')}</span><strong>{visual31ArduinoCount}/{visual31NetworkCount}</strong></div>
+        </div>
+      </section>
 
       <V5LogToolbar
         query={query}

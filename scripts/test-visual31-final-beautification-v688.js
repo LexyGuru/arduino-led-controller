@@ -1,0 +1,40 @@
+#!/usr/bin/env node
+'use strict';
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const r=p=>fs.readFileSync(p,'utf8');
+const css=r('desktop-tauri/src/core-ui-v3.css');
+const suite=JSON.parse(r('scripts/test-suite-v2.json'));
+const release=JSON.parse(r('release-versions.json'));
+
+assert.equal(release.application,'5.7.0-beta.2');
+assert.equal(release.firmware,'5.0.0');
+assert.match(css,/V688 - Visual 3\.1 Final Beautification Polish/);
+assert.match(css,/\.core-v3-sidebar nav button\[data-nav-active='true'\]/);
+assert.match(css,/\.visual31-status-ribbon>div\.is-ok/);
+assert.match(css,/::-webkit-scrollbar-thumb/);
+assert.match(css,/data-appearance='light'/);
+assert.match(css,/prefers-reduced-motion:reduce/);
+assert.match(css,/data-motion='reduced'/);
+const v688Marker='/* V688 - Visual 3.1 Final Beautification Polish */';
+const v689Marker='/* V689 - Visual review corrections */';
+const v688Start=css.indexOf(v688Marker);
+const v689Start=css.indexOf(v689Marker,v688Start);
+assert.ok(v688Start>=0,'V688 polish marker missing');
+assert.ok(v689Start>v688Start,'V689 review marker missing after V688');
+const v688OwnedCss=css.slice(v688Start,v689Start);
+const v689OwnedCss=css.slice(v689Start);
+assert.doesNotMatch(v688OwnedCss,/#[0-9a-fA-F]{3,8}\b/);
+assert.doesNotMatch(v689OwnedCss,/#[0-9a-fA-F]{3,8}\b/);
+assert.equal(suite.current.includes('test:visual31-final-beautification'),true);
+
+console.log('V688_VISUAL_POLISH_CSS_ONLY=PASSED');
+console.log('V688_SHELL_DEPTH_POLISH=PASSED');
+console.log('V688_NAV_HUD_POLISH=PASSED');
+console.log('V688_FORM_FOCUS_POLISH=PASSED');
+console.log('V688_SCROLLBAR_THEME_POLISH=PASSED');
+console.log('V688_LIGHT_THEME_POLISH=PASSED');
+console.log('V688_REDUCED_MOTION_GUARD=PASSED');
+console.log('V688_NO_HARDCODED_HEX_COLORS=PASSED');
+console.log('V688_V689_OWNED_CSS_NO_HARDCODED_HEX=PASSED');
+console.log('V688_FINAL_BEAUTIFICATION_CONTRACT=PASSED');

@@ -38,9 +38,7 @@ interface StartupGateOptions {
   connectionHealth: ConnectionHealthState;
 }
 
-const MIN_VISIBLE_MS = 2200;
-const SOFT_NETWORK_WAIT_MS = 3200;
-const MAX_VISIBLE_MS = 4800;
+const MIN_VISIBLE_MS = 2600;
 const EXIT_MS = 420;
 
 const INITIAL_CHECKS: StartupCheck[] = [
@@ -80,7 +78,7 @@ export function useAppStartupGate({
   };
 
   useEffect(() => {
-    const shellTimer = window.setTimeout(() => update('shell', 'pass'), 80);
+    update('shell', 'pass');
 
     try {
       const key = '__alc_v584_startup_probe__';
@@ -104,7 +102,6 @@ export function useAppStartupGate({
     }, 50);
 
     return () => {
-      window.clearTimeout(shellTimer);
       window.clearInterval(themeTimer);
     };
   }, []);
@@ -124,7 +121,7 @@ export function useAppStartupGate({
 
     update(
       'runtime',
-      'pass',
+      capabilities.platform === 'unknown' ? 'warn' : 'pass',
       capabilities.platform === 'unknown' ? 'startup.detail.runtimeGeneric' : undefined
     );
     update(
@@ -156,36 +153,24 @@ export function useAppStartupGate({
       return;
     }
 
-    const timer = window.setTimeout(() => {
-      update(
-        'arduino',
-        'pass',
-        connectionHealth.state === 'healthy'
-          ? undefined
-          : 'startup.detail.arduinoBackground'
-      );
-    }, SOFT_NETWORK_WAIT_MS);
-
-    return () => window.clearTimeout(timer);
+    update('arduino', 'pending', 'startup.detail.arduinoBackground');
   }, [initialized, config, connectionHealth.state]);
 
-  useEffect(() => {
-    const maxTimer = window.setTimeout(() => {
-      setChecks((current) =>
-        current.map((check) =>
-          check.state === 'pending'
-            ? { ...check, state: 'pass', detailKey: 'startup.detail.backgroundContinue' }
-            : check
-        )
-      );
-    }, MAX_VISIBLE_MS);
-    return () => window.clearTimeout(maxTimer);
-  }, []);
-
-  const complete = checks.every((check) => check.state !== 'pending');
+  const blockingIds: StartupCheckId[] = [
+    'shell',
+    'theme',
+    'version',
+    'runtime',
+    'config',
+    'schedules',
+    'storage'
+  ];
+  const complete = blockingIds.every(
+    (id) => checks.find((check) => check.id === id)?.state !== 'pending'
+  );
 
   useEffect(() => {
-    if (!complete || exiting || !visible) return;
+    if (!initialized || !complete || exiting || !visible) return;
     const elapsed = Date.now() - startedAt.current;
     const wait = Math.max(0, MIN_VISIBLE_MS - elapsed);
     const exitTimer = window.setTimeout(() => {
@@ -193,18 +178,23 @@ export function useAppStartupGate({
       window.setTimeout(() => setVisible(false), EXIT_MS);
     }, wait);
     return () => window.clearTimeout(exitTimer);
-  }, [complete, exiting, visible]);
+  }, [initialized, complete, exiting, visible]);
 
-  const progress = useMemo(() => {
-    const finished = checks.filter((check) => check.state !== 'pending').length;
-    return Math.round((finished / checks.length) * 100);
-  }, [checks]);
-
+  const verifiedCount = useMemo(
+    () => checks.filter((check) => check.state === 'pass').length,
+    [checks]
+  );
+  const pendingCount = useMemo(
+    () => checks.filter((check) => check.state === 'pending').length,
+    [checks]
+  );
   const warningCount = checks.filter((check) => check.state === 'warn').length;
 
   return {
     checks,
-    progress,
+    verifiedCount,
+    pendingCount,
+    totalCount: checks.length,
     warningCount,
     visible,
     exiting,

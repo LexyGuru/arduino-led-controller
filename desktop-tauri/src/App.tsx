@@ -137,6 +137,13 @@ export default function App() {
                 ?.connected
             )
           }
+          deviceLabel={
+            controller.status?.hostname ??
+            controller.status?.ipAddress ??
+            'Arduino UNO R4 WiFi'
+          }
+          firmwareVersion={controller.status?.firmwareVersion}
+          timeSynced={Boolean(controller.status?.timesynced)}
           message={
             controller.message
           }
@@ -368,7 +375,9 @@ export default function App() {
       {startup.visible && (
         <AppStartupScreen
           checks={startup.checks}
-          progress={startup.progress}
+          verifiedCount={startup.verifiedCount}
+          pendingCount={startup.pendingCount}
+          totalCount={startup.totalCount}
           warningCount={startup.warningCount}
           exiting={startup.exiting}
           appVersion={appVersion}

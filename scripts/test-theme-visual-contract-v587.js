@@ -29,7 +29,8 @@ const theme = fs.readFileSync(targets[5], 'utf8');
 
 assert.match(app, /page-transition-stage/);
 assert.match(app, /AppStartupScreen/);
-assert.match(startup, /app-startup-progress/);
+assert.doesNotMatch(startup, /app-startup-progress/);
+assert.match(startup, /app-startup-truth-rail/);
 assert.match(appearance, /custom-theme-editor/);
 assert.match(advanced, /theme-profile-library/);
 assert.match(motion, /@keyframes v584-page-enter/);

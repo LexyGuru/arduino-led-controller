@@ -13,7 +13,6 @@ import { THEME_CATALOG } from '../design-system/theme-catalog';
 import {
   CORE_UI_VERSION,
   THEME_ENGINE_VERSION,
-  THEME_ENGINE_PRODUCT_VERSION,
   type AccentId,
   type AppearanceMode,
   type ContrastId,
@@ -171,7 +170,7 @@ export function AppearanceSettings() {
 
   return (
     <section
-      className="panel settings-panel appearance-panel theme-engine-v2 theme-engine-v3"
+      className="panel settings-panel appearance-panel theme-engine-v2 theme-engine-v3 visual31-theme-studio"
       data-mobile-theme-parity="full"
     >
       <div className="panel-title">
@@ -179,13 +178,13 @@ export function AppearanceSettings() {
           <p className="eyebrow">{t('appearance.eyebrow')}</p>
           <h2>{t('appearance.title')}</h2>
           <p className="theme-engine-version">
-            Theme Engine {THEME_ENGINE_PRODUCT_VERSION} · Core UI {CORE_UI_VERSION}
+            Theme Runtime {THEME_ENGINE_VERSION} · Visual 3.1 · Core UI {CORE_UI_VERSION}
           </p>
         </div>
         <Palette />
       </div>
 
-      <div className="appearance-preview theme-engine-hero">
+      <div className="appearance-preview theme-engine-hero visual31-theme-preview">
         <div>
           {resolvedMode === 'light' ? <Sun size={24} /> : <Moon size={24} />}
           <strong>
@@ -211,7 +210,7 @@ export function AppearanceSettings() {
         </button>
       </div>
 
-      <div className="theme-gallery theme-gallery--v3" role="list" aria-label={t('appearance.galleryTitle')}>
+      <div className="theme-gallery theme-gallery--v3 visual31-theme-gallery" role="list" aria-label={t('appearance.galleryTitle')}>
         {THEME_CATALOG.map((theme) => {
           const selected = appearance.theme === theme.id;
           const unavailable = Boolean(theme.custom && !customTheme);
@@ -321,7 +320,7 @@ export function AppearanceSettings() {
         </label>
       </div>
 
-      <div className="accent-picker" aria-label={t('appearance.accent')}>
+      <div className="accent-picker visual31-accent-studio" aria-label={t('appearance.accent')}>
         <span>{t('appearance.accent')}</span>
         <div className="accent-picker__swatches">
           {ACCENTS.map((accent) => (

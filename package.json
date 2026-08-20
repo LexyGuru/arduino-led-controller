@@ -1,6 +1,6 @@
 {
   "name": "arduino-led-controller",
-  "version": "5.7.0-beta.1",
+  "version": "5.7.0-beta.2",
   "private": true,
   "description": "Arduino UNO R4 WiFi LED controller and weekly scheduler",
   "main": "server2_final.js",
@@ -308,7 +308,14 @@
     "test:core-ui-v3-led-controls": "node scripts/test-core-ui-v3-led-controls-v672.js",
     "test:core-ui-v3-management-surfaces": "node scripts/test-core-ui-v3-management-surfaces-v674.js",
     "test:core-ui-v3-final-sweep": "node scripts/test-core-ui-v3-final-sweep-v676.js",
-    "test:core-ui-v3-light-visibility": "node scripts/test-core-ui-v3-light-visibility-v679.js"
+    "test:core-ui-v3-light-visibility": "node scripts/test-core-ui-v3-light-visibility-v679.js",
+    "test:visual31-mega1": "node scripts/test-visual31-mega1-truthful-startup-command-center-v683.js",
+    "test:visual31-mega2": "node scripts/test-visual31-mega2-led-control-center-v684.js",
+    "test:visual31-mega3": "node scripts/test-visual31-mega3-management-experience-v685.js",
+    "test:visual31-mega4": "node scripts/test-visual31-mega4-theme-final-integration-v686.js",
+    "test:visual31-product-consolidation": "node scripts/test-visual31-product-consolidation-i18n-v687.js",
+    "test:visual31-final-beautification": "node scripts/test-visual31-final-beautification-v688.js",
+    "test:visual31-review-corrections": "node scripts/test-visual31-visual-review-corrections-v689.js"
   },
   "engines": {
     "node": ">=20"

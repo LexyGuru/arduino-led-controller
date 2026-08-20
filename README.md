@@ -1,8 +1,8 @@
 # Arduino LED Controller V5.6
 
-## Current Beta development — 5.7.0-beta.1
+## Current Beta development — 5.7.0-beta.2
 
-- Application: `5.7.0-beta.1`
+- Application: `5.7.0-beta.2`
 - Theme Engine: `2.0`
 - Core UI: `3.0`
 - Firmware: `5.0.0` Stable
@@ -10,7 +10,7 @@
 - Release notes: `docs/v5/V57_BETA1_RELEASE_NOTES.md`
 - Installation guide: `docs/v5/V57_BETA1_INSTALLATION_GUIDE.md`
 - Release checklist: `docs/v5/V57_BETA1_RELEASE_CHECKLIST.md`
-- Root release notes: `RELEASE_NOTES_5.7.0-beta.1.md`
+- Root release notes: `RELEASE_NOTES_5.7.0-beta.2.md`
 
 
 <p align="center">

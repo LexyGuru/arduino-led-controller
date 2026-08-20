@@ -1,11 +1,11 @@
 {
   "schemaVersion": 2,
-  "application": "5.7.0-beta.1",
+  "application": "5.7.0-beta.2",
   "firmware": "5.0.0",
   "directApi": "1.0.0",
   "channel": "beta",
   "applicationRelease": {
-    "version": "5.7.0-beta.1",
+    "version": "5.7.0-beta.2",
     "channel": "beta",
     "branch": "next/v5-rearchitecture",
     "updaterAlias": "updater-beta",

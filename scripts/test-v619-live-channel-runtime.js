@@ -43,11 +43,13 @@ assert.match(rust,/async fn firmware_releases\([\s\S]*channel: Option<String>/);
 assert.match(rust,/async fn firmware_install_release\([\s\S]*channel: Option<String>/);
 assert.match(rust,/firmware_artifacts_from_release_channel\(release, normalized_channel\)/);
 
-assert.match(startup,/check\.state === 'pending'\s*\?\s*\{ \.\.\.check, state: 'pass', detailKey: 'startup\.detail\.backgroundContinue' \}/);
+assert.doesNotMatch(startup,/state: 'pass', detailKey: 'startup\.detail\.backgroundContinue'/);
+assert.match(startup,/update\('arduino', 'pending', 'startup\.detail\.arduinoBackground'\)/);
+assert.match(startup,/connectionHealth\.state === 'healthy'/);
 assert.doesNotMatch(startup,/connectionHealth\.state === 'healthy' \? 'pass' : 'warn'/);
 
 console.log('V619_LIVE_APP_CHANNEL_PIPELINE=PASSED');
 console.log('V619_LIVE_FIRMWARE_CHANNEL_PIPELINE=PASSED');
 console.log('V619_STABLE_BETA_CATALOG_UI_ISOLATION=PASSED');
 console.log('V619_CHANNEL_AWARE_INSTALL_PREFLIGHT=PASSED');
-console.log('V619_LOADING_SOFT_BACKGROUND_NO_WARNING=PASSED');
+console.log('V619_LOADING_TRUTHFUL_BACKGROUND_PENDING=PASSED');

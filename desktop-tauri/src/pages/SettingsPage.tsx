@@ -46,8 +46,21 @@ export function SettingsPage({platform,otaSupported,config,busy,onChange,onSave,
  const {t,language,setLanguage}=useI18n(); const [settingsView,setSettingsView]=useState<'general'|'arduino'>('general'); const set=<K extends keyof ConnectionConfig>(key:K,value:ConnectionConfig[K])=>onChange({...config,[key]:value});
  const changeLanguage=(value:AppLanguage)=>{setLanguage(value);set('language',value)};
  const isMac=platform==='macos'; const isMobile=platform==='android'||platform==='ios'; const local=validHost(config.localArduinoIp)&&validPort(config.localArduinoPort); const remote=validHost(config.arduinoIp)&&validPort(config.arduinoPort); const localApiAllowed=!isMac||config.macosLocalApiEnabled; const otaHost=config.otaUseApiHost?(config.arduinoIp||config.localArduinoIp):config.otaAddress; const canSave=((local&&localApiAllowed)||remote)&&validPath(config.arduinoApiPath)&&validKey(config.arduinoApiKey)&&(!otaSupported||(validHost(otaHost)&&validPort(config.otaPort)&&config.otaTimeoutSeconds>=30&&config.otaTimeoutSeconds<=600&&(config.otaUploadMode!=='custom'||Boolean(config.otaToolPath.trim())))); const prefix=config.arduinoApiPath.trim().replace(/\/+$/,''); const localUrl=local?`${config.localProtocol}://${config.localArduinoIp}:${config.localArduinoPort}${prefix}/api/v1/status`:''; const remoteUrl=remote?`${config.protocol}://${config.arduinoIp}:${config.arduinoPort}${prefix}/api/v1/status`:'';
- return <div className="page settings-page v55-settings-hub beta4-settings-redesign core-v3-management-page core-v3-settings-page" data-settings-view={settingsView} data-core-management="settings">
- <section className="v55-settings-hub-nav core-v3-settings-hub-nav">
+ return <div className="page visual31-management-page visual31-settings-page settings-page v55-settings-hub beta4-settings-redesign core-v3-management-page core-v3-settings-page" data-settings-view={settingsView} data-core-management="settings">
+ <section className="visual31-management-hero visual31-settings-overview" data-visual31-management="settings">
+ <div className="visual31-management-hero__copy">
+  <p className="eyebrow">{t('visual31.settings.eyebrow')}</p>
+  <h3>{config.profileName || t('visual31.settings.defaultProfile')}</h3>
+  <p className="muted">{t('visual31.settings.summary', { platform, app: config.updateChannel.toUpperCase(), firmware: config.firmwareUpdateChannel.toUpperCase() })}</p>
+ </div>
+ <div className="visual31-management-kpis">
+  <div><span>{t('visual31.settings.profile')}</span><strong>{canSave ? t('visual31.settings.valid') : t('visual31.settings.check')}</strong></div>
+  <div><span>{t('visual31.settings.local')}</span><strong>{local && localApiAllowed ? t('visual31.settings.ready') : t('visual31.settings.off')}</strong></div>
+  <div><span>{t('visual31.settings.remote')}</span><strong>{remote ? t('visual31.settings.ready') : t('visual31.settings.off')}</strong></div>
+  <div><span>{t('visual31.settings.timezone')}</span><strong>{config.timezoneAuto ? t('visual31.settings.auto') : t('visual31.settings.manual')}</strong></div>
+ </div>
+</section>
+<section className="v55-settings-hub-nav core-v3-settings-hub-nav">
   <div className="v55-settings-hub-copy"><strong>{t('settings-hub.title')}</strong><span>{t('settings-hub.subtitle')}</span></div>
   <div className="v55-settings-hub-tabs core-v3-settings-tabs" role="tablist" aria-label={t('settings-hub.title')}>
    <button type="button" className={settingsView==='general'?'active':''} onClick={()=>setSettingsView('general')}>{t('settings-hub.general')}</button>

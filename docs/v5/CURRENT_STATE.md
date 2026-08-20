@@ -1,6 +1,6 @@
-# Current development state — 5.7.0-beta.1
+# Current development state — 5.7.0-beta.2
 
-- Application: `5.7.0-beta.1` Beta
+- Application: `5.7.0-beta.2` Beta
 - Theme Engine: `2.0`
 - Core UI: `3.0`
 - Firmware: `5.0.0` Stable

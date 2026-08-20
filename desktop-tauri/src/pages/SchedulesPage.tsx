@@ -410,6 +410,17 @@ export function SchedulesPage({
       [draft, t]
     );
 
+  const totalScheduleActions =
+    grouped.reduce(
+      (total, day) => total + day.items.length,
+      0
+    );
+
+  const scheduleDaysUsed =
+    grouped.filter(
+      (day) => day.items.length > 0
+    ).length;
+
   const copyDaySchedules =
     () => {
       const source =
@@ -917,7 +928,53 @@ export function SchedulesPage({
     };
 
   return (
-    <div className="page v55-schedules-page beta4-schedules-redesign core-v3-management-page core-v3-schedules-page" data-core-management="schedules">
+    <div className="page visual31-management-page visual31-schedules-page v55-schedules-page beta4-schedules-redesign core-v3-management-page core-v3-schedules-page" data-core-management="schedules">
+
+      <section className="visual31-management-hero visual31-schedule-overview" data-visual31-management="schedules">
+        <div className="visual31-management-hero__copy">
+          <p className="eyebrow">{t('visual31.schedule.eyebrow')}</p>
+          <h3>{t('visual31.schedule.actionsCount', { count: totalScheduleActions })}</h3>
+          <p className="muted">{t('visual31.schedule.activeDaysRevision', { days: scheduleDaysUsed, revision: baseRevision ?? '—' })}</p>
+        </div>
+        <div className="visual31-management-kpis">
+          <div><span>{t('visual31.schedule.activeDays')}</span><strong>{scheduleDaysUsed}/7</strong></div>
+          <div><span>{t('visual31.schedule.actions')}</span><strong>{totalScheduleActions}</strong></div>
+          <div><span>{t('visual31.schedule.revision')}</span><strong>{baseRevision ?? '—'}</strong></div>
+          <div><span>{t('visual31.schedule.state')}</span><strong>{conflict ? t('visual31.schedule.stateConflict') : dirty ? t('visual31.schedule.stateDraft') : t('visual31.schedule.stateSynced')}</strong></div>
+        </div>
+      </section>
+
+      <section className="panel visual31-management-schedule-timeline">
+        <div className="visual31-management-section-title">
+          <div>
+            <p className="eyebrow">{t('visual31.schedule.timelineEyebrow')}</p>
+            <h3>{t('visual31.schedule.timelineTitle')}</h3>
+          </div>
+          <span className={`visual31-management-state ${conflict ? 'is-error' : dirty ? 'is-warning' : 'is-ok'}`}>
+            {conflict ? t('visual31.schedule.conflict') : dirty ? t('visual31.schedule.unsaved') : t('visual31.schedule.synchronized')}
+          </span>
+        </div>
+        <div className="visual31-week-grid">
+          {grouped.map((day) => (
+            <article key={day.day} className={`visual31-week-day ${day.items.length ? 'has-events' : 'is-empty'}`}>
+              <header>
+                <strong>{day.name}</strong>
+                <span>{day.items.length}</span>
+              </header>
+              <div className="visual31-week-day__rail">
+                {day.items.length ? day.items.slice(0, 6).map((item) => (
+                  <div key={item.id} className="visual31-week-event">
+                    <time>{item.time}</time>
+                    <span>{t('visual31.schedule.ledCount', { count: item.leds.length })}</span>
+                  </div>
+                )) : <span className="visual31-week-empty">—</span>}
+                {day.items.length > 6 && <small>+{day.items.length - 6}</small>}
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
       <div className="page-heading v55-management-heading core-v3-management-heading">
         <div>
           <p className="eyebrow">

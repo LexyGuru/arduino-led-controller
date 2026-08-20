@@ -20,11 +20,15 @@ assert.match(app,/key=\{page\}/);
 assert.match(app,/page-transition-stage/);
 assert.match(app,/app-shell--booting/);
 assert.match(controller,/busy,\s*\n\s*initialized,\s*\n\s*message,/);
-assert.match(startup,/MIN_VISIBLE_MS = 2200/);
-assert.match(startup,/SOFT_NETWORK_WAIT_MS = 3200/);
-assert.match(startup,/MAX_VISIBLE_MS = 4800/);
+assert.match(startup,/MIN_VISIBLE_MS = 2600/);
+assert.doesNotMatch(startup,/SOFT_NETWORK_WAIT_MS/);
+assert.doesNotMatch(startup,/MAX_VISIBLE_MS/);
 assert.match(startup,/connectionHealth\.state === 'healthy'/);
-assert.match(startup,/startup\.detail\.arduinoBackground/);
+assert.match(startup,/update\('arduino', 'pending', 'startup\.detail\.arduinoBackground'\)/);
+assert.doesNotMatch(startup,/state: 'pass', detailKey: 'startup\.detail\.backgroundContinue'/);
+assert.match(startup,/verifiedCount/);
+assert.match(startup,/pendingCount/);
+assert.match(startup,/totalCount: checks\.length/);
 assert.match(startup,/localStorage/);
 assert.match(startup,/dataset\.themeEngine === '3\.0'/);
 assert.doesNotMatch(startup,/appVersion === '5\.6\.0-beta\.1'/);
@@ -38,7 +42,11 @@ for(const id of ['shell','theme','version','runtime','config','schedules','stora
 }
 
 assert.match(screen,/data-startup-check/);
-assert.match(screen,/app-startup-progress/);
+assert.doesNotMatch(screen,/app-startup-progress/);
+assert.match(screen,/app-startup-truth-rail/);
+assert.match(screen,/verifiedCount/);
+assert.match(screen,/pendingCount/);
+assert.match(screen,/totalCount/);
 assert.match(screen,/v5-icon\.png/);
 assert.match(main,/app-startup-motion\.css/);
 assert.match(css,/@keyframes v584-page-enter/);
@@ -59,6 +67,8 @@ for(const key of [
 
 console.log('V584_STARTUP_GATE_8_CHECKS=PASSED');
 console.log('V584_STARTUP_NON_BLOCKING_NETWORK_WARNING=PASSED');
+console.log('V584_TRUTHFUL_STARTUP_NO_TIMEOUT_FAKE_PASS=PASSED');
+console.log('V584_TRUTHFUL_STARTUP_RAIL=PASSED');
 console.log('V584_PAGE_TRANSITION_MOTION=PASSED');
 console.log('V584_REDUCED_MOTION_ACCESSIBILITY=PASSED');
 console.log('V584_THEME_ENGINE_3_INTEGRATION=PASSED');

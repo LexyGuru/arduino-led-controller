@@ -66,6 +66,8 @@ export function Sidebar({
             type="button"
             key={id}
             className={page === id ? 'active' : ''}
+            data-nav-id={id}
+            data-nav-active={page === id ? 'true' : 'false'}
             aria-current={page === id ? 'page' : undefined}
             onClick={() => onChange(id)}
           >
