@@ -346,6 +346,11 @@ export default function App() {
               onChange={
                 controller.setConfig
               }
+              onPersist={
+                (nextConfig) =>
+                  void tauriApi
+                    .saveConfig(nextConfig)
+              }
               onSave={
                 () =>
                   void controller

@@ -320,7 +320,8 @@
     "test:v695-lxc-ota-release-gate": "node scripts/test-v695-lxc-ota-release-gate.js",
     "test:v698h-lxc-auto-ota-catalog": "node scripts/test-v698h-lxc-auto-ota-catalog.js",
     "test:v700-lxc-ota2-channel-unification": "node scripts/test-v700-lxc-ota2-channel-unification.js",
-    "test:v701-lxc-server-persistent-settings": "node scripts/test-v701-lxc-server-persistent-settings.js"
+    "test:v701-lxc-server-persistent-settings": "node scripts/test-v701-lxc-server-persistent-settings.js",
+    "test:v701b-lxc-settings-autosave": "node scripts/test-v701b-lxc-settings-autosave.js"
   },
   "engines": {
     "node": ">=20"
