@@ -56,7 +56,8 @@
     "test:firmware-channel-single-resolver",
     "test:v695-lxc-ota-release-gate",
     "test:v698h-lxc-auto-ota-catalog",
-    "test:v700-lxc-ota2-channel-unification"
+    "test:v700-lxc-ota2-channel-unification",
+    "test:v701-lxc-server-persistent-settings"
   ],
   "regression": [
     "test:core",

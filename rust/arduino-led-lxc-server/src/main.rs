@@ -36,12 +36,30 @@ use tower_http::{
 struct AppState {
     target: Arc<DirectApiTarget>,
     firmware_catalog: Option<PathBuf>,
+    settings_path: Arc<PathBuf>,
     ota_password: Arc<String>,
     ota_port: u16,
     ota_control_token: Arc<String>,
     ota_busy: Arc<AtomicBool>,
     ota_cancel: Arc<AtomicBool>,
     ota_runtime: Arc<Mutex<OtaRuntimeStatus>>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+struct LxcPersistentSettings {
+    profile_name: Option<String>,
+    language: Option<String>,
+    update_channel: Option<String>,
+    firmware_update_channel: Option<String>,
+    auto_check_updates: Option<bool>,
+    auto_download_updates: Option<bool>,
+    firmware_update_checks: Option<bool>,
+    timezone_id: Option<String>,
+    timezone_auto: Option<bool>,
+    current_utc_offset_minutes: Option<i32>,
+    next_transition_epoch: Option<i64>,
+    next_utc_offset_minutes: Option<i32>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -95,6 +113,32 @@ struct FirmwareInstallRequest {
 
 fn normalize_ota_version(value: &str) -> String {
     value.trim().trim_start_matches('v').to_ascii_lowercase()
+}
+
+fn validate_lxc_settings(settings: &LxcPersistentSettings) -> Result<(), String> {
+    for (name, value) in [("updateChannel", settings.update_channel.as_deref()), ("firmwareUpdateChannel", settings.firmware_update_channel.as_deref())] {
+        if let Some(value) = value { if value != "stable" && value != "beta" { return Err(format!("{name} csak stable vagy beta lehet.")); } }
+    }
+    if let Some(language) = settings.language.as_deref() { if !matches!(language, "hu" | "en" | "de") { return Err("language csak hu, en vagy de lehet.".into()); } }
+    if let Some(profile_name) = settings.profile_name.as_deref() { if profile_name.trim().is_empty() || profile_name.chars().count() > 120 { return Err("profileName érvénytelen.".into()); } }
+    if let Some(timezone_id) = settings.timezone_id.as_deref() { if timezone_id.trim().is_empty() || timezone_id.len() > 128 || timezone_id.chars().any(char::is_whitespace) { return Err("timezoneId érvénytelen.".into()); } }
+    for (name, value) in [("currentUtcOffsetMinutes", settings.current_utc_offset_minutes), ("nextUtcOffsetMinutes", settings.next_utc_offset_minutes)] { if value.is_some_and(|value| !(-840..=840).contains(&value)) { return Err(format!("{name} érvénytelen.")); } }
+    if settings.next_transition_epoch.is_some_and(|value| value < 0) { return Err("nextTransitionEpoch érvénytelen.".into()); }
+    Ok(())
+}
+fn read_lxc_settings(path: &PathBuf) -> Result<Option<LxcPersistentSettings>, String> {
+    let bytes = match fs::read(path) { Ok(bytes) => bytes, Err(error) if error.kind() == ErrorKind::NotFound => return Ok(None), Err(error) => return Err(format!("LXC settings olvasási hiba: {error}")), };
+    let settings=serde_json::from_slice::<LxcPersistentSettings>(&bytes).map_err(|error| format!("LXC settings JSON hiba: {error}"))?; validate_lxc_settings(&settings)?; Ok(Some(settings))
+}
+fn write_lxc_settings(path: &PathBuf, settings: &LxcPersistentSettings) -> Result<(), String> {
+    validate_lxc_settings(settings)?; let parent=path.parent().ok_or_else(|| "LXC settings parent könyvtár hiányzik.".to_string())?; fs::create_dir_all(parent).map_err(|e| format!("LXC settings könyvtár létrehozási hiba: {e}"))?; let temporary=path.with_extension("json.tmp"); let payload=serde_json::to_vec_pretty(settings).map_err(|e| format!("LXC settings serializálási hiba: {e}"))?; fs::write(&temporary,payload).map_err(|e| format!("LXC settings ideiglenes írási hiba: {e}"))?; fs::rename(&temporary,path).map_err(|e| format!("LXC settings atomikus mentési hiba: {e}"))?; Ok(())
+}
+async fn lxc_settings_get(State(state): State<AppState>) -> ApiResult {
+    let settings=read_lxc_settings(state.settings_path.as_ref()).map_err(|error|(StatusCode::INTERNAL_SERVER_ERROR,Json(json!({"error":error}))))?; Ok(Json(json!({"schemaVersion":1,"configured":settings.is_some(),"settings":settings.unwrap_or_default(),"storage":"server","path":state.settings_path.display().to_string()})))
+}
+async fn lxc_settings_put(State(state): State<AppState>, headers: HeaderMap, Json(settings): Json<LxcPersistentSettings>) -> ApiResult {
+    if !same_origin_browser_request(&headers) { return Err((StatusCode::UNAUTHORIZED,Json(json!({"error":"A szerveroldali LXC settings mentés csak azonos originű webfelületről engedélyezett."})))); }
+    write_lxc_settings(state.settings_path.as_ref(),&settings).map_err(|error|(StatusCode::BAD_REQUEST,Json(json!({"error":error}))))?; Ok(Json(json!({"saved":true,"schemaVersion":1,"settings":settings,"storage":"server"})))
 }
 
 fn api_error_text(error: ApiError) -> String {
@@ -1297,6 +1341,7 @@ async fn main() -> Result<(), String> {
             .ok()
             .filter(|value| !value.trim().is_empty())
             .map(PathBuf::from),
+        settings_path: Arc::new(env::var("LXC_SETTINGS_JSON").map(PathBuf::from).unwrap_or_else(|_| PathBuf::from("/var/lib/arduino-led-controller/lxc-settings.json"))),
         ota_password: Arc::new(env::var("ARDUINO_OTA_PASSWORD").unwrap_or_default()),
         ota_port: env_u16("ARDUINO_OTA_PORT", 65280)?,
         ota_control_token: Arc::new(env::var("LXC_OTA_CONTROL_TOKEN").unwrap_or_default()),
@@ -1337,6 +1382,7 @@ async fn main() -> Result<(), String> {
         .route("/api/v1/ota/status", get(proxy_get))
         .route("/api/v1/ota/prepare", post(proxy_post))
         .route("/api/v1/server/firmware/catalog", get(firmware_catalog))
+        .route("/api/v1/server/settings", get(lxc_settings_get).put(lxc_settings_put))
         .route("/api/v1/server/firmware/releases", get(firmware_releases))
         .route("/api/v1/server/ota/runtime", get(ota_runtime_status))
         .route("/api/v1/server/firmware/cancel", post(firmware_cancel))
