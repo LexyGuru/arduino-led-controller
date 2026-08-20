@@ -35,7 +35,7 @@ if (versions.channel === 'beta') {
     assert.match(firmwareWorkflow, /release-versions\.json'\)\.applicationRelease\.branch/);
     assert.match(firmwareWorkflow, /release-versions\.json'\)\.firmwareRelease\.channel/);
   } else {
-    assert.equal(versions.firmwareRelease.channel, 'stable');
+    assert.equal(versions.firmwareRelease.channel, 'beta');
     assert.match(firmwareWorkflow, /firmwareRelease\.recommendedVersion/);
     assert.match(firmwareWorkflow, /GITHUB_REF_NAME/);
   }

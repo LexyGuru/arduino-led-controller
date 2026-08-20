@@ -1,3 +1,11 @@
+# 5.7.0-beta.4 — Beta.4
+
+- LXC server-side settings persistence and immediate autosave.
+- Firmware `5.0.1-beta.1` Beta.
+- Direct API `1.0.0`.
+- OTA LED feedback: blue in-progress latch, green successful reboot, red error.
+- Beta application and firmware release metadata synchronized.
+
 # 5.7.0-beta.3 — 2026-08-20
 
 ### Firmware channel and LXC OTA hotfix

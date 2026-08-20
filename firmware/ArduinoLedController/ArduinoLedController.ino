@@ -1,5 +1,5 @@
 /*
- * Arduino LED Controller – 5.0.0
+ * Arduino LED Controller – 5.0.1-beta.1
  * F14 Complete: Direct API v1, JSON body, header-only auth, A/B EEPROM és
  * tranzakciós schedule. A Tauri újratervezésének stabil firmware-alapja.
  */
@@ -14,8 +14,8 @@
 #include <stdarg.h>
 #include "secrets.h"
 
-#define FIRMWARE_VERSION "5.0.0"
-#define FIRMWARE_FEATURE "f14-direct-api-v1-only-storage-udp-ntp-dst-ota-exclusive-v191-matrix-neopixel-stable-bootgen-sizeopt-schedule-progress-diag"
+#define FIRMWARE_VERSION "5.0.1-beta.1"
+#define FIRMWARE_FEATURE "f14-direct-api-v1-only-storage-udp-ntp-dst-ota-exclusive-v191-matrix-neopixel-ota-led-feedback-bootgen-sizeopt-schedule-progress-diag"
 #define OTA_MAINTENANCE_MODE_V1 1
 #define DIRECT_API_VERSION "1.0.0"
 #define DEVICE_NAME "arduino-led-controller"
@@ -52,6 +52,9 @@ constexpr uint16_t API_SETTINGS_EEPROM_OFFSET = 2300;
 constexpr uint16_t TIME_SETTINGS_EEPROM_OFFSET = 4608;
 constexpr uint16_t BOOT_GENERATION_EEPROM_OFFSET = 5120;
 constexpr uint8_t BOOT_GENERATION_SLOT_COUNT = 64;
+constexpr uint16_t OTA_SUCCESS_MARKER_EEPROM_OFFSET = 5632;
+constexpr uint32_t OTA_SUCCESS_MARKER_MAGIC = 0x4F54414FUL;
+constexpr unsigned long OTA_BOOT_SUCCESS_INDICATOR_TIME = 5000UL;
 constexpr uint32_t BOOT_GENERATION_PUBLIC_MAX = 1000000UL;
 constexpr uint32_t BOOT_GENERATION_CHECK_MAGIC = 0xB007C0DEUL;
 // F14 Complete A/B storage layout (UNO R4 WiFi 8192-byte EEPROM).
@@ -221,6 +224,7 @@ void refreshManualOverrideDeadlines();
 void printConnectionBlock();
 void rebootDevice();
 void processPendingRemoteReboot();
+void showOtaIndicator(uint8_t r, uint8_t g, uint8_t b, uint8_t brightness = 80);
 
 Adafruit_NeoPixel strip[STRIP_COUNT] = {
   Adafruit_NeoPixel(PIXELS, LED_PINS[0], NEO_GRB + NEO_KHZ800),
@@ -259,6 +263,7 @@ constexpr uint8_t NTP_SERVER_COUNT = sizeof(NTP_SERVERS) / sizeof(NTP_SERVERS[0]
 StoredSchedule schedules[SCHEDULE_MAX] = {};
 bool networkSettingsStored = false, apiSettingsStored = false;
 bool schedulesStored = false, otaReady = false, otaTransferActive = false, otaExclusiveMode = false;
+bool otaErrorVisualShown = false, otaClearSuccessMarkerRequested = false;
 bool timeSynced = false, wifiReported = false, cachedWifiConnected = false;
 bool scheduleReconcileRequested = true;
 bool pirRaw[STRIP_COUNT] = {}, pirActive[STRIP_COUNT] = {};
@@ -290,6 +295,7 @@ unsigned long httpPollingErrors = 0, httpPollingTotalDuration = 0;
 unsigned long httpSummaryStartedAt = 0, httpTraceStartedAt = 0;
 unsigned long otaRestartCount = 0, lastOtaRestartAt = 0;
 unsigned long otaPrepareUntil = 0, otaErrorIndicatorUntil = 0;
+unsigned long otaBootSuccessIndicatorUntil = 0;
 unsigned long otaLastTransferStartedAt = 0, otaLastErrorAt = 0;
 int otaLastErrorCode = 0;
 unsigned long lastWifiLinkProbe = 0, lastWifiRssiRefresh = 0, lastWifi = 0;
@@ -1053,12 +1059,12 @@ void stopNtpUdpService() {
   ntpUdpActive = false;
 }
 void stopNeoPixelsForOta() {
-  for (uint8_t i = 0; i < STRIP_COUNT; i++) {
-    strip[i].clear();
-    strip[i].show();
-  }
+  // WS2812B keeps its last latched color without refresh. Do not transmit
+  // another frame while OTA Exclusive Mode is active.
 }
 void enterOtaExclusiveMode() {
+  // One final frame before exclusive mode: blue means OTA/update in progress.
+  showOtaIndicator(0, 96, 255, 90);
   otaExclusiveMode = true;
   stopNtpUdpService();
   stopNeoPixelsForOta();
@@ -1429,7 +1435,27 @@ bool otaErrorIndicatorActive() {
 unsigned long otaPrepareSecondsRemaining() {
   return otaPrepareModeActive() ? (otaPrepareUntil - millis() + 999UL) / 1000UL : 0;
 }
-void showOtaIndicator(uint8_t r, uint8_t g, uint8_t b, uint8_t brightness = 80) {
+void writeOtaSuccessMarker(uint32_t value) {
+  EEPROM.put(OTA_SUCCESS_MARKER_EEPROM_OFFSET, value);
+}
+void armOtaSuccessBootIndicator() {
+  writeOtaSuccessMarker(OTA_SUCCESS_MARKER_MAGIC);
+}
+void clearOtaSuccessBootIndicator() {
+  writeOtaSuccessMarker(0);
+}
+bool consumeOtaSuccessBootIndicator() {
+  uint32_t marker = 0;
+  EEPROM.get(OTA_SUCCESS_MARKER_EEPROM_OFFSET, marker);
+  if (marker != OTA_SUCCESS_MARKER_MAGIC) return false;
+  clearOtaSuccessBootIndicator();
+  return true;
+}
+bool otaBootSuccessIndicatorActive() {
+  return otaBootSuccessIndicatorUntil &&
+    static_cast<int32_t>(otaBootSuccessIndicatorUntil - millis()) > 0;
+}
+void showOtaIndicator(uint8_t r, uint8_t g, uint8_t b, uint8_t brightness) {
   for (uint8_t i = 0; i < STRIP_COUNT; i++) {
     strip[i].setBrightness(brightness);
     strip[i].fill(strip[i].Color(r,g,b));
@@ -1441,13 +1467,27 @@ void restoreNormalVisualState() {
   renderAll(true);
 }
 void updateOtaVisualState() {
+  if (otaClearSuccessMarkerRequested && !otaExclusiveMode) {
+    clearOtaSuccessBootIndicator();
+    otaClearSuccessMarkerRequested = false;
+  }
   if (otaPrepareUntil && !otaPrepareModeActive() && !otaTransferActive) {
     otaPrepareUntil = 0;
+    clearOtaSuccessBootIndicator();
     leaveOtaExclusiveMode();
     restoreNormalVisualState();
   }
+  if (otaErrorIndicatorActive() && !otaTransferActive && !otaErrorVisualShown) {
+    showOtaIndicator(255, 0, 0, 120);
+    otaErrorVisualShown = true;
+  }
   if (otaErrorIndicatorUntil && !otaErrorIndicatorActive() && !otaTransferActive) {
     otaErrorIndicatorUntil = 0;
+    otaErrorVisualShown = false;
+    restoreNormalVisualState();
+  }
+  if (otaBootSuccessIndicatorUntil && !otaBootSuccessIndicatorActive()) {
+    otaBootSuccessIndicatorUntil = 0;
     restoreNormalVisualState();
   }
 }
@@ -1460,6 +1500,8 @@ void otaTransferStarted() {
   showMatrix(MATRIX_OTA);
 }
 void otaBeforeApply() {
+  // No NeoPixel writes in the ArduinoOTA callback. The armed marker survives
+  // reset and the new firmware shows green after a successful boot.
   showMatrix(MATRIX_OK);
 }
 void otaTransferError(int code, const char*) {
@@ -1468,6 +1510,8 @@ void otaTransferError(int code, const char*) {
   otaLastErrorCode = code;
   otaLastErrorAt = millis();
   otaErrorIndicatorUntil = millis() + OTA_ERROR_INDICATOR_TIME;
+  otaErrorVisualShown = false;
+  otaClearSuccessMarkerRequested = true;
   leaveOtaExclusiveMode();
   logCodef("error", "X5003", "%d:%lu", code,
     OTA_ERROR_INDICATOR_TIME / 1000UL);
@@ -1494,6 +1538,8 @@ bool prepareOtaService() {
   lastOtaRestartAt = millis();
   otaPrepareUntil = millis() + OTA_PREPARE_WINDOW;
   otaErrorIndicatorUntil = 0;
+  otaErrorVisualShown = false;
+  armOtaSuccessBootIndicator();
   enterOtaExclusiveMode();
   return true;
 }
@@ -3115,6 +3161,11 @@ void setup() {
 #endif
   matrix.begin();
   showMatrix(MATRIX_BOOT);
+  if (consumeOtaSuccessBootIndicator()) {
+    // New firmware booted after OTA: green physical success feedback.
+    showOtaIndicator(0, 255, 0, 120);
+    otaBootSuccessIndicatorUntil = millis() + OTA_BOOT_SUCCESS_INDICATOR_TIME;
+  }
   logCode("success", "X0001");
   logCodef("info", "X0002", "%s", FIRMWARE_VERSION);
   logCodef("info", "X0003", "%s", FIRMWARE_FEATURE);

@@ -10,10 +10,10 @@ const tauriApi = fs.readFileSync('desktop-tauri/src/services/tauriApi.ts', 'utf8
 const version = fs.readFileSync('VERSION', 'utf8').trim();
 const release = JSON.parse(fs.readFileSync('release-versions.json', 'utf8'));
 
-assert.equal(version, '5.7.0-beta.3');
-assert.equal(release.application, '5.7.0-beta.3');
-assert.equal(release.applicationRelease.version, '5.7.0-beta.3');
-assert.equal(release.firmware, '5.0.0');
+assert.equal(version, '5.7.0-beta.4');
+assert.equal(release.application, '5.7.0-beta.4');
+assert.equal(release.applicationRelease.version, '5.7.0-beta.4');
+assert.equal(release.firmware, '5.0.1-beta.1');
 
 assert.match(
   lib,

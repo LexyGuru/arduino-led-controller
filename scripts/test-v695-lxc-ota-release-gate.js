@@ -9,12 +9,12 @@ const rust = fs.readFileSync('desktop-tauri/src-tauri/src/lib.rs','utf8');
 const v615 = fs.readFileSync('scripts/test-v615-firmware-channel-startup-contract.js','utf8');
 const release = JSON.parse(fs.readFileSync('release-versions.json','utf8'));
 
-assert.equal(release.application,'5.7.0-beta.3');
+assert.equal(release.application,'5.7.0-beta.4');
 assert.equal(release.applicationRelease.channel,'beta');
-assert.equal(release.firmware,'5.0.0');
+assert.equal(release.firmware,'5.0.1-beta.1');
 
-assert.ok(env.includes('RELEASE_CANDIDATE=beta.3-gate'));
-assert.ok(env.includes('RELEASE_TARGET_VERSION=5.7.0-beta.3'));
+assert.ok(env.includes('RELEASE_CANDIDATE=beta.4-gate'));
+assert.ok(env.includes('RELEASE_TARGET_VERSION=5.7.0-beta.4'));
 assert.ok(!env.includes('RELEASE_CANDIDATE=beta.1-gate'));
 
 assert.doesNotMatch(api,/function controlToken\(/);

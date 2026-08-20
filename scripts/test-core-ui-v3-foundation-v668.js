@@ -14,14 +14,14 @@ const app = read('desktop-tauri/src/App.tsx');
 const topbar = read('desktop-tauri/src/components/Topbar.tsx');
 const css = read('desktop-tauri/src/core-ui-v3.css');
 
-assert.equal(release.application, '5.7.0-beta.3');
+assert.equal(release.application, '5.7.0-beta.4');
 assert.equal(release.channel, 'beta');
 assert.equal(release.applicationRelease.channel, 'beta');
 assert.equal(release.applicationRelease.branch, 'next/v5-rearchitecture');
 
-assert.equal(release.firmware, '5.0.0');
-assert.equal(release.firmwareRelease.channel, 'stable');
-assert.equal(release.firmwareRelease.recommendedVersion, '5.0.0');
+assert.equal(release.firmware, '5.0.1-beta.1');
+assert.equal(release.firmwareRelease.channel, 'beta');
+assert.equal(release.firmwareRelease.recommendedVersion, '5.0.1-beta.1');
 assert.equal(release.directApi, '1.0.0');
 
 assert.match(types, /THEME_ENGINE_PRODUCT_VERSION = '2\.0'/);

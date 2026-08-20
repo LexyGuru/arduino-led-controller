@@ -1,21 +1,21 @@
 {
   "schemaVersion": 2,
-  "application": "5.7.0-beta.3",
-  "firmware": "5.0.0",
+  "application": "5.7.0-beta.4",
+  "firmware": "5.0.1-beta.1",
   "directApi": "1.0.0",
   "channel": "beta",
   "applicationRelease": {
-    "version": "5.7.0-beta.3",
+    "version": "5.7.0-beta.4",
     "channel": "beta",
     "branch": "next/v5-rearchitecture",
     "updaterAlias": "updater-beta",
     "releaseType": "prerelease"
   },
   "firmwareRelease": {
-    "recommendedVersion": "5.0.0",
-    "channel": "stable",
+    "recommendedVersion": "5.0.1-beta.1",
+    "channel": "beta",
     "available": true,
-    "releaseFamily": "firmware-stable",
+    "releaseFamily": "firmware-beta",
     "legacyCompatibilityVersion": null
   },
   "directApiRelease": {

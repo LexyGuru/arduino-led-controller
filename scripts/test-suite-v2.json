@@ -58,7 +58,8 @@
     "test:v698h-lxc-auto-ota-catalog",
     "test:v700-lxc-ota2-channel-unification",
     "test:v701-lxc-server-persistent-settings",
-    "test:v701b-lxc-settings-autosave"
+    "test:v701b-lxc-settings-autosave",
+    "test:v702-beta4-ota-led-feedback-release"
   ],
   "regression": [
     "test:core",

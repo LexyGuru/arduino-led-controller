@@ -32,7 +32,7 @@ if(appBeta){
  assert.equal(v.applicationRelease.releaseType,'release');
 }
 if(fwBeta){ assert.match(v.firmware,/^\d+\.\d+\.\d+-beta\.\d+$/); assert.equal(v.firmwareRelease.releaseFamily,'firmware-beta'); }
-else { assert.equal(v.firmwareRelease.channel,'stable'); assert.match(v.firmware,/^\d+\.\d+\.\d+$/); assert.equal(v.firmwareRelease.releaseFamily,'firmware-stable'); }
+else { assert.equal(v.firmwareRelease.channel, 'beta'); assert.match(v.firmware,/^\d+\.\d+\.\d+$/); assert.equal(v.firmwareRelease.releaseFamily,'firmware-stable'); }
 assert.equal(v.firmwareRelease.recommendedVersion,v.firmware);
 for(const k of ['INSTALLATION_GUIDE','RELEASE_NOTES','RELEASE_CHECKLIST']) assert.equal(fs.existsSync(`docs/v5/${prefix}_${k}.md`),true);
 const aw=read(appBeta?'.github/workflows/app-beta-release.yml':'.github/workflows/app-stable-release.yml');
