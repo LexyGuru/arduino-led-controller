@@ -13,7 +13,7 @@ assert.match(rust,/fn firmware_artifacts_from_release\(release: &GitHubRelease\)
 assert.match(rust,/fn firmware_artifacts_from_release_channel\(\s*release: &GitHubRelease,\s*channel: &str,/s);
 assert.match(rust,/release_matches_channel\(release, normalized_channel\)/);
 assert.match(rust,/firmware_install_release[\s\S]*firmware_artifacts_from_release_channel\(release, normalized_channel\)[\s\S]*if !allowed/);
-assert.match(rust,/let artifact = if let Some\(version\) = requested_tag[\s\S]*firmware_beta_release\(\)\.await\?[\s\S]*firmware_artifacts_from_release\(&release\)/);
+assert.match(rust,/let artifact = if let Some\(version\) = requested_tag[\s\S]*github_releases\(\)[\s\S]*firmware_artifacts_from_release_channel\(release, normalized_channel\)/);
 assert.match(rust,/artifacts\.dedup_by/);
 assert.doesNotMatch(rust,/if channel\.trim\(\) != "beta"/);
 assert.doesNotMatch(rust,/stabil dedikált firmware-release még nincs konfigurálva/);

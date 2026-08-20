@@ -1,3 +1,16 @@
+# 5.7.0-beta.3 — 2026-08-20
+
+### Firmware channel and LXC OTA hotfix
+- Make the selected firmware Stable/Beta channel authoritative through OTA artifact resolution.
+- Preserve native Rust OTA transport and macOS Terminal fallback contracts.
+- Align the Beta.3 release gate metadata with the active application version.
+- Consolidate LXC firmware channel propagation and OTA control-token recovery.
+- Keep Arduino OTA password server-side in the LXC runtime.
+- Firmware remains `5.0.0` Stable.
+- Direct API remains `1.0.0`.
+- Theme Engine remains `2.0`.
+- Core UI remains `3.0`.
+
 # 5.7.0-beta.1 — 2026-08-19
 
 ### Core UI 3.0 Foundation
