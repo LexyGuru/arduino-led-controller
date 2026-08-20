@@ -7,9 +7,9 @@ const css = fs.readFileSync('desktop-tauri/src/core-ui-v3.css','utf8');
 const version = fs.readFileSync('VERSION','utf8').trim();
 const release = JSON.parse(fs.readFileSync('release-versions.json','utf8'));
 
-assert.equal(version,'5.7.0-beta.2');
-assert.equal(release.application,'5.7.0-beta.2');
-assert.equal(release.applicationRelease.version,'5.7.0-beta.2');
+assert.equal(version,'5.7.0-beta.3');
+assert.equal(release.application,'5.7.0-beta.3');
+assert.equal(release.applicationRelease.version,'5.7.0-beta.3');
 assert.equal(release.firmware,'5.0.0');
 
 for (const token of [

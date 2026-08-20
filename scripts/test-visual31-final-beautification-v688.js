@@ -7,7 +7,7 @@ const css=r('desktop-tauri/src/core-ui-v3.css');
 const suite=JSON.parse(r('scripts/test-suite-v2.json'));
 const release=JSON.parse(r('release-versions.json'));
 
-assert.equal(release.application,'5.7.0-beta.2');
+assert.equal(release.application,'5.7.0-beta.3');
 assert.equal(release.firmware,'5.0.0');
 assert.match(css,/V688 - Visual 3\.1 Final Beautification Polish/);
 assert.match(css,/\.core-v3-sidebar nav button\[data-nav-active='true'\]/);

@@ -52,7 +52,8 @@
     "test:architecture-consolidation",
     "test:release-version-policy",
     "test:p1-release-runner-resilience",
-    "test:p1-release-asset-contract"
+    "test:p1-release-asset-contract",
+    "test:firmware-channel-single-resolver"
   ],
   "regression": [
     "test:core",
@@ -80,7 +81,8 @@
     "test:macos-local-network-ota",
     "test:macos-auto-terminal-ota-fallback",
     "test:macos-ota-immutable",
-    "test:theme-engine-v2"
+    "test:theme-engine-v2",
+    "test:firmware-channel-single-resolver"
   ],
   "historyAliasPatterns": [
     "^test:beta\\d+[-:]",

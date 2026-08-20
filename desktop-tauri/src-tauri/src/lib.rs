@@ -3100,6 +3100,7 @@ async fn firmware_update_inner(
     app: &AppHandle,
     state: &AppState,
     requested_tag: Option<&str>,
+    requested_channel: Option<&str>,
 ) -> Result<FirmwareStatus, String> {
     state.ota_in_progress.store(true, Ordering::SeqCst);
     state.ota_cancel_requested.store(false, Ordering::SeqCst);
@@ -3152,25 +3153,44 @@ async fn firmware_update_inner(
         Some(7),
     );
     ensure_not_cancelled(state)?;
+    let normalized_channel = requested_channel
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(|value| if value.eq_ignore_ascii_case("stable") { "stable" } else { "beta" })
+        .unwrap_or_else(|| {
+            if config.firmware_update_channel.trim().eq_ignore_ascii_case("stable") {
+                "stable"
+            } else {
+                "beta"
+            }
+        });
     let artifact = if let Some(version) = requested_tag {
-        let release = firmware_beta_release().await?;
-        firmware_artifacts_from_release(&release)
-            .into_iter()
+        let requested = normalize_version(version);
+        github_releases()
+            .await?
+            .iter()
+            .flat_map(|release| {
+                firmware_artifacts_from_release_channel(release, normalized_channel)
+            })
             .find(|artifact| {
                 normalize_version(
                     artifact
                         .firmware_version
                         .as_deref()
                         .unwrap_or(&artifact.tag),
-                ) == normalize_version(version)
+                ) == requested
             })
             .ok_or_else(|| {
                 format!(
-                    "A(z) {version} firmware nem található a dedikált Beta firmware-katalógusban."
+                    "A(z) {version} firmware nem található a(z) {normalized_channel} firmware-csatornán."
                 )
             })?
     } else {
-        latest_firmware(&config).await?
+        latest_firmware(&Config {
+            firmware_update_channel: normalized_channel.to_string(),
+            ..config.clone()
+        })
+        .await?
     };
     let available = artifact
         .firmware_version
@@ -4037,7 +4057,7 @@ async fn firmware_update(
     state: State<'_, AppState>,
 ) -> Result<FirmwareStatus, String> {
 
-    match firmware_update_inner(&app, &state, None).await {
+    match firmware_update_inner(&app, &state, None, None).await {
         Ok(status) => Ok(status),
         Err(error) => {
             state.ota_in_progress.store(false, Ordering::SeqCst);
@@ -4098,7 +4118,14 @@ async fn firmware_install_release(
         ));
     }
 
-    match firmware_update_inner(&app, &state, Some(tag.trim())).await {
+    match firmware_update_inner(
+        &app,
+        &state,
+        Some(tag.trim()),
+        Some(normalized_channel),
+    )
+    .await
+    {
         Ok(status) => Ok(status),
         Err(error) => {
             state.ota_in_progress.store(false, Ordering::SeqCst);

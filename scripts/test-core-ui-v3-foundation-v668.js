@@ -14,7 +14,7 @@ const app = read('desktop-tauri/src/App.tsx');
 const topbar = read('desktop-tauri/src/components/Topbar.tsx');
 const css = read('desktop-tauri/src/core-ui-v3.css');
 
-assert.equal(release.application, '5.7.0-beta.2');
+assert.equal(release.application, '5.7.0-beta.3');
 assert.equal(release.channel, 'beta');
 assert.equal(release.applicationRelease.channel, 'beta');
 assert.equal(release.applicationRelease.branch, 'next/v5-rearchitecture');

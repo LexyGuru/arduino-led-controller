@@ -10,7 +10,7 @@ const settings=read('desktop-tauri/src/pages/SettingsPage.tsx');
 const css=read('desktop-tauri/src/core-ui-v3.css');
 const release=JSON.parse(read('release-versions.json'));
 const suite=JSON.parse(read('scripts/test-suite-v2.json'));
-assert.equal(release.application,'5.7.0-beta.2');
+assert.equal(release.application,'5.7.0-beta.3');
 assert.equal(release.firmware,'5.0.0');
 assert.match(schedules,/visual31-management-schedule-timeline/);
 assert.match(schedules,/grouped\.map/);

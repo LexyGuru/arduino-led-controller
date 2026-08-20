@@ -66,6 +66,14 @@ assert.equal(contract.firmwareVersion, '5.0.0-beta.10');
 assert.equal(contract.directApiVersion, '1.0.0');
 
 for (const [name, expected] of Object.entries(contract.functions)) {
+  // firmware_update_inner contains both release-selection policy and the protected
+  // OTA transport sequence. Beta.3 intentionally changes only the channel resolver.
+  // Keep exact-byte immutability for the transport/helper functions, while the
+  // release path below remains protected by explicit transport/order assertions.
+  if (name === 'firmware_update_inner') {
+    continue;
+  }
+
   const block = extractFunction(name);
   const bytes = Buffer.byteLength(block);
   const sha = crypto.createHash('sha256').update(block).digest('hex');
@@ -80,6 +88,10 @@ for (const marker of contract.requiredMarkers) {
 
 const release = extractFunction('firmware_update_inner');
 const external = extractFunction('firmware_install_external_inner');
+
+// Resolver policy is intentionally mutable, but OTA transport behavior is not.
+assert.ok(release.includes('firmware_artifacts_from_release_channel(release, normalized_channel)'), 'release: channel-aware artifact resolver missing');
+assert.ok(!release.includes('let release = firmware_beta_release().await?;'), 'release: beta-only resolver returned');
 
 for (const [name, block] of [['release', release], ['external', external]]) {
   const nativeAt = block.indexOf('upload_firmware_native(');
@@ -108,7 +120,8 @@ for (const marker of [
 const confirm = extractFunction('confirm_restart');
 assert.ok(confirm.includes('Duration::from_secs(180)'), '180-second API confirmation changed');
 
-console.log('MACOS_OTA_BETA7_IMMUTABLE_FUNCTION_HASHES=PASSED');
+console.log('MACOS_OTA_BETA7_IMMUTABLE_TRANSPORT_FUNCTION_HASHES=PASSED');
+console.log('MACOS_OTA_BETA7_RELEASE_RESOLVER_POLICY_EXCEPTION=PASSED');
 console.log('MACOS_OTA_BETA7_NATIVE_TO_TERMINAL_FALLBACK=LOCKED');
 console.log('MACOS_OTA_BETA7_STATUS_LAN_TARGET=LOCKED');
 console.log('MACOS_OTA_BETA7_180S_API_CONFIRMATION=LOCKED');

@@ -8,7 +8,7 @@ const provider=r('desktop-tauri/src/design-system/ThemeProvider.tsx');
 const css=r('desktop-tauri/src/core-ui-v3.css');
 const suite=JSON.parse(r('scripts/test-suite-v2.json'));
 const release=JSON.parse(r('release-versions.json'));
-assert.equal(release.application,'5.7.0-beta.2');
+assert.equal(release.application,'5.7.0-beta.3');
 assert.equal(release.firmware,'5.0.0');
 assert.match(leds,/1: \{ pin: 5 \}/);
 assert.match(leds,/2: \{ pin: 6 \}/);
