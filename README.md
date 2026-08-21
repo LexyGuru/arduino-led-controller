@@ -1,16 +1,16 @@
 # Arduino LED Controller V5.7
 
-## Current Beta development — 5.7.0-beta.4
+## Current Beta development — 5.7.0-beta.5
 
-- Application: `5.7.0-beta.4`
+- Application: `5.7.0-beta.5`
 - Theme Engine: `2.0`
 - Core UI: `3.0`
 - Firmware: `5.0.1-beta.1` Beta
 - Direct API: `1.0.0`
-- Release notes: `docs/v5/V57_BETA4_RELEASE_NOTES.md`
-- Installation guide: `docs/v5/V57_BETA4_INSTALLATION_GUIDE.md`
-- Release checklist: `docs/v5/V57_BETA4_RELEASE_CHECKLIST.md`
-- Root release notes: `RELEASE_NOTES_5.7.0-beta.4.md`
+- Release notes: `docs/v5/V57_BETA5_RELEASE_NOTES.md`
+- Installation guide: `docs/v5/V57_BETA5_INSTALLATION_GUIDE.md`
+- Release checklist: `docs/v5/V57_BETA5_RELEASE_CHECKLIST.md`
+- Root release notes: `RELEASE_NOTES_5.7.0-beta.5.md`
 
 
 <p align="center">
@@ -34,11 +34,11 @@ Arduino továbbra is önálló **Direct API v1** végpontként működik.
 
 ## Aktuális kiadás
 
-> **Jelenlegi fejlesztési kiadás: Arduino LED Controller V5.7 Beta.4**
+> **Jelenlegi fejlesztési kiadás: Arduino LED Controller V5.7 Beta.5**
 
 | Komponens | Aktuális verzió / állapot |
 |---|---|
-| Alkalmazás | **`5.7.0-beta.4`** |
+| Alkalmazás | **`5.7.0-beta.5`** |
 | Firmware | **`5.0.1-beta.1` Beta** |
 | Direct API | **`1.0.0`** |
 | Beta ág | **`next/v5-rearchitecture`** |
@@ -50,17 +50,22 @@ Arduino továbbra is önálló **Direct API v1** végpontként működik.
 | LXC rendszer | Debian 13 |
 | LXC web/API port | `3000` |
 
-A **V5.7 Beta.4** az LXC persistence/autosave és a fizikai OTA LED-visszajelzés kiadása.
+A **V5.7 Beta.5** az OTA/OTA2 konszolidáció és a megbízható 100%-os OTA completion kiadása.
 
 ### Aktuális kiadási dokumentumok
 
-- [V5.7 Beta.4 release notes](docs/v5/V57_BETA4_RELEASE_NOTES.md)
-- [V5.7 Beta.4 telepítési útmutató](docs/v5/V57_BETA4_INSTALLATION_GUIDE.md)
-- [V5.7 Beta.4 release checklist](docs/v5/V57_BETA4_RELEASE_CHECKLIST.md)
-- [Részletes gyökér release notes](RELEASE_NOTES_5.7.0-beta.4.md)
+- [V5.7 Beta.5 release notes](docs/v5/V57_BETA5_RELEASE_NOTES.md)
+- [V5.7 Beta.5 telepítési útmutató](docs/v5/V57_BETA5_INSTALLATION_GUIDE.md)
+- [V5.7 Beta.5 release checklist](docs/v5/V57_BETA5_RELEASE_CHECKLIST.md)
+- [Részletes gyökér release notes](RELEASE_NOTES_5.7.0-beta.5.md)
 - [Firmware 5.0.1-beta.1 release notes](firmware/RELEASE_NOTES_5.0.1-beta.1.md)
 
 ### Korábbi kiadási dokumentumok
+- [V5.7 Beta.4 release notes](docs/v5/V57_BETA4_RELEASE_NOTES.md)
+- [V5.7 Beta.4 telepítési útmutató](docs/v5/V57_BETA4_INSTALLATION_GUIDE.md)
+- [V5.7 Beta.4 release checklist](docs/v5/V57_BETA4_RELEASE_CHECKLIST.md)
+- [V5.7 Beta.4 gyökér release notes](RELEASE_NOTES_5.7.0-beta.4.md)
+
 - [V5.6 Beta.5 release notes](docs/v5/V56_BETA5_RELEASE_NOTES.md)
 - [V5.6 Beta.5 telepítési útmutató](docs/v5/V56_BETA5_INSTALLATION_GUIDE.md)
 - [V5.6 Beta.5 release checklist](docs/v5/V56_BETA5_RELEASE_CHECKLIST.md)

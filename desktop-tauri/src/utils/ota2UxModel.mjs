@@ -73,13 +73,16 @@ export function buildOta2OperationUx({
       ? BLOCKERS[result?.policy?.code] ?? "beta3.ota2.blocker.unknown"
       : null;
 
+  const completed = result?.ok === true;
   return Object.freeze({
-    stageKey: ota2StageTranslationKey(runtime?.stage),
+    stageKey: ota2StageTranslationKey(completed ? "SUCCESS" : runtime?.stage),
     modeKey: ota2ModeTranslationKey(mode ?? result?.policy?.mode),
     resultKey: result?.code ? ota2ResultTranslationKey(result.code) : null,
     blockerKeys: Object.freeze(blocker ? [blocker] : []),
     canCancel: installing === true && isOta2CancelSafe(runtime?.stage),
     critical: installing === true && !isOta2CancelSafe(runtime?.stage),
-    progress: Math.max(0, Math.min(100, Number(runtime?.progress ?? 0) || 0)),
+    progress: completed
+      ? 100
+      : Math.max(0, Math.min(100, Number(runtime?.progress ?? 0) || 0)),
   });
 }

@@ -1,3 +1,11 @@
+# 5.7.0-beta.5 — Beta.5
+
+- Unified the duplicate OTA/OTA2 user-facing firmware update surfaces into the canonical OTA2 flow.
+- Preserved native Rust OTA, macOS Terminal fallback, Direct API confirmation and schedule-persistence verification.
+- Added explicit terminal `100% / Kész` completion after successful OTA2 post-verification.
+- Migrated active Visual 3.1 OTA contracts and Beta release identity to `5.7.0-beta.5`.
+- Firmware remains `5.0.1-beta.1`.
+
 # 5.7.0-beta.4 — Beta.4
 
 - LXC server-side settings persistence and immediate autosave.

@@ -3575,6 +3575,18 @@ async fn firmware_update_inner(
         "A firmware telepítését az API-confirmation state machine igazolta; a schedule revision/checksum persistence ellenőrzése sikeres.",
         Some(98),
     );
+    emit_ota_progress(
+        app,
+        "Kész",
+        "success",
+        format!(
+            "OTA2_SUCCESS: firmware {} sikeresen telepítve; reboot és schedule persistence igazolva.",
+            installed_after_restart
+                .clone()
+                .unwrap_or_else(|| artifact.tag.clone())
+        ),
+        Some(100),
+    );
     state.ota_in_progress.store(false, Ordering::SeqCst);
     let final_status = FirmwareStatus {
         state: "success".into(),

@@ -9,12 +9,16 @@ const rust = fs.readFileSync('desktop-tauri/src-tauri/src/lib.rs','utf8');
 const v615 = fs.readFileSync('scripts/test-v615-firmware-channel-startup-contract.js','utf8');
 const release = JSON.parse(fs.readFileSync('release-versions.json','utf8'));
 
-assert.equal(release.application,'5.7.0-beta.4');
 assert.equal(release.applicationRelease.channel,'beta');
 assert.equal(release.firmware,'5.0.1-beta.1');
 
-assert.ok(env.includes('RELEASE_CANDIDATE=beta.4-gate'));
-assert.ok(env.includes('RELEASE_TARGET_VERSION=5.7.0-beta.4'));
+const appVersion = release.application;
+const beta = appVersion.match(/^(\d+)\.(\d+)\.(\d+)-beta\.(\d+)$/);
+assert.ok(beta, `Expected current beta application version, got ${appVersion}`);
+const releaseCandidate = `beta.${beta[4]}-gate`;
+
+assert.ok(env.includes(`RELEASE_CANDIDATE=${releaseCandidate}`));
+assert.ok(env.includes(`RELEASE_TARGET_VERSION=${appVersion}`));
 assert.ok(!env.includes('RELEASE_CANDIDATE=beta.1-gate'));
 
 assert.doesNotMatch(api,/function controlToken\(/);
@@ -37,7 +41,7 @@ assert.match(v615,/github_releases\\\(\\\)/);
 assert.match(v615,/firmware_artifacts_from_release_channel/);
 assert.doesNotMatch(v615,/requested_tag\[\\s\\S\]\*firmware_beta_release/);
 
-console.log('V695B_RELEASE_CANDIDATE_BETA3_GATE=PASSED');
+console.log(`V695B_RELEASE_CANDIDATE_CURRENT_GATE=PASSED:${releaseCandidate}`);
 console.log('V695B_LXC_SELECTED_FIRMWARE_CHANNEL_PROPAGATED=PASSED');
 console.log('V695B_LXC_BROWSER_AUTH_AUTOMATIC=PASSED');
 console.log('V695B_LXC_HEADLESS_TOKEN_NOT_EXPOSED_TO_BROWSER=PASSED');

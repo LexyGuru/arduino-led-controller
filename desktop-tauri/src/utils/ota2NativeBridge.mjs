@@ -23,6 +23,15 @@ export function createOta2NativeBridge({firmwareInstallRelease,firmwareStatus,su
         const after=installStatus ?? await firmwareStatus(undefined,channel);
         const postVerify=evaluateOta2PostVerify({before,after,expectedVersion});
         if(!postVerify.ok)return Object.freeze({ok:false,code:OTA2_NATIVE_BRIDGE_CODES.POSTVERIFY_FAILED,postVerify,before,after,runtime});
+        runtime=reduceOta2RuntimeEvent(runtime,{
+          timestamp:Date.now(),
+          stage:"SUCCESS",
+          phase:"SUCCESS",
+          level:"success",
+          message:"OTA2_INSTALL_CONFIRMED: native install and post-verification completed successfully.",
+          progress:100,
+        });
+        onRuntime?.(runtime);
         return Object.freeze({ok:true,code:OTA2_NATIVE_BRIDGE_CODES.READY,postVerify,before,after,runtime});
       }catch(error){
         return Object.freeze({ok:false,code:OTA2_NATIVE_BRIDGE_CODES.INSTALL_FAILED,error:String(error?.message??error),runtime});

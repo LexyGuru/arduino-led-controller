@@ -171,47 +171,6 @@ export function FirmwarePage({
   const firmware =
     state.status;
 
-  const visual31OtaStage =
-    String(state.stage || '').trim();
-
-  const visual31OtaStageNormalized =
-    visual31OtaStage.toLowerCase();
-
-  const visual31OtaProgress =
-    Math.max(0, Math.min(100, Number(state.progress || 0)));
-
-  const visual31OtaSteps = [
-    { key: 'preparing', label: t('visual31.firmware.step.preparing') },
-    { key: 'connecting', label: t('visual31.firmware.step.connecting') },
-    { key: 'upload', label: t('visual31.firmware.step.upload') },
-    { key: 'verify', label: t('visual31.firmware.step.verify') },
-    { key: 'reboot', label: t('visual31.firmware.step.reboot') },
-    { key: 'done', label: t('visual31.firmware.step.done') }
-  ] as const;
-
-  const visual31ActiveStep =
-    visual31OtaStageNormalized.includes('done') ||
-    visual31OtaStageNormalized.includes('success') ||
-    visual31OtaStageNormalized.includes('kész')
-      ? 5
-      : visual31OtaStageNormalized.includes('reboot') ||
-          visual31OtaStageNormalized.includes('újraind')
-        ? 4
-        : visual31OtaStageNormalized.includes('verify') ||
-            visual31OtaStageNormalized.includes('verification') ||
-            visual31OtaStageNormalized.includes('ellenőrz') ||
-            visual31OtaStageNormalized.includes('api_confirmation')
-          ? 3
-          : visual31OtaStageNormalized.includes('upload') ||
-              visual31OtaStageNormalized.includes('feltölt') ||
-              visual31OtaStageNormalized.includes('transfer')
-            ? 2
-            : visual31OtaStageNormalized.includes('connect') ||
-                visual31OtaStageNormalized.includes('kapcsol')
-              ? 1
-              : 0;
-
-
   const [releaseCatalog, setReleaseCatalog] = useState<FirmwareArtifact[]>([]);
   const [catalogError, setCatalogError] = useState('');
   const [pendingInstallVersion, setPendingInstallVersion] = useState<string | null>(null);
@@ -407,34 +366,11 @@ export function FirmwarePage({
           <div><span>{t('visual31.firmware.channel')}</span><strong>{selectedFirmwareChannel.toUpperCase()}</strong></div>
           <div><span>{t('visual31.firmware.installed')}</span><strong>{firmware?.installedVersion ?? '—'}</strong></div>
           <div><span>{t('visual31.firmware.latest')}</span><strong>{latestCatalogVersion ?? '—'}</strong></div>
-          <div><span>{t('visual31.firmware.ota')}</span><strong>{state.busy ? `${visual31OtaProgress}%` : t('visual31.firmware.ready')}</strong></div>
+          <div><span>{t('visual31.firmware.ota')}</span><strong>{ota2Installing ? `${ota2Runtime.progress}%` : state.busy ? `${Math.max(0, Math.min(100, Number(state.progress || 0)))}%` : t('visual31.firmware.ready')}</strong></div>
         </div>
       </section>
 
-      <section className="panel visual31-ota-pipeline">
-        <div className="visual31-management-section-title">
-          <div>
-            <p className="eyebrow">{t('visual31.firmware.pipeline')}</p>
-            <h3>{state.busy ? localizeOtaStage(state.stage || '', language) : t('visual31.firmware.readyOperation')}</h3>
-          </div>
-          <strong className="visual31-ota-progress-value">{state.busy ? `${visual31OtaProgress}%` : t('visual31.firmware.idle')}</strong>
-        </div>
-        <div className="visual31-ota-track" aria-label="OTA operation pipeline">
-          {visual31OtaSteps.map((step, index) => {
-            const active = state.busy && index === visual31ActiveStep;
-            const complete = state.busy && index < visual31ActiveStep;
-            return (
-              <div key={step.key} className={`visual31-ota-step ${active ? 'is-active' : ''} ${complete ? 'is-complete' : ''}`}>
-                <i>{index + 1}</i>
-                <span>{step.label}</span>
-              </div>
-            );
-          })}
-        </div>
-        <div className="visual31-ota-progressbar" aria-hidden="true">
-          <span style={{ width: `${state.busy ? visual31OtaProgress : 0}%` }} />
-        </div>
-      </section>
+
 
       <div className="page-heading v55-management-heading core-v3-management-heading">
         <div>
