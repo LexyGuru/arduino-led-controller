@@ -970,7 +970,105 @@ export function SchedulesPage({
         </div>
       </section>
 
-      <section className="panel visual31-management-schedule-timeline schedule-unified-workspace" data-schedule-unified="v1">
+      <section className="schedule-mobile-workspace" data-schedule-mobile="v1">
+        <div className="schedule-mobile-week" role="tablist" aria-label={t('visual31.schedule.timelineTitle')}>
+          {grouped.map((day, index) => (
+            <button
+              type="button"
+              role="tab"
+              key={`mobile-${day.day}`}
+              className={`schedule-mobile-day ${activeScheduleDay===day.day?'is-active':''} ${day.items.length?'has-events':''}`}
+              aria-selected={activeScheduleDay===day.day}
+              onClick={() => {
+                setActiveScheduleDay(day.day);
+                setSelectedDays([day.day]);
+                setEditingId(null);
+              }}
+            >
+              <span>{t(dayShortKeys[index])}</span>
+              <small>{day.items.length}</small>
+            </button>
+          ))}
+        </div>
+
+        <div className="schedule-mobile-daybar">
+          <div>
+            <small>{t('visual31.schedule.timelineEyebrow')}</small>
+            <strong>{grouped.find((day)=>day.day===activeScheduleDay)?.name ?? '—'}</strong>
+          </div>
+          <button
+            type="button"
+            className="schedule-mobile-add"
+            disabled={!state.canWrite}
+            onClick={() => {
+              resetForm();
+              setActiveScheduleDay(activeScheduleDay);
+              setSelectedDays([activeScheduleDay]);
+              setScheduleModalOpen(true);
+            }}
+          >
+            <CopyPlus size={18}/>
+            <span>+</span>
+          </button>
+        </div>
+
+        <div className="schedule-mobile-events">
+          {(grouped.find((day)=>day.day===activeScheduleDay)?.items ?? []).length === 0 ? (
+            <div className="schedule-mobile-empty">{t('schedules.empty')}</div>
+          ) : (
+            (grouped.find((day)=>day.day===activeScheduleDay)?.items ?? []).map((schedule) => (
+              <article className="schedule-mobile-event" key={`mobile-event-${schedule.id}`}>
+                <button
+                  type="button"
+                  className="schedule-mobile-event-main"
+                  disabled={!state.canWrite}
+                  onClick={() => {
+                    edit(schedule);
+                    setScheduleModalOpen(true);
+                  }}
+                >
+                  <strong>{schedule.time}</strong>
+                  <div>
+                    {schedule.leds.map((led,index)=>(
+                      <span key={`${schedule.id}-m-${index}`}>
+                        LED {index+1}
+                        {' · '}
+                        {led.enabled ? 'ON' : 'OFF'}
+                        {' · '}
+                        {led.brightness}
+                      </span>
+                    ))}
+                  </div>
+                </button>
+                <div className="schedule-mobile-event-actions">
+                  <button
+                    type="button"
+                    aria-label={t('common.edit')}
+                    disabled={!state.canWrite}
+                    onClick={() => {
+                      edit(schedule);
+                      setScheduleModalOpen(true);
+                    }}
+                  >
+                    <Pencil size={18}/>
+                  </button>
+                  <button
+                    type="button"
+                    className="danger"
+                    aria-label={t('common.delete')}
+                    disabled={!state.canWrite}
+                    onClick={() => setDraft((items)=>items.filter((item)=>item.id!==schedule.id))}
+                  >
+                    <Trash2 size={18}/>
+                  </button>
+                </div>
+              </article>
+            ))
+          )}
+        </div>
+      </section>
+
+      <section className="panel visual31-management-schedule-timeline schedule-unified-workspace schedule-desktop-workspace" data-schedule-unified="v1">
         <div className="visual31-management-section-title">
           <div>
             <p className="eyebrow">{t('visual31.schedule.timelineEyebrow')}</p>

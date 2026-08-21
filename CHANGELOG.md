@@ -1,3 +1,15 @@
+# 5.8.0-beta.2 — Mobile schedule and topology feedback test build
+
+- Separate mobile schedule workspace with all seven weekdays visible.
+- Full-width selected-day event cards and full-viewport mobile editor.
+- LED topology save feedback with old/new counts and firmware revision.
+- Firmware topology success/error logging and localization.
+- Current release/version contracts migrated from fixed Beta.1 literals to canonical dynamic identity.
+- Application: `5.8.0-beta.2`.
+- Firmware: `5.1.0-beta.2`.
+- Direct API: `1.0.0`.
+- Test-build source publication only; no GitHub Release or tag created.
+
 # 5.8.0-beta.1 — Beta.1 development
 
 - Dynamic per-strip LED topology foundation.

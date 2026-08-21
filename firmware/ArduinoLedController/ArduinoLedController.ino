@@ -1,5 +1,5 @@
 /*
- * Arduino LED Controller – 5.1.0-beta.1
+ * Arduino LED Controller – 5.1.0-beta.2
  * F14 Complete: Direct API v1, JSON body, header-only auth, A/B EEPROM és
  * tranzakciós schedule. A Tauri újratervezésének stabil firmware-alapja.
  */
@@ -14,7 +14,7 @@
 #include <stdarg.h>
 #include "secrets.h"
 
-#define FIRMWARE_VERSION "5.1.0-beta.1"
+#define FIRMWARE_VERSION "5.1.0-beta.2"
 #define FIRMWARE_FEATURE "f14-direct-api-v1-only-storage-udp-ntp-dst-ota-exclusive-v191-matrix-neopixel-ota-led-feedback-bootgen-sizeopt-schedule-progress-diag"
 #define OTA_MAINTENANCE_MODE_V1 1
 #define DIRECT_API_VERSION "1.0.0"
@@ -2619,10 +2619,16 @@ int routeV1(WiFiClient& c, const char* method, const char* base,
     ledTopology.ledCount[2] = static_cast<uint16_t>(lx003);
     if (!saveConfigAb()) {
       ledTopology = previous;
+      logCode("error", "X3102");
       sendErrorJson(c, 500, "EEPROM_VERIFY_FAILED",
         "LED topology A/B EEPROM mentes vagy readback sikertelen.", requestId);
       return 500;
     }
+    logCodef("success", "X3101", "%u:%u:%u:%u:%u:%u:%lu",
+      previous.ledCount[0], ledTopology.ledCount[0],
+      previous.ledCount[1], ledTopology.ledCount[1],
+      previous.ledCount[2], ledTopology.ledCount[2],
+      static_cast<unsigned long>(configGeneration));
     renderAll(true);
     sendLedTopologyJson(c, requestId);
     return 200;

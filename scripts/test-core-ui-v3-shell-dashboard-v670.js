@@ -14,9 +14,9 @@ const themeTypes = read('desktop-tauri/src/design-system/theme-types.ts');
 const release = JSON.parse(read('release-versions.json'));
 const manifest = JSON.parse(read('scripts/test-suite-v2.json'));
 
-assert.equal(release.application, '5.8.0-beta.1');
+assert.equal(release.application, release.applicationRelease.version);
 assert.equal(release.channel, 'beta');
-assert.equal(release.firmware, '5.1.0-beta.1');
+assert.equal(release.firmwareRelease.recommendedVersion, release.firmware);
 assert.equal(release.firmwareRelease.channel, 'beta');
 
 assert.match(themeTypes, /THEME_ENGINE_PRODUCT_VERSION = '2\.0'/);

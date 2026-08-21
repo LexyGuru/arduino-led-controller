@@ -13,15 +13,18 @@ const main = read('desktop-tauri/src/main.tsx');
 const app = read('desktop-tauri/src/App.tsx');
 const topbar = read('desktop-tauri/src/components/Topbar.tsx');
 const css = read('desktop-tauri/src/core-ui-v3.css');
+const canonicalApplicationVersion = read('VERSION').trim();
 
-assert.equal(release.application, '5.8.0-beta.1');
+assert.match(canonicalApplicationVersion, /^\d+\.\d+\.\d+-beta\.\d+$/);
+assert.equal(release.application, canonicalApplicationVersion);
+assert.equal(release.applicationRelease.version, canonicalApplicationVersion);
 assert.equal(release.channel, 'beta');
 assert.equal(release.applicationRelease.channel, 'beta');
 assert.equal(release.applicationRelease.branch, 'next/v5-rearchitecture');
 
-assert.equal(release.firmware, '5.1.0-beta.1');
+assert.match(release.firmware, /^\d+\.\d+\.\d+-beta\.\d+$/);
 assert.equal(release.firmwareRelease.channel, 'beta');
-assert.equal(release.firmwareRelease.recommendedVersion, '5.1.0-beta.1');
+assert.equal(release.firmwareRelease.recommendedVersion, release.firmware);
 assert.equal(release.directApi, '1.0.0');
 
 assert.match(types, /THEME_ENGINE_PRODUCT_VERSION = '2\.0'/);
@@ -66,3 +69,4 @@ console.log('CORE_UI_30_CURRENT_TEST_MANIFEST=PASSED');
 console.log('CORE_UI_15_CURRENT_GATE=RETIRED');
 console.log('CORE_UI_30_SHAPE_FOUNDATION=PASSED');
 console.log('BETA_APP_STABLE_FIRMWARE_DECOUPLING=PASSED');
+console.log('CORE_UI_VERSION_CONTRACT_DYNAMIC=PASSED');

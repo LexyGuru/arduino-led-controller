@@ -10,7 +10,7 @@ const v615 = fs.readFileSync('scripts/test-v615-firmware-channel-startup-contrac
 const release = JSON.parse(fs.readFileSync('release-versions.json','utf8'));
 
 assert.equal(release.applicationRelease.channel,'beta');
-assert.equal(release.firmware,'5.1.0-beta.1');
+assert.equal(release.firmwareRelease.recommendedVersion,release.firmware);
 
 const appVersion = release.application;
 const beta = appVersion.match(/^(\d+)\.(\d+)\.(\d+)-beta\.(\d+)$/);

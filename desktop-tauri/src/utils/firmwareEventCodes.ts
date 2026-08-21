@@ -1,7 +1,7 @@
 type Translate = (key: string, values?: Record<string, string | number>) => string;
 const parameterNames: Record<string, string[]> = {
   X0002:['version'], X0003:['feature'], X0004:['port'], X1402:['zone'],
-  X2002:['ip','rssi','httpPort','otaPort'], X5001:['ip','port'],
+  X2002:['ip','rssi','httpPort','otaPort'], X3101:['lx001Old','lx001New','lx002Old','lx002New','lx003Old','lx003New','revision'], X5001:['ip','port'],
   X5003:['errorCode','indicatorSeconds']
 };
 export function parseFirmwareEventMessage(message: string | null | undefined) {
