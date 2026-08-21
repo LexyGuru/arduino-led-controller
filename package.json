@@ -1,6 +1,6 @@
 {
   "name": "arduino-led-controller",
-  "version": "5.7.0-beta.5",
+  "version": "5.8.0-beta.1",
   "private": true,
   "description": "Arduino UNO R4 WiFi LED controller and weekly scheduler",
   "main": "server2_final.js",

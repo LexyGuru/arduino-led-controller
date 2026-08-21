@@ -1,3 +1,11 @@
+# 5.8.0-beta.1 — Beta.1 development
+
+- Dynamic per-strip LED topology foundation.
+- Firmware development version 5.1.0-beta.1.
+- Persistent A/B LED counts, fixed physical pins and LX001/LX002/LX003 identities.
+- Direct API + Settings + Visual 3.1 topology wiring.
+- Local test candidate only; no release published.
+
 # 5.7.0-beta.5 — Beta.5
 
 - Unified the duplicate OTA/OTA2 user-facing firmware update surfaces into the canonical OTA2 flow.

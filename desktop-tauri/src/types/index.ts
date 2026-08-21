@@ -60,11 +60,29 @@ export interface ConnectionConfig {
 
 export interface LedStrip {
   id: number;
+  hardwareId?: string;
+  pin?: number;
+  ledCount?: number;
   enabled: boolean;
   brightness: number;
   effect: number;
   speed: number;
   color: [number, number, number];
+}
+
+export interface LedTopologyStrip {
+  id: string;
+  index: number;
+  pin: number;
+  ledCount: number;
+}
+
+export interface LedTopology {
+  success?: boolean;
+  requestId?: number;
+  revision: number;
+  maxLedCount: number;
+  strips: LedTopologyStrip[];
 }
 
 export interface ArduinoHttpStatus {

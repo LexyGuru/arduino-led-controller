@@ -4,6 +4,7 @@ import {
   useRef,
   useState
 } from 'react';
+import { createPortal } from 'react-dom';
 
 import {
   AlertTriangle,
@@ -228,6 +229,18 @@ export function SchedulesPage({
     );
 
   const [
+    activeScheduleDay,
+    setActiveScheduleDay
+  ] =
+    useState(1);
+
+  const [
+    scheduleModalOpen,
+    setScheduleModalOpen
+  ] =
+    useState(false);
+
+  const [
     time,
     setTime
   ] =
@@ -324,6 +337,18 @@ export function SchedulesPage({
   useEffect(() => {
     void tauriApi.listScheduleBackups().then(setBackups).catch(() => undefined);
   }, []);
+
+  useEffect(() => {
+    if (!scheduleModalOpen) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setScheduleModalOpen(false);
+        setEditingId(null);
+      }
+    };
+    globalThis.addEventListener('keydown', closeOnEscape);
+    return () => globalThis.removeEventListener('keydown', closeOnEscape);
+  }, [scheduleModalOpen]);
 
   useEffect(() => {
     let disposed = false;
@@ -547,7 +572,7 @@ export function SchedulesPage({
 
   const resetForm = () => {
     setEditingId(null);
-    setSelectedDays([1]);
+    setSelectedDays([activeScheduleDay]);
     setTime('19:30');
     setFormLeds(
       emptyLeds()
@@ -716,6 +741,7 @@ export function SchedulesPage({
     schedule:
       LedSchedule
   ) => {
+    setActiveScheduleDay(schedule.day);
     setEditingId(
       schedule.id
     );
@@ -944,7 +970,7 @@ export function SchedulesPage({
         </div>
       </section>
 
-      <section className="panel visual31-management-schedule-timeline">
+      <section className="panel visual31-management-schedule-timeline schedule-unified-workspace" data-schedule-unified="v1">
         <div className="visual31-management-section-title">
           <div>
             <p className="eyebrow">{t('visual31.schedule.timelineEyebrow')}</p>
@@ -956,228 +982,75 @@ export function SchedulesPage({
         </div>
         <div className="visual31-week-grid">
           {grouped.map((day) => (
-            <article key={day.day} className={`visual31-week-day ${day.items.length ? 'has-events' : 'is-empty'}`}>
-              <header>
-                <strong>{day.name}</strong>
-                <span>{day.items.length}</span>
-              </header>
-              <div className="visual31-week-day__rail">
-                {day.items.length ? day.items.slice(0, 6).map((item) => (
-                  <div key={item.id} className="visual31-week-event">
-                    <time>{item.time}</time>
-                    <span>{t('visual31.schedule.ledCount', { count: item.leds.length })}</span>
-                  </div>
-                )) : <span className="visual31-week-empty">—</span>}
-                {day.items.length > 6 && <small>+{day.items.length - 6}</small>}
-              </div>
-            </article>
+            <button
+              type="button"
+              key={day.day}
+              className={`visual31-week-day schedule-unified-day-tab ${day.items.length ? 'has-events' : 'is-empty'} ${activeScheduleDay === day.day ? 'is-selected' : ''}`}
+              aria-pressed={activeScheduleDay === day.day}
+              onClick={() => {
+                setActiveScheduleDay(day.day);
+                setSelectedDays([day.day]);
+                setEditingId(null);
+                setScheduleModalOpen(true);
+              }}
+            >
+              <span className="schedule-weekday-name">{day.name}</span>
+            </button>
           ))}
         </div>
+
+
       </section>
 
-      <div className="page-heading v55-management-heading core-v3-management-heading">
-        <div>
-          <p className="eyebrow">
-            ARDUINO DIRECT API V1
-          </p>
-          <h2>
-            {t('schedules.title')}
-          </h2>
-          <p className="muted">
-            {t('schedules.description')}
-          </p>
-        </div>
-
-        <div className="page-actions core-v3-management-actions">
-          <button
-            onClick={
-              () =>
-                void saveDraft()
-            }
-            disabled={
-              state.busy ||
-              !dirty ||
-              !state.canWrite
-            }
+        {scheduleModalOpen && createPortal((
+          <div
+            className="schedule-modal-backdrop"
+            role="presentation"
+            onMouseDown={(event) => {
+              if (event.currentTarget === event.target) {
+                setScheduleModalOpen(false);
+                setEditingId(null);
+              }
+            }}
           >
-            <Save size={17} />
-            {t('schedules.saveArduino')}
-          </button>
-
-          <button
-            className="secondary"
-            onClick={
-              () =>
-                void reloadRemote()
-            }
-            disabled={
-              state.busy
-            }
-          >
-            <RefreshCw size={17} />
-            {t('schedules.loadArduino')}
-          </button>
-
-          <button
-            className="secondary"
-            onClick={
-              () =>
-                void exportJson()
-            }
-            disabled={
-              state.busy
-            }
-          >
-            <Download size={17} />
-            {t('schedules.saveJson')}
-          </button>
-
-          <button
-            className="secondary"
-            onClick={
-              () =>
-                void importJson()
-            }
-            disabled={
-              state.busy
-            }
-          >
-            <Upload size={17} />
-            {t('schedules.loadJson')}
-          </button>
-
-          <button
-            className="danger"
-            onClick={() => void deleteAllSchedules()}
-            disabled={state.busy || !state.canWrite || draft.length === 0}
-          >
-            <Trash2 size={17} />
-            {t('schedules.deleteAll')}
-          </button>
-        </div>
-      </div>
-
-      <section className="panel">
-        <div className="panel-title">
-          <div>
-            <p className="eyebrow">
-              {t('schedules.verified')}
-            </p>
-            <h2>
-              Schedule szinkron
-            </h2>
-          </div>
-
-          {state.canWrite
-            ? <CheckCircle2 className="ok" />
-            : <Database />}
-        </div>
-
-        <div className="details-grid compact">
-          <div>
-            <span>
-              {t('schedules.arduinoRecords')}
-            </span>
-            <strong>
-              {state.syncState.count}
-            </strong>
-          </div>
-
-          <div>
-            <span>
-              {t('schedules.editList')}
-            </span>
-            <strong>
-              {draft.length}
-            </strong>
-          </div>
-
-          <div>
-            <span>
-              Revision
-            </span>
-            <strong>
-              {state.syncState.revision ?? '—'}
-            </strong>
-          </div>
-
-          <div>
-            <span>
-              Checksum
-            </span>
-            <strong>
-              {state.syncState.checksum || '—'}
-            </strong>
-          </div>
-        </div>
-
-        {!state.canWrite && (
-          <div className="notice">
-            <AlertTriangle size={18} />
-            <p>
-              {t('schedules.writeDisabled')}
-            </p>
-          </div>
-        )}
-
-        {state.syncState.recoveredLegacyActionCount > 0 && (
-          <div className="notice">
-            <AlertTriangle size={18} />
-            <p>
-              {t('schedules.recoveredLegacy',{
-                count: state.syncState.recoveredLegacyActionCount
-              })}
-            </p>
-          </div>
-        )}
-
-        {state.syncState.emptyActionCount > 0 && (
-          <div className="notice">
-            <AlertTriangle size={18} />
-            <p>
-              {t('schedules.emptyRecords',{
-                count: state.syncState.emptyActionCount
-              })}
-            </p>
-          </div>
-        )}
-      </section>
-
-      {saveProgress && (
-        <section className="schedule-save-progress-card" data-level={saveProgress.level} aria-live="polite">
-          <div className="schedule-save-progress-head">
-            <div className="schedule-save-progress-title">
-              {saveProgress.level==='success'?<CheckCircle2 className="ok" size={19}/>:saveProgress.level==='error'?<AlertTriangle size={19}/>:<Save className="is-running" size={19}/>}
-              <div><strong>{t('schedules.saveProgress.title')}</strong><small>{t(`schedules.saveProgress.${saveProgress.stage}`)}</small></div>
-            </div>
-            {saveProgress.total>0&&<span className="schedule-save-progress-count">{saveProgress.current} / {saveProgress.total}</span>}
-          </div>
-          <div className={`schedule-save-progress-track ${saveProgress.level==='info'&&saveProgress.stage!=='uploading'?'is-indeterminate':''}`}>
-            <div className="schedule-save-progress-bar" style={{width:`${saveProgress.level==='success'?100:saveProgress.stage==='uploading'&&saveProgress.total>0?Math.round((saveProgress.current/saveProgress.total)*100):Math.max(4,saveProgress.progress??0)}%`}}/>
-          </div>
-          <div className="schedule-save-progress-details">
-            {saveProgress.total>0&&<span>{t('schedules.saveProgress.records',{current:saveProgress.current,total:saveProgress.total})}</span>}
-            {saveProgress.revisionBefore!=null&&saveProgress.revisionAfter!=null&&<span>{t('schedules.saveProgress.revision',{before:saveProgress.revisionBefore,after:saveProgress.revisionAfter})}</span>}
-            {saveProgress.checksum&&<code>{saveProgress.checksum}</code>}
-            {saveProgress.durationMs!=null&&<span>{t('schedules.saveProgress.duration',{seconds:(saveProgress.durationMs/1000).toFixed(1)})}</span>}
-          </div>
-          {saveProgress.level==='error'&&<p className="schedule-save-progress-error">{saveProgress.message}</p>}
-        </section>
-      )}
-
-      <section className="schedule-week-overview" aria-label={t('schedules.title')}>
+            <section
+              className="schedule-modal-panel"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="schedule-modal-title"
+              onMouseDown={(event) => event.stopPropagation()}
+            >
+              <header className="schedule-modal-header">
+                <div>
+                  <p className="eyebrow">HETI IDŐZÍTÉS</p>
+                  <h2 id="schedule-modal-title">
+                    {grouped.find((day) => day.day === activeScheduleDay)?.name ?? '—'}
+                  </h2>
+                </div>
+                <button
+                  type="button"
+                  className="schedule-modal-close"
+                  aria-label="Bezárás"
+                  onClick={() => {
+                    setScheduleModalOpen(false);
+                    setEditingId(null);
+                  }}
+                >
+                  ×
+                </button>
+              </header>
+              <div className="schedule-modal-content">
+<section className="schedule-week-overview schedule-unified-day-list schedule-modal-list-pane" aria-label={t('schedules.title')}>
         <div className="schedule-week-overview-head">
           <div>
             <p className="eyebrow">{t('schedules.title')}</p>
             <h2>{t('schedules.editList')}</h2>
           </div>
-          <span className="schedule-week-total">
-            {draft.length}{t('schedules.eventCount',{count:draft.length})}
-          </span>
+
         </div>
 
-        <div className="schedule-week-grid">
-          {grouped.map((group) => (
+        <div className="schedule-modal-day-list">
+          {grouped.filter((group) => group.day === activeScheduleDay).map((group) => (
             <article className="schedule-day-card" key={group.day}>
               <div className="schedule-day-card-head">
                 <h3>{group.name}</h3>
@@ -1228,10 +1101,10 @@ export function SchedulesPage({
                         )}
                       </div>
 
-                      <div className="schedule-compact-actions">
+                      <div className="schedule-compact-actions schedule-event-actions">
                         <button
                           type="button"
-                          className="icon-button secondary schedule-compact-edit"
+                          className="icon-button secondary schedule-compact-edit schedule-event-action schedule-event-action-edit"
                           title={t('schedules.edit')}
                           aria-label={t('schedules.edit')}
                           disabled={!state.canWrite}
@@ -1242,7 +1115,7 @@ export function SchedulesPage({
 
                       <button
                         type="button"
-                        className="icon-button danger schedule-compact-delete"
+                        className="icon-button danger schedule-compact-delete schedule-event-action schedule-event-action-delete"
                         title={t('common.delete')}
                         disabled={!state.canWrite}
                         onClick={() =>
@@ -1262,170 +1135,15 @@ export function SchedulesPage({
           ))}
         </div>
       </section>
-
-      <section className="panel beta2-schedule-copy">
-        <div className="panel-title">
+<section id="schedule-editor" className="schedule-editor schedule-unified-editor schedule-modal-editor-pane">
+        <div className="schedule-unified-editor-head">
           <div>
-            <p className="eyebrow">{t('beta2.schedule.eyebrow')}</p>
-            <h2>{t('beta2.schedule.title')}</h2>
+            <p className="eyebrow">AKTÍV NAP</p>
+            <h3>{grouped.find((day) => day.day === activeScheduleDay)?.name ?? '—'}</h3>
           </div>
-          <CopyPlus />
+          <span>{grouped.find((day) => day.day === activeScheduleDay)?.items.length ?? 0} esemény</span>
         </div>
 
-        <div className="beta2-copy-grid">
-          <label>
-            {t('beta2.schedule.sourceDay')}
-            <select
-              value={copySourceDay}
-              onChange={(event) =>
-                setCopySourceDay(
-                  Number(event.target.value)
-                )
-              }
-            >
-              {dayKeys.map((key, index) => (
-                <option key={key} value={index + 1}>
-                  {t(key)}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <div>
-            <span className="muted">{t('beta2.schedule.targetDays')}</span>
-            <div className="beta2-copy-targets">
-              {dayShortKeys.map((key, index) => {
-                const day = index + 1;
-                const active = copyTargetDays.includes(day);
-
-                return (
-                  <button
-                    key={key}
-                    type="button"
-                    className={active ? 'secondary active' : 'secondary'}
-                    disabled={day === copySourceDay}
-                    onClick={() =>
-                      setCopyTargetDays(
-                        (current) =>
-                          current.includes(day)
-                            ? current.filter((value) => value !== day)
-                            : [...current, day].sort()
-                      )
-                    }
-                  >
-                    {t(key)}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="beta2-copy-preview">
-            {t('beta2.schedule.preview',{
-              source: draft.filter((item) => item.day === copySourceDay).length,
-              targets: copyTargetDays.filter((day) => day !== copySourceDay).length
-            })}
-          </div>
-
-          <button
-            type="button"
-            className="secondary"
-            disabled={
-              state.busy ||
-              !draft.some((item) => item.day === copySourceDay)
-            }
-            onClick={copyDaySchedules}
-          >
-            <CopyPlus size={17} />
-            {t('beta2.schedule.copy')}
-          </button>
-        </div>
-      </section>
-
-      {conflict && (
-        <section className="v5-schedule-conflict">
-          <AlertTriangle size={22} />
-
-          <div>
-            <strong>
-              {t('schedules.conflictTitle')}
-            </strong>
-            <span>
-              {t('schedules.conflictHelp')}
-            </span>
-          </div>
-
-          <div className="v5-actions">
-            <button
-              className="secondary"
-              disabled={state.busy}
-              onClick={
-                () =>
-                  void reloadRemote()
-              }
-            >
-              <RefreshCw size={16} />
-              {t('schedules.reload')}
-            </button>
-          </div>
-        </section>
-      )}
-
-      {(fileMessage ||
-        state.notice ||
-        state.error) && (
-        <section className="panel">
-          {fileMessage && (
-            <p className="notice-text">
-              {fileMessage}
-            </p>
-          )}
-
-          {state.notice && (
-            <p className="notice-text">
-              {state.notice}
-            </p>
-          )}
-
-          {state.error && (
-            <p className="console-warning">
-              {state.error.code}
-              {': '}
-              {state.error.message}
-            </p>
-          )}
-        </section>
-      )}
-
-      <section className="panel">
-        <div className="panel-title">
-          <div>
-            <p className="eyebrow">{t('schedules.backupsEyebrow')}</p>
-            <h2>{t('schedules.restore')}</h2>
-          </div>
-          <Database />
-        </div>
-        {backups.length === 0 ? (
-          <p className="muted">{t('schedules.noBackups')}</p>
-        ) : (
-          <div className="v5-backup-list">
-            {backups.slice(0, 10).map((backup) => (
-              <article key={backup.id}>
-                <div>
-                  <strong>{t('schedules.recordCount',{count:backup.count})}</strong>
-                  <small>{new Date(backup.createdAt).toLocaleString(language === 'de' ? 'de-DE' : language === 'en' ? 'en-US' : 'hu-HU')} · revision {backup.revision ?? '—'}</small>
-                  <code>{backup.checksum || backup.id}</code>
-                </div>
-                <button className="secondary" disabled={state.busy || !state.canWrite} onClick={() => void restoreScheduleBackup(backup)}>
-                  {t('schedules.restoreButton')}
-                </button>
-              </article>
-            ))}
-          </div>
-        )}
-      </section>
-
-      <section id="schedule-editor" className="panel schedule-editor">
         <div className="schedule-top-row">
           <label>
             {t('schedules.time')}
@@ -1719,6 +1437,367 @@ export function SchedulesPage({
           )}
         </div>
       </section>
+
+              </div>
+            </section>
+          </div>
+        ), document.body)}
+
+      <div className="page-heading v55-management-heading core-v3-management-heading schedule-unified-actions">
+        <div>
+          <p className="eyebrow">
+            ARDUINO DIRECT API V1
+          </p>
+          <h2>
+            {t('schedules.title')}
+          </h2>
+          <p className="muted">
+            {t('schedules.description')}
+          </p>
+        </div>
+
+        <div className="page-actions core-v3-management-actions">
+          <button
+            onClick={
+              () =>
+                void saveDraft()
+            }
+            disabled={
+              state.busy ||
+              !dirty ||
+              !state.canWrite
+            }
+          >
+            <Save size={17} />
+            {t('schedules.saveArduino')}
+          </button>
+
+          <button
+            className="secondary"
+            onClick={
+              () =>
+                void reloadRemote()
+            }
+            disabled={
+              state.busy
+            }
+          >
+            <RefreshCw size={17} />
+            {t('schedules.loadArduino')}
+          </button>
+
+          <button
+            className="secondary"
+            onClick={
+              () =>
+                void exportJson()
+            }
+            disabled={
+              state.busy
+            }
+          >
+            <Download size={17} />
+            {t('schedules.saveJson')}
+          </button>
+
+          <button
+            className="secondary"
+            onClick={
+              () =>
+                void importJson()
+            }
+            disabled={
+              state.busy
+            }
+          >
+            <Upload size={17} />
+            {t('schedules.loadJson')}
+          </button>
+
+          <button
+            className="danger"
+            onClick={() => void deleteAllSchedules()}
+            disabled={state.busy || !state.canWrite || draft.length === 0}
+          >
+            <Trash2 size={17} />
+            {t('schedules.deleteAll')}
+          </button>
+        </div>
+      </div>
+
+      <section className="panel">
+        <div className="panel-title">
+          <div>
+            <p className="eyebrow">
+              {t('schedules.verified')}
+            </p>
+            <h2>
+              Schedule szinkron
+            </h2>
+          </div>
+
+          {state.canWrite
+            ? <CheckCircle2 className="ok" />
+            : <Database />}
+        </div>
+
+        <div className="details-grid compact">
+          <div>
+            <span>
+              {t('schedules.arduinoRecords')}
+            </span>
+            <strong>
+              {state.syncState.count}
+            </strong>
+          </div>
+
+          <div>
+            <span>
+              {t('schedules.editList')}
+            </span>
+            <strong>
+              {draft.length}
+            </strong>
+          </div>
+
+          <div>
+            <span>
+              Revision
+            </span>
+            <strong>
+              {state.syncState.revision ?? '—'}
+            </strong>
+          </div>
+
+          <div>
+            <span>
+              Checksum
+            </span>
+            <strong>
+              {state.syncState.checksum || '—'}
+            </strong>
+          </div>
+        </div>
+
+        {!state.canWrite && (
+          <div className="notice">
+            <AlertTriangle size={18} />
+            <p>
+              {t('schedules.writeDisabled')}
+            </p>
+          </div>
+        )}
+
+        {state.syncState.recoveredLegacyActionCount > 0 && (
+          <div className="notice">
+            <AlertTriangle size={18} />
+            <p>
+              {t('schedules.recoveredLegacy',{
+                count: state.syncState.recoveredLegacyActionCount
+              })}
+            </p>
+          </div>
+        )}
+
+        {state.syncState.emptyActionCount > 0 && (
+          <div className="notice">
+            <AlertTriangle size={18} />
+            <p>
+              {t('schedules.emptyRecords',{
+                count: state.syncState.emptyActionCount
+              })}
+            </p>
+          </div>
+        )}
+      </section>
+
+      {saveProgress && (
+        <section className="schedule-save-progress-card" data-level={saveProgress.level} aria-live="polite">
+          <div className="schedule-save-progress-head">
+            <div className="schedule-save-progress-title">
+              {saveProgress.level==='success'?<CheckCircle2 className="ok" size={19}/>:saveProgress.level==='error'?<AlertTriangle size={19}/>:<Save className="is-running" size={19}/>}
+              <div><strong>{t('schedules.saveProgress.title')}</strong><small>{t(`schedules.saveProgress.${saveProgress.stage}`)}</small></div>
+            </div>
+            {saveProgress.total>0&&<span className="schedule-save-progress-count">{saveProgress.current} / {saveProgress.total}</span>}
+          </div>
+          <div className={`schedule-save-progress-track ${saveProgress.level==='info'&&saveProgress.stage!=='uploading'?'is-indeterminate':''}`}>
+            <div className="schedule-save-progress-bar" style={{width:`${saveProgress.level==='success'?100:saveProgress.stage==='uploading'&&saveProgress.total>0?Math.round((saveProgress.current/saveProgress.total)*100):Math.max(4,saveProgress.progress??0)}%`}}/>
+          </div>
+          <div className="schedule-save-progress-details">
+            {saveProgress.total>0&&<span>{t('schedules.saveProgress.records',{current:saveProgress.current,total:saveProgress.total})}</span>}
+            {saveProgress.revisionBefore!=null&&saveProgress.revisionAfter!=null&&<span>{t('schedules.saveProgress.revision',{before:saveProgress.revisionBefore,after:saveProgress.revisionAfter})}</span>}
+            {saveProgress.checksum&&<code>{saveProgress.checksum}</code>}
+            {saveProgress.durationMs!=null&&<span>{t('schedules.saveProgress.duration',{seconds:(saveProgress.durationMs/1000).toFixed(1)})}</span>}
+          </div>
+          {saveProgress.level==='error'&&<p className="schedule-save-progress-error">{saveProgress.message}</p>}
+        </section>
+      )}
+
+
+
+      <section className="panel beta2-schedule-copy">
+        <div className="panel-title">
+          <div>
+            <p className="eyebrow">{t('beta2.schedule.eyebrow')}</p>
+            <h2>{t('beta2.schedule.title')}</h2>
+          </div>
+          <CopyPlus />
+        </div>
+
+        <div className="beta2-copy-grid">
+          <label>
+            {t('beta2.schedule.sourceDay')}
+            <select
+              value={copySourceDay}
+              onChange={(event) =>
+                setCopySourceDay(
+                  Number(event.target.value)
+                )
+              }
+            >
+              {dayKeys.map((key, index) => (
+                <option key={key} value={index + 1}>
+                  {t(key)}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <div>
+            <span className="muted">{t('beta2.schedule.targetDays')}</span>
+            <div className="beta2-copy-targets">
+              {dayShortKeys.map((key, index) => {
+                const day = index + 1;
+                const active = copyTargetDays.includes(day);
+
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    className={active ? 'secondary active' : 'secondary'}
+                    disabled={day === copySourceDay}
+                    onClick={() =>
+                      setCopyTargetDays(
+                        (current) =>
+                          current.includes(day)
+                            ? current.filter((value) => value !== day)
+                            : [...current, day].sort()
+                      )
+                    }
+                  >
+                    {t(key)}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="beta2-copy-preview">
+            {t('beta2.schedule.preview',{
+              source: draft.filter((item) => item.day === copySourceDay).length,
+              targets: copyTargetDays.filter((day) => day !== copySourceDay).length
+            })}
+          </div>
+
+          <button
+            type="button"
+            className="secondary"
+            disabled={
+              state.busy ||
+              !draft.some((item) => item.day === copySourceDay)
+            }
+            onClick={copyDaySchedules}
+          >
+            <CopyPlus size={17} />
+            {t('beta2.schedule.copy')}
+          </button>
+        </div>
+      </section>
+
+      {conflict && (
+        <section className="v5-schedule-conflict">
+          <AlertTriangle size={22} />
+
+          <div>
+            <strong>
+              {t('schedules.conflictTitle')}
+            </strong>
+            <span>
+              {t('schedules.conflictHelp')}
+            </span>
+          </div>
+
+          <div className="v5-actions">
+            <button
+              className="secondary"
+              disabled={state.busy}
+              onClick={
+                () =>
+                  void reloadRemote()
+              }
+            >
+              <RefreshCw size={16} />
+              {t('schedules.reload')}
+            </button>
+          </div>
+        </section>
+      )}
+
+      {(fileMessage ||
+        state.notice ||
+        state.error) && (
+        <section className="panel">
+          {fileMessage && (
+            <p className="notice-text">
+              {fileMessage}
+            </p>
+          )}
+
+          {state.notice && (
+            <p className="notice-text">
+              {state.notice}
+            </p>
+          )}
+
+          {state.error && (
+            <p className="console-warning">
+              {state.error.code}
+              {': '}
+              {state.error.message}
+            </p>
+          )}
+        </section>
+      )}
+
+      <section className="panel">
+        <div className="panel-title">
+          <div>
+            <p className="eyebrow">{t('schedules.backupsEyebrow')}</p>
+            <h2>{t('schedules.restore')}</h2>
+          </div>
+          <Database />
+        </div>
+        {backups.length === 0 ? (
+          <p className="muted">{t('schedules.noBackups')}</p>
+        ) : (
+          <div className="v5-backup-list">
+            {backups.slice(0, 10).map((backup) => (
+              <article key={backup.id}>
+                <div>
+                  <strong>{t('schedules.recordCount',{count:backup.count})}</strong>
+                  <small>{new Date(backup.createdAt).toLocaleString(language === 'de' ? 'de-DE' : language === 'en' ? 'en-US' : 'hu-HU')} · revision {backup.revision ?? '—'}</small>
+                  <code>{backup.checksum || backup.id}</code>
+                </div>
+                <button className="secondary" disabled={state.busy || !state.canWrite} onClick={() => void restoreScheduleBackup(backup)}>
+                  {t('schedules.restoreButton')}
+                </button>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
+
+
 
 
 

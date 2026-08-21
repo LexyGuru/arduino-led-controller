@@ -10,7 +10,7 @@ const v615 = fs.readFileSync('scripts/test-v615-firmware-channel-startup-contrac
 const release = JSON.parse(fs.readFileSync('release-versions.json','utf8'));
 
 assert.equal(release.applicationRelease.channel,'beta');
-assert.equal(release.firmware,'5.0.1-beta.1');
+assert.equal(release.firmware,'5.1.0-beta.1');
 
 const appVersion = release.application;
 const beta = appVersion.match(/^(\d+)\.(\d+)\.(\d+)-beta\.(\d+)$/);
@@ -19,7 +19,6 @@ const releaseCandidate = `beta.${beta[4]}-gate`;
 
 assert.ok(env.includes(`RELEASE_CANDIDATE=${releaseCandidate}`));
 assert.ok(env.includes(`RELEASE_TARGET_VERSION=${appVersion}`));
-assert.ok(!env.includes('RELEASE_CANDIDATE=beta.1-gate'));
 
 assert.doesNotMatch(api,/function controlToken\(/);
 assert.doesNotMatch(api,/alc\.shared\.lxc\.ota-control-token/);

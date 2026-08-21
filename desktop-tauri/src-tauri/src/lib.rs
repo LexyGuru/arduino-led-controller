@@ -2536,6 +2536,33 @@ async fn arduino_status(state: State<'_, AppState>) -> Result<Value, String> {
     get_json(&state, "/api/v1/status").await
 }
 #[tauri::command]
+async fn led_topology(state: State<'_, AppState>) -> Result<Value, String> {
+    get_json(&state, "/api/v1/led-topology").await
+}
+
+#[tauri::command]
+async fn save_led_topology(
+    state: State<'_, AppState>,
+    base_revision: u64,
+    led_counts: Vec<u16>,
+) -> Result<Value, String> {
+    if led_counts.len() != 3 || led_counts.iter().any(|count| !(1..=300).contains(count)) {
+        return Err("Mindhárom LED szalaghoz 1 és 300 közötti LED-szám szükséges.".into());
+    }
+    put_json(
+        &state,
+        "/api/v1/led-topology",
+        serde_json::json!({
+            "baseRevision": base_revision,
+            "lx001": led_counts[0],
+            "lx002": led_counts[1],
+            "lx003": led_counts[2],
+        }),
+    )
+    .await
+}
+
+#[tauri::command]
 async fn sync_time_config(state: State<'_, AppState>) -> Result<Value, String> {
     let config = state
         .config
@@ -4380,6 +4407,8 @@ pub fn run() {
             save_config,
             save_ota_password,
             arduino_status,
+            led_topology,
+            save_led_topology,
             sync_time_config,
             arduino_logs,
             network_logs,

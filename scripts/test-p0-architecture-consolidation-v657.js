@@ -33,9 +33,9 @@ if (versions.channel === 'beta') {
   assert.match(currentVersion, /^\d+\.\d+\.\d+$/);
   assert.equal(versions.applicationRelease.channel, 'stable');
   assert.equal(versions.applicationRelease.branch, 'main');
-  assert.equal(versions.firmware, '5.0.1-beta.1');
+  assert.equal(versions.firmware, '5.1.0-beta.1');
   assert.equal(versions.firmwareRelease.channel, 'beta');
-  assert.equal(versions.firmwareRelease.recommendedVersion, '5.0.1-beta.1');
+  assert.equal(versions.firmwareRelease.recommendedVersion, '5.1.0-beta.1');
   console.log('P0_STABLE_IDENTITY_PROMOTION=PASSED');
 }
 

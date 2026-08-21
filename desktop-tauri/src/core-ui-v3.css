@@ -2888,3 +2888,906 @@ html[data-core-ui='3.0'] .v55-system-orbit .visual31-health-orbit {
     top: calc(50% + 50px) !important;
   }
 }
+
+
+/* V723 - Dynamic LED Topology Foundation */
+.led-topology-settings__grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; margin:18px 0; }
+.led-topology-settings__grid label { display:grid; gap:8px; }
+.led-topology-settings__grid input { width:100%; }
+.led-topology-settings__grid small { opacity:.72; }
+.led-topology-settings__summary { display:flex; flex-wrap:wrap; gap:12px 22px; margin:0 0 16px; }
+@media (max-width:760px) { .led-topology-settings__grid { grid-template-columns:1fr; } }
+
+
+/* V724 - Unified weekly schedule workspace */
+.schedule-unified-workspace {
+  display: grid;
+  gap: 18px;
+}
+
+.schedule-unified-day-tab {
+  appearance: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.schedule-unified-day-tab.is-selected {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.schedule-unified-body {
+  display: grid;
+  gap: 18px;
+  padding-top: 4px;
+}
+
+.schedule-unified-day-list {
+  margin: 0;
+}
+
+.schedule-unified-day-list .schedule-week-overview-head {
+  display: none;
+}
+
+.schedule-unified-day-list .schedule-week-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.schedule-unified-editor {
+  margin: 0;
+  border-top: 1px solid var(--border, rgba(148, 163, 184, .22));
+  padding-top: 18px;
+}
+
+.schedule-unified-editor .day-picker {
+  display: none;
+}
+
+.schedule-unified-editor-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.schedule-unified-editor-head h3,
+.schedule-unified-editor-head p {
+  margin: 0;
+}
+
+.schedule-unified-actions > div:first-child {
+  display: none;
+}
+
+.schedule-unified-actions {
+  justify-content: flex-end;
+  min-height: 0;
+}
+
+@media (max-width: 760px) {
+  .schedule-unified-editor-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+
+/* V728 - Responsive weekday-only map + modal editor */
+.schedule-unified-workspace .visual31-week-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 10px;
+  min-width: 0;
+  width: 100%;
+  overflow: visible;
+}
+
+.schedule-unified-workspace .schedule-unified-day-tab {
+  min-width: 0;
+  min-height: 76px;
+  display: grid;
+  place-items: center;
+  padding: 14px 10px;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.schedule-weekday-name {
+  display: block;
+  width: 100%;
+  text-align: center;
+  font-weight: 800;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.schedule-unified-workspace .visual31-week-day__rail,
+.schedule-unified-workspace .visual31-week-event,
+.schedule-unified-workspace .visual31-week-empty {
+  display: none;
+}
+
+.schedule-unified-body {
+  display: none;
+}
+
+.schedule-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(6, 12, 24, .54);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.schedule-modal-panel {
+  width: min(960px, calc(100vw - 40px));
+  max-height: min(900px, calc(100vh - 40px));
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
+  border: 1px solid var(--border, rgba(148, 163, 184, .30));
+  border-radius: 24px;
+  background: var(--surface);
+  box-shadow: 0 24px 80px rgba(2, 8, 23, .28);
+}
+
+.schedule-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 22px 16px;
+  border-bottom: 1px solid var(--border, rgba(148, 163, 184, .22));
+}
+
+.schedule-modal-header h2,
+.schedule-modal-header p {
+  margin: 0;
+}
+
+.schedule-modal-close {
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border-radius: 12px;
+  font-size: 28px;
+  line-height: 1;
+}
+
+.schedule-modal-content {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 18px 22px 24px;
+}
+
+.schedule-modal-content .schedule-unified-day-list,
+.schedule-modal-content .schedule-unified-editor {
+  width: 100%;
+}
+
+.schedule-modal-content .schedule-week-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
+  width: 100%;
+  overflow: visible;
+}
+
+.schedule-modal-content .schedule-day-card {
+  min-width: 0;
+  width: 100%;
+}
+
+@media (max-width: 1100px) {
+  .schedule-unified-workspace .visual31-week-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .schedule-unified-workspace .visual31-week-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .schedule-modal-backdrop {
+    padding: 10px;
+  }
+
+  .schedule-modal-panel {
+    width: calc(100vw - 20px);
+    max-height: calc(100dvh - 20px);
+    border-radius: 18px;
+  }
+
+  .schedule-modal-header {
+    padding: 16px;
+  }
+
+  .schedule-modal-content {
+    padding: 14px 16px 18px;
+  }
+
+  .schedule-modal-content .schedule-led-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 420px) {
+  .schedule-unified-workspace .visual31-week-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .schedule-unified-workspace .schedule-unified-day-tab {
+    min-height: 58px;
+  }
+
+  .schedule-modal-backdrop {
+    padding: 0;
+  }
+
+  .schedule-modal-panel {
+    width: 100vw;
+    max-height: 100dvh;
+    height: 100dvh;
+    border-radius: 0;
+    border-left: 0;
+    border-right: 0;
+  }
+}
+
+
+/* V730 - True viewport modal + desktop two-panel schedule workspace */
+
+.schedule-unified-workspace {
+  overflow: visible;
+}
+
+.schedule-unified-workspace .visual31-week-grid {
+  align-items: stretch;
+}
+
+.schedule-unified-workspace .schedule-unified-day-tab {
+  min-height: 68px;
+  padding: 12px 8px;
+}
+
+.schedule-unified-workspace .schedule-weekday-name {
+  overflow-wrap: normal;
+  word-break: normal;
+  white-space: nowrap;
+  text-align: center;
+  font-size: clamp(.76rem, .72rem + .16vw, .92rem);
+  letter-spacing: .01em;
+}
+
+.schedule-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100dvh;
+  z-index: 30000;
+  padding: 32px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+
+.schedule-modal-panel {
+  width: min(1320px, calc(100vw - 64px));
+  height: min(880px, calc(100dvh - 64px));
+  max-height: calc(100dvh - 64px);
+  min-height: 0;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.schedule-modal-content {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(330px, 390px) minmax(0, 1fr);
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.schedule-modal-list-pane,
+.schedule-modal-editor-pane {
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.schedule-modal-list-pane {
+  padding: 20px;
+  border-right: 1px solid var(--border);
+}
+
+.schedule-modal-editor-pane {
+  padding: 20px 24px 28px;
+  border-top: 0;
+}
+
+.schedule-modal-list-pane .schedule-week-grid,
+.schedule-modal-list-pane .schedule-day-card,
+.schedule-modal-list-pane .schedule-day-items,
+.schedule-modal-list-pane .schedule-compact-card {
+  min-width: 0;
+  width: 100%;
+  max-width: none;
+}
+
+.schedule-modal-list-pane .schedule-day-card {
+  margin: 0;
+}
+
+.schedule-modal-list-pane .schedule-compact-card {
+  grid-template-columns: 72px minmax(0, 1fr) auto;
+  gap: 10px;
+}
+
+.schedule-modal-list-pane .schedule-led-chips {
+  min-width: 0;
+}
+
+.schedule-modal-list-pane .schedule-led-chip {
+  max-width: 100%;
+}
+
+.schedule-modal-editor-pane .schedule-unified-editor-head {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding-bottom: 12px;
+  background: var(--surface);
+}
+
+.schedule-modal-editor-pane .schedule-led-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.schedule-modal-editor-pane .schedule-led-card {
+  min-width: 0;
+}
+
+@media (max-width: 1050px) {
+  .schedule-modal-backdrop {
+    padding: 20px;
+  }
+
+  .schedule-modal-panel {
+    width: calc(100vw - 40px);
+    height: calc(100dvh - 40px);
+    max-height: calc(100dvh - 40px);
+  }
+
+  .schedule-modal-content {
+    grid-template-columns: minmax(290px, 34%) minmax(0, 1fr);
+  }
+
+  .schedule-modal-editor-pane .schedule-led-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 820px) {
+  .schedule-modal-content {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(180px, 36%) minmax(0, 1fr);
+  }
+
+  .schedule-modal-list-pane {
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+    padding: 16px;
+  }
+
+  .schedule-modal-editor-pane {
+    padding: 16px 18px 22px;
+  }
+}
+
+@media (max-width: 720px) {
+  .schedule-unified-workspace .schedule-weekday-name {
+    font-size: .9rem;
+  }
+
+  .schedule-modal-editor-pane .schedule-led-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 420px) {
+  .schedule-modal-backdrop {
+    padding: 0;
+  }
+
+  .schedule-modal-panel {
+    width: 100vw;
+    height: 100dvh;
+    max-height: 100dvh;
+  }
+
+  .schedule-modal-content {
+    grid-template-rows: minmax(160px, 34%) minmax(0, 1fr);
+  }
+
+  .schedule-modal-list-pane,
+  .schedule-modal-editor-pane {
+    scrollbar-gutter: auto;
+  }
+}
+
+
+/* V731 - Schedule UX cross-viewport repair */
+
+/* Main launcher: deterministic wrapping, no horizontal overflow. */
+.schedule-unified-workspace,
+.schedule-unified-workspace .visual31-week-grid {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.schedule-unified-workspace .visual31-week-grid {
+  grid-template-columns: repeat(7, minmax(96px, 1fr));
+  gap: 12px;
+  overflow: visible;
+}
+
+.schedule-unified-workspace .schedule-unified-day-tab {
+  width: 100%;
+  min-width: 0;
+  min-height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 10px;
+}
+
+.schedule-unified-workspace .schedule-weekday-name {
+  min-width: 0;
+  max-width: 100%;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+/* True viewport modal: use the available screen instead of squeezing content. */
+.schedule-modal-backdrop {
+  padding: 16px;
+}
+
+.schedule-modal-panel {
+  width: min(1480px, calc(100vw - 32px));
+  height: min(920px, calc(100dvh - 32px));
+  max-height: calc(100dvh - 32px);
+  min-width: 0;
+}
+
+.schedule-modal-header {
+  min-width: 0;
+  padding: 18px 22px;
+}
+
+.schedule-modal-content {
+  grid-template-columns: minmax(440px, 500px) minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.schedule-modal-list-pane {
+  min-width: 0;
+  padding: 18px;
+  overflow-x: hidden;
+}
+
+.schedule-modal-editor-pane {
+  min-width: 0;
+  padding: 18px 22px 26px;
+  overflow-x: hidden;
+}
+
+/* Event card: time | LED summary | actions. Never overlap these zones. */
+.schedule-modal-list-pane .schedule-compact-card {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 74px minmax(0, 1fr) 88px;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  overflow: hidden;
+}
+
+.schedule-modal-list-pane .schedule-compact-time {
+  width: 100%;
+  min-width: 0;
+  justify-self: stretch;
+  text-align: center;
+}
+
+.schedule-modal-list-pane .schedule-led-chips {
+  min-width: 0;
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: center;
+  gap: 5px;
+  overflow: hidden;
+}
+
+.schedule-modal-list-pane .schedule-led-chip {
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.schedule-event-actions {
+  width: 88px;
+  min-width: 88px;
+  display: grid;
+  grid-template-columns: repeat(2, 40px);
+  gap: 8px;
+  align-items: center;
+  justify-content: end;
+}
+
+.schedule-event-action {
+  box-sizing: border-box;
+  width: 40px;
+  min-width: 40px;
+  height: 40px;
+  min-height: 40px;
+  display: inline-grid;
+  place-items: center;
+  padding: 0;
+  margin: 0;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.schedule-event-action svg {
+  width: 17px;
+  height: 17px;
+  pointer-events: none;
+}
+
+.schedule-event-action-edit {
+  border-color: var(--accent);
+}
+
+.schedule-event-action-delete {
+  border-color: var(--danger, currentColor);
+}
+
+/* Editor: controls own their column and can never push neighbours over. */
+.schedule-modal-editor-pane .schedule-led-grid {
+  width: 100%;
+  min-width: 0;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.schedule-modal-editor-pane .schedule-led-card,
+.schedule-modal-editor-pane label,
+.schedule-modal-editor-pane select,
+.schedule-modal-editor-pane input {
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.schedule-modal-editor-pane select,
+.schedule-modal-editor-pane input[type='time'] {
+  width: 100%;
+}
+
+.schedule-modal-editor-pane .color-row {
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+/* Wide laptop / small desktop: stack before either pane becomes cramped. */
+@media (max-width: 1180px) {
+  .schedule-unified-workspace .visual31-week-grid {
+    grid-template-columns: repeat(4, minmax(120px, 1fr));
+  }
+
+  .schedule-modal-content {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(220px, 38%) minmax(0, 1fr);
+  }
+
+  .schedule-modal-list-pane {
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .schedule-modal-list-pane .schedule-day-items {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .schedule-modal-list-pane .schedule-compact-card {
+    grid-template-columns: 68px minmax(0, 1fr) 88px;
+  }
+}
+
+@media (max-width: 820px) {
+  .schedule-unified-workspace .visual31-week-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .schedule-modal-backdrop {
+    padding: 8px;
+  }
+
+  .schedule-modal-panel {
+    width: calc(100vw - 16px);
+    height: calc(100dvh - 16px);
+    max-height: calc(100dvh - 16px);
+  }
+
+  .schedule-modal-list-pane .schedule-day-items {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .schedule-modal-editor-pane .schedule-led-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 520px) {
+  .schedule-unified-workspace .visual31-week-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .schedule-modal-backdrop {
+    padding: 0;
+  }
+
+  .schedule-modal-panel {
+    width: 100vw;
+    height: 100dvh;
+    max-height: 100dvh;
+    border-radius: 0;
+  }
+
+  .schedule-modal-header {
+    padding: 14px 16px;
+  }
+
+  .schedule-modal-content {
+    grid-template-rows: minmax(190px, 34%) minmax(0, 1fr);
+  }
+
+  .schedule-modal-list-pane,
+  .schedule-modal-editor-pane {
+    padding: 14px;
+  }
+
+  .schedule-modal-list-pane .schedule-compact-card {
+    grid-template-columns: 62px minmax(0, 1fr) 80px;
+    gap: 8px;
+    padding: 10px;
+  }
+
+  .schedule-event-actions {
+    width: 80px;
+    min-width: 80px;
+    grid-template-columns: repeat(2, 36px);
+    gap: 8px;
+  }
+
+  .schedule-event-action {
+    width: 36px;
+    min-width: 36px;
+    height: 36px;
+    min-height: 36px;
+  }
+}
+
+
+/* V732 - Schedule modal content polish */
+
+.schedule-modal-content {
+  background: var(--surface);
+}
+
+.schedule-modal-list-pane,
+.schedule-modal-editor-pane {
+  background: var(--surface);
+}
+
+.schedule-modal-list-pane .schedule-week-overview-head,
+.schedule-modal-list-pane .schedule-day-card-head,
+.schedule-modal-editor-pane .schedule-unified-editor-head {
+  display: none;
+}
+
+.schedule-modal-list-pane .schedule-week-grid,
+.schedule-modal-list-pane .schedule-day-card,
+.schedule-modal-list-pane .schedule-day-items {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+}
+
+.schedule-modal-list-pane .schedule-day-items {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+}
+
+.schedule-modal-list-pane .schedule-day-items > * {
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+}
+
+.schedule-modal-list-pane .schedule-compact-card {
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+  margin: 0;
+}
+
+.schedule-modal-list-pane {
+  padding: 20px;
+}
+
+.schedule-modal-editor-pane {
+  padding: 20px 24px 28px;
+}
+
+.schedule-event-actions {
+  align-self: center;
+}
+
+.schedule-event-action {
+  background: var(--surface);
+  border-width: 1px;
+  border-style: solid;
+}
+
+@media (max-width: 1180px) {
+  .schedule-modal-list-pane .schedule-day-items {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 820px) {
+  .schedule-modal-list-pane .schedule-day-items {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+
+/* V733 - Portal modal + canonical surfaces + isolated single-day list */
+
+/* Modal lives in document.body via React portal, outside page-transition-stage. */
+.schedule-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100dvh;
+  z-index: 30000;
+}
+
+.schedule-modal-panel {
+  background: var(--ds-surface-raised);
+}
+
+.schedule-modal-header {
+  background: var(--ds-surface-raised);
+  border-bottom: 1px solid var(--ds-border);
+}
+
+.schedule-modal-content {
+  background: var(--ds-surface);
+}
+
+.schedule-modal-list-pane {
+  background: var(--ds-surface);
+}
+
+.schedule-modal-editor-pane {
+  background: var(--ds-surface);
+}
+
+/* This is deliberately NOT schedule-week-grid.
+   It always represents one selected day and can never inherit 7/4/2-column
+   weekly breakpoints. */
+.schedule-modal-day-list {
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  overflow: visible;
+}
+
+.schedule-modal-day-list > .schedule-day-card {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+  margin: 0;
+}
+
+.schedule-modal-day-list .schedule-day-items {
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+}
+
+.schedule-modal-day-list .schedule-compact-card {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+}
+
+/* page-transition-stage remains free to animate the page itself; because the
+   modal is portaled to body, those transforms can no longer constrain it. */
+@media (max-width: 820px) {
+  .page-transition-stage {
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .schedule-modal-day-list,
+  .schedule-modal-day-list .schedule-day-items {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 520px) {
+  .page-transition-stage {
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .schedule-modal-panel {
+    background: var(--ds-surface-raised);
+  }
+
+  .schedule-modal-content,
+  .schedule-modal-list-pane,
+  .schedule-modal-editor-pane {
+    background: var(--ds-surface);
+  }
+}

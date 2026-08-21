@@ -1,5 +1,5 @@
 /*
- * Arduino LED Controller – 5.0.1-beta.1
+ * Arduino LED Controller – 5.1.0-beta.1
  * F14 Complete: Direct API v1, JSON body, header-only auth, A/B EEPROM és
  * tranzakciós schedule. A Tauri újratervezésének stabil firmware-alapja.
  */
@@ -14,7 +14,7 @@
 #include <stdarg.h>
 #include "secrets.h"
 
-#define FIRMWARE_VERSION "5.0.1-beta.1"
+#define FIRMWARE_VERSION "5.1.0-beta.1"
 #define FIRMWARE_FEATURE "f14-direct-api-v1-only-storage-udp-ntp-dst-ota-exclusive-v191-matrix-neopixel-ota-led-feedback-bootgen-sizeopt-schedule-progress-diag"
 #define OTA_MAINTENANCE_MODE_V1 1
 #define DIRECT_API_VERSION "1.0.0"
@@ -42,7 +42,10 @@ constexpr uint16_t HTTP_API_PORT = 80;
 constexpr uint16_t OTA_UPLOAD_PORT = 65280;
 constexpr uint16_t MDNS_PORT = 5353;
 constexpr uint8_t STRIP_COUNT = 3;
-constexpr uint16_t PIXELS = 300;
+constexpr uint16_t PIXELS = 300; // allocation capacity, not active runtime count
+constexpr uint16_t LED_COUNT_MIN = 1;
+constexpr uint16_t LED_COUNT_MAX = PIXELS;
+constexpr uint16_t LED_TOPOLOGY_VERSION = 1;
 constexpr uint8_t LED_PINS[STRIP_COUNT] = {6, 7, 8};
 constexpr uint8_t PIR_PINS[STRIP_COUNT] = {2, 3, 4};
 constexpr uint8_t BUTTON_MODE = A0, BUTTON_UP = A1, BUTTON_DOWN = A2;
@@ -177,9 +180,14 @@ struct __attribute__((packed)) StorageSlotHeader {
   uint8_t count;
   uint8_t reserved[6];
 };
+struct __attribute__((packed)) LedTopologySettings {
+  uint16_t version;
+  uint16_t ledCount[STRIP_COUNT];
+};
 struct __attribute__((packed)) ConfigPayload {
   NetworkSettings network;
   ApiSettings api;
+  LedTopologySettings topology;
 };
 struct __attribute__((packed)) BootGenerationRecord {
   uint32_t sequence;
@@ -245,6 +253,10 @@ Led leds[STRIP_COUNT];
 Log logs[LOG_CAPACITY];
 NetworkSettings networkSettings = {};
 ApiSettings apiSettings = {};
+LedTopologySettings ledTopology = {
+  LED_TOPOLOGY_VERSION,
+  {PIXELS, PIXELS, PIXELS}
+};
 TimeSettings timeSettings = {};
 bool timeSettingsStored = false;
 char ntpLastServer[48] = "";
@@ -571,12 +583,36 @@ uint16_t inactiveScheduleSlotOffset() {
   return activeScheduleSlotOffset == SCHEDULE_SLOT_A_OFFSET
     ? SCHEDULE_SLOT_B_OFFSET : SCHEDULE_SLOT_A_OFFSET;
 }
+void setDefaultLedTopology() {
+  ledTopology.version = LED_TOPOLOGY_VERSION;
+  for (uint8_t i = 0; i < STRIP_COUNT; i++) ledTopology.ledCount[i] = PIXELS;
+}
+bool ledTopologyValid(const LedTopologySettings& topology) {
+  if (topology.version != LED_TOPOLOGY_VERSION) return false;
+  for (uint8_t i = 0; i < STRIP_COUNT; i++) {
+    if (topology.ledCount[i] < LED_COUNT_MIN ||
+        topology.ledCount[i] > LED_COUNT_MAX) return false;
+  }
+  return true;
+}
+uint16_t activeLedCount(uint8_t index) {
+  if (index >= STRIP_COUNT || !ledTopologyValid(ledTopology)) return PIXELS;
+  return ledTopology.ledCount[index];
+}
+uint16_t totalActiveLedCount() {
+  uint16_t total = 0;
+  for (uint8_t i = 0; i < STRIP_COUNT; i++) total += activeLedCount(i);
+  return total;
+}
 uint16_t inactiveConfigSlotOffset() {
   return activeConfigSlotOffset == CONFIG_SLOT_A_OFFSET
     ? CONFIG_SLOT_B_OFFSET : CONFIG_SLOT_A_OFFSET;
 }
 bool saveConfigAb() {
-  ConfigPayload payload = {networkSettings, apiSettings};
+  ConfigPayload payload = {};
+  payload.network = networkSettings;
+  payload.api = apiSettings;
+  payload.topology = ledTopology;
   uint16_t target = inactiveConfigSlotOffset();
   uint32_t generation = configGeneration + 1;
   if (!writeSlot(target, CONFIG_SLOT_MAGIC, generation, 0,
@@ -598,12 +634,23 @@ void loadPersistentConfig() {
     uint16_t selectedOffset = useB ? CONFIG_SLOT_B_OFFSET : CONFIG_SLOT_A_OFFSET;
     StorageSlotHeader selectedHeader = useB ? bh : ah;
     ConfigPayload selected = {};
+    const uint16_t selectedPayloadLength =
+      min(static_cast<uint16_t>(sizeof(selected)), selectedHeader.payloadLength);
     eepromReadBytes(selectedOffset + sizeof(StorageSlotHeader),
-      reinterpret_cast<uint8_t*>(&selected), sizeof(selected));
+      reinterpret_cast<uint8_t*>(&selected), selectedPayloadLength);
     activeConfigSlotOffset = selectedOffset;
     configGeneration = selectedHeader.generation;
     networkSettings = selected.network;
     apiSettings = selected.api;
+    const uint16_t legacyConfigPayloadLength =
+      sizeof(NetworkSettings) + sizeof(ApiSettings);
+    if (selectedHeader.payloadLength >=
+          legacyConfigPayloadLength + sizeof(LedTopologySettings) &&
+        ledTopologyValid(selected.topology)) {
+      ledTopology = selected.topology;
+    } else {
+      setDefaultLedTopology();
+    }
     networkSettingsStored = networkSettingsValid(networkSettings);
     apiSettingsStored = apiSettingsValid(apiSettings);
   } else {
@@ -632,6 +679,7 @@ void loadPersistentConfig() {
     }
     networkSettingsStored = networkSettingsValid(networkSettings);
     apiSettingsStored = apiSettingsValid(apiSettings);
+    setDefaultLedTopology();
     if (networkSettingsStored && apiSettingsStored && saveConfigAb()) {
       legacyStorageMigrated = true;
       logCode("success", "X1001");
@@ -1458,7 +1506,7 @@ bool otaBootSuccessIndicatorActive() {
 void showOtaIndicator(uint8_t r, uint8_t g, uint8_t b, uint8_t brightness) {
   for (uint8_t i = 0; i < STRIP_COUNT; i++) {
     strip[i].setBrightness(brightness);
-    strip[i].fill(strip[i].Color(r,g,b));
+    fillActivePixels(i, strip[i].Color(r,g,b));
     strip[i].show();
   }
 }
@@ -1560,6 +1608,11 @@ uint32_t ledColor(uint8_t i, uint8_t scale = 255) {
     static_cast<uint8_t>((static_cast<uint16_t>(leds[i].blue) * scale + 127U) / 255U)
   );
 }
+void fillActivePixels(uint8_t i, uint32_t color) {
+  strip[i].clear();
+  const uint16_t count = activeLedCount(i);
+  for (uint16_t p = 0; p < count; p++) strip[i].setPixelColor(p, color);
+}
 void render(uint8_t i) {
   if (!leds[i].enabled) { strip[i].clear(); strip[i].show(); return; }
   strip[i].setBrightness(leds[i].brightness);
@@ -1567,46 +1620,70 @@ void render(uint8_t i) {
   switch (leds[i].effect) {
     case BLINK: {
       bool on = (now / effectDuration(700, leds[i].speed)) % 2 == 0;
-      strip[i].fill(on ? ledColor(i) : 0); break;
+      fillActivePixels(i, on ? ledColor(i) : 0); break;
     }
     case BREATHE: {
       unsigned long period = effectDuration(2500, leds[i].speed);
       uint16_t phase = static_cast<uint16_t>(((now % period) * 510UL) / period);
       uint8_t level = phase <= 255U ? static_cast<uint8_t>(phase) : static_cast<uint8_t>(510U - phase);
       uint8_t scale = static_cast<uint8_t>(20U + (static_cast<uint16_t>(235U) * level + 127U) / 255U);
-      strip[i].fill(ledColor(i, scale)); break;
+      fillActivePixels(i, ledColor(i, scale)); break;
     }
     case RAINBOW: {
+      strip[i].clear();
+      const uint16_t count = activeLedCount(i);
       uint16_t offset = now / effectDuration(12, leds[i].speed);
-      for (uint16_t p = 0; p < PIXELS; p++) {
-        uint16_t hue = (p * 65535UL / PIXELS + offset * 256UL) & 0xFFFFUL;
+      for (uint16_t p = 0; p < count; p++) {
+        uint16_t hue = (p * 65535UL / count + offset * 256UL) & 0xFFFFUL;
         strip[i].setPixelColor(p, strip[i].gamma32(strip[i].ColorHSV(hue)));
       }
       break;
     }
     case CHASE: {
       strip[i].clear();
-      uint16_t head = (now / effectDuration(35, leds[i].speed)) % PIXELS;
-      for (uint8_t tail = 0; tail < 8; tail++) {
+      const uint16_t count = activeLedCount(i);
+      uint16_t head = (now / effectDuration(35, leds[i].speed)) % count;
+      for (uint8_t tail = 0; tail < 8 && tail < count; tail++) {
         uint8_t scale = static_cast<uint8_t>((static_cast<uint16_t>(8U - tail) * 255U) / 8U);
-        strip[i].setPixelColor((head + PIXELS - tail) % PIXELS, ledColor(i, scale));
+        strip[i].setPixelColor((head + count - tail) % count, ledColor(i, scale));
       }
       break;
     }
-    default: strip[i].fill(ledColor(i)); break;
+    default: fillActivePixels(i, ledColor(i)); break;
   }
   strip[i].show();
 }
+bool animatedEffectActive(uint8_t index) {
+  if (index >= STRIP_COUNT || !leds[index].enabled) return false;
+  return leds[index].effect == BLINK ||
+    leds[index].effect == BREATHE ||
+    leds[index].effect == RAINBOW ||
+    leds[index].effect == CHASE;
+}
 void renderAll(bool force) {
-  // V191 stabilization:
-  // Do not perform background WS2812 transmissions from loop().
-  // Explicit API/schedule/restore paths already call renderAll(true),
-  // so static/off state changes remain immediate.
-  // Animated effects are intentionally paused until a non-blocking
-  // UNO R4 output backend is introduced.
-  if (!force) return;
-  lastFrame = millis();
-  for (uint8_t i = 0; i < STRIP_COUNT; i++) render(i);
+  const unsigned long now = millis();
+
+  if (force) {
+    lastFrame = now;
+    for (uint8_t i = 0; i < STRIP_COUNT; i++) render(i);
+    return;
+  }
+
+  // V724 bounded background animator:
+  // update at most one animated strip per EFFECT_FRAME tick so LED motion is
+  // restored without returning to an all-strips-per-loop WS2812 workload.
+  if (now - lastFrame < EFFECT_FRAME) return;
+
+  static uint8_t animatedCursor = 0;
+  for (uint8_t step = 0; step < STRIP_COUNT; step++) {
+    const uint8_t index = (animatedCursor + step) % STRIP_COUNT;
+    if (!animatedEffectActive(index)) continue;
+
+    lastFrame = now;
+    animatedCursor = (index + 1) % STRIP_COUNT;
+    render(index);
+    return;
+  }
 }
 void handlePir() {
 #if ENABLE_PIR_SENSORS
@@ -1748,6 +1825,7 @@ const char* authResultText(HttpAuthResult result) {
 bool pollingPath(const char* path) {
   return !strcmp(path, "/api/v1/ping") ||
     !strcmp(path, "/api/v1/status") ||
+    !strcmp(path, "/api/v1/led-topology") ||
     !strcmp(path, "/api/v1/logs") ||
     !strcmp(path, "/api/v1/ota/status");
 }
@@ -1937,14 +2015,16 @@ bool buildStatusJson(size_t& bodyLength, uint32_t requestId) {
     "\",\"lastStatus\":%d,\"lastDurationMs\":%lu,",
     lastHttpResponseCode, lastHttpDurationMs);
   appendFormat(b,
-    "\"lastClientAge\":%lu},\"strips\":[",
-    lastHttpClientAt ? (millis() - lastHttpClientAt) / 1000UL : 0);
+    "\"lastClientAge\":%lu},\"ledTopologyRevision\":%lu,\"ledTotal\":%u,\"strips\":[",
+    lastHttpClientAt ? (millis() - lastHttpClientAt) / 1000UL : 0,
+    static_cast<unsigned long>(configGeneration), totalActiveLedCount());
 
   for (uint8_t i = 0; i < STRIP_COUNT; i++) {
     if (i) appendChar(b, ',');
     appendFormat(b,
-      "{\"id\":%u,\"enabled\":%s,\"brightness\":%u,",
-      i + 1, leds[i].enabled ? "true" : "false", leds[i].brightness);
+      "{\"id\":%u,\"hardwareId\":\"LX%03u\",\"pin\":%u,\"ledCount\":%u,\"enabled\":%s,\"brightness\":%u,",
+      i + 1, i + 1, LED_PINS[i], activeLedCount(i),
+      leds[i].enabled ? "true" : "false", leds[i].brightness);
     appendFormat(b,
       "\"effect\":%u,\"speed\":%u,\"color\":[%u,%u,%u],",
       leds[i].effect, leds[i].speed,
@@ -2016,7 +2096,7 @@ void sendCapabilitiesJson(WiFiClient& c, uint32_t requestId) {
     "\"features\":{\"diagnostics\":false,\"serialCommands\":false,"
     "\"secretProfileExport\":true,\"ota\":true,\"legacyApi\":true,"
     "\"jsonBodyApi\":true,\"eepromAbSlots\":true,"
-    "\"remoteReboot\":true}}");
+    "\"dynamicLedTopology\":true,\"remoteReboot\":true}}");
   if (!b.valid) {
     sendErrorJson(c, 503, "RESPONSE_BUFFER_EXHAUSTED",
       "A capabilities valasz nem fert el.", requestId);
@@ -2483,11 +2563,70 @@ bool pathEquals(const char* left, const char* right) {
 bool pathStartsWith(const char* value, const char* prefix) {
   return value && prefix && strncmp(value, prefix, strlen(prefix)) == 0;
 }
+void sendLedTopologyJson(WiFiClient& c, uint32_t requestId) {
+  FixedBuffer b;
+  resetBuffer(b, httpBodyBuffer, sizeof(httpBodyBuffer));
+  appendFormat(b,
+    "{\"success\":true,\"requestId\":%lu,\"revision\":%lu,\"maxLedCount\":%u,\"strips\":[",
+    static_cast<unsigned long>(requestId),
+    static_cast<unsigned long>(configGeneration),
+    LED_COUNT_MAX);
+  for (uint8_t i = 0; i < STRIP_COUNT; i++) {
+    if (i) appendChar(b, ',');
+    appendFormat(b,
+      "{\"id\":\"LX%03u\",\"index\":%u,\"pin\":%u,\"ledCount\":%u}",
+      i + 1, i + 1, LED_PINS[i], activeLedCount(i));
+  }
+  appendRaw(b, "]}");
+  if (!b.valid) {
+    sendErrorJson(c, 503, "RESPONSE_BUFFER_EXHAUSTED",
+      "A LED topology valasz nem fert el.", requestId);
+    return;
+  }
+  sendJsonBuffer(c, b.data, b.length, 200, requestId);
+}
 int routeV1(WiFiClient& c, const char* method, const char* base,
     const char* query, const char* body, uint32_t requestId) {
   if (pathEquals(base, "/api/v1/ping") && pathEquals(method, "GET")) { sendPingJson(c, requestId); return 200; }
   if (pathEquals(base, "/api/v1/capabilities") && pathEquals(method, "GET")) { sendCapabilitiesJson(c, requestId); return 200; }
   if (pathEquals(base, "/api/v1/status") && pathEquals(method, "GET")) { sendStatusJson(c, requestId); return 200; }
+  if (pathEquals(base, "/api/v1/led-topology") && pathEquals(method, "GET")) {
+    sendLedTopologyJson(c, requestId); return 200;
+  }
+  if (pathEquals(base, "/api/v1/led-topology") && pathEquals(method, "PUT")) {
+    long baseRevision = -1, lx001 = 0, lx002 = 0, lx003 = 0;
+    if (!jsonReadInt(body, "baseRevision", baseRevision) ||
+        !jsonReadInt(body, "lx001", lx001) ||
+        !jsonReadInt(body, "lx002", lx002) ||
+        !jsonReadInt(body, "lx003", lx003) ||
+        baseRevision < 0 ||
+        lx001 < LED_COUNT_MIN || lx001 > LED_COUNT_MAX ||
+        lx002 < LED_COUNT_MIN || lx002 > LED_COUNT_MAX ||
+        lx003 < LED_COUNT_MIN || lx003 > LED_COUNT_MAX) {
+      sendErrorJson(c, 422, "VALIDATION_FAILED",
+        "baseRevision es LX001/LX002/LX003 1-300 kozotti LED szam kotelezo.", requestId);
+      return 422;
+    }
+    if (static_cast<uint32_t>(baseRevision) != configGeneration) {
+      sendErrorJson(c, 409, "REVISION_CONFLICT",
+        "A LED topology konfiguracio idokozben megvaltozott.", requestId);
+      return 409;
+    }
+    LedTopologySettings previous = ledTopology;
+    ledTopology.version = LED_TOPOLOGY_VERSION;
+    ledTopology.ledCount[0] = static_cast<uint16_t>(lx001);
+    ledTopology.ledCount[1] = static_cast<uint16_t>(lx002);
+    ledTopology.ledCount[2] = static_cast<uint16_t>(lx003);
+    if (!saveConfigAb()) {
+      ledTopology = previous;
+      sendErrorJson(c, 500, "EEPROM_VERIFY_FAILED",
+        "LED topology A/B EEPROM mentes vagy readback sikertelen.", requestId);
+      return 500;
+    }
+    renderAll(true);
+    sendLedTopologyJson(c, requestId);
+    return 200;
+  }
   if (pathEquals(base, "/api/v1/time/config") && pathEquals(method, "GET")) {
     FixedBuffer b; resetBuffer(b, httpBodyBuffer, sizeof(httpBodyBuffer));
     appendFormat(b, "{\"success\":true,\"timezoneId\":\"%s\",\"currentUtcOffsetMinutes\":%d,",
@@ -2995,6 +3134,12 @@ void printEepromStatus() {
   Serial.print("API checksum: ");
   Serial.println(apiSettingsValid(apiSettings) ? "OK" : "FAILED");
   Serial.print("A/B config slot: "); Serial.println(activeConfigSlotOffset);
+  Serial.print("LED topology revision: "); Serial.println(configGeneration);
+  for (uint8_t i = 0; i < STRIP_COUNT; i++) {
+    Serial.print("LX00"); Serial.print(i + 1);
+    Serial.print(" pin="); Serial.print(LED_PINS[i]);
+    Serial.print(" count="); Serial.println(activeLedCount(i));
+  }
   Serial.print("A/B schedule slot: "); Serial.println(activeScheduleSlotOffset);
   Serial.print("Boot generation: "); Serial.println(bootGeneration);
   Serial.print("Boot ring slot: "); Serial.println(activeBootGenerationSlot);

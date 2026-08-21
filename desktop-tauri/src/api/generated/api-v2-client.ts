@@ -1,5 +1,5 @@
 /* AUTO-GENERÁLT — NE SZERKESZD KÉZZEL. */
-/* OpenAPI verzió: 5.7.0-beta.5 */
+/* OpenAPI verzió: 5.8.0-beta.1 */
 
 import {
   ApiClientConfiguration,
@@ -76,6 +76,16 @@ export class ApiV2Client {
     }
 
     return payload as T;
+  }
+
+  /** Read Arduino LED hardware topology */
+  getApiV1LedTopology<T = unknown>(options: ApiRequestOptions = {}): Promise<T> {
+    return this.request<T>("GET", "/api/v1/led-topology", options);
+  }
+
+  /** Update persistent per-strip LED counts */
+  putApiV1LedTopology<T = unknown>(options: ApiRequestOptions = {}): Promise<T> {
+    return this.request<T>("PUT", "/api/v1/led-topology", options);
   }
 
   /** API discovery */

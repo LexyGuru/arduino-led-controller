@@ -42,12 +42,6 @@ const effectKeys = ['effects.0','effects.1','effects.2','effects.3','effects.4']
 const SEND_DELAY_MS =
   4000;
 
-const STRIP_TOPOLOGY: Record<number, { pin: number }> = {
-  1: { pin: 5 },
-  2: { pin: 6 },
-  3: { pin: 7 }
-};
-
 const EFFECT_VISUAL_KEYS = [
   { id: 0, icon: Square, className: 'is-solid' },
   { id: 1, icon: Zap, className: 'is-blink' },
@@ -281,10 +275,11 @@ function LedCard({
       );
   };
 
-  const topology =
-    STRIP_TOPOLOGY[draft.id] ?? {
-      pin: draft.id
-    };
+  const hardwareId =
+    draft.hardwareId ??
+    `LX${String(draft.id).padStart(3, '0')}`;
+  const hardwarePin = draft.pin ?? draft.id;
+  const hardwareLedCount = draft.ledCount ?? 300;
 
   const brightnessPercent =
     Math.round(
@@ -329,7 +324,7 @@ function LedCard({
             {t('leds.channel',{id:draft.id})}
           </span>
           <h3>
-            LED {draft.id}
+            {hardwareId}
           </h3>
         </div>
 
@@ -356,7 +351,8 @@ function LedCard({
       </div>
 
       <div className="visual31-led-hardware-meta">
-        <span><RadioTower size={15} />PIN {topology.pin}</span>
+        <span><RadioTower size={15} />PIN {hardwarePin}</span>
+        <span>{hardwareLedCount} LED</span>
         <span><Palette size={15} />{rgbToHex(draft.color).toUpperCase()}</span>
       </div>
 
@@ -653,10 +649,12 @@ export function LedsPage({
         </div>
         <div className="visual31-led-topology">
           {state.strips.map((strip) => {
-            const topology = STRIP_TOPOLOGY[strip.id] ?? { pin: strip.id };
+            const hardwareId = strip.hardwareId ?? `LX${String(strip.id).padStart(3, '0')}`;
+            const hardwarePin = strip.pin ?? strip.id;
+            const hardwareLedCount = strip.ledCount ?? 300;
             return (
               <div key={strip.id} className={`visual31-led-topology__node ${strip.enabled ? 'is-live' : 'is-off'}`}>
-                <span>LED {strip.id}</span><strong>PIN {topology.pin}</strong>
+                <span>{hardwareId} · {hardwareLedCount} LED</span><strong>PIN {hardwarePin}</strong>
                 <i style={{background:rgbToHex(strip.color),opacity:strip.enabled?1:.24}} />
               </div>
             );

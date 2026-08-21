@@ -1,7 +1,21 @@
 /* AUTO-GENERÁLT — NE SZERKESZD KÉZZEL. */
-/* OpenAPI verzió: 5.7.0-beta.5 */
+/* OpenAPI verzió: 5.8.0-beta.1 */
 
 export const API_V2_OPERATIONS = [
+  {
+    "id": "getApiV1LedTopology",
+    "method": "GET",
+    "path": "/api/v1/led-topology",
+    "summary": "Read Arduino LED hardware topology",
+    "tags": []
+  },
+  {
+    "id": "putApiV1LedTopology",
+    "method": "PUT",
+    "path": "/api/v1/led-topology",
+    "summary": "Update persistent per-strip LED counts",
+    "tags": []
+  },
   {
     "id": "getRoot",
     "method": "GET",

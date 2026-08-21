@@ -306,7 +306,10 @@ export function FirmwarePage({
         catalog: availableFirmwareVersion ?? t('common.unknown'),
         installed: installedFirmwareVersion ?? t('common.unknown')
       })
-    : firmware?.message ?? t('firmware.clickCheck');
+    : localizeFirmwareRuntimeMessage(
+        firmware?.message,
+        t
+      ) || t('firmware.clickCheck');
   const compatibilityHeadline = availableIsOlderThanInstalled
     ? t('firmware.noNewerFirmware')
     : firmware?.compatibilityStatus ?? t('firmware.compatNotRun');

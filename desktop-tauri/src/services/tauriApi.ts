@@ -1,8 +1,8 @@
 import { invoke } from '@tauri-apps/api/core';
 import { loadLxcSchedules, saveLxcSchedules } from './lxcScheduleCodec';
-import type { ArduinoConsoleResponse, ArduinoStatus, ConnectionConfig, FirmwareArtifact, FirmwareStatus, LedSchedule, LedStrip, NativeAppUpdateInfo, NetworkLog, OtaProgressEvent, RuntimeCapabilities, ScheduleBackup, ScheduleSaveProgressEvent, ScheduleSaveResult, ScheduleSyncSnapshot } from '../types';
+import type { ArduinoConsoleResponse, ArduinoStatus, ConnectionConfig, FirmwareArtifact, FirmwareStatus, LedSchedule, LedStrip, LedTopology, NativeAppUpdateInfo, NetworkLog, OtaProgressEvent, RuntimeCapabilities, ScheduleBackup, ScheduleSaveProgressEvent, ScheduleSaveResult, ScheduleSyncSnapshot } from '../types';
 
-const APP_VERSION='5.7.0-beta.5',CFG='alc.shared.lxc.config.v1',BACKUPS='alc.shared.lxc.schedule-backups.v1';
+const APP_VERSION='5.8.0-beta.1',CFG='alc.shared.lxc.config.v1',BACKUPS='alc.shared.lxc.schedule-backups.v1';
 export const isTauriRuntime=()=>typeof globalThis!=='undefined'&&'__TAURI_INTERNALS__' in globalThis;
 
 async function json<T>(url:string,init?:RequestInit):Promise<T>{
@@ -43,6 +43,8 @@ export const tauriApi={
   saveConfig:(c:ConnectionConfig):Promise<void>=>isTauriRuntime()?invoke('save_config',{config:c}):saveLxcConfig(c),
   saveOtaPassword:(password:string):Promise<void>=>isTauriRuntime()?invoke('save_ota_password',{password}):Promise.reject(new Error('LXC-ben az OTA-jelszó szerveroldali titok.')),
   status:():Promise<ArduinoStatus>=>isTauriRuntime()?invoke('arduino_status'):json('/api/v1/status'),
+  ledTopology:():Promise<LedTopology>=>isTauriRuntime()?invoke('led_topology'):json('/api/v1/led-topology'),
+  saveLedTopology:(baseRevision:number,ledCounts:number[]):Promise<LedTopology>=>isTauriRuntime()?invoke('save_led_topology',{baseRevision,ledCounts}):json('/api/v1/led-topology',{method:'PUT',body:JSON.stringify({baseRevision,lx001:ledCounts[0],lx002:ledCounts[1],lx003:ledCounts[2]})}),
   syncTimeConfig:():Promise<ArduinoStatus>=>{if(isTauriRuntime())return invoke('sync_time_config');const c=config();return json('/api/v1/time/config',{method:'PUT',body:JSON.stringify({timezoneId:c.timezoneId,timezoneAuto:c.timezoneAuto,utcOffsetMinutes:c.currentUtcOffsetMinutes,nextTransitionEpoch:c.nextTransitionEpoch,nextUtcOffsetMinutes:c.nextUtcOffsetMinutes})})},
   logs:(afterId=0):Promise<ArduinoConsoleResponse>=>isTauriRuntime()?invoke('arduino_logs',{afterId}):json(`/api/v1/logs?afterId=${afterId}`),
   networkLogs:():Promise<NetworkLog[]>=>isTauriRuntime()?invoke('network_logs'):Promise.resolve([]),

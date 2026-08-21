@@ -5,7 +5,7 @@ const fw=fs.readFileSync('firmware/ArduinoLedController/ArduinoLedController.ino
 const page=fs.readFileSync('desktop-tauri/src/pages/SettingsPage.tsx','utf8');
 const app=fs.readFileSync('desktop-tauri/src/App.tsx','utf8');
 const rv=JSON.parse(fs.readFileSync('release-versions.json','utf8'));
-a.equal(rv.application,'5.7.0-beta.5'); a.equal(rv.firmware,'5.0.1-beta.1');
+a.equal(rv.application,'5.8.0-beta.1'); a.equal(rv.firmware,'5.1.0-beta.1');
 a.equal(rv.firmwareRelease.channel,'beta');
 a.match(fw,/void showOtaIndicator\(uint8_t r, uint8_t g, uint8_t b, uint8_t brightness = 80\);/);
 a.match(fw,/void showOtaIndicator\(uint8_t r, uint8_t g, uint8_t b, uint8_t brightness\) \{/);

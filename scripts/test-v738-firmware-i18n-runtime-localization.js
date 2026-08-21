@@ -1,0 +1,24 @@
+#!/usr/bin/env node
+'use strict';
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const page=fs.readFileSync('desktop-tauri/src/pages/FirmwarePage.tsx','utf8');
+const runtime=fs.readFileSync('desktop-tauri/src/i18n/runtime.ts','utf8');
+const localization=fs.readFileSync('desktop-tauri/src/utils/firmwareLocalization.ts','utf8');
+const topbar=fs.readFileSync('desktop-tauri/src/components/Topbar.tsx','utf8');
+assert.match(topbar,/className="secondary core-refresh-button"[\s\S]*t\('common\.refresh'\)/);
+assert.equal((runtime.match(/['"]common\.refresh['"]\s*:/g)||[]).length,3);
+assert.match(runtime,/'common\.refresh': 'Frissítés'/);
+assert.match(runtime,/'common\.refresh': 'Refresh'/);
+assert.match(runtime,/'common\.refresh': 'Aktualisieren'/);
+assert.match(localization,/'Nincs folyamatban firmware-művelet\.': 'firmware\.runtimeIdle'/);
+assert.match(runtime,/"firmware\.runtimeIdle": "Nincs folyamatban firmware-művelet\."/);
+assert.match(runtime,/"firmware\.runtimeIdle": "No firmware operation is in progress\."/);
+assert.match(runtime,/"firmware\.runtimeIdle": "Kein Firmware-Vorgang läuft\."/);
+assert.match(page,/localizeFirmwareRuntimeMessage\(\s*firmware\?\.message,\s*t\s*\) \|\| t\('firmware\.clickCheck'\)/);
+assert.doesNotMatch(page,/:\s*firmware\?\.message\s*\?\?\s*t\('firmware\.clickCheck'\)/);
+console.log('V738_TOPBAR_REFRESH_I18N_BINDING=PASSED');
+console.log('V738_COMMON_REFRESH_HU_EN_DE=PASSED');
+console.log('V738_FIRMWARE_RUNTIME_IDLE_HU_EN_DE=PASSED');
+console.log('V738_FIRMWARE_STATUS_SUMMARY_LOCALIZED=PASSED');
+console.log('V738_RAW_FIRMWARE_HEADLINE_REMOVED=PASSED');
