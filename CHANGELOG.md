@@ -1,3 +1,10 @@
+# 5.8.0-beta.3 — Mobile LED and Beta OTA hotfix
+
+- Mobile LED preview brightness/effect readout visibility fix.
+- Native mobile Beta OTA uses the dedicated firmware Beta release directly.
+- Firmware remains `5.1.0-beta.2`; firmware source unchanged.
+- Direct API remains `1.0.0`.
+
 # 5.8.0-beta.2 — Mobile schedule and topology feedback test build
 
 - Separate mobile schedule workspace with all seven weekdays visible.

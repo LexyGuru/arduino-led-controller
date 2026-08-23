@@ -1151,6 +1151,44 @@ async fn github_releases() -> Result<Vec<GitHubRelease>, String> {
         .map_err(|e| format!("A GitHub release-lista nem értelmezhető: {e}"))
 }
 
+
+// V765 - canonical dedicated Beta firmware release lookup
+async fn github_release_by_tag(tag: &str) -> Result<GitHubRelease, String> {
+    let url = format!(
+        "https://api.github.com/repos/{}/releases/tags/{}",
+        FIRMWARE_REPOSITORY,
+        tag
+    );
+    reqwest::Client::builder()
+        .timeout(Duration::from_secs(25))
+        .build()
+        .map_err(|e| e.to_string())?
+        .get(url)
+        .header("User-Agent", "arduino-led-controller-tauri")
+        .header("Accept", "application/vnd.github+json")
+        .header("X-GitHub-Api-Version", "2022-11-28")
+        .send()
+        .await
+        .map_err(|e| format!("GitHub firmware-release kapcsolati hiba: {e}"))?
+        .error_for_status()
+        .map_err(|e| format!("GitHub firmware-release HTTP-hiba: {e}"))?
+        .json()
+        .await
+        .map_err(|e| format!("A GitHub firmware release nem értelmezhető: {e}"))
+}
+
+async fn firmware_releases_for_channel(channel: &str) -> Result<Vec<GitHubRelease>, String> {
+    let normalized = if channel.trim() == "stable" { "stable" } else { "beta" };
+    if normalized == "beta" {
+        if let Ok(release) = github_release_by_tag(FIRMWARE_BETA_RELEASE_TAG).await {
+            if !release.draft && release.prerelease {
+                return Ok(vec![release]);
+            }
+        }
+    }
+    github_releases().await
+}
+
 fn release_matches_channel(release: &GitHubRelease, channel: &str) -> bool {
     !release.draft
         && if channel == "stable" {
@@ -1270,7 +1308,7 @@ async fn firmware_releases(
             .clone(),
     };
     let normalized_channel = if channel.trim() == "stable" { "stable" } else { "beta" };
-    let releases = github_releases().await?;
+    let releases = firmware_releases_for_channel(normalized_channel).await?;
     let mut artifacts = releases
         .iter()
         .flat_map(|release| firmware_artifacts_from_release_channel(release, normalized_channel))
@@ -1289,7 +1327,7 @@ async fn firmware_releases(
 
 async fn latest_firmware(config: &Config) -> Result<FirmwareArtifact, String> {
     let normalized_channel = if config.firmware_update_channel.trim() == "stable" { "stable" } else { "beta" };
-    github_releases()
+    firmware_releases_for_channel(normalized_channel)
         .await?
         .iter()
         .flat_map(|release| firmware_artifacts_from_release_channel(release, normalized_channel))
@@ -4109,7 +4147,7 @@ async fn firmware_install_release(
         }
     };
     let requested = normalize_version(tag.trim());
-    let allowed = github_releases()
+    let allowed = firmware_releases_for_channel(normalized_channel)
         .await?
         .iter()
         .flat_map(|release| firmware_artifacts_from_release_channel(release, normalized_channel))
