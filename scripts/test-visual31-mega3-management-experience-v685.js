@@ -9,6 +9,8 @@ const logs=read('desktop-tauri/src/pages/LogsPage.tsx');
 const settings=read('desktop-tauri/src/pages/SettingsPage.tsx');
 const css=read('desktop-tauri/src/core-ui-v3.css');
 const release=JSON.parse(read('release-versions.json'));
+const __v774AppBeta = /-beta\.\d+$/.test(release.application);
+const __v774FirmwareBeta = /-beta\.\d+$/.test(release.firmware);
 const suite=JSON.parse(read('scripts/test-suite-v2.json'));
 assert.equal(release.application, release.applicationRelease.version);
 assert.equal(release.firmwareRelease.recommendedVersion, release.firmware);

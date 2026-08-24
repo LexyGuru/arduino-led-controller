@@ -10,11 +10,13 @@ const provider = read('desktop-tauri/src/design-system/ThemeProvider.tsx');
 const types = read('desktop-tauri/src/design-system/theme-types.ts');
 const sidebar = read('desktop-tauri/src/components/Sidebar.tsx');
 const release = JSON.parse(read('release-versions.json'));
+const __v774AppBeta = /-beta\.\d+$/.test(release.application);
+const __v774FirmwareBeta = /-beta\.\d+$/.test(release.firmware);
 const manifest = JSON.parse(read('scripts/test-suite-v2.json'));
 
 assert.equal(release.application, release.applicationRelease.version);
 assert.equal(release.firmwareRelease.recommendedVersion, release.firmware);
-assert.equal(release.firmwareRelease.channel, 'beta');
+assert.equal(release.firmwareRelease.channel, __v774FirmwareBeta ? 'beta' : 'stable');
 assert.match(types,/THEME_ENGINE_PRODUCT_VERSION = '2\.0'/);
 assert.match(types,/CORE_UI_VERSION = '3\.0'/);
 

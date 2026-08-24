@@ -5,8 +5,11 @@ const fw=fs.readFileSync('firmware/ArduinoLedController/ArduinoLedController.ino
 const page=fs.readFileSync('desktop-tauri/src/pages/SettingsPage.tsx','utf8');
 const app=fs.readFileSync('desktop-tauri/src/App.tsx','utf8');
 const rv=JSON.parse(fs.readFileSync('release-versions.json','utf8'));
+const __v774AppBeta = /-beta\.\d+$/.test(rv.application);
+const __v774FirmwareBeta = /-beta\.\d+$/.test(rv.firmware);
 a.equal(rv.application,rv.applicationRelease.version); a.equal(rv.firmwareRelease.recommendedVersion,rv.firmware);
-a.equal(rv.firmwareRelease.channel,'beta');
+const firmwareBeta=/-beta\.\d+$/.test(rv.firmware);
+a.equal(rv.firmwareRelease.channel,firmwareBeta?'beta':'stable');
 a.match(fw,/void showOtaIndicator\(uint8_t r, uint8_t g, uint8_t b, uint8_t brightness = 80\);/);
 a.match(fw,/void showOtaIndicator\(uint8_t r, uint8_t g, uint8_t b, uint8_t brightness\) \{/);
 a.ok(fw.indexOf('void showOtaIndicator(uint8_t r, uint8_t g, uint8_t b, uint8_t brightness = 80);') < fw.indexOf('void enterOtaExclusiveMode()'));

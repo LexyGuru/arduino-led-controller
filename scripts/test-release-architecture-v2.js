@@ -2,6 +2,8 @@
 'use strict';
 const fs=require('fs'); const branch=process.argv[2];
 const m=JSON.parse(fs.readFileSync('release-versions.json','utf8')); const a=JSON.parse(fs.readFileSync('contracts/release-architecture-v2.json','utf8'));
+const __v774AppBeta = /-beta\.\d+$/.test(m.application);
+const __v774FirmwareBeta = /-beta\.\d+$/.test(m.firmware);
 function ok(v,msg){if(!v){console.error('RELEASE_ARCH_V2_FAIL='+msg);process.exit(1)}}
 ok(m.schemaVersion===2,'manifest schema'); ok(m.applicationRelease&&m.firmwareRelease,'release objects'); ok(m.application===m.applicationRelease.version,'app alias'); ok(m.channel===m.applicationRelease.channel,'channel alias'); ok(a.schemaVersion===2,'arch schema'); ok(a.rules.applicationAndFirmwareHaveIndependentLifecycles===true,'independent lifecycle'); ok(a.rules.stableAndBetaCatalogsMustNeverMix===true,'catalog separation');
 if(branch==='next'){ok(m.applicationRelease.channel==='beta','next beta');ok(m.applicationRelease.branch==='next/v5-rearchitecture','next branch');ok(m.applicationRelease.updaterAlias==='updater-beta','next updater');ok(m.firmwareRelease.channel==='beta','next fw beta');ok(m.firmwareRelease.available===true,'next fw available');ok(m.firmwareRelease.recommendedVersion==='5.0.0-beta.10','next fw rec');}

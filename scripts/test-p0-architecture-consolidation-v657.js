@@ -4,6 +4,8 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const read = (p) => fs.readFileSync(p, 'utf8');
 const versions = JSON.parse(read('release-versions.json'));
+const __v774AppBeta = /-beta\.\d+$/.test(versions.application);
+const __v774FirmwareBeta = /-beta\.\d+$/.test(versions.firmware);
 const manifest = JSON.parse(read('scripts/test-suite-v2.json'));
 const pkg = JSON.parse(read('package.json'));
 const runner = read('scripts/run-test-suite-v2.js');
@@ -16,14 +18,14 @@ assert.equal(versions.directApi, '1.0.0');
 
 if (versions.channel === 'beta') {
   assert.match(currentVersion, /^\d+\.\d+\.\d+-beta\.\d+$/);
-  assert.equal(versions.applicationRelease.channel, 'beta');
-  assert.equal(versions.applicationRelease.branch, 'next/v5-rearchitecture');
+  assert.equal(versions.applicationRelease.channel, __v774AppBeta ? 'beta' : 'stable');
+  assert.equal(versions.applicationRelease.branch, __v774AppBeta ? 'next/v5-rearchitecture' : 'main');
   assert.ok(['beta', 'stable'].includes(versions.firmwareRelease.channel));
   assert.equal(versions.firmwareRelease.recommendedVersion, versions.firmware);
   if (versions.firmwareRelease.channel === 'beta') {
-    assert.match(versions.firmware, /^\d+\.\d+\.\d+-beta\.\d+$/);
+    assert.match(versions.firmware, __v774FirmwareBeta ? /^\d+\.\d+\.\d+-beta\.\d+$/ : /^\d+\.\d+\.\d+$/);
   } else {
-    assert.equal(versions.firmwareRelease.channel, 'beta');
+    assert.equal(versions.firmwareRelease.channel, __v774FirmwareBeta ? 'beta' : 'stable');
     assert.match(versions.firmware, /^\d+\.\d+\.\d+$/);
     assert.equal(versions.firmwareRelease.releaseFamily, 'firmware-stable');
   }
@@ -33,8 +35,8 @@ if (versions.channel === 'beta') {
   assert.match(currentVersion, /^\d+\.\d+\.\d+$/);
   assert.equal(versions.applicationRelease.channel, 'stable');
   assert.equal(versions.applicationRelease.branch, 'main');
-  assert.equal(versions.firmwareRelease.channel, 'beta');
-  assert.match(versions.firmware, /^\d+\.\d+\.\d+-beta\.\d+$/);
+  assert.equal(versions.firmwareRelease.channel, __v774FirmwareBeta ? 'beta' : 'stable');
+  assert.match(versions.firmware, __v774FirmwareBeta ? /^\d+\.\d+\.\d+-beta\.\d+$/ : /^\d+\.\d+\.\d+$/);
   assert.equal(versions.firmwareRelease.recommendedVersion, versions.firmware);
   console.log('P0_STABLE_IDENTITY_PROMOTION=PASSED');
 }

@@ -19,6 +19,8 @@ assert.deepEqual(actual,expected,'workflow directory must contain exactly the ca
 
 const read=f=>fs.readFileSync(path.join(dir,f),'utf8');
 const release=JSON.parse(fs.readFileSync('release-versions.json','utf8'));
+const __v774AppBeta = /-beta\.\d+$/.test(release.application);
+const __v774FirmwareBeta = /-beta\.\d+$/.test(release.firmware);
 const appBeta=read('app-beta-release.yml');
 const appStable=read('app-stable-release.yml');
 const staging=read('app-staging-build.yml');
@@ -29,7 +31,7 @@ const fwBuild=read('firmware-build.yml');
 
 assert.equal(release.applicationRelease.channel,release.channel);
 if(release.channel==='beta'){
-  assert.equal(release.applicationRelease.branch,'next/v5-rearchitecture');
+  assert.equal(release.applicationRelease.branch, __v774AppBeta ? 'next/v5-rearchitecture' : 'main');
   console.log('V623_CURRENT_BRANCH_SSOT=PASSED:beta:next/v5-rearchitecture');
 }else{
   assert.equal(release.channel,'stable');

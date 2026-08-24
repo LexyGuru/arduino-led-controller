@@ -7,6 +7,8 @@ const read=path=>fs.readFileSync(path,'utf8');
 
 const version=read('VERSION').trim();
 const versions=JSON.parse(read('release-versions.json'));
+const __v774AppBeta = /-beta\.\d+$/.test(versions.application);
+const __v774FirmwareBeta = /-beta\.\d+$/.test(versions.firmware);
 assert.equal(versions.application,version);
 
 const beta=version.match(/^(\d+)\.(\d+)\.(\d+)-beta\.(\d+)$/);

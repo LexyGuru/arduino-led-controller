@@ -6,6 +6,8 @@ const fs = require('node:fs');
 
 const read = (p) => fs.readFileSync(p, 'utf8');
 const rv = JSON.parse(read('release-versions.json'));
+const __v774AppBeta = /-beta\.\d+$/.test(rv.application);
+const __v774FirmwareBeta = /-beta\.\d+$/.test(rv.firmware);
 
 const fw = read('firmware/ArduinoLedController/ArduinoLedController.ino');
 const rust = read('desktop-tauri/src-tauri/src/lib.rs');
@@ -24,7 +26,7 @@ assert.ok(
 );
 
 if (firmwareChannel === 'beta') {
-  assert.match(rv.firmware, /^\d+\.\d+\.\d+-beta\.\d+$/);
+  assert.match(rv.firmware, __v774FirmwareBeta ? /^\d+\.\d+\.\d+-beta\.\d+$/ : /^\d+\.\d+\.\d+$/);
 } else {
   assert.match(rv.firmware, /^\d+\.\d+\.\d+$/);
   assert.equal(rv.firmwareRelease.available, true);

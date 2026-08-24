@@ -6,6 +6,8 @@ const fs = require('node:fs');
 const read = (p) => fs.readFileSync(p, 'utf8');
 
 const versions = JSON.parse(read('release-versions.json'));
+const __v774AppBeta = /-beta\.\d+$/.test(versions.application);
+const __v774FirmwareBeta = /-beta\.\d+$/.test(versions.firmware);
 const versionFile = read('VERSION').trim();
 const checker = read('scripts/check-versions.py');
 
@@ -16,7 +18,7 @@ assert.equal(versions.applicationRelease.channel, versions.channel);
 let appWorkflow;
 let firmwareWorkflow;
 if (versions.channel === 'beta') {
-  assert.equal(versions.applicationRelease.branch, 'next/v5-rearchitecture');
+  assert.equal(versions.applicationRelease.branch, __v774AppBeta ? 'next/v5-rearchitecture' : 'main');
   appWorkflow = read('.github/workflows/app-beta-release.yml');
   firmwareWorkflow = read(
     versions.firmwareRelease.channel === 'beta'
@@ -35,7 +37,7 @@ if (versions.channel === 'beta') {
     assert.match(firmwareWorkflow, /release-versions\.json'\)\.applicationRelease\.branch/);
     assert.match(firmwareWorkflow, /release-versions\.json'\)\.firmwareRelease\.channel/);
   } else {
-    assert.equal(versions.firmwareRelease.channel, 'beta');
+    assert.equal(versions.firmwareRelease.channel, __v774FirmwareBeta ? 'beta' : 'stable');
     assert.match(firmwareWorkflow, /firmwareRelease\.recommendedVersion/);
     assert.match(firmwareWorkflow, /GITHUB_REF_NAME/);
   }

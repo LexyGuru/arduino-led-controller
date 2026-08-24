@@ -1,3 +1,10 @@
+# 5.8.0 — Stable 5.8 release
+
+- Promoted the tested 5.8 Beta application line to Stable.
+- Promoted firmware `5.1.0-beta.2` to Stable `5.1.0`.
+- Mobile LED readout, OTA catalog, schedule and responsive fixes included.
+- Direct API remains `1.0.0`.
+
 # 5.8.0-beta.3 — Mobile LED and Beta OTA hotfix
 
 - Mobile LED preview brightness/effect readout visibility fix.

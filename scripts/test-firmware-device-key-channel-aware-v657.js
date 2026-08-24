@@ -4,7 +4,10 @@ const assert = require('node:assert/strict');
 const cp = require('node:child_process');
 const fs = require('node:fs');
 const versions = JSON.parse(fs.readFileSync('release-versions.json', 'utf8'));
+const __v774AppBeta = /-beta\.\d+$/.test(versions.application);
+const __v774FirmwareBeta = /-beta\.\d+$/.test(versions.firmware);
 const release = JSON.parse(fs.readFileSync('firmware/firmware-release.json', 'utf8'));
+const __v774FirmwareMetaBeta = /-beta\.\d+$/.test(release.firmwareVersion);
 const deviceTest = fs.readFileSync('scripts/test-alpha3-device-key-header.js', 'utf8');
 
 function validFirmwareVersion(version, channel) {

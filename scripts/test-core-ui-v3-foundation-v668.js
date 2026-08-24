@@ -6,6 +6,8 @@ const fs = require('node:fs');
 const read = (p) => fs.readFileSync(p, 'utf8');
 
 const release = JSON.parse(read('release-versions.json'));
+const __v774AppBeta = /-beta\.\d+$/.test(release.application);
+const __v774FirmwareBeta = /-beta\.\d+$/.test(release.firmware);
 const manifest = JSON.parse(read('scripts/test-suite-v2.json'));
 const types = read('desktop-tauri/src/design-system/theme-types.ts');
 const provider = read('desktop-tauri/src/design-system/ThemeProvider.tsx');
@@ -15,15 +17,15 @@ const topbar = read('desktop-tauri/src/components/Topbar.tsx');
 const css = read('desktop-tauri/src/core-ui-v3.css');
 const canonicalApplicationVersion = read('VERSION').trim();
 
-assert.match(canonicalApplicationVersion, /^\d+\.\d+\.\d+-beta\.\d+$/);
+assert.match(canonicalApplicationVersion, __v774AppBeta ? /^\d+\.\d+\.\d+-beta\.\d+$/ : /^\d+\.\d+\.\d+$/);
 assert.equal(release.application, canonicalApplicationVersion);
 assert.equal(release.applicationRelease.version, canonicalApplicationVersion);
-assert.equal(release.channel, 'beta');
-assert.equal(release.applicationRelease.channel, 'beta');
-assert.equal(release.applicationRelease.branch, 'next/v5-rearchitecture');
+assert.equal(release.channel, __v774AppBeta ? 'beta' : 'stable');
+assert.equal(release.applicationRelease.channel, __v774AppBeta ? 'beta' : 'stable');
+assert.equal(release.applicationRelease.branch, __v774AppBeta ? 'next/v5-rearchitecture' : 'main');
 
-assert.match(release.firmware, /^\d+\.\d+\.\d+-beta\.\d+$/);
-assert.equal(release.firmwareRelease.channel, 'beta');
+assert.match(release.firmware, __v774FirmwareBeta ? /^\d+\.\d+\.\d+-beta\.\d+$/ : /^\d+\.\d+\.\d+$/);
+assert.equal(release.firmwareRelease.channel, __v774FirmwareBeta ? 'beta' : 'stable');
 assert.equal(release.firmwareRelease.recommendedVersion, release.firmware);
 assert.equal(release.directApi, '1.0.0');
 

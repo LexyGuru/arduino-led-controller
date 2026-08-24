@@ -9,6 +9,8 @@ const firmwarePage = fs.readFileSync('desktop-tauri/src/pages/FirmwarePage.tsx',
 const tauriApi = fs.readFileSync('desktop-tauri/src/services/tauriApi.ts', 'utf8');
 const version = fs.readFileSync('VERSION', 'utf8').trim();
 const release = JSON.parse(fs.readFileSync('release-versions.json', 'utf8'));
+const __v774AppBeta = /-beta\.\d+$/.test(release.application);
+const __v774FirmwareBeta = /-beta\.\d+$/.test(release.firmware);
 
 assert.equal(version, release.application);
 assert.equal(release.application, release.applicationRelease.version);

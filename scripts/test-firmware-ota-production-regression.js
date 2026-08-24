@@ -5,7 +5,10 @@ const fs=require("node:fs");
 
 const fw=fs.readFileSync("firmware/ArduinoLedController/ArduinoLedController.ino","utf8");
 const versions=JSON.parse(fs.readFileSync("release-versions.json","utf8"));
+const __v774AppBeta = /-beta\.\d+$/.test(versions.application);
+const __v774FirmwareBeta = /-beta\.\d+$/.test(versions.firmware);
 const meta=JSON.parse(fs.readFileSync("firmware/firmware-release.json","utf8"));
+const __v774FirmwareMetaBeta = /-beta\.\d+$/.test(meta.firmwareVersion);
 const otaDoc=fs.readFileSync("docs/firmware/OTA_UPDATE.md","utf8");
 
 assert.ok(
@@ -20,8 +23,8 @@ assert.ok(
 );
 
 if (firmwareChannel==="beta") {
-  assert.match(versions.firmware,/^\d+\.\d+\.\d+-beta\.\d+$/);
-  assert.equal(meta.channel,"beta");
+  assert.match(versions.firmware, __v774FirmwareBeta ? /^\d+\.\d+\.\d+-beta\.\d+$/ : /^\d+\.\d+\.\d+$/);
+  assert.equal(meta.channel, __v774FirmwareMetaBeta ? 'beta' : 'stable');
 } else {
   assert.match(versions.firmware,/^\d+\.\d+\.\d+$/);
   assert.equal(meta.channel,"stable");

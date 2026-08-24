@@ -6,6 +6,8 @@ const read=p=>fs.readFileSync(p,'utf8');
 
 const version=read('VERSION').trim();
 const release=JSON.parse(read('release-versions.json'));
+const __v774AppBeta = /-beta\.\d+$/.test(release.application);
+const __v774FirmwareBeta = /-beta\.\d+$/.test(release.firmware);
 const isBeta=/-beta\.\d+$/.test(version);
 const isStable=/^\d+\.\d+\.\d+$/.test(version);
 assert.ok(isBeta||isStable,`Unsupported release version: ${version}`);

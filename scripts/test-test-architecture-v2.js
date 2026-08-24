@@ -7,6 +7,8 @@ const fs = require('node:fs');
 const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
 const manifest = JSON.parse(fs.readFileSync('scripts/test-suite-v2.json', 'utf8'));
 const release = JSON.parse(fs.readFileSync('release-versions.json', 'utf8'));
+const __v774AppBeta = /-beta\.\d+$/.test(release.application);
+const __v774FirmwareBeta = /-beta\.\d+$/.test(release.firmware);
 const scripts = pkg.scripts || {};
 
 assert.equal(scripts.test, 'node scripts/run-test-suite-v2.js default');

@@ -7,16 +7,18 @@ const exists=p=>fs.existsSync(p);
 
 const version=read('VERSION').trim();
 const release=JSON.parse(read('release-versions.json'));
+const __v774AppBeta = /-beta\.\d+$/.test(release.application);
+const __v774FirmwareBeta = /-beta\.\d+$/.test(release.firmware);
 assert.equal(release.application,version);
 assert.equal(release.applicationRelease.version,version);
 assert.equal(release.directApiRelease.version,release.directApi);
 
 let prefix;
 if (release.channel === 'beta') {
-  assert.equal(release.applicationRelease.channel,'beta');
-  assert.equal(release.applicationRelease.branch,'next/v5-rearchitecture');
-  assert.equal(release.applicationRelease.updaterAlias,'updater-beta');
-  assert.equal(release.applicationRelease.releaseType,'prerelease');
+  assert.equal(release.applicationRelease.channel, __v774AppBeta ? 'beta' : 'stable');
+  assert.equal(release.applicationRelease.branch, __v774AppBeta ? 'next/v5-rearchitecture' : 'main');
+  assert.equal(release.applicationRelease.updaterAlias, __v774AppBeta ? 'updater-beta' : 'updater-stable');
+  assert.equal(release.applicationRelease.releaseType, __v774AppBeta ? 'prerelease' : 'release');
   const m=version.match(/^(\d+)\.(\d+)\.(\d+)-beta\.(\d+)$/);
   assert.ok(m,`Unsupported Beta version: ${version}`);
   const [,major,minor,,betaNumber]=m;

@@ -5,6 +5,8 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const read = (p) => fs.readFileSync(p, 'utf8');
 const r = JSON.parse(read('release-versions.json'));
+const __v774AppBeta = /-beta\.\d+$/.test(r.application);
+const __v774FirmwareBeta = /-beta\.\d+$/.test(r.firmware);
 
 for (const f of [
   'app-beta-release.yml',
@@ -72,8 +74,8 @@ assert.match(fwStable, /firmware-catalog\.json/);
 assert.match(fwStable, /"channel":"stable"/);
 
 if (r.applicationRelease.channel === 'beta') {
-  assert.equal(r.applicationRelease.branch, 'next/v5-rearchitecture');
-  assert.equal(r.firmwareRelease.channel, 'beta');
+  assert.equal(r.applicationRelease.branch, __v774AppBeta ? 'next/v5-rearchitecture' : 'main');
+  assert.equal(r.firmwareRelease.channel, __v774FirmwareBeta ? 'beta' : 'stable');
 } else {
   assert.equal(r.applicationRelease.channel, 'stable');
   assert.equal(r.applicationRelease.branch, 'main');

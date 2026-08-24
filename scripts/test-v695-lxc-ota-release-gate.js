@@ -8,14 +8,18 @@ const env = fs.readFileSync('deploy/staging.env.example','utf8');
 const rust = fs.readFileSync('desktop-tauri/src-tauri/src/lib.rs','utf8');
 const v615 = fs.readFileSync('scripts/test-v615-firmware-channel-startup-contract.js','utf8');
 const release = JSON.parse(fs.readFileSync('release-versions.json','utf8'));
+const __v774AppBeta = /-beta\.\d+$/.test(release.application);
+const __v774FirmwareBeta = /-beta\.\d+$/.test(release.firmware);
 
-assert.equal(release.applicationRelease.channel,'beta');
+assert.equal(release.applicationRelease.channel, __v774AppBeta ? 'beta' : 'stable');
 assert.equal(release.firmwareRelease.recommendedVersion,release.firmware);
 
+const appBeta=__v774AppBeta;
 const appVersion = release.application;
 const beta = appVersion.match(/^(\d+)\.(\d+)\.(\d+)-beta\.(\d+)$/);
-assert.ok(beta, `Expected current beta application version, got ${appVersion}`);
-const releaseCandidate = `beta.${beta[4]}-gate`;
+const stable = appVersion.match(/^(\d+)\.(\d+)\.(\d+)$/);
+assert.ok(appBeta?beta:stable, `Unsupported current application version: ${appVersion}`);
+const releaseCandidate = appBeta?`beta.${beta[4]}-gate`:'stable-gate';
 
 assert.ok(env.includes(`RELEASE_CANDIDATE=${releaseCandidate}`));
 assert.ok(env.includes(`RELEASE_TARGET_VERSION=${appVersion}`));
@@ -35,8 +39,8 @@ assert.match(api,/const channel=config\(\)\.firmwareUpdateChannel;const list=awa
 assert.match(api,/return install\(list\[0\]\.firmwareVersion\?\?list\[0\]\.tag,channel\)/);
 assert.match(api,/saveOtaPassword:.*LXC-ben az OTA-jelszó szerveroldali titok/);
 
-assert.match(rust,/let artifact = if let Some\(version\) = requested_tag[\s\S]*github_releases\(\)[\s\S]*firmware_artifacts_from_release_channel\(release, normalized_channel\)/);
-assert.match(v615,/github_releases\\\(\\\)/);
+assert.match(rust,/firmware_install_release[\s\S]*firmware_releases_for_channel\(normalized_channel\)[\s\S]*firmware_artifacts_from_release_channel\(release, normalized_channel\)/);
+assert.match(v615,/firmware_releases_for_channel/);
 assert.match(v615,/firmware_artifacts_from_release_channel/);
 assert.doesNotMatch(v615,/requested_tag\[\\s\\S\]\*firmware_beta_release/);
 

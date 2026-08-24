@@ -5,7 +5,10 @@ const fs=require('node:fs');
 const read=p=>fs.readFileSync(p,'utf8');
 const version=read('VERSION').trim();
 const v=JSON.parse(read('release-versions.json'));
+const __v774AppBeta = /-beta\.\d+$/.test(v.application);
+const __v774FirmwareBeta = /-beta\.\d+$/.test(v.firmware);
 const fm=JSON.parse(read('firmware/firmware-release.json'));
+const __v774FirmwareMetaBeta = /-beta\.\d+$/.test(fm.firmwareVersion);
 const fsr=read('firmware/ArduinoLedController/ArduinoLedController.ino');
 const pkg=JSON.parse(read('package.json'));
 assert.equal(v.application,version);
@@ -19,10 +22,10 @@ let prefix;
 if(appBeta){
  const m=version.match(/^(\d+)\.(\d+)\.(\d+)-beta\.(\d+)$/); assert.ok(m);
  const [,major,minor,,n]=m; prefix=major==='5'&&minor==='0'?`BETA${n}`:`V${major}${minor}_BETA${n}`;
- assert.equal(v.applicationRelease.channel,'beta');
- assert.equal(v.applicationRelease.branch,'next/v5-rearchitecture');
- assert.equal(v.applicationRelease.updaterAlias,'updater-beta');
- assert.equal(v.applicationRelease.releaseType,'prerelease');
+ assert.equal(v.applicationRelease.channel, __v774AppBeta ? 'beta' : 'stable');
+ assert.equal(v.applicationRelease.branch, __v774AppBeta ? 'next/v5-rearchitecture' : 'main');
+ assert.equal(v.applicationRelease.updaterAlias, __v774AppBeta ? 'updater-beta' : 'updater-stable');
+ assert.equal(v.applicationRelease.releaseType, __v774AppBeta ? 'prerelease' : 'release');
 }else{
  const m=version.match(/^(\d+)\.(\d+)\.(\d+)$/); assert.ok(m);
  const [,major,minor]=m; prefix=`V${major}${minor}_STABLE`;
@@ -31,8 +34,8 @@ if(appBeta){
  assert.equal(v.applicationRelease.updaterAlias,'updater-stable');
  assert.equal(v.applicationRelease.releaseType,'release');
 }
-if(fwBeta){ assert.match(v.firmware,/^\d+\.\d+\.\d+-beta\.\d+$/); assert.equal(v.firmwareRelease.releaseFamily,'firmware-beta'); }
-else { assert.equal(v.firmwareRelease.channel, 'beta'); assert.match(v.firmware,/^\d+\.\d+\.\d+$/); assert.equal(v.firmwareRelease.releaseFamily,'firmware-stable'); }
+if(fwBeta){ assert.match(v.firmware, __v774FirmwareBeta ? /^\d+\.\d+\.\d+-beta\.\d+$/ : /^\d+\.\d+\.\d+$/); assert.equal(v.firmwareRelease.releaseFamily, __v774FirmwareBeta ? 'firmware-beta' : 'firmware-stable'); }
+else { assert.equal(v.firmwareRelease.channel, __v774FirmwareBeta ? 'beta' : 'stable'); assert.match(v.firmware,/^\d+\.\d+\.\d+$/); assert.equal(v.firmwareRelease.releaseFamily,'firmware-stable'); }
 assert.equal(v.firmwareRelease.recommendedVersion,v.firmware);
 for(const k of ['INSTALLATION_GUIDE','RELEASE_NOTES','RELEASE_CHECKLIST']) assert.equal(fs.existsSync(`docs/v5/${prefix}_${k}.md`),true);
 const aw=read(appBeta?'.github/workflows/app-beta-release.yml':'.github/workflows/app-stable-release.yml');
