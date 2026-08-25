@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "catalogVersion": "1.0.0",
+  "catalogVersion": "2.0.0",
   "defaultLanguage": "en",
   "embedded": {
     "en": {
@@ -13,12 +13,24 @@
     "hu": {
       "name": "Hungarian",
       "nativeName": "Magyar",
-      "status": "pending"
+      "status": "available",
+      "packVersion": "1.0.0",
+      "version": "1.0.0",
+      "minAppVersion": "6.0.0-beta.1",
+      "maxAppVersion": "6.999.999",
+      "file": "hu/locale.json",
+      "sha256": "6293d6260d6a412900002297b7b3ae99442026b79d4cfdc1dc56881959b032c3"
     },
     "de": {
       "name": "German",
       "nativeName": "Deutsch",
-      "status": "pending"
+      "status": "available",
+      "packVersion": "1.0.0",
+      "version": "1.0.0",
+      "minAppVersion": "6.0.0-beta.1",
+      "maxAppVersion": "6.999.999",
+      "file": "de/locale.json",
+      "sha256": "3e1c53650263b40858f1887ec15d5e23593caedffdf7a99cb717e83cc970ecff"
     },
     "fr": {
       "name": "French",
