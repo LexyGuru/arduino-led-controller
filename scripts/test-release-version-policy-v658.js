@@ -56,7 +56,20 @@ for(const p of [notes,guide,checklist,rootNotes]){
   assert.ok(text.includes(release.firmware),`${p}: firmware version missing`);
   assert.ok(text.includes(release.directApi),`${p}: Direct API version missing`);
 }
-assert.equal(read(notes),read(rootNotes),'root release notes must match canonical docs release notes');
+// V6 keeps two release-note surfaces with different presentation roles:
+// docs/v5 is the detailed technical release document, while the root file is
+// the concise publication summary. Validate shared release truth semantically.
+for (const text of [read(notes), read(rootNotes)]) {
+  assert.ok(text.includes(version));
+  assert.ok(text.includes(release.firmware));
+  assert.ok(text.includes(release.directApi));
+  assert.ok(text.includes('Language Pack Architecture 2.0'));
+  assert.match(text,/Hungarian[\s\S]*1\.0\.0/);
+  assert.match(text,/German[\s\S]*1\.0\.0/);
+  assert.match(text,/French[\s\S]*pending/i);
+}
+assert.match(read(rootNotes),/Hungarian[\s\S]*published/i);
+assert.match(read(rootNotes),/German[\s\S]*published/i);
 
 const readme=read('README.md');
 assert.ok(readme.includes(version));

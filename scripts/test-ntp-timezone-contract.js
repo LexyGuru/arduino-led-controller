@@ -91,7 +91,7 @@ assert.ok(
   readme.includes(
     'app-beta-release.yml/badge.svg?branch=next%2Fv5-rearchitecture',
   ),
-  'Hiányzó dinamikus V5 Beta workflow badge',
+  'Hiányzó dinamikus V6 Beta workflow badge',
 );
 assert.ok(readme.includes('actions/workflows/firmware-beta-release.yml'));
 assert.ok(readme.includes('actions/workflows/app-beta-release.yml'));
@@ -99,15 +99,19 @@ assert.ok(readme.includes('actions/workflows/app-beta-release.yml'));
 for (const marker of [
   versions.application,
   versions.firmware,
+  versions.directApi,
+  'Language Pack Architecture 2.0',
   'next/v5-rearchitecture',
-  'Stabil ág | `main`',
+  '| Ág | `main` |',
+  'language-packs',
   'Debian 13 Rust LXC',
   'React/Vite',
-  'automatikus frissítés',
+  'app-beta-release.yml',
+  'firmware-beta-release.yml',
 ]) {
   assert.ok(
     readme.includes(marker),
-    `README current marker hiányzik: ${marker}`,
+    `README current V6 marker hiányzik: ${marker}`,
   );
 }
 
@@ -121,7 +125,7 @@ assert.ok(
 );
 assert.ok(
   !readme.includes('img.shields.io/badge/V5_Beta-release-blue'),
-  'A fő README-ben nem maradhat statikus V5 Beta Shields badge',
+  'A fő README-ben nem maradhat statikus legacy V5 Beta Shields badge',
 );
 
 function daysFromCivil(year, month, day) {

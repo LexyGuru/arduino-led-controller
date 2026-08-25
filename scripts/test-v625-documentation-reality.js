@@ -30,10 +30,25 @@ for(const text of [notes,rootNotes,guide,checklist]){
  assert.ok(text.includes(release.firmware));
  assert.ok(text.includes(release.directApi));
 }
-assert.equal(notes,rootNotes);
+
+// V6 documentation is semantically aligned, not byte-identical.
+// Root release notes are the concise publication summary; docs/v5 release
+// notes are the detailed technical release document.
+for(const text of [notes,rootNotes]){
+ assert.ok(text.includes('Language Pack Architecture 2.0'));
+ assert.ok(text.includes('Hungarian'));
+ assert.ok(text.includes('German'));
+ assert.ok(text.includes('French'));
+ assert.match(text,/Hungarian[\s\S]*1\.0\.0/);
+ assert.match(text,/German[\s\S]*1\.0\.0/);
+ assert.match(text,/French[\s\S]*pending/i);
+}
+assert.match(rootNotes,/Hungarian[\s\S]*published/i);
+assert.match(rootNotes,/German[\s\S]*published/i);
+
 assert.ok(currentState.includes(version));
 assert.ok(currentState.includes(release.firmware));
 assert.ok(changelog.startsWith(`# ${version} — `));
-assert.match(readme,/## GitHub Actions és kiadási architektúra/);
+assert.match(readme,/## GitHub Actions és release-folyamat/);
 console.log(`V625_CURRENT_IDENTITY=PASSED:${version}`);
 console.log(`V625_CURRENT_DOC_PREFIX=PASSED:${docPrefix}`);
