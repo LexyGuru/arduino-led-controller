@@ -148,7 +148,7 @@ const {pathToFileURL}=require('node:url');
   for(const token of [
     'Central locale resolver',
     'Reinstall',
-    'No language-pack branch push'
+    'Language-pack branch publication occurred after explicit manual approval.'
   ]) assert.ok(checklist.includes(token),token);
   assert.ok(architecture.includes('manifest schema version are independent'));
   assert.ok(architecture.includes('BCP-47'));

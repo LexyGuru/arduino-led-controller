@@ -45,4 +45,4 @@ Internet required states.
 Language packs have their own versions and can be updated without an application
 release. Adding a new language to the manifest does not require rebuilding the app.
 
-Current prepared packs: HU 1.0.0, DE 1.0.0. FR is pending real translation.
+Current published packs: HU 1.0.0 and DE 1.0.0. FR is pending real translation.

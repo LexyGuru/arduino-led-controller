@@ -1,4 +1,4 @@
-# Arduino LED Controller V5.8
+# Arduino LED Controller V6
 
 <!-- CURRENT_VERSION_SSOT_BEGIN -->
 Current application: `6.0.0-beta.1`
@@ -10,21 +10,9 @@ Current Direct API: `1.1.0`
 - Release notes: `docs/v5/V60_BETA1_RELEASE_NOTES.md`
 - Installation guide: `docs/v5/V60_BETA1_INSTALLATION_GUIDE.md`
 - Release checklist: `docs/v5/V60_BETA1_RELEASE_CHECKLIST.md`
+- Language architecture: `docs/v6/LANGUAGE_PACK_ARCHITECTURE_2_0.md`
 - Root release notes: `RELEASE_NOTES_6.0.0-beta.1.md`
 <!-- CURRENT_RELEASE_DOCS_SSOT_END -->
-
-## Current Beta development — 5.8.0-beta.3
-
-- Application: `5.8.0-beta.2`
-- Theme Engine: `2.0`
-- Core UI: `3.0`
-- Firmware: `5.1.0-beta.2` Beta
-- Direct API: `1.0.0`
-- Release notes: `docs/v5/V58_BETA3_RELEASE_NOTES.md`
-- Installation guide: `docs/v5/V58_BETA3_INSTALLATION_GUIDE.md`
-- Release checklist: `docs/v5/V58_BETA3_RELEASE_CHECKLIST.md`
-- Root release notes: `RELEASE_NOTES_5.8.0-beta.3.md`
-
 
 <p align="center">
   <strong>Direct Arduino Control & Automation</strong>
@@ -32,266 +20,152 @@ Current Direct API: `1.1.0`
 
 [![Firmware build](https://github.com/LexyGuru/arduino-led-controller/actions/workflows/firmware-build.yml/badge.svg?branch=next%2Fv5-rearchitecture)](https://github.com/LexyGuru/arduino-led-controller/actions/workflows/firmware-build.yml)
 [![Firmware Beta release](https://github.com/LexyGuru/arduino-led-controller/actions/workflows/firmware-beta-release.yml/badge.svg?branch=next%2Fv5-rearchitecture)](https://github.com/LexyGuru/arduino-led-controller/actions/workflows/firmware-beta-release.yml)
-[![V5 Beta release](https://github.com/LexyGuru/arduino-led-controller/actions/workflows/app-beta-release.yml/badge.svg?branch=next%2Fv5-rearchitecture)](https://github.com/LexyGuru/arduino-led-controller/actions/workflows/app-beta-release.yml)
+[![V6 Beta release](https://github.com/LexyGuru/arduino-led-controller/actions/workflows/app-beta-release.yml/badge.svg?branch=next%2Fv5-rearchitecture)](https://github.com/LexyGuru/arduino-led-controller/actions/workflows/app-beta-release.yml)
 
 <p align="center">
-  <img src="docs/assets/v5-neon-panel-presentation.png" alt="Arduino LED Controller V5 – Neon Panel" />
+  <img src="docs/assets/v5-neon-panel-presentation.png" alt="Arduino LED Controller V6 control interface presentation" />
 </p>
 
 Többplatformos vezérlő- és automatizálási rendszer **Arduino UNO R4 WiFi** és
-három WS2812B LED-szalag számára. A V5.6 közös React felületet használ
-desktopon, mobilon és a Debian 13 Rust LXC webes környezetében, miközben az
-Arduino továbbra is önálló **Direct API v1** végpontként működik.
+három WS2812B LED-szalag számára. A V6 közös React felületet használ desktopon,
+mobilon és a Debian 13 Rust LXC környezetben. Az Arduino továbbra is önálló
+Direct API végpont, az alkalmazás- és firmware-release folyamat egymástól külön él.
 
 ---
 
-## Aktuális kiadás
+## Aktuális Beta kiadás
 
-> **Jelenlegi fejlesztési kiadás: Arduino LED Controller V5.8 Beta.2**
+> **Arduino LED Controller 6.0.0-beta.1 — Language Pack Architecture 2.0**
 
-| Komponens | Aktuális verzió / állapot |
+| Komponens | Aktuális Beta állapot |
 |---|---|
-| Alkalmazás | **`5.8.0-beta.2`** |
-| Firmware | **`5.1.0-beta.2` Beta** |
-| Direct API | **`1.0.0`** |
-| Beta ág | **`next/v5-rearchitecture`** |
-| Jelenlegi Stable alkalmazás (`main`) | **`5.6.1`** |
-| Stabil ág | `main` |
-| Stable firmware | **`5.0.0`** |
+| Alkalmazás | **`6.0.0-beta.1`** |
+| Language Pack Architecture | **`2.0`** |
+| Firmware | **`5.1.0-beta.3`** |
+| Direct API | **`1.1.0`** |
+| Beta ág | `next/v5-rearchitecture` |
+| Updater alias | `updater-beta` |
+| Release típus | GitHub prerelease |
 | Arduino board | `arduino:renesas_uno:unor4wifi` |
 | OTA port | `65280` |
-| LXC rendszer | Debian 13 |
-| LXC web/API port | `3000` |
+| LXC | Debian 13 / port `3000` |
 
-A **V5.8 Beta.2** a mobil heti időzítés újratervezésének és a LED-topológia műveleti visszajelzésének tesztbuildje.
+### Nyelvek
+
+| Nyelv | Állapot |
+|---|---|
+| English | beépített canonical fallback |
+| Magyar (`hu`) | **1.0.0 published** |
+| Deutsch (`de`) | **1.0.0 published** |
+| Français (`fr`) | pending |
+
+A letölthető nyelvi csomagok a `language-packs` ágon élnek, külön verziózhatók,
+és új alkalmazásrelease nélkül frissíthetők.
 
 ### Aktuális kiadási dokumentumok
 
-- [V5.8 Beta.2 release notes](docs/v5/V58_BETA2_RELEASE_NOTES.md)
-- [V5.8 Beta.2 telepítési útmutató](docs/v5/V58_BETA2_INSTALLATION_GUIDE.md)
-- [V5.8 Beta.2 release checklist](docs/v5/V58_BETA2_RELEASE_CHECKLIST.md)
-- [Részletes gyökér release notes](RELEASE_NOTES_5.8.0-beta.2.md)
-- [Firmware 5.1.0-beta.1 development notes](firmware/RELEASE_NOTES_5.1.0-beta.1.md)
-
-### Korábbi kiadási dokumentumok
-
-- [V5.8 Beta.1 release notes](docs/v5/V58_BETA1_RELEASE_NOTES.md)
-- [V5.8 Beta.1 telepítési útmutató](docs/v5/V58_BETA1_INSTALLATION_GUIDE.md)
-- [V5.8 Beta.1 release checklist](docs/v5/V58_BETA1_RELEASE_CHECKLIST.md)
-- [V5.8 Beta.1 gyökér release notes](RELEASE_NOTES_5.8.0-beta.1.md)
-
-- [V5.7 Beta.5 release notes](docs/v5/V57_BETA5_RELEASE_NOTES.md)
-- [V5.7 Beta.5 telepítési útmutató](docs/v5/V57_BETA5_INSTALLATION_GUIDE.md)
-- [V5.7 Beta.5 release checklist](docs/v5/V57_BETA5_RELEASE_CHECKLIST.md)
-- [V5.7 Beta.5 gyökér release notes](RELEASE_NOTES_5.7.0-beta.5.md)
-- [Firmware 5.0.1-beta.1 release notes](firmware/RELEASE_NOTES_5.0.1-beta.1.md)
-- [V5.7 Beta.4 release notes](docs/v5/V57_BETA4_RELEASE_NOTES.md)
-- [V5.7 Beta.4 telepítési útmutató](docs/v5/V57_BETA4_INSTALLATION_GUIDE.md)
-- [V5.7 Beta.4 release checklist](docs/v5/V57_BETA4_RELEASE_CHECKLIST.md)
-- [V5.7 Beta.4 gyökér release notes](RELEASE_NOTES_5.7.0-beta.4.md)
-
-- [V5.6 Beta.5 release notes](docs/v5/V56_BETA5_RELEASE_NOTES.md)
-- [V5.6 Beta.5 telepítési útmutató](docs/v5/V56_BETA5_INSTALLATION_GUIDE.md)
-- [V5.6 Beta.5 release checklist](docs/v5/V56_BETA5_RELEASE_CHECKLIST.md)
-- [V5.6 Beta.5 gyökér release notes](RELEASE_NOTES_5.6.1-beta.5.md)
-
-
-- [V5.6 Beta.4 release notes](docs/v5/V56_BETA4_RELEASE_NOTES.md)
-- [V5.6 Beta.4 telepítési útmutató](docs/v5/V56_BETA4_INSTALLATION_GUIDE.md)
-- [V5.6 Beta.4 release checklist](docs/v5/V56_BETA4_RELEASE_CHECKLIST.md)
-- [V5.6 Beta.4 gyökér release notes](RELEASE_NOTES_5.6.1-beta.4.md)
-
-
-- [V5.6 Beta.3 release notes](docs/v5/V56_BETA3_RELEASE_NOTES.md)
-- [V5.6 Beta.3 telepítési útmutató](docs/v5/V56_BETA3_INSTALLATION_GUIDE.md)
-- [V5.6 Beta.3 release checklist](docs/v5/V56_BETA3_RELEASE_CHECKLIST.md)
-- [V5.6 Beta.3 gyökér release notes](RELEASE_NOTES_5.6.1-beta.3.md)
-
-
-- [V5.6 Beta.2 release notes](docs/v5/V56_BETA2_RELEASE_NOTES.md)
-- [V5.6 Beta.2 telepítési útmutató](docs/v5/V56_BETA2_INSTALLATION_GUIDE.md)
-- [V5.6 Beta.2 release checklist](docs/v5/V56_BETA2_RELEASE_CHECKLIST.md)
-- [V5.6 Beta.2 gyökér release notes](RELEASE_NOTES_5.6.1-beta.2.md)
-
-
-- [V5.6 Beta.1 release notes](docs/v5/V56_BETA1_RELEASE_NOTES.md)
-- [V5.6 Beta.1 telepítési útmutató](docs/v5/V56_BETA1_INSTALLATION_GUIDE.md)
-- [V5.6 Beta.1 release checklist](docs/v5/V56_BETA1_RELEASE_CHECKLIST.md)
-- [V5.6 Beta.1 gyökér release notes](RELEASE_NOTES_5.6.1-beta.1.md)
-
-- [V5.5.1 Beta.6 release notes](docs/v5/V55_BETA6_RELEASE_NOTES.md)
-- [V5.5.1 Beta.6 telepítési útmutató](docs/v5/V55_BETA6_INSTALLATION_GUIDE.md)
-- [V5.5.1 Beta.6 release checklist](docs/v5/V55_BETA6_RELEASE_CHECKLIST.md)
-- [V5.5.1 Beta.6 gyökér release notes](RELEASE_NOTES_5.5.1-beta.6.md)
-- [V5.5.1 Beta.5 release notes](docs/v5/V55_BETA5_RELEASE_NOTES.md)
-- [V5.5.1 Beta.5 telepítési útmutató](docs/v5/V55_BETA5_INSTALLATION_GUIDE.md)
-- [V5.5.1 Beta.5 release checklist](docs/v5/V55_BETA5_RELEASE_CHECKLIST.md)
-- [V5.5.1 Beta.5 gyökér release notes](RELEASE_NOTES_5.5.1-beta.5.md)
-- [V5.5.1 Beta.4 release notes](docs/v5/V55_BETA4_RELEASE_NOTES.md)
-- [V5.5.1 Beta.4 telepítési útmutató](docs/v5/V55_BETA4_INSTALLATION_GUIDE.md)
-- [V5.5.1 Beta.4 release checklist](docs/v5/V55_BETA4_RELEASE_CHECKLIST.md)
-- [V5.5.1 Beta.4 gyökér release notes](RELEASE_NOTES_5.5.1-beta.4.md)
-- [V5.5.1 Beta.1 release notes](docs/v5/V55_BETA1_RELEASE_NOTES.md)
-- [V5.5.1 Beta.1 telepítési útmutató](docs/v5/V55_BETA1_INSTALLATION_GUIDE.md)
-- [V5.5.1 Beta.1 release checklist](docs/v5/V55_BETA1_RELEASE_CHECKLIST.md)
-- [V5.5.1 Beta.1 gyökér release notes](RELEASE_NOTES_5.5.1-beta.1.md)
-- [V5.5 Beta.3 release notes](docs/v5/V55_BETA3_RELEASE_NOTES.md)
-- [V5.5 Beta.3 telepítési útmutató](docs/v5/V55_BETA3_INSTALLATION_GUIDE.md)
-- [V5.5 Beta.3 release checklist](docs/v5/V55_BETA3_RELEASE_CHECKLIST.md)
-- [V5.5 Beta.3 gyökér release notes](RELEASE_NOTES_5.5.0-beta.3.md)
-- [Firmware 5.0.0-beta.8 release notes](firmware/RELEASE_NOTES_5.0.0-beta.8.md)
-
-A korábbi Beta dokumentumok történeti snapshotok; nem az aktuális kiadás leírásai.
+- [V6.0 Beta.1 release notes](docs/v5/V60_BETA1_RELEASE_NOTES.md)
+- [V6.0 Beta.1 telepítési útmutató](docs/v5/V60_BETA1_INSTALLATION_GUIDE.md)
+- [V6.0 Beta.1 release checklist](docs/v5/V60_BETA1_RELEASE_CHECKLIST.md)
+- [Language Pack Architecture 2.0](docs/v6/LANGUAGE_PACK_ARCHITECTURE_2_0.md)
+- [Gyökér release notes](RELEASE_NOTES_6.0.0-beta.1.md)
 
 ---
 
-## Mit tartalmaz a V5.6 Beta.6?
+## Jelenlegi Stable kiadás
 
-### P1 — Release Runner Resilience
+A `main` ág aktuális SSOT állapota:
 
-- Közös Linux/Tauri dependency installer.
-- APT retry, network timeout és dpkg lock timeout.
-- Noninteractive install, parancs- és workflow-step timeout.
-- Beragadt dependency install helyett korlátozott idejű, diagnosztizálható release-lépés.
+| Komponens | Stable |
+|---|---|
+| Alkalmazás | **`5.8.0`** |
+| Firmware | **`5.1.0`** |
+| Direct API | **`1.0.0`** |
+| Ág | `main` |
+| Updater alias | `updater-stable` |
+| Release típus | GitHub release |
 
+A Beta és Stable verziók szándékosan eltérhetnek. A Beta alkalmazás új főverziója
+nem emeli automatikusan a firmware vagy a Direct API főverzióját.
 
+---
 
-### Beta.3 P0 architektúra-konszolidáció
+## V6.0 Beta.1 fő újdonságai
 
-- A kanonikus alkalmazásverzió forrása a `release-versions.json`.
-- A Beta workflow verziója, ága és csatornája SSOT metadata alapján működik.
-- A default regresszió a current + regression tesztarchitektúrát futtatja; a történeti lánc külön auditként megmarad.
-- A Device Key contract Stable javítása Beta-identitás megtartásával került forward-syncre.
-- Minden GitHub alkalmazáspublikáció kötelező új alkalmazásverziót és teljes release-dokumentációt kap.
-- Firmware: `5.0.0-beta.10` változatlan; Direct API: `1.0.0`.
+### Language Pack Architecture 2.0
 
+- Az angol az egyetlen beépített runtime dictionary és a canonical kulcsmester.
+- A további nyelveket a remote manifest dinamikusan teszi elérhetővé.
+- A csomagok csak kérésre töltődnek le, majd lokálisan perzisztálódnak.
+- A telepített nyelvek offline indulás és alkalmazás-újraindítás után is működnek.
+- Manifest cache TTL: 24 óra.
+- Pack maximum méret: 1 MiB.
+- Raw JSON duplicate-key ellenőrzés történik `JSON.parse` előtt.
+- Schema, nyelvkód, min/max app-kompatibilitás és SHA-256 ellenőrzés kötelező.
+- A letölthető dictionary kulcskészlete pontosan egyezik a canonical angollal.
+- Placeholder parity és nem üres érték kötelező minden kulcsnál.
+- A telepítés staged + atomic, hibánál a last-known-good állapot marad aktív.
+- A locale-feloldás központi és dinamikus BCP-47 kompatibilis.
+- A Settings manager kezeli a Download, Installed, Current, Update available,
+  Update, Reinstall, Remove, Pending, Working és Internet required állapotokat.
 
 ### Közös alkalmazásplatform
 
-- **Theme Engine 2.0** – világos/sötét mód, Arctic és Midnight presetek,
-  kiemelőszínek, sűrűség, lekerekítés és glass beállítások.
-- **Core UI 2.0** – reszponzív Sidebar, Topbar és mobil BottomNav.
-- **Dashboard 2.0** – valós Arduino-, schedule-, audit- és aktivitási adatok.
-- **Statistics 1.0** – kizárólag valós adatok, szintetikus history nélkül.
-- **Activity & Logs 2.0** – Arduino konzol, helyi műveletek és Tauri audit.
-- **Management UI 2.0** – Firmware, Schedules és Settings felületek.
-- **Update System 2.0** – stable/beta csatorna és automatikus ellenőrzés.
-- Egyetlen shared React UI desktop, iOS/iPadOS, Android és LXC számára.
+- Tauri v2 + Rust + React desktop kliens macOS, Windows és Linux rendszeren.
+- Shared React UI iOS/iPadOS és Android platformon.
+- Debian 13 Rust/Axum LXC runtime opcionális központi web/API rétegként.
+- Direct Arduino mód továbbra is elsődleges és LXC nélkül is működik.
+- Theme Engine 2.0 és Core UI 3.0.
+- Dashboard, Statistics, Activity/Logs, Firmware, Schedules és Settings modulok.
+- Stable/Beta updater csatornák.
 
-### LED és automatizálás
+### LED, schedule és időkezelés
 
-- 3 × WS2812B LED-szalag közvetlen vezérlése;
-- fényerő, RGB-szín, effekt és sebesség;
-- gyors presetek és tömeges LED-műveletek;
-- legfeljebb 60 Arduino EEPROM schedule rekord;
-- schedule revision/checksum és konfliktusvédelem;
-- tranzakciós schedule írás;
-- JSON import/export;
-- automatikus schedule backup és visszaállítás;
-- Arduino-idő alapú mai/holnapi programnézet;
-- autonóm CET/CEST és DST;
-- UDP NTP időszinkron.
-
-### Firmware és OTA
-
-- stable/beta firmware-katalógus;
-- SHA-256 ellenőrzés letöltés és cache után;
-- élő OTA konzol;
-- OTA Exclusive Mode az Arduino oldalon;
-- reboot utáni `/api/v1/status` életjel-ellenőrzés;
-- firmware-verzió, Boot ID és schedule persistence ellenőrzés;
-- OTA-jelszó natív secure store-ban;
-- firmware és alkalmazás külön release-folyamatban.
-
----
-
-## GitHub Actions és kiadási architektúra
-
-A repository jelenlegi kanonikus workflow-készlete pontosan hét fájl:
-
-| Workflow | Szerep |
-|---|---|
-| `app-build.yml` | alkalmazás CI/build engine, nem publikál release-t |
-| `app-staging-build.yml` | NEXT/feature staging artifact build, nem publikál release-t |
-| `app-beta-release.yml` | kézzel indított Beta alkalmazásrelease |
-| `app-stable-release.yml` | kézzel indított Stable alkalmazásrelease |
-| `firmware-build.yml` | közös UNO R4 WiFi firmware compile engine |
-| `firmware-beta-release.yml` | Beta firmware release + Beta katalógus |
-| `firmware-stable-release.yml` | Stable firmware release + Stable katalógus |
-
-A régi `beta-release.yml`, `tauri-desktop.yml` és `tauri-artifact-build.yml` workflow-k ki lettek vezetve.
-Az alkalmazásrelease és firmware-release külön folyamat. Egyik release workflow sem indítja el automatikusan a másikat.
-
-### Jelenlegi promóciós sorrend
-
-```text
-NEXT / 5.6.1
-        ↓
-teljes regresszió + manuális Beta QA
-        ↓
-Application Beta release
-        ↓
-kiadott Beta build tényleges telepítési/OTA/channel tesztje
-        ↓
-Stable promóció előkészítése
-        ↓
-main / 5.6.1 + firmware 5.0.0
-```
-
-A `main` jelenleg még `5.1.0`; a `5.6.1` Stable és a `5.0.0` Stable firmware csak a Beta elfogadása után kerülhet promócióra.
-
----
-
-## Támogatott futtatási környezetek
-
-| Platform | Runtime | Fő feladat |
-|---|---|---|
-| macOS | Tauri v2 + Rust + React | natív desktop kliens |
-| Windows | Tauri v2 + Rust + React | natív desktop kliens |
-| Linux | Tauri v2 + Rust + React | natív desktop kliens |
-| iOS / iPadOS | Tauri mobile + shared React UI | mobil kliens |
-| Android | Tauri mobile + shared React UI | mobil kliens |
-| Debian 13 LXC | Rust/Axum + React/Vite | web UI, proxy, központi runtime |
-| Arduino UNO R4 WiFi | firmware + Direct API v1 | LED, schedule, OTA, időkezelés |
+- 3 × WS2812B LED-szalag.
+- Fényerő, RGB-szín, effekt, sebesség és presetek.
+- Legfeljebb 60 EEPROM schedule rekord.
+- Schedule revision/checksum és tranzakciós írás.
+- Import/export, backup/restore és konfliktusvédelem.
+- Arduino-idő alapú programnézet.
+- Europe/Vienna kompatibilis CET/CEST + DST és NTP időszinkron.
 
 ---
 
 ## Architektúra
 
 ```text
-                         ┌─────────────────────────────┐
+                         ┌──────────────────────────────┐
                          │ Arduino UNO R4 WiFi         │
-                         │ Firmware 5.0.0-beta.10       │
-                         │ Direct API v1 / X-Device-Key│
-                         └──────────────┬──────────────┘
+                         │ Firmware 5.1.0-beta.3       │
+                         │ Direct API 1.1.0            │
+                         └──────────────┬───────────────┘
                                         │
-                ┌───────────────────────┴───────────────────────┐
-                │                                               │
-                ▼                                               ▼
+                ┌───────────────────────┴────────────────────────┐
+                │                                                │
+                ▼                                                ▼
 ┌───────────────────────────────┐             ┌────────────────────────────────┐
-│ Tauri V5.6 Beta.6 client      │             │ Debian 13 Rust LXC             │
-│                               │             │                                │
-│ macOS / Windows / Linux       │             │ Rust / Axum backend            │
-│ iOS / iPadOS / Android        │             │ React / Vite web UI            │
-│ Shared React UI               │             │ :3000                          │
-│ Direct Arduino API            │             │ Direct API proxy               │
-│ Firmware / OTA                │             │ Schedules / logs / LED control│
-│ Native credential store       │             │ Self-update + rollback         │
+│ Tauri V6 Beta client          │             │ Debian 13 Rust LXC             │
+│ Application 6.0.0-beta.1     │             │ Rust / Axum backend            │
+│                               │             │ React / Vite web UI            │
+│ macOS / Windows / Linux       │             │ :3000                          │
+│ iOS / iPadOS / Android       │             │ Arduino Direct API proxy       │
+│ Shared React UI              │             │ Schedules / logs / LED control│
+│ Language Pack Architecture 2 │             │ Self-update + rollback         │
+│ Firmware / OTA management    │             │                                │
 └───────────────────────────────┘             └────────────────────────────────┘
 ```
 
-A **Direct Arduino mód** az elsődleges kapcsolat. Ehhez nincs külön
-alkalmazás-felhasználónév vagy szerverjelszó: a kliens a privát API-prefixet és
-az `X-Device-Key` eszközkulcsot használja.
+### Kapcsolati modell
 
-Az LXC opcionális központi runtime; nem szükséges a közvetlen Arduino
-vezérléshez.
+A **Direct Arduino mód** az elsődleges kapcsolat. A kliens a privát API-prefixet és
+az `X-Device-Key` eszközkulcsot használja. Az LXC opcionális központi runtime, nem
+szükséges a közvetlen Arduino-vezérléshez.
 
 ---
 
 ## Direct API és biztonság
 
-A firmware jelenlegi Direct API verziója: **`1.0.0`**.
+A Beta firmware jelenlegi Direct API verziója: **`1.1.0`**.
 
 Fő biztonsági tulajdonságok:
 
@@ -299,10 +173,9 @@ Fő biztonsági tulajdonságok:
 - query-string kulcsfallback tiltva;
 - privát API-prefix;
 - JSON body alapú módosító végpontok;
-- A/B EEPROM slotok readback ellenőrzéssel;
-- tranzakciós schedule írás;
-- védett `POST /api/v1/system/reboot`;
-- távoli reboot válasz: `HTTP 202 Accepted`.
+- tranzakciós schedule írás és readback;
+- védett rendszer-végpontok;
+- reboot utáni státusz- és Boot ID ellenőrzés.
 
 Titkokat, Device Key-t, OTA-jelszót, `.env`, `update.env` vagy `secrets.h`
 fájlt nem szabad commitolni.
@@ -311,10 +184,10 @@ fájlt nem szabad commitolni.
 
 ## OTA frissítés
 
-Az OTA két külön szakaszból áll:
-
 ```text
-Firmware BIN ellenőrzés
+Firmware artifact + SHA-256 ellenőrzés
+        ↓
+OTA prepare / exclusive mode
         ↓
 OTA feltöltés
         ↓
@@ -327,12 +200,9 @@ firmwareVersion + Boot ID + schedule persistence
 SUCCESS
 ```
 
-A firmware `5.0.0-beta.10` OTA Exclusive Mode alatt kizárólag a Wi-Fi
-kapcsolatot, az ArduinoOTA motort és a LED Matrix visszajelzést hagyja aktívan.
-A schedule storage-ot az OTA folyamat nem törli és nem írja újra.
-
-A firmware artifact és checksum a dedikált firmware prerelease része; az
-alkalmazásrelease nem csomagolja újra a firmware-t.
+A Beta firmware jelenlegi verziója **`5.1.0-beta.3`**. Az alkalmazásrelease és
+firmware-release külön folyamat; az alkalmazásrelease nem emeli automatikusan
+a firmware verzióját.
 
 ---
 
@@ -342,13 +212,12 @@ Az opcionális LXC runtime:
 
 - Rust + Axum backend;
 - React/Vite web UI;
-- egy közös `3000`-es web/API port;
+- közös `3000` web/API port;
 - Arduino Direct API proxy;
 - LED-, schedule-, firmware- és logkezelés;
-- Stable/Beta csatornafüggő automatikus frissítés;
-- atomikus release-váltás;
-- automatikus rollback;
-- alapból az utolsó 3 release megőrzése.
+- Stable/Beta csatornafüggő frissítés;
+- staging + health gate + atomikus váltás;
+- automatikus rollback.
 
 ### Alapértelmezett Proxmox profil
 
@@ -381,26 +250,6 @@ Diagnosztikai végpontok:
 /health/live
 /health/ready
 /api/v1/status
-```
-
-### LXC updater
-
-```text
-Beta   -> next/v5-rearchitecture
-Stable -> main
-```
-
-Az updater 6 óránként ellenőriz, staging könyvtárban buildel, health gate-et
-futtat, majd atomikusan vált az új release-re. Sikertelen release esetén az
-előző működő verzióra áll vissza.
-
-Hasznos parancsok:
-
-```bash
-systemctl status arduino-led-controller-update.timer
-systemctl list-timers arduino-led-controller-update.timer
-systemctl start arduino-led-controller-update.service
-journalctl -u arduino-led-controller-update.service --no-pager -n 200
 ```
 
 ---
@@ -441,24 +290,54 @@ cargo test --locked --manifest-path desktop-tauri/src-tauri/Cargo.toml
 cargo fmt --manifest-path rust/Cargo.toml --all -- --check
 RUSTFLAGS="-D warnings" cargo check --locked --manifest-path rust/Cargo.toml --workspace
 RUSTFLAGS="-D warnings" cargo test --locked --manifest-path rust/Cargo.toml --workspace
-
 npm run test:rust-lxc
 ```
 
 ---
 
-## Ágak és release-folyamat
+## GitHub Actions és release-folyamat
 
-| Ág / workflow | Szerep |
+A jelenlegi kanonikus workflow-készlet:
+
+| Workflow | Szerep |
 |---|---|
-| `main` | stabil alkalmazásvonal |
-| `next/v5-rearchitecture` | aktuális V5.5 Beta integráció |
-| `firmware-build.yml` | firmware build |
-| `firmware-beta-release.yml` | dedikált Beta firmware prerelease |
-| `beta-release.yml` | teljes V5 alkalmazás prerelease |
-| `tauri-artifact-build.yml` | desktop + mobil staging artifact build |
+| `app-build.yml` | alkalmazás CI/build, release nélkül |
+| `app-staging-build.yml` | NEXT/feature staging artifact build |
+| `app-beta-release.yml` | kézzel indított Beta alkalmazás prerelease |
+| `app-stable-release.yml` | kézzel indított Stable alkalmazásrelease |
+| `firmware-build.yml` | UNO R4 WiFi firmware compile |
+| `firmware-beta-release.yml` | Beta firmware prerelease + katalogizálás |
+| `firmware-stable-release.yml` | Stable firmware release + katalogizálás |
 
-A Beta release **prerelease**, és nem jelölhető latest stabil kiadásnak.
+Az alkalmazás- és firmware-release egymástól független.
+
+### Jelenlegi Beta release sorrend
+
+```text
+next/v5-rearchitecture / 6.0.0-beta.1
+        ↓
+teljes regresszió + manuális QA
+        ↓
+HU/DE language-pack publication + remote validation
+        ↓
+Application Beta prerelease workflow
+        ↓
+kiadott build telepítési / updater / offline language smoke test
+        ↓
+következő Beta fejlesztési ciklus vagy későbbi Stable promóció
+```
+
+A Beta release **prerelease**, nem jelölhető latest stabil kiadásnak.
+
+---
+
+## Ágak
+
+| Ág | Szerep |
+|---|---|
+| `next/v5-rearchitecture` | aktuális Beta alkalmazásvonal |
+| `main` | stabil alkalmazásvonal |
+| `language-packs` | alkalmazástól független nyelvi katalógus és packok |
 
 ---
 
@@ -466,82 +345,38 @@ A Beta release **prerelease**, és nem jelölhető latest stabil kiadásnak.
 
 ### Aktuális
 
-- [V5.5 Beta.3 release notes](docs/v5/V55_BETA3_RELEASE_NOTES.md)
-- [V5.5 Beta.3 telepítési útmutató](docs/v5/V55_BETA3_INSTALLATION_GUIDE.md)
-- [V5.5 Beta.3 release checklist](docs/v5/V55_BETA3_RELEASE_CHECKLIST.md)
+- [V6.0 Beta.1 release notes](docs/v5/V60_BETA1_RELEASE_NOTES.md)
+- [V6.0 Beta.1 telepítési útmutató](docs/v5/V60_BETA1_INSTALLATION_GUIDE.md)
+- [V6.0 Beta.1 release checklist](docs/v5/V60_BETA1_RELEASE_CHECKLIST.md)
+- [Language Pack Architecture 2.0](docs/v6/LANGUAGE_PACK_ARCHITECTURE_2_0.md)
 - [Rust LXC architektúra](docs/v5/RUST_LXC_ARCHITECTURE.md)
 - [Rust LXC üzemeltetés](docs/v5/RUST_LXC_OPERATIONS.md)
 - [Shared frontend architektúra](docs/SHARED_FRONTEND_ARCHITECTURE.md)
 - [Firmware áttekintés](firmware/README.md)
-- [Direct API v1](docs/firmware/DIRECT_API_V1.md)
+- [Direct API](docs/firmware/DIRECT_API_V1.md)
 - [EEPROM tárolás](docs/firmware/EEPROM_STORAGE.md)
 - [OTA frissítés](docs/firmware/OTA_UPDATE.md)
 - [Biztonsági szabályok](SECURITY.md)
 - [Közreműködés](CONTRIBUTING.md)
 - [Változásnapló](CHANGELOG.md)
 
-### Történeti dokumentáció
+### Történeti kiadási dokumentáció
 
-A korábbi V5.0 Beta és V5.5 Beta.1 dokumentumok a repositoryban maradnak
-release-történetként. A bennük szereplő verziószámok nem az aktuális
-`5.5.0-beta.3` állapotot jelentik.
+A korábbi V5 release notes, installation guide és release checklist fájlok a
+repositoryban történeti snapshotként maradnak. A bennük szereplő verziók nem a
+jelenlegi Beta állapotot jelentik.
 
 ---
 
-## V5 Platform Icon System
+## Platform Icon System
 
-A desktop identity négy kanonikus ikont használ:
-
-| Channel | Light | Dark |
-|---|---|---|
-| Stable | Stable Light | Stable Dark |
-| Beta | Beta Light | Beta Dark |
-
-macOS-en az aktív Dock ikon az alkalmazáscsatorna és a helyi idő alapján
-változik:
-
-```text
-Stable + Light -> Stable Light
-Stable + Dark  -> Stable Dark
-Beta   + Light -> Beta Light
-Beta   + Dark  -> Beta Dark
-```
-
-A mobil- és nem-macOS platformok a normál generált platformikonokat használják.
+A desktop identity Stable és Beta csatornához külön Light/Dark ikonokat használ.
+macOS-en az aktív Dock ikon az alkalmazáscsatorna és a helyi appearance alapján
+váltható. Mobilon és más desktop platformokon a generált platformikonok használatosak.
 
 ---
 
 ## Licenc
 
-A repository licencfeltételeit a projekt tulajdonosa határozza meg.
-Külső terjesztés előtt külön `LICENSE` fájl szükséges.
-
-## Beta.4 final release state
-
-<!-- BETA4_FINAL_PAPERWORK_V554 -->
-
-Current beta application version: **5.5.1-beta.4**.
-
-Current platform identity:
-- **Core UI 2.0**
-- **Theme Engine 2.0**
-- **OTA 2.0**
-- **Update System 2.0**
-
-Final Beta.4 validation includes the V548 recovery closure, V549 UI/layout QA,
-V552 signed native macOS updater E2E proof, and V554 sidebar badge/paperwork closure.
-When the installed app and latest beta are both `5.5.1-beta.4`, Update Center reports
-the application as up to date and exposes update checking without requiring an install action.
-
-No publication is implied by this source state; release publication is a separate explicit step.
-
-
-## Current Stable release
-
-- Application: `5.6.1`
-- Firmware: `5.0.0`
-- Direct API: `1.0.0`
-- [Stable release notes](docs/v5/V56_STABLE_RELEASE_NOTES.md)
-- [Stable installation guide](docs/v5/V56_STABLE_INSTALLATION_GUIDE.md)
-- [Stable release checklist](docs/v5/V56_STABLE_RELEASE_CHECKLIST.md)
-- [Root release notes](RELEASE_NOTES_5.6.1.md)
+A repository licencfeltételeit a projekt tulajdonosa határozza meg. Külső
+terjesztés előtt külön `LICENSE` fájl szükséges.

@@ -42,8 +42,9 @@ disabled and marked “Internet required”.
 
 ## Current publication state
 
-HU and DE payloads are prepared and validated but are not published by this test
-package. FR remains pending until a real French translation is complete.
+Hungarian (`hu`) `1.0.0` and German (`de`) `1.0.0` are published on the
+`language-packs` branch and can be downloaded by the application. French (`fr`)
+remains pending until a complete real translation is available.
 
 ## Safety
 
