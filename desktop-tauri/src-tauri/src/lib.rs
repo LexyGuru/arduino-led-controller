@@ -795,6 +795,16 @@ async fn get_json(state: &AppState, path: &str) -> Result<Value, String> {
     request_json(state, "GET", path, None).await
 }
 
+#[tauri::command]
+async fn arduino_capabilities(state: State<'_, AppState>) -> Result<Value, String> {
+    get_json(&state, "/api/v1/capabilities").await
+}
+
+#[tauri::command]
+async fn arduino_diagnostics(state: State<'_, AppState>) -> Result<Value, String> {
+    get_json(&state, "/api/v1/diagnostics").await
+}
+
 async fn post_json(state: &AppState, path: &str, body: Option<Value>) -> Result<Value, String> {
     request_json(state, "POST", path, body).await
 }
@@ -4432,6 +4442,8 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            arduino_capabilities,
+            arduino_diagnostics,
             diagnostic_logging::diagnostic_log_event,
             diagnostic_logging::diagnostic_log_paths,
             write_export_file,

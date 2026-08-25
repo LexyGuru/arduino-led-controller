@@ -15,12 +15,14 @@ import {
 import { ActivityTimeline } from '../components/v55/ActivityTimeline';
 import { StatisticsPanel } from '../components/v55/StatisticsPanel';
 import { DeviceHealthPanel } from '../components/v55/DeviceHealthPanel';
+import { DiagnosticsPanel } from '../components/v55/DiagnosticsPanel';
 import { V5ConnectionWarning } from '../components/v5/V5ConnectionWarning';
 import { V5DataSourceBadge } from '../components/v5/V5DataSourceBadge';
 import { useTauriAudit } from '../hooks/useTauriAudit';
 import { useV5Dashboard } from '../hooks/useV5Dashboard';
 import { useI18n } from '../i18n';
 import type {
+  ArduinoDiagnosticsResult,
   ArduinoStatus,
   ConnectionHealthState,
   LedSchedule,
@@ -104,20 +106,28 @@ export function DashboardPage({
   schedules: legacySchedules,
   scheduleSync,
   connectionHealth,
+  diagnostics,
+  diagnosticsError,
+  diagnosticsPollIntervalMs,
   networkLogs,
   platform,
   startupIssues,
   busy,
+  onRefreshDiagnostics,
   onSyncTime
 }: {
   status: ArduinoStatus | null;
   schedules: LedSchedule[];
   scheduleSync: ScheduleSyncState;
   connectionHealth: ConnectionHealthState;
+  diagnostics: ArduinoDiagnosticsResult | null;
+  diagnosticsError: string | null;
+  diagnosticsPollIntervalMs: number;
   networkLogs: NetworkLog[];
   platform: string;
   startupIssues: StartupCheck[];
   busy: boolean;
+  onRefreshDiagnostics: () => void;
   onSyncTime: () => Promise<void>;
 }) {
   const { t } = useI18n();
@@ -278,6 +288,14 @@ export function DashboardPage({
         latestNetworkError={latestNetworkError}
         platform={platform}
         onRetry={() => void dashboard.refresh()}
+      />
+
+      <DiagnosticsPanel
+        value={diagnostics}
+        error={diagnosticsError}
+        pollIntervalMs={diagnosticsPollIntervalMs}
+        busy={busy}
+        onRefresh={onRefreshDiagnostics}
       />
 
       <StatisticsPanel stats={stats} />

@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 'use strict';
+const versionSsot=require('./lib/version-ssot');
 const assert = require('node:assert/strict'); const fs = require('node:fs');
 const rootPackage = require('../package.json'); const desktopPackage = require('../desktop-tauri/package.json'); const versions = require('../release-versions.json');
 assert.equal(rootPackage.version, '5.5.1-beta.2'); assert.equal(desktopPackage.version, '5.5.1-beta.2');
-assert.equal(versions.application, '5.5.1-beta.2'); assert.equal(versions.firmware, '5.0.0-beta.9'); assert.equal(versions.directApi, '1.0.0');
+assert.equal(versions.application, '5.5.1-beta.2'); assert.equal(versions.firmware, '5.0.0-beta.9'); assert.equal(versions.directApi, versionSsot.fixtures.directApiV1);
 const rust = fs.readFileSync('desktop-tauri/src-tauri/src/diagnostic_logging.rs','utf8');
 const lib = fs.readFileSync('desktop-tauri/src-tauri/src/lib.rs','utf8');
 const main = fs.readFileSync('desktop-tauri/src/main.tsx','utf8');

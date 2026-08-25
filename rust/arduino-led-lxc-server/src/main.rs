@@ -1359,6 +1359,8 @@ async fn main() -> Result<(), String> {
         .route("/health/live", get(live))
         .route("/health/ready", get(ready))
         .route("/api/v1/status", get(proxy_get))
+        .route("/api/v1/capabilities", get(proxy_get))
+        .route("/api/v1/diagnostics", get(proxy_get))
         .route("/api/v1/logs", get(proxy_get))
         .route("/api/v1/logs/clear", post(proxy_post))
         .route("/api/v1/time/config", put(proxy_put))

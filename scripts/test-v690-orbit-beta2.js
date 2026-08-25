@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 'use strict';
+const versionSsot=require('./lib/version-ssot');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 
@@ -8,9 +9,9 @@ const version = fs.readFileSync('VERSION','utf8').trim();
 const release = JSON.parse(fs.readFileSync('release-versions.json','utf8'));
 
 assert.equal(version,'5.7.0-beta.3');
-assert.equal(release.application,'5.7.0-beta.3');
-assert.equal(release.applicationRelease.version,'5.7.0-beta.3');
-assert.equal(release.firmware,'5.0.0');
+assert.equal(release.application,versionSsot.application);
+assert.equal(release.applicationRelease.version,versionSsot.application);
+assert.equal(release.firmware,versionSsot.firmware);
 
 for (const token of [
   'V690 - Orbit composition OCD alignment',

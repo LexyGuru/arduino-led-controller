@@ -1,4 +1,5 @@
 "use strict";
+const versionSsot=require('./lib/version-ssot');
 
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
@@ -8,7 +9,7 @@ const release = JSON.parse(fs.readFileSync("firmware/firmware-release.json", "ut
 
 assert.match(versions.application, /^\d+\.\d+\.\d+-beta\.\d+$/);
 assert.match(versions.firmware, /^\d+\.\d+\.\d+-beta\.\d+$/);
-assert.equal(versions.directApi, "1.0.0");
+assert.equal(versions.directApi, versionSsot.directApi);
 assert.equal(release.firmwareVersion, versions.firmware);
 assert.equal(release.directApiVersion, versions.directApi);
 assert.equal(release.binary, `Arduino_LED_Controller_Firmware_${versions.firmware}_UNO_R4_WiFi.bin`);

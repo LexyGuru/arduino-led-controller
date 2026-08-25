@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 'use strict';
+const versionSsot=require('./lib/version-ssot');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const read = (p) => fs.readFileSync(p, 'utf8');
@@ -11,15 +12,15 @@ const architecture = read('scripts/test-test-architecture-v2.js');
 const deviceGate = read('scripts/test-alpha3-device-key-header.js');
 
 const currentVersion = read('VERSION').trim();
-assert.equal(versions.application, currentVersion);
-assert.equal(versions.directApi, '1.0.0');
+assert.equal(versions.application, versionSsot.application);
+assert.equal(versions.directApi, versionSsot.directApi);
 
 if (versions.channel === 'beta') {
   assert.match(currentVersion, /^\d+\.\d+\.\d+-beta\.\d+$/);
   assert.equal(versions.applicationRelease.channel, 'beta');
   assert.equal(versions.applicationRelease.branch, 'next/v5-rearchitecture');
   assert.ok(['beta', 'stable'].includes(versions.firmwareRelease.channel));
-  assert.equal(versions.firmwareRelease.recommendedVersion, versions.firmware);
+  assert.equal(versions.firmwareRelease.recommendedVersion, versionSsot.firmware);
   if (versions.firmwareRelease.channel === 'beta') {
     assert.match(versions.firmware, /^\d+\.\d+\.\d+-beta\.\d+$/);
   } else {
@@ -35,7 +36,7 @@ if (versions.channel === 'beta') {
   assert.equal(versions.applicationRelease.branch, 'main');
   assert.equal(versions.firmwareRelease.channel, 'beta');
   assert.match(versions.firmware, /^\d+\.\d+\.\d+-beta\.\d+$/);
-  assert.equal(versions.firmwareRelease.recommendedVersion, versions.firmware);
+  assert.equal(versions.firmwareRelease.recommendedVersion, versionSsot.firmware);
   console.log('P0_STABLE_IDENTITY_PROMOTION=PASSED');
 }
 

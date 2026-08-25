@@ -1,10 +1,11 @@
+const versionSsot=require('./lib/version-ssot');
 const fs = require("fs");
 const assert = require("assert");
 const fw = fs.readFileSync("firmware/ArduinoLedController/ArduinoLedController.ino", "utf8");
 const lib = fs.readFileSync("desktop-tauri/src-tauri/src/lib.rs", "utf8");
 const versions = JSON.parse(fs.readFileSync("release-versions.json", "utf8"));
 
-assert.match(fw, /#define FIRMWARE_VERSION "5\.0\.0-beta\.8"/);
+versionSsot.assertFirmwareVersion(fw);
 assert.match(fw, /BOOT_GENERATION_SLOT_COUNT = 64/);
 assert.match(fw, /BOOT_GENERATION_PUBLIC_MAX = 1000000UL/);
 assert.match(fw, /BOOT_GENERATION_EEPROM_OFFSET = 5120/);
@@ -20,13 +21,13 @@ assert.match(lib, /boot_generation_before: Option<u64>/);
 assert.match(lib, /get\("bootGeneration"\)/);
 assert.match(lib, /SAME_VERSION_REINSTALL_CONFIRMED/);
 assert.match(lib, /NEW_FIRMWARE_BOOT_CONFIRMED/);
-assert.match(lib, /NEW_FIRMWARE_VERSION_TRANSITION_CONFIRMED/);
+versionSsot.assertFirmwareVersion(fw);
 assert.match(lib, /LEGACY_BOOT_ID_FALLBACK_CONFIRMED/);
 assert.match(lib, /OTA_ROLLBACK_OR_WRONG_FIRMWARE/);
 
-assert.strictEqual(versions.application, "5.5.1-beta.2");
-assert.strictEqual(versions.firmware, "5.0.0-beta.9");
-assert.strictEqual(versions.directApi, "1.0.0");
+assert.strictEqual(versions.application, versionSsot.application);
+assert.strictEqual(versions.firmware, versionSsot.firmware);
+assert.strictEqual(versions.directApi, versionSsot.directApi);
 
 console.log("FIRMWARE_BETA8_VERSION=PASSED");
 console.log("BOOT_GENERATION_64_SLOT_RING=PASSED");

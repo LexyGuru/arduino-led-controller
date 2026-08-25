@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 'use strict';
+const versionSsot=require('./lib/version-ssot');
 
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -11,9 +12,9 @@ const version = fs.readFileSync('VERSION', 'utf8').trim();
 const release = JSON.parse(fs.readFileSync('release-versions.json', 'utf8'));
 
 assert.equal(version, release.application);
-assert.equal(release.application, release.applicationRelease.version);
-assert.equal(release.applicationRelease.version, release.application);
-assert.equal(release.firmwareRelease.recommendedVersion, release.firmware);
+assert.equal(release.application, versionSsot.application);
+assert.equal(release.applicationRelease.version, versionSsot.application);
+assert.equal(release.firmwareRelease.recommendedVersion, versionSsot.firmware);
 
 assert.match(
   lib,

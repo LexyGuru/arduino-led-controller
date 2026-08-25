@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 'use strict';
+const versionSsot=require('./lib/version-ssot');
 const assert = require('node:assert/strict');
 const cp = require('node:child_process');
 const fs = require('node:fs');
@@ -10,7 +11,7 @@ const versionFile = read('VERSION').trim();
 const checker = read('scripts/check-versions.py');
 
 assert.equal(versionFile, versions.application);
-assert.equal(versions.applicationRelease.version, versions.application);
+assert.equal(versions.applicationRelease.version, versionSsot.application);
 assert.equal(versions.applicationRelease.channel, versions.channel);
 
 let appWorkflow;

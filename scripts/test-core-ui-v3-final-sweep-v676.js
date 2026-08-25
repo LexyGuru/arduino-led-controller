@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 'use strict';
+const versionSsot=require('./lib/version-ssot');
 
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -12,8 +13,8 @@ const sidebar = read('desktop-tauri/src/components/Sidebar.tsx');
 const release = JSON.parse(read('release-versions.json'));
 const manifest = JSON.parse(read('scripts/test-suite-v2.json'));
 
-assert.equal(release.application, release.applicationRelease.version);
-assert.equal(release.firmwareRelease.recommendedVersion, release.firmware);
+assert.equal(release.application, versionSsot.application);
+assert.equal(release.firmwareRelease.recommendedVersion, versionSsot.firmware);
 assert.equal(release.firmwareRelease.channel, 'beta');
 assert.match(types,/THEME_ENGINE_PRODUCT_VERSION = '2\.0'/);
 assert.match(types,/CORE_UI_VERSION = '3\.0'/);

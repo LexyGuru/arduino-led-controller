@@ -171,6 +171,21 @@ export function DeviceHealthPanel({
         <div><span>{t('stats.schedules')}</span><strong>{stats.scheduleCount}</strong><small>{t('stats.activeEffects')}: {stats.activeEffects}</small></div>
         <div><span>{t('stats.httpRequests')}</span><strong>{stats.httpRequests ?? '—'}</strong><small>{t('stats.timeouts')}: {stats.httpTimeouts ?? '—'}</small></div>
         <div><span>{t('stats.httpTimeoutFree')}</span><strong>{stats.httpTimeoutFreePercent == null ? '—' : `${stats.httpTimeoutFreePercent}%`}</strong></div>
+        <div>
+          <span><Activity size={15}/>Diagnostics</span>
+          <strong>
+            {health.diagnosticsSupported == null
+              ? '—'
+              : health.diagnosticsSupported
+                ? 'OK'
+                : 'N/A'}
+          </strong>
+          <small>
+            {health.diagnosticsLastError
+              ? 'error'
+              : ageLabel(health.diagnosticsLastSuccessAt ?? null)}
+          </small>
+        </div>
       </div>
 
       <div className="beta2-health-actions">

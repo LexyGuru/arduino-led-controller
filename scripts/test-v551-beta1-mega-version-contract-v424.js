@@ -1,4 +1,5 @@
 "use strict";
+const versionSsot=require('./lib/version-ssot');
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 
@@ -18,9 +19,9 @@ const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
 const versionPattern = escapeRegex(version);
 const firmwarePattern = escapeRegex(rv.firmware);
 
-assert.equal(rv.application,version);
+assert.equal(rv.application,versionSsot.application);
 assert.match(rv.firmware,/^\d+\.\d+\.\d+-beta\.\d+$/);
-assert.equal(rv.directApi,"1.0.0");
+assert.equal(rv.directApi,versionSsot.directApi);
 
 for (const p of [
   "package.json",

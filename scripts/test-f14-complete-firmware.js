@@ -1,4 +1,5 @@
 'use strict';
+const versionSsot=require('./lib/version-ssot');
 
 const assert = require('assert');
 const fs = require('fs');
@@ -14,7 +15,7 @@ const versions = JSON.parse(
 for (const token of [
   `FIRMWARE_VERSION "${versions.firmware}"`,
   'f14-complete-direct-api-storage',
-  'DIRECT_API_VERSION "1.0.0"',
+  'DIRECT_API_VERSION versionSsot.directApi',
   'API_ALLOW_QUERY_KEY_FALLBACK 0',
   'CONFIG_SLOT_A_OFFSET',
   'CONFIG_SLOT_B_OFFSET',

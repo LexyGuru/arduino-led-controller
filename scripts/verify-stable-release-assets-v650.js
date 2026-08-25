@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 'use strict';
+const versionSsot=require('./lib/version-ssot');
 const fs=require('node:fs');
 const path=require('node:path');
 
@@ -68,8 +69,8 @@ const r=JSON.parse(fs.readFileSync(path.join(root,'release-versions.json'),'utf8
 if(
   r.schemaVersion!==2||
   r.application!==version||
-  r.firmware!=='5.0.0'||
-  r.directApi!=='1.0.0'||
+  r.firmware!==versionSsot.fixtures.firmwareStable500||
+  r.directApi!==versionSsot.fixtures.directApiV1||
   r.channel!=='stable'||
   r.applicationRelease?.channel!=='stable'||
   r.applicationRelease?.branch!=='main'||

@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 'use strict';
+const versionSsot=require('./lib/version-ssot');
 
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -17,8 +18,8 @@ const versions = JSON.parse(
   fs.readFileSync(path.join(ROOT, 'release-versions.json'), 'utf8')
 );
 
-assert.ok(source.includes(`#define FIRMWARE_VERSION "${versions.firmware}"`));
-assert.match(source, /#define DIRECT_API_VERSION "1\.0\.0"/);
+versionSsot.assertFirmwareVersion(source);
+versionSsot.assertFirmwareDirectApi(source);
 assert.match(source, /#define API_ALLOW_QUERY_KEY_FALLBACK 0/);
 assert.match(source, /constexpr unsigned long REMOTE_REBOOT_DELAY_MS = 750UL;/);
 assert.match(

@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 'use strict';
+const versionSsot=require('./lib/version-ssot');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const read=p=>fs.readFileSync(p,'utf8');
@@ -15,8 +16,8 @@ const docPrefix=isBeta
   ? (major==='5'&&minor==='0'?`BETA${betaNumber}`:`V${major}${minor}_BETA${betaNumber}`)
   : `V${major}${minor}_STABLE`;
 
-assert.equal(release.application,version);
-assert.equal(release.applicationRelease.version,version);
+assert.equal(release.application,versionSsot.application);
+assert.equal(release.applicationRelease.version,versionSsot.application);
 assert.equal(release.channel,isBeta?'beta':'stable');
 assert.equal(release.applicationRelease.channel,release.channel);
 assert.equal(release.applicationRelease.branch,isBeta?'next/v5-rearchitecture':'main');

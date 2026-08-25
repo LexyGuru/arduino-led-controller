@@ -177,6 +177,12 @@ export default function App() {
               connectionHealth={
                 controller.connectionHealth
               }
+              diagnostics={controller.diagnostics}
+              diagnosticsError={controller.diagnosticsError}
+              diagnosticsPollIntervalMs={controller.diagnosticsPollIntervalMs}
+              onRefreshDiagnostics={() =>
+                void controller.refreshDiagnostics(true)
+              }
               networkLogs={
                 controller.networkLogs
               }

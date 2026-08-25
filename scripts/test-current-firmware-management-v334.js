@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 'use strict';
+const versionSsot=require('./lib/version-ssot');
 
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -31,7 +32,7 @@ if (firmwareChannel === 'beta') {
   assert.equal(rv.firmwareRelease.releaseFamily, 'firmware-stable');
 }
 
-assert.equal(rv.firmwareRelease.recommendedVersion, rv.firmware);
+assert.equal(rv.firmwareRelease.recommendedVersion, versionSsot.firmware);
 
 assert.ok(
   fw.includes(`#define FIRMWARE_VERSION "${rv.firmware}"`),

@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 'use strict';
+const versionSsot=require('./lib/version-ssot');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 
@@ -10,7 +11,7 @@ const v615 = fs.readFileSync('scripts/test-v615-firmware-channel-startup-contrac
 const release = JSON.parse(fs.readFileSync('release-versions.json','utf8'));
 
 assert.equal(release.applicationRelease.channel,'beta');
-assert.equal(release.firmwareRelease.recommendedVersion,release.firmware);
+assert.equal(release.firmwareRelease.recommendedVersion,versionSsot.firmware);
 
 const appVersion = release.application;
 const beta = appVersion.match(/^(\d+)\.(\d+)\.(\d+)-beta\.(\d+)$/);

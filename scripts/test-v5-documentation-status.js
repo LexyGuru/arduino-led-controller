@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 'use strict';
+const versionSsot=require('./lib/version-ssot');
 
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
@@ -7,7 +8,7 @@ const read=path=>fs.readFileSync(path,'utf8');
 
 const version=read('VERSION').trim();
 const versions=JSON.parse(read('release-versions.json'));
-assert.equal(versions.application,version);
+assert.equal(versions.application,versionSsot.application);
 
 const beta=version.match(/^(\d+)\.(\d+)\.(\d+)-beta\.(\d+)$/);
 const stable=version.match(/^(\d+)\.(\d+)\.(\d+)$/);

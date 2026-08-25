@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 'use strict';
+const versionSsot=require('./lib/version-ssot');
 const assert=require('node:assert/strict'),fs=require('node:fs');
 const read=p=>fs.readFileSync(p,'utf8');
 const release=JSON.parse(read('release-versions.json'));
@@ -18,13 +19,13 @@ const v58Guide=read('docs/v5/V58_BETA1_INSTALLATION_GUIDE.md');
 const v58Checklist=read('docs/v5/V58_BETA1_RELEASE_CHECKLIST.md');
 const v58RootNotes=read('RELEASE_NOTES_5.8.0-beta.1.md');
 const v695=read('scripts/test-v695-lxc-ota-release-gate.js');
-assert.equal(release.application,release.applicationRelease.version);
-assert.equal(release.firmwareRelease.recommendedVersion,release.firmware);
+assert.equal(release.application,versionSsot.application);
+assert.equal(release.firmwareRelease.recommendedVersion,versionSsot.firmware);
 assert.equal(meta.firmwareVersion,release.firmware);
 assert.equal(meta.channel,'beta');
 assert.equal(meta.binary,`Arduino_LED_Controller_Firmware_${release.firmware}_UNO_R4_WiFi.bin`);
 assert.equal(meta.checksum,`${meta.binary}.sha256`);
-assert.ok(fw.includes(`#define FIRMWARE_VERSION "${release.firmware}"`));
+versionSsot.assertFirmwareVersion(fw);
 assert.match(fw,/LedTopologySettings/);
 assert.match(fw,/selectedHeader\.payloadLength/);
 assert.match(fw,/activeLedCount\(uint8_t index\)/);

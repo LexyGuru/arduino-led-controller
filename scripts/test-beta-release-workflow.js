@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 'use strict';
+const versionSsot=require('./lib/version-ssot');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const read=p=>fs.readFileSync(p,'utf8');
@@ -8,11 +9,11 @@ const v=JSON.parse(read('release-versions.json'));
 const fm=JSON.parse(read('firmware/firmware-release.json'));
 const fsr=read('firmware/ArduinoLedController/ArduinoLedController.ino');
 const pkg=JSON.parse(read('package.json'));
-assert.equal(v.application,version);
+assert.equal(v.application,versionSsot.application);
 assert.equal(fm.firmwareVersion,v.firmware);
 assert.equal(fm.directApiVersion,v.directApi);
-assert.ok(fsr.includes(`#define FIRMWARE_VERSION "${v.firmware}"`));
-assert.ok(fsr.includes(`#define DIRECT_API_VERSION "${v.directApi}"`));
+versionSsot.assertFirmwareVersion(fsr);
+versionSsot.assertFirmwareDirectApi(fsr);
 const appBeta=v.channel==='beta';
 const fwBeta=v.firmwareRelease.channel==='beta';
 let prefix;
@@ -33,7 +34,7 @@ if(appBeta){
 }
 if(fwBeta){ assert.match(v.firmware,/^\d+\.\d+\.\d+-beta\.\d+$/); assert.equal(v.firmwareRelease.releaseFamily,'firmware-beta'); }
 else { assert.equal(v.firmwareRelease.channel, 'beta'); assert.match(v.firmware,/^\d+\.\d+\.\d+$/); assert.equal(v.firmwareRelease.releaseFamily,'firmware-stable'); }
-assert.equal(v.firmwareRelease.recommendedVersion,v.firmware);
+assert.equal(v.firmwareRelease.recommendedVersion,versionSsot.firmware);
 for(const k of ['INSTALLATION_GUIDE','RELEASE_NOTES','RELEASE_CHECKLIST']) assert.equal(fs.existsSync(`docs/v5/${prefix}_${k}.md`),true);
 const aw=read(appBeta?'.github/workflows/app-beta-release.yml':'.github/workflows/app-stable-release.yml');
 const fw=read(fwBeta?'.github/workflows/firmware-beta-release.yml':'.github/workflows/firmware-stable-release.yml');

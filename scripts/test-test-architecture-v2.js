@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 'use strict';
+const versionSsot=require('./lib/version-ssot');
 
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -47,7 +48,7 @@ const stable = version.match(/^(\d+)\.(\d+)\.(\d+)$/);
 assert.ok(beta || stable, 'VERSION must be a supported Beta or Stable semantic version');
 
 const expectedChannel = beta ? 'beta' : 'stable';
-assert.equal(release.application, version);
+assert.equal(release.application, versionSsot.application);
 assert.equal(release.channel, expectedChannel);
 
 if (beta) {

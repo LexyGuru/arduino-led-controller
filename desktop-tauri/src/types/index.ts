@@ -24,6 +24,10 @@ export interface ConnectionHealthState {
   nextRetryAt: number | null;
   pollIntervalMs: number;
   lastError: string | null;
+  diagnosticsSupported?: boolean | null;
+  diagnosticsLastSuccessAt?: number | null;
+  diagnosticsLastFailureAt?: number | null;
+  diagnosticsLastError?: string | null;
 }
 
 export interface ConnectionConfig {
@@ -115,6 +119,22 @@ export interface ArduinoStatus {
   nextTransitionEpoch?: number;
   nextUtcOffsetMinutes?: number;
   ntpServer?: string;
+}
+
+export interface ArduinoCapabilities {
+  success?: boolean;
+  requestId?: number;
+  apiVersion?: string;
+  directApiVersion?: string;
+  diagnostics?: boolean;
+  [key: string]: unknown;
+}
+
+export interface ArduinoDiagnosticsResult {
+  supported: boolean;
+  reason?: 'unsupported' | 'endpoint-unavailable';
+  capabilities: ArduinoCapabilities;
+  diagnostics?: Record<string, unknown>;
 }
 
 export interface ArduinoLog {

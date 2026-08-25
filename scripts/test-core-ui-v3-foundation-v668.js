@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 'use strict';
+const versionSsot=require('./lib/version-ssot');
 
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -16,16 +17,16 @@ const css = read('desktop-tauri/src/core-ui-v3.css');
 const canonicalApplicationVersion = read('VERSION').trim();
 
 assert.match(canonicalApplicationVersion, /^\d+\.\d+\.\d+-beta\.\d+$/);
-assert.equal(release.application, canonicalApplicationVersion);
-assert.equal(release.applicationRelease.version, canonicalApplicationVersion);
+assert.equal(release.application, versionSsot.application);
+assert.equal(release.applicationRelease.version, versionSsot.application);
 assert.equal(release.channel, 'beta');
 assert.equal(release.applicationRelease.channel, 'beta');
 assert.equal(release.applicationRelease.branch, 'next/v5-rearchitecture');
 
 assert.match(release.firmware, /^\d+\.\d+\.\d+-beta\.\d+$/);
 assert.equal(release.firmwareRelease.channel, 'beta');
-assert.equal(release.firmwareRelease.recommendedVersion, release.firmware);
-assert.equal(release.directApi, '1.0.0');
+assert.equal(release.firmwareRelease.recommendedVersion, versionSsot.firmware);
+assert.equal(release.directApi, versionSsot.directApi);
 
 assert.match(types, /THEME_ENGINE_PRODUCT_VERSION = '2\.0'/);
 assert.match(types, /CORE_UI_VERSION = '3\.0'/);

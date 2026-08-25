@@ -51,7 +51,7 @@ for (const file of [
   const content = read(file);
   assert.ok(content.includes('5.0.0-beta.6'), `${file}: historical application version`);
   assert.ok(content.includes('4.3.0-beta.6'), `${file}: historical firmware version`);
-  assert.ok(content.includes('1.0.0'), `${file}: historical Direct API version`);
+  assert.ok(content.includes('1.1.0'), `${file}: historical Direct API version`);
 }
 
 assert.equal(firmware.channel, versions.channel);

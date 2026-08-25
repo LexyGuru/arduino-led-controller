@@ -14,10 +14,10 @@
 #include <stdarg.h>
 #include "secrets.h"
 
-#define FIRMWARE_VERSION "5.1.0-beta.2"
+#define FIRMWARE_VERSION "5.1.0-beta.3"
 #define FIRMWARE_FEATURE "f14-direct-api-v1-only-storage-udp-ntp-dst-ota-exclusive-v191-matrix-neopixel-ota-led-feedback-bootgen-sizeopt-schedule-progress-diag"
 #define OTA_MAINTENANCE_MODE_V1 1
-#define DIRECT_API_VERSION "1.0.0"
+#define DIRECT_API_VERSION "1.1.0"
 #define DEVICE_NAME "arduino-led-controller"
 #define API_DEVICE_KEY_HEADER "X-Device-Key"
 
@@ -228,6 +228,8 @@ bool appendChar(FixedBuffer&, char);
 bool appendFormat(FixedBuffer&, const char*, ...);
 bool appendJsonEscaped(FixedBuffer&, const char*);
 void renderAll(bool force = false);
+void markLedDirty(uint8_t index);
+void renderDirty();
 void refreshManualOverrideDeadlines();
 void printConnectionBlock();
 void rebootDevice();
@@ -300,6 +302,20 @@ bool remoteRebootPending = false;
 unsigned long remoteRebootAt = 0;
 unsigned long httpRequests = 0, httpTimeouts = 0, httpRejected = 0;
 unsigned long httpWriteFailures = 0, httpHeaderAuthAccepted = 0;
+// V784 performance foundation: low-cost runtime counters.
+bool ledDirty[STRIP_COUNT] = {true, true, true};
+unsigned long perfRenderPasses = 0, perfRenderedStrips = 0;
+unsigned long perfRenderTotalUs = 0, perfRenderMaxUs = 0;
+unsigned long perfEepromWriteCalls = 0, perfEepromChangedBytes = 0;
+unsigned long perfEepromWriteTotalUs = 0, perfEepromWriteMaxUs = 0;
+unsigned long perfHttpMaxDurationMs = 0;
+// V785 subsystem timing / dedup baseline.
+unsigned long perfStatusBuilds = 0, perfStatusBuildTotalUs = 0, perfStatusBuildMaxUs = 0;
+unsigned long perfLedJsonApplies = 0, perfLedJsonParseTotalUs = 0, perfLedJsonParseMaxUs = 0;
+unsigned long perfLedNoopUpdates = 0, perfDirtyFlushNoops = 0;
+unsigned long perfScheduleRuns = 0, perfScheduleTotalUs = 0, perfScheduleMaxUs = 0;
+unsigned long perfDirectEepromPutCalls = 0, perfDirectEepromPutChangedBytes = 0;
+unsigned long perfDirectEepromPutTotalUs = 0, perfDirectEepromPutMaxUs = 0;
 unsigned long httpQueryFallbackAccepted = 0, httpSuccessResponses = 0;
 unsigned long httpClientErrorResponses = 0, httpServerErrorResponses = 0;
 unsigned long httpPollingRequests = 0, httpPollingSuccess = 0;
@@ -469,10 +485,35 @@ bool eepromBytesEqual(uint16_t offset, const uint8_t* expected, size_t length) {
   return true;
 }
 void eepromWriteBytes(uint16_t offset, const uint8_t* data, size_t length) {
-  for (size_t i = 0; i < length; i++) EEPROM.update(offset + i, data[i]);
+  const unsigned long startedUs = micros();
+  unsigned long changedBytes = 0;
+  for (size_t i = 0; i < length; i++) {
+    if (EEPROM.read(offset + i) == data[i]) continue;
+    EEPROM.update(offset + i, data[i]);
+    changedBytes++;
+  }
+  const unsigned long durationUs = micros() - startedUs;
+  perfEepromWriteCalls++;
+  perfEepromChangedBytes += changedBytes;
+  perfEepromWriteTotalUs += durationUs;
+  if (durationUs > perfEepromWriteMaxUs) perfEepromWriteMaxUs = durationUs;
 }
 void eepromReadBytes(uint16_t offset, uint8_t* data, size_t length) {
   for (size_t i = 0; i < length; i++) data[i] = EEPROM.read(offset + i);
+}
+template <typename T>
+void eepromPutMeasured(uint16_t offset, const T& value) {
+  const uint8_t* bytes = reinterpret_cast<const uint8_t*>(&value);
+  unsigned long changedBytes = 0;
+  for (size_t i = 0; i < sizeof(T); i++)
+    if (EEPROM.read(offset + i) != bytes[i]) changedBytes++;
+  const unsigned long startedUs = micros();
+  EEPROM.put(offset, value);
+  const unsigned long durationUs = micros() - startedUs;
+  perfDirectEepromPutCalls++;
+  perfDirectEepromPutChangedBytes += changedBytes;
+  perfDirectEepromPutTotalUs += durationUs;
+  if (durationUs > perfDirectEepromPutMaxUs) perfDirectEepromPutMaxUs = durationUs;
 }
 
 uint32_t bootGenerationChecksum(uint32_t sequence) {
@@ -735,7 +776,7 @@ void saveCompiledNetworkSettings() {
   copyText(networkSettings.password, sizeof(networkSettings.password), WIFI_PASSWORD);
   copyText(networkSettings.otaPassword, sizeof(networkSettings.otaPassword), OTA_PASSWORD);
   networkSettings.checksum = settingsChecksum(networkSettings);
-  EEPROM.put(0, networkSettings);
+  eepromPutMeasured(0, networkSettings);
   networkSettingsStored = true;
 }
 void loadNetworkSettings() {
@@ -767,7 +808,7 @@ void saveCompiledApiSettings() {
   copyText(apiSettings.privatePath, sizeof(apiSettings.privatePath), API_PRIVATE_PATH);
   copyText(apiSettings.sharedSecret, sizeof(apiSettings.sharedSecret), API_SHARED_SECRET);
   apiSettings.checksum = apiSettingsChecksum(apiSettings);
-  EEPROM.put(API_SETTINGS_EEPROM_OFFSET, apiSettings);
+  eepromPutMeasured(API_SETTINGS_EEPROM_OFFSET, apiSettings);
   apiSettingsStored = true;
   deviceKeyFingerprint = fnv1aText(apiSettings.sharedSecret);
 }
@@ -947,7 +988,7 @@ void saveTimeSettings() {
   timeSettings.magic = TIME_SETTINGS_MAGIC;
   timeSettings.version = TIME_SETTINGS_VERSION;
   timeSettings.checksum = timeSettingsChecksum(timeSettings);
-  EEPROM.put(TIME_SETTINGS_EEPROM_OFFSET, timeSettings);
+  eepromPutMeasured(TIME_SETTINGS_EEPROM_OFFSET, timeSettings);
   TimeSettings verify = {};
   EEPROM.get(TIME_SETTINGS_EEPROM_OFFSET, verify);
   timeSettingsStored = timeSettingsValid(verify);
@@ -1230,6 +1271,7 @@ int32_t manualOverrideMinutesRemaining(uint8_t led) {
 void applyStoredLed(uint8_t index, const StoredLed& source) {
   leds[index] = {source.enabled != 0, source.brightness, source.effect,
     source.speed, source.red, source.green, source.blue};
+  markLedDirty(index);
 }
 void reconcileArduinoSchedules(bool force = false) {
   if (!scheduleCount || !timeSynced) return;
@@ -1240,6 +1282,7 @@ void reconcileArduinoSchedules(bool force = false) {
   schedulerLastRunAt = now;
   uint8_t day, hour, minute;
   if (!localScheduleTime(day, hour, minute)) return;
+  const unsigned long reconcileStartedUs = micros();
   uint16_t current = (day - 1) * 1440U + hour * 60U + minute;
   uint32_t key = currentClockMinuteKey();
   bool changed = false;
@@ -1291,10 +1334,14 @@ void reconcileArduinoSchedules(bool force = false) {
     }
   }
   if (changed) {
-    renderAll(true);
+    renderDirty();
     schedulerLastAppliedAt = now;
     logCode("info", "X3002");
   }
+  const unsigned long reconcileDurationUs = micros() - reconcileStartedUs;
+  perfScheduleRuns++;
+  perfScheduleTotalUs += reconcileDurationUs;
+  if (reconcileDurationUs > perfScheduleMaxUs) perfScheduleMaxUs = reconcileDurationUs;
 }
 
 unsigned long currentClockEpoch() {
@@ -1484,7 +1531,7 @@ unsigned long otaPrepareSecondsRemaining() {
   return otaPrepareModeActive() ? (otaPrepareUntil - millis() + 999UL) / 1000UL : 0;
 }
 void writeOtaSuccessMarker(uint32_t value) {
-  EEPROM.put(OTA_SUCCESS_MARKER_EEPROM_OFFSET, value);
+  eepromPutMeasured(OTA_SUCCESS_MARKER_EEPROM_OFFSET, value);
 }
 void armOtaSuccessBootIndicator() {
   writeOtaSuccessMarker(OTA_SUCCESS_MARKER_MAGIC);
@@ -1660,12 +1707,44 @@ bool animatedEffectActive(uint8_t index) {
     leds[index].effect == RAINBOW ||
     leds[index].effect == CHASE;
 }
+void recordRenderPerformance(unsigned long startedUs, uint8_t strips) {
+  const unsigned long durationUs = micros() - startedUs;
+  perfRenderPasses++;
+  perfRenderedStrips += strips;
+  perfRenderTotalUs += durationUs;
+  if (durationUs > perfRenderMaxUs) perfRenderMaxUs = durationUs;
+}
+void markLedDirty(uint8_t index) {
+  if (index < STRIP_COUNT) ledDirty[index] = true;
+}
+void renderDirty() {
+  if (otaExclusiveMode) return;
+  const unsigned long startedUs = micros();
+  uint8_t rendered = 0;
+  for (uint8_t i = 0; i < STRIP_COUNT; i++) {
+    if (!ledDirty[i]) continue;
+    ledDirty[i] = false;
+    render(i);
+    rendered++;
+  }
+  if (rendered) {
+    lastFrame = millis();
+    recordRenderPerformance(startedUs, rendered);
+  } else {
+    perfDirtyFlushNoops++;
+  }
+}
 void renderAll(bool force) {
   const unsigned long now = millis();
 
   if (force) {
+    const unsigned long startedUs = micros();
     lastFrame = now;
-    for (uint8_t i = 0; i < STRIP_COUNT; i++) render(i);
+    for (uint8_t i = 0; i < STRIP_COUNT; i++) {
+      ledDirty[i] = false;
+      render(i);
+    }
+    recordRenderPerformance(startedUs, STRIP_COUNT);
     return;
   }
 
@@ -1679,9 +1758,12 @@ void renderAll(bool force) {
     const uint8_t index = (animatedCursor + step) % STRIP_COUNT;
     if (!animatedEffectActive(index)) continue;
 
+    const unsigned long startedUs = micros();
     lastFrame = now;
     animatedCursor = (index + 1) % STRIP_COUNT;
+    ledDirty[index] = false;
     render(index);
+    recordRenderPerformance(startedUs, 1);
     return;
   }
 }
@@ -1847,6 +1929,29 @@ void flushHttpPollingSummary(bool force = false) {
       httpPollingRequests, httpPollingSuccess, httpPollingErrors,
       httpPollingTotalDuration / httpPollingRequests);
     logEvent("http", message);
+    snprintf(message, sizeof(message),
+      "render=%lu/%lu avg=%luus max=%luus eepromAB=%lu/%luB max=%luus httpMax=%lums",
+      perfRenderPasses, perfRenderedStrips,
+      perfRenderPasses ? perfRenderTotalUs / perfRenderPasses : 0UL,
+      perfRenderMaxUs, perfEepromWriteCalls, perfEepromChangedBytes,
+      perfEepromWriteMaxUs, perfHttpMaxDurationMs);
+    logEvent("perf", message);
+    snprintf(message, sizeof(message),
+      "status=%lu avg=%luus max=%luus ledJson=%lu avg=%luus max=%luus noop=%lu/%lu",
+      perfStatusBuilds,
+      perfStatusBuilds ? perfStatusBuildTotalUs / perfStatusBuilds : 0UL,
+      perfStatusBuildMaxUs, perfLedJsonApplies,
+      perfLedJsonApplies ? perfLedJsonParseTotalUs / perfLedJsonApplies : 0UL,
+      perfLedJsonParseMaxUs, perfLedNoopUpdates, perfDirtyFlushNoops);
+    logEvent("perf", message);
+    snprintf(message, sizeof(message),
+      "schedule=%lu avg=%luus max=%luus eepromPut=%lu/%luB avg=%luus max=%luus",
+      perfScheduleRuns,
+      perfScheduleRuns ? perfScheduleTotalUs / perfScheduleRuns : 0UL,
+      perfScheduleMaxUs, perfDirectEepromPutCalls, perfDirectEepromPutChangedBytes,
+      perfDirectEepromPutCalls ? perfDirectEepromPutTotalUs / perfDirectEepromPutCalls : 0UL,
+      perfDirectEepromPutMaxUs);
+    logEvent("perf", message);
   }
   httpPollingRequests = httpPollingSuccess = httpPollingErrors = 0;
   httpPollingTotalDuration = 0;
@@ -1860,6 +1965,7 @@ void finalizeHttpAudit(HttpRequestContext& r) {
   copyText(lastHttpAuth, sizeof(lastHttpAuth), authResultText(r.authResult));
   lastHttpResponseCode = r.responseCode;
   lastHttpDurationMs = duration;
+  if (duration > perfHttpMaxDurationMs) perfHttpMaxDurationMs = duration;
   lastHttpClientAt = millis();
   if (r.responseCode < 400) httpSuccessResponses++;
   else if (r.responseCode < 500) httpClientErrorResponses++;
@@ -1882,6 +1988,7 @@ void updateHttpTraceTimeout() {
 }
 
 bool buildStatusJson(size_t& bodyLength, uint32_t requestId) {
+  const unsigned long startedUs = micros();
   FixedBuffer b;
   resetBuffer(b, httpBodyBuffer, sizeof(httpBodyBuffer));
   char fingerprint[16];
@@ -2040,6 +2147,10 @@ bool buildStatusJson(size_t& bodyLength, uint32_t requestId) {
 
   appendRaw(b, "]}");
   bodyLength = b.length;
+  const unsigned long durationUs = micros() - startedUs;
+  perfStatusBuilds++;
+  perfStatusBuildTotalUs += durationUs;
+  if (durationUs > perfStatusBuildMaxUs) perfStatusBuildMaxUs = durationUs;
   return b.valid;
 }
 void sendStatusJson(WiFiClient& c, uint32_t requestId) {
@@ -2093,7 +2204,7 @@ void sendCapabilitiesJson(WiFiClient& c, uint32_t requestId) {
     API_DEVICE_KEY_HEADER,
     API_ALLOW_QUERY_KEY_FALLBACK ? "true" : "false");
   appendRaw(b,
-    "\"features\":{\"diagnostics\":false,\"serialCommands\":false,"
+    "\"features\":{\"diagnostics\":true,\"serialCommands\":false,"
     "\"secretProfileExport\":true,\"ota\":true,\"legacyApi\":true,"
     "\"jsonBodyApi\":true,\"eepromAbSlots\":true,"
     "\"dynamicLedTopology\":true,\"remoteReboot\":true}}");
@@ -2451,7 +2562,14 @@ void sendLedJson(WiFiClient& c, uint8_t index, uint32_t requestId) {
     manualOverride[index] ? "true" : "false");
   sendJsonBuffer(c, b.data, b.length, 200, requestId);
 }
-bool applyLedJson(uint8_t index, const char* body) {
+bool ledStateEqual(const Led& left, const Led& right) {
+  return left.enabled == right.enabled &&
+    left.brightness == right.brightness &&
+    left.effect == right.effect && left.speed == right.speed &&
+    left.red == right.red && left.green == right.green && left.blue == right.blue;
+}
+bool applyLedJson(uint8_t index, const char* body, bool renderNow = true) {
+  const unsigned long parseStartedUs = micros();
   Led candidate = leds[index];
   bool booleanValue; long integerValue; uint8_t r,g,b;
   if (jsonReadBool(body, "enabled", booleanValue)) candidate.enabled = booleanValue;
@@ -2469,9 +2587,16 @@ bool applyLedJson(uint8_t index, const char* body) {
   }
   if (strstr(body, "\"color\"") && !jsonReadColor(body, r,g,b)) return false;
   if (jsonReadColor(body, r,g,b)) { candidate.red=r; candidate.green=g; candidate.blue=b; }
+  const unsigned long parseDurationUs = micros() - parseStartedUs;
+  perfLedJsonApplies++;
+  perfLedJsonParseTotalUs += parseDurationUs;
+  if (parseDurationUs > perfLedJsonParseMaxUs) perfLedJsonParseMaxUs = parseDurationUs;
+  const bool changed = !ledStateEqual(candidate, leds[index]);
+  if (!changed) perfLedNoopUpdates++;
   leds[index] = candidate;
   activateManualOverride(index);
-  renderAll(true);
+  if (changed) markLedDirty(index);
+  if (renderNow) renderDirty();
   return true;
 }
 bool beginScheduleTransaction(uint32_t expectedRevision, uint8_t total) {
@@ -2585,11 +2710,100 @@ void sendLedTopologyJson(WiFiClient& c, uint32_t requestId) {
   }
   sendJsonBuffer(c, b.data, b.length, 200, requestId);
 }
+
+void sendDiagnosticsJson(WiFiClient& c, uint32_t requestId) {
+  FixedBuffer b;
+  resetBuffer(b, httpBodyBuffer, sizeof(httpBodyBuffer));
+
+  const unsigned long uptimeMs = millis();
+  const bool wifiConnected = cachedWifiConnected || WiFi.status() == WL_CONNECTED;
+  const unsigned long renderAvgUs =
+    perfRenderPasses == 0 ? 0 : perfRenderTotalUs / perfRenderPasses;
+  const unsigned long statusAvgUs =
+    perfStatusBuilds == 0 ? 0 : perfStatusBuildTotalUs / perfStatusBuilds;
+  const unsigned long ledJsonAvgUs =
+    perfLedJsonApplies == 0 ? 0 : perfLedJsonParseTotalUs / perfLedJsonApplies;
+  const unsigned long scheduleAvgUs =
+    perfScheduleRuns == 0 ? 0 : perfScheduleTotalUs / perfScheduleRuns;
+
+  appendFormat(b,
+    "{\"success\":true,\"requestId\":%lu,\"schemaVersion\":1,"
+    "\"apiVersion\":\"%s\",\"firmwareVersion\":\"%s\","
+    "\"runtime\":{\"uptimeMs\":%lu,\"bootId\":%lu,\"bootGeneration\":%lu},"
+    "\"wifi\":{\"connected\":%s,\"rssi\":%ld},"
+    "\"time\":{\"synced\":%s},"
+    "\"scheduler\":{\"count\":%u,\"revision\":%lu,\"runs\":%lu,\"avgUs\":%lu,\"maxUs\":%lu},"
+    "\"storage\":{\"configGeneration\":%lu,\"scheduleGeneration\":%lu,"
+    "\"eepromWriteCalls\":%lu,\"eepromChangedBytes\":%lu,"
+    "\"directPutCalls\":%lu,\"directPutChangedBytes\":%lu},",
+    static_cast<unsigned long>(requestId),
+    DIRECT_API_VERSION,
+    FIRMWARE_VERSION,
+    uptimeMs,
+    static_cast<unsigned long>(bootId),
+    static_cast<unsigned long>(bootGeneration),
+    wifiConnected ? "true" : "false",
+    cachedWifiRssi,
+    timeSynced ? "true" : "false",
+    static_cast<unsigned int>(scheduleCount),
+    static_cast<unsigned long>(scheduleRevision),
+    perfScheduleRuns,
+    scheduleAvgUs,
+    perfScheduleMaxUs,
+    static_cast<unsigned long>(configGeneration),
+    static_cast<unsigned long>(scheduleTransactionGeneration),
+    perfEepromWriteCalls,
+    perfEepromChangedBytes,
+    perfDirectEepromPutCalls,
+    perfDirectEepromPutChangedBytes);
+
+  appendFormat(b,
+    "\"http\":{\"requests\":%lu,\"timeouts\":%lu,\"rejected\":%lu,"
+    "\"success\":%lu,\"clientErrors\":%lu,\"serverErrors\":%lu,\"maxMs\":%lu},"
+    "\"performance\":{\"render\":{\"passes\":%lu,\"strips\":%lu,\"avgUs\":%lu,\"maxUs\":%lu},"
+    "\"status\":{\"builds\":%lu,\"avgUs\":%lu,\"maxUs\":%lu},"
+    "\"ledJson\":{\"applies\":%lu,\"noops\":%lu,\"avgUs\":%lu,\"maxUs\":%lu},"
+    "\"dirtyFlushNoops\":%lu},"
+    "\"ota\":{\"ready\":%s,\"transferActive\":%s,\"restartCount\":%lu,\"lastErrorCode\":%d}}",
+    httpRequests,
+    httpTimeouts,
+    httpRejected,
+    httpSuccessResponses,
+    httpClientErrorResponses,
+    httpServerErrorResponses,
+    perfHttpMaxDurationMs,
+    perfRenderPasses,
+    perfRenderedStrips,
+    renderAvgUs,
+    perfRenderMaxUs,
+    perfStatusBuilds,
+    statusAvgUs,
+    perfStatusBuildMaxUs,
+    perfLedJsonApplies,
+    perfLedNoopUpdates,
+    ledJsonAvgUs,
+    perfLedJsonParseMaxUs,
+    perfDirtyFlushNoops,
+    otaReady ? "true" : "false",
+    otaTransferActive ? "true" : "false",
+    otaRestartCount,
+    otaLastErrorCode);
+
+  if (!b.valid) {
+    sendErrorJson(c, 500, "diagnostics_too_large",
+      "A diagnostics valasz nem fert el.", requestId);
+    return;
+  }
+
+  sendJsonBuffer(c, b.data, b.length, 200, requestId);
+}
+
 int routeV1(WiFiClient& c, const char* method, const char* base,
     const char* query, const char* body, uint32_t requestId) {
   if (pathEquals(base, "/api/v1/ping") && pathEquals(method, "GET")) { sendPingJson(c, requestId); return 200; }
   if (pathEquals(base, "/api/v1/capabilities") && pathEquals(method, "GET")) { sendCapabilitiesJson(c, requestId); return 200; }
   if (pathEquals(base, "/api/v1/status") && pathEquals(method, "GET")) { sendStatusJson(c, requestId); return 200; }
+  if (pathEquals(base, "/api/v1/diagnostics") && pathEquals(method, "GET")) { sendDiagnosticsJson(c, requestId); return 200; }
   if (pathEquals(base, "/api/v1/led-topology") && pathEquals(method, "GET")) {
     sendLedTopologyJson(c, requestId); return 200;
   }
@@ -2704,10 +2918,11 @@ int routeV1(WiFiClient& c, const char* method, const char* base,
   }
   if (pathEquals(base, "/api/v1/leds/all") && pathEquals(method, "POST")) {
     for (uint8_t i = 0; i < STRIP_COUNT; i++) {
-      if (!applyLedJson(i, body)) {
+      if (!applyLedJson(i, body, false)) {
         sendErrorJson(c, 422, "VALIDATION_FAILED", "Ervenytelen kozos LED JSON.", requestId); return 422;
       }
     }
+    renderDirty();
     sendStatusJson(c, requestId); return 200;
   }
 

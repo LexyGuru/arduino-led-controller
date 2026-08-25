@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 'use strict';
+const versionSsot=require('./lib/version-ssot');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const read=p=>fs.readFileSync(p,'utf8');
@@ -7,9 +8,9 @@ const exists=p=>fs.existsSync(p);
 
 const version=read('VERSION').trim();
 const release=JSON.parse(read('release-versions.json'));
-assert.equal(release.application,version);
-assert.equal(release.applicationRelease.version,version);
-assert.equal(release.directApiRelease.version,release.directApi);
+assert.equal(release.application,versionSsot.application);
+assert.equal(release.applicationRelease.version,versionSsot.application);
+assert.equal(release.directApiRelease.version,versionSsot.directApi);
 
 let prefix;
 if (release.channel === 'beta') {

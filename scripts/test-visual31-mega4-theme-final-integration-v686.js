@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 'use strict';
+const versionSsot=require('./lib/version-ssot');
 const assert=require('node:assert/strict'),fs=require('node:fs');
 const r=p=>fs.readFileSync(p,'utf8');
 const leds=r('desktop-tauri/src/pages/LedsPage.tsx');
@@ -8,8 +9,8 @@ const provider=r('desktop-tauri/src/design-system/ThemeProvider.tsx');
 const css=r('desktop-tauri/src/core-ui-v3.css');
 const suite=JSON.parse(r('scripts/test-suite-v2.json'));
 const release=JSON.parse(r('release-versions.json'));
-assert.equal(release.application, release.applicationRelease.version);
-assert.equal(release.firmwareRelease.recommendedVersion, release.firmware);
+assert.equal(release.application, versionSsot.application);
+assert.equal(release.firmwareRelease.recommendedVersion, versionSsot.firmware);
 assert.doesNotMatch(leds,/const STRIP_TOPOLOGY/);
 assert.doesNotMatch(leds,/1: \{ pin: 5 \}/);
 assert.doesNotMatch(leds,/2: \{ pin: 6 \}/);

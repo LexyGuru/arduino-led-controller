@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 'use strict';
+const versionSsot=require('./lib/version-ssot');
 
 const assert=require('node:assert/strict');
 const cp=require('node:child_process');
@@ -90,10 +91,10 @@ for(const [version,channel,expected] of cases){
   );
 }
 
-assert.equal(versions.firmware,'5.0.0');
+assert.equal(versions.firmware,versionSsot.firmware);
 assert.equal(versions.channel,'stable');
 assert.equal(versions.firmwareRelease?.channel,'stable');
-assert.equal(release.firmwareVersion,'5.0.0');
+assert.equal(release.firmwareVersion,versionSsot.fixtures.firmwareStable500);
 assert.equal(release.channel,'stable');
 
 // Most important behavioral assertion:

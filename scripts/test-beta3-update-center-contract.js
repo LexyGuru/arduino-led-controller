@@ -1,4 +1,5 @@
 "use strict";
+const versionSsot=require('./lib/version-ssot');
 const assert=require("node:assert/strict"),fs=require("node:fs");
 (async()=>{
  const u=await import("../desktop-tauri/src/utils/updateVersion.mjs");
@@ -43,8 +44,8 @@ assert.ok(n.includes("!busy&&updateCenterModel.firmware.canInstall"));
 
  const rv=JSON.parse(fs.readFileSync("release-versions.json","utf8"));
  assert.equal(fs.readFileSync("VERSION","utf8").trim(),"5.5.1-beta.4");
- assert.equal(rv.firmware,"5.0.0-beta.9");
- assert.equal(rv.directApi,"1.0.0");
+ assert.equal(rv.firmware,versionSsot.firmware);
+ assert.equal(rv.directApi,versionSsot.directApi);
 
  console.log("BETA3_OTA2_READINESS_MINIMAL_LINE=PASSED");
  console.log("BETA3_DUPLICATE_UP_TO_DATE=REMOVED");

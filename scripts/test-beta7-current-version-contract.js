@@ -1,4 +1,5 @@
 "use strict";
+const versionSsot=require('./lib/version-ssot');
 const assert=require("node:assert/strict");
 const fs=require("node:fs");
 const pkg=JSON.parse(fs.readFileSync("package.json","utf8"));
@@ -21,8 +22,8 @@ assert.ok(fs.existsSync(currentReleaseNotesPath),`Missing current release notes:
 const currentReleaseNotes=fs.readFileSync(currentReleaseNotesPath,"utf8");
 
 assert.equal(pkg.version,versions.application);
-assert.ok(fw.includes(`#define FIRMWARE_VERSION "${versions.firmware}"`));
-assert.ok(fw.includes(`#define DIRECT_API_VERSION "${versions.directApi}"`));
+versionSsot.assertFirmwareVersion(fw);
+versionSsot.assertFirmwareDirectApi(fw);
 assert.ok(readme.includes(`| Alkalmazás | **\`${versions.application}\`** |`));
 assert.ok(readme.includes(`| Firmware | **\`${versions.firmware}\`** |`));
 assert.ok(currentReleaseNotes.includes(`\`${versions.application}\``));

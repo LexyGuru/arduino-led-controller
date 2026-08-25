@@ -36,10 +36,19 @@ for (const endpoint of [
   "/api/v1/schedules", "/api/v1/leds",
 ]) assert.ok(routes.includes(endpoint), `Hiányzó Direct API v1 route: ${endpoint}`);
 
+assert.ok(
+  fw.includes("void sendDiagnosticsJson(WiFiClient& c, uint32_t requestId)"),
+  "Hiányzó Direct API 1.1 diagnostics builder",
+);
+assert.ok(
+  routes.includes("/api/v1/diagnostics"),
+  "Hiányzó Direct API 1.1 diagnostics route",
+);
+
 for (const removed of [
-  "sendDiagnosticsJson", "sendConfigStatusJson", "sendConsoleStatsJson",
-  "/api/v1/diagnostics", "/api/v1/config/status", "/api/v1/logs/stats",
-]) assert.ok(!routes.includes(removed) && !fw.includes(`void ${removed}(`), `Eltávolított diagnosztikai elem visszatért: ${removed}`);
+  "sendConfigStatusJson", "sendConsoleStatsJson",
+  "/api/v1/config/status", "/api/v1/logs/stats",
+]) assert.ok(!routes.includes(removed) && !fw.includes(`void ${removed}(`), `Eltávolított legacy diagnosztikai elem visszatért: ${removed}`);
 
 const logs = bodyBetween("void sendLogsJson(", "void sendOtaStatusJson(");
 for (const key of ["lastId", "logs", "message", "timestamp", "type"]) {
@@ -49,4 +58,4 @@ assert.ok(routes.includes("afterId"), "Hiányzó afterId logs query kezelés");
 
 console.log("OK: Direct API v1 fő JSON builderek és route-ok megmaradtak");
 console.log("OK: status/logs escape-elt JSON kulcsok ellenőrizve");
-console.log("OK: duplikált diagnosztikai route-ok és builderek eltávolítva");
+console.log("OK: Direct API 1.1 diagnostics engedélyezve, legacy diagnosztikai duplikátumok továbbra is tiltva");

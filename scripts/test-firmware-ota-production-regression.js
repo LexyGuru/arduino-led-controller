@@ -1,4 +1,5 @@
 "use strict";
+const versionSsot=require('./lib/version-ssot');
 
 const assert=require("node:assert/strict");
 const fs=require("node:fs");
@@ -29,8 +30,8 @@ if (firmwareChannel==="beta") {
 
 assert.equal(meta.channel,firmwareChannel);
 assert.equal(meta.firmwareVersion,versions.firmware);
-assert.equal(versions.firmwareRelease.recommendedVersion,versions.firmware);
-assert.ok(fw.includes(`#define FIRMWARE_VERSION "${versions.firmware}"`));
+assert.equal(versions.firmwareRelease.recommendedVersion,versionSsot.firmware);
+versionSsot.assertFirmwareVersion(fw);
 assert.ok(fw.includes('#define OTA_MAINTENANCE_MODE_V1 1'));
 
 const loop=fw.slice(fw.indexOf("void loop() {"));

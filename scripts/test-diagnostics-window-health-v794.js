@@ -1,0 +1,17 @@
+'use strict';
+const assert=require('node:assert/strict'),fs=require('node:fs');
+const panel=fs.readFileSync('desktop-tauri/src/components/v55/DiagnosticsPanel.tsx','utf8');
+const controller=fs.readFileSync('desktop-tauri/src/hooks/useController.ts','utf8');
+for(const marker of ['httpRejected: number | null;','httpServerErrors: number | null;',"httpRejected:numberValue(http,'rejected')","httpServerErrors:numberValue(http,'serverErrors')","id:'http-timeouts'","id:'http-rejected'","id:'http-server-errors'",'const previousWarnings=useMemo(()=>buildWarnings(history.slice(0,-1)),[history]);','const recoveryHold =',"'RECOVERING'",'data-diagnostics-window-health=','v792-diagnostics-warning-list','Polling governor']) assert.ok(panel.includes(marker),marker);
+const a=panel.indexOf('const degraded ='),b=panel.indexOf('const stateLabel =',a); assert.ok(a>=0&&b>a); const degraded=panel.slice(a,b);
+for(const forbidden of ['(timeoutCount ?? 0) > 0','(rejectedCount ?? 0) > 0','(serverErrors ?? 0) > 0']) assert.ok(!degraded.includes(forbidden),forbidden);
+assert.ok(degraded.includes('warnings.length > 0')); assert.ok(degraded.includes('recoveryHold')); assert.ok(degraded.includes('(otaError ?? 0) !== 0')); assert.ok(degraded.includes('wifiConnected === false'));
+for(const marker of ['diagnosticsGovernorInterval','diagnosticsPollIntervalRef.current','window.setTimeout(']) assert.ok(controller.includes(marker),marker);
+const rs=controller.indexOf('const refreshDiagnostics ='),re=controller.indexOf('const refreshFirmware =',rs); assert.ok(rs>=0&&re>rs); const rb=controller.slice(rs,re); assert.ok(!rb.includes("state: 'offline'")); assert.ok(!rb.includes("state: 'recovering'"));
+console.log('V794_HTTP_COUNTER_DELTA_HEALTH=PASSED');
+console.log('V794_CUMULATIVE_DEGRADED_REMOVED=PASSED');
+console.log('V794_TWO_CLEAN_SAMPLE_RECOVERY=PASSED');
+console.log('V794_RECOVERING_STATE=PASSED');
+console.log('V794_MEGA10_GOVERNOR_PRESERVED=PASSED');
+console.log('V794_PRIMARY_CONNECTION_STATE_ISOLATION=PASSED');
+console.log('V794_DIAGNOSTICS_WINDOW_HEALTH_RECOVERY_MEGA11=PASSED');

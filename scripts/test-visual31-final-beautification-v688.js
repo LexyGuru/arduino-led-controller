@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 'use strict';
+const versionSsot=require('./lib/version-ssot');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const r=p=>fs.readFileSync(p,'utf8');
@@ -7,8 +8,8 @@ const css=r('desktop-tauri/src/core-ui-v3.css');
 const suite=JSON.parse(r('scripts/test-suite-v2.json'));
 const release=JSON.parse(r('release-versions.json'));
 
-assert.equal(release.application, release.applicationRelease.version);
-assert.equal(release.firmwareRelease.recommendedVersion, release.firmware);
+assert.equal(release.application, versionSsot.application);
+assert.equal(release.firmwareRelease.recommendedVersion, versionSsot.firmware);
 assert.match(css,/V688 - Visual 3\.1 Final Beautification Polish/);
 assert.match(css,/\.core-v3-sidebar nav button\[data-nav-active='true'\]/);
 assert.match(css,/\.visual31-status-ribbon>div\.is-ok/);

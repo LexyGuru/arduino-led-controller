@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 'use strict';
+const versionSsot=require('./lib/version-ssot');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const read=p=>fs.readFileSync(p,'utf8');
@@ -10,8 +11,8 @@ const settings=read('desktop-tauri/src/pages/SettingsPage.tsx');
 const css=read('desktop-tauri/src/core-ui-v3.css');
 const release=JSON.parse(read('release-versions.json'));
 const suite=JSON.parse(read('scripts/test-suite-v2.json'));
-assert.equal(release.application, release.applicationRelease.version);
-assert.equal(release.firmwareRelease.recommendedVersion, release.firmware);
+assert.equal(release.application, versionSsot.application);
+assert.equal(release.firmwareRelease.recommendedVersion, versionSsot.firmware);
 assert.match(schedules,/visual31-management-schedule-timeline/);
 assert.match(schedules,/grouped\.map/);
 assert.match(schedules,/baseRevision/);

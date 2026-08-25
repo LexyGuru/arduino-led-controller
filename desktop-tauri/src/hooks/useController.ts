@@ -12,6 +12,7 @@ import {
 import { translate } from '../i18n/runtime';
 
 import type {
+  ArduinoDiagnosticsResult,
   ArduinoLog,
   ArduinoStatus,
   ConnectionConfig,
@@ -184,6 +185,102 @@ function migrateLegacyPlaceholder(
   return merged;
 }
 
+function diagnosticsGovernorRecord(
+  value: unknown
+): Record<string, unknown> {
+  return value &&
+    typeof value === 'object' &&
+    !Array.isArray(value)
+      ? value as Record<string, unknown>
+      : {};
+}
+
+function diagnosticsGovernorNumber(
+  source: Record<string, unknown>,
+  key: string
+): number | null {
+  const value = source[key];
+
+  return typeof value === 'number' &&
+    Number.isFinite(value)
+      ? value
+      : null;
+}
+
+function diagnosticsGovernorInterval(
+  value: ArduinoDiagnosticsResult,
+  previousTimeouts: number | null
+): {
+  intervalMs: number;
+  timeoutCount: number | null;
+} {
+  if (
+    !value.supported ||
+    !value.diagnostics
+  ) {
+    return {
+      intervalMs: 60_000,
+      timeoutCount: previousTimeouts
+    };
+  }
+
+  const root =
+    diagnosticsGovernorRecord(
+      value.diagnostics
+    );
+  const wifi =
+    diagnosticsGovernorRecord(root.wifi);
+  const http =
+    diagnosticsGovernorRecord(root.http);
+
+  const rssi =
+    diagnosticsGovernorNumber(
+      wifi,
+      'rssi'
+    );
+  const httpMaxMs =
+    diagnosticsGovernorNumber(
+      http,
+      'maxMs'
+    );
+  const timeoutCount =
+    diagnosticsGovernorNumber(
+      http,
+      'timeouts'
+    );
+
+  const newTimeout =
+    previousTimeouts != null &&
+    timeoutCount != null &&
+    timeoutCount > previousTimeouts;
+
+  if (
+    newTimeout ||
+    (httpMaxMs != null &&
+      httpMaxMs >= 500)
+  ) {
+    return {
+      intervalMs: 60_000,
+      timeoutCount
+    };
+  }
+
+  if (
+    rssi != null &&
+    rssi <= -75
+  ) {
+    return {
+      intervalMs: 30_000,
+      timeoutCount
+    };
+  }
+
+  return {
+    intervalMs: 15_000,
+    timeoutCount
+  };
+}
+
 export function useController(
   activePage: PageId
 ) {
@@ -212,6 +309,28 @@ export function useController(
     useState<ArduinoStatus | null>(
       null
     );
+
+  const [
+    diagnostics,
+    setDiagnostics
+  ] =
+    useState<ArduinoDiagnosticsResult | null>(
+      null
+    );
+
+  const [
+    diagnosticsError,
+    setDiagnosticsError
+  ] =
+    useState<string | null>(
+      null
+    );
+
+  const [
+    diagnosticsPollIntervalMs,
+    setDiagnosticsPollIntervalMs
+  ] =
+    useState(15_000);
 
   const [
     connectionHealth,
@@ -335,6 +454,21 @@ export function useController(
   const statusRequestInFlight =
     useRef(false);
 
+  const diagnosticsRequestInFlight =
+    useRef(false);
+
+  const diagnosticsPollIntervalRef =
+    useRef(15_000);
+
+  const previousDiagnosticsTimeouts =
+    useRef<number | null>(null);
+
+  const statusRequestGeneration =
+    useRef(0);
+
+  const activePageRef =
+    useRef(activePage);
+
   const statusHealthy =
     useRef(false);
 
@@ -345,6 +479,9 @@ export function useController(
     useRef(0);
 
   const consolePausedUntil =
+    useRef(0);
+
+  const lastConsolePollAt =
     useRef(0);
 
   const [
@@ -386,6 +523,23 @@ export function useController(
         ) {
           return;
         }
+
+        const consolePollInterval =
+          activePage === 'logs'
+            ? 2_500
+            : 10_000;
+
+        if (
+          !force &&
+          Date.now() -
+            lastConsolePollAt.current <
+            consolePollInterval
+        ) {
+          return;
+        }
+
+        lastConsolePollAt.current =
+          Date.now();
 
         consoleRequestInFlight.current =
           true;
@@ -522,6 +676,7 @@ export function useController(
         }
       },
       [
+        activePage,
         busy,
         initialized
       ]
@@ -574,9 +729,19 @@ export function useController(
         statusRequestInFlight.current =
           true;
 
+        const requestGeneration =
+          statusRequestGeneration.current;
+
         try {
           const statusValue =
             await tauriApi.status();
+
+          if (
+            requestGeneration !==
+              statusRequestGeneration.current
+          ) {
+            return;
+          }
 
           setStatus({
             ...statusValue,
@@ -696,6 +861,181 @@ export function useController(
         initialized
       ]
     );
+
+  useEffect(
+    () => {
+      statusRequestGeneration.current += 1;
+      tauriApi.invalidateReadCache();
+    },
+    [
+      config.protocol,
+      config.localProtocol,
+      config.arduinoIp,
+      config.arduinoPort,
+      config.localArduinoIp,
+      config.localArduinoPort,
+      config.preferLocal,
+      config.macosLocalApiEnabled,
+      config.arduinoApiPath,
+      config.arduinoApiKeyConfigured
+    ]
+  );
+
+  useEffect(
+    () => {
+      activePageRef.current =
+        activePage;
+    },
+    [activePage]
+  );
+
+  const refreshDiagnostics =
+    useCallback(
+      async (
+        force = false
+      ) => {
+        if (
+          diagnosticsRequestInFlight.current ||
+          busy ||
+          !initialized ||
+          !status?.connected
+        ) {
+          return;
+        }
+
+        if (
+          activePageRef.current !== 'dashboard'
+        ) {
+          return;
+        }
+
+        if (
+          !force &&
+          document.visibilityState !== 'visible'
+        ) {
+          return;
+        }
+
+        diagnosticsRequestInFlight.current = true;
+
+        try {
+          const value =
+            await tauriApi.diagnostics();
+
+          setDiagnostics(value);
+          setDiagnosticsError(null);
+
+          const governor =
+            diagnosticsGovernorInterval(
+              value,
+              previousDiagnosticsTimeouts.current
+            );
+
+          previousDiagnosticsTimeouts.current =
+            governor.timeoutCount;
+
+          diagnosticsPollIntervalRef.current =
+            governor.intervalMs;
+
+          setDiagnosticsPollIntervalMs(
+            governor.intervalMs
+          );
+
+          setConnectionHealth(
+            (current) => ({
+              ...current,
+              diagnosticsSupported:
+                value.supported,
+              diagnosticsLastSuccessAt:
+                value.supported
+                  ? Date.now()
+                  : current.diagnosticsLastSuccessAt ?? null,
+              diagnosticsLastError: null
+            })
+          );
+        } catch (error) {
+          const message = String(error);
+
+          setDiagnosticsError(message);
+
+          diagnosticsPollIntervalRef.current =
+            60_000;
+
+          setDiagnosticsPollIntervalMs(
+            60_000
+          );
+
+          setConnectionHealth(
+            (current) => ({
+              ...current,
+              diagnosticsLastFailureAt:
+                Date.now(),
+              diagnosticsLastError:
+                message
+            })
+          );
+        } finally {
+          diagnosticsRequestInFlight.current = false;
+        }
+      },
+      [
+        busy,
+        initialized,
+        status?.connected
+      ]
+    );
+
+  useEffect(
+    () => {
+      if (
+        activePage !== 'dashboard' ||
+        !initialized ||
+        !status?.connected
+      ) {
+        return;
+      }
+
+      let disposed = false;
+      let timer: number | null = null;
+
+      const scheduleNext = () => {
+        if (disposed) {
+          return;
+        }
+
+        timer = window.setTimeout(
+          async () => {
+            if (
+              document.visibilityState ===
+                'visible'
+            ) {
+              await refreshDiagnostics();
+            }
+
+            scheduleNext();
+          },
+          diagnosticsPollIntervalRef.current
+        );
+      };
+
+      void refreshDiagnostics()
+        .finally(scheduleNext);
+
+      return () => {
+        disposed = true;
+
+        if (timer != null) {
+          window.clearTimeout(timer);
+        }
+      };
+    },
+    [
+      activePage,
+      initialized,
+      status?.connected,
+      refreshDiagnostics
+    ]
+  );
 
   const refreshFirmware =
     useCallback(
@@ -976,17 +1316,29 @@ export function useController(
             document.visibilityState ===
               'visible';
 
+          const activePollingPage =
+            activePageRef.current;
+
+          const healthyForegroundDelay =
+            activePollingPage === 'dashboard' ||
+            activePollingPage === 'leds'
+              ? 5_000
+              : activePollingPage === 'schedules'
+                ? 10_000
+                : 20_000;
+
           const delay =
             visible
               ? failures === 0
-                ? 15_000
+                ? healthyForegroundDelay
                 : Math.min(
                     60_000,
                     5_000 *
-                      2 ** Math.min(
-                        failures - 1,
-                        4
-                      )
+                      2 **
+                        Math.min(
+                          failures - 1,
+                          4
+                        )
                   )
               : 60_000;
 
@@ -1914,6 +2266,10 @@ export function useController(
     };
 
   return {
+    diagnosticsPollIntervalMs,
+    diagnostics,
+    diagnosticsError,
+    refreshDiagnostics,
     capabilities,
     config,
     setConfig,
