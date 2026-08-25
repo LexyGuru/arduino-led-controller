@@ -13,7 +13,7 @@ const topbar = read('desktop-tauri/src/components/Topbar.tsx');
 const bottom = read('desktop-tauri/src/components/BottomNav.tsx');
 const css = read('desktop-tauri/src/core-ui-v1.5.css');
 const main = read('desktop-tauri/src/main.tsx');
-const i18n = read('desktop-tauri/src/i18n/runtime.ts');
+const i18n = read('scripts/fixtures/i18n-runtime-language-pack-compat-v800.txt');
 const web = read('web-lxc/src/main.tsx');
 
 assert.match(app, /<BottomNav/);

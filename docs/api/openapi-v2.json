@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Arduino LED Controller API v2",
-    "version": "5.8.0-beta.3",
+    "version": "6.0.0-beta.1",
     "description": "Moduláris HTTP API az Arduino LED Controller szerverhez."
   },
   "servers": [
@@ -2694,12 +2694,6 @@
               }
             }
           },
-          "401": {
-            "description": "Nincs hitelesítés"
-          },
-          "403": {
-            "description": "Nincs jogosultság"
-          },
           "201": {
             "description": "Véglegesítés jóváhagyva",
             "content": {
@@ -2710,6 +2704,12 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Nincs hitelesítés"
+          },
+          "403": {
+            "description": "Nincs jogosultság"
           }
         }
       }

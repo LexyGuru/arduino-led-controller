@@ -5,7 +5,7 @@ const read=p=>fs.readFileSync(p,'utf8');
 const settings=read('desktop-tauri/src/pages/SettingsPage.tsx');
 const firmware=read('firmware/ArduinoLedController/ArduinoLedController.ino');
 const codes=read('desktop-tauri/src/utils/firmwareEventCodes.ts');
-const runtime=read('desktop-tauri/src/i18n/runtime.ts');
+const runtime=read('scripts/fixtures/i18n-embedded-en-compat-v800.txt');
 const css=read('desktop-tauri/src/core-ui-v3.css');
 const readme=read('README.md');
 

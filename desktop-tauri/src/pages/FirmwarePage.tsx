@@ -40,6 +40,7 @@ import { runAudited } from '../services/tauriAudit';
 import { createOta2RecoveryCoordinator } from '../utils/ota2Recovery.mjs';
 
 import { useI18n } from '../i18n';
+import { localeForLanguage } from '../i18n/runtime';
 
 import { localizeOtaMessage, localizeOtaStage } from '../utils/firmwareOtaLocalization';
 import { localizeFirmwareRuntimeMessage } from '../utils/firmwareLocalization';
@@ -124,9 +125,8 @@ function deduplicateFirmwareCatalog(items: FirmwareArtifact[]) {
   );
 }
 
-function logTime(timestamp: number, language: 'hu' | 'en' | 'de') {
-  const locale = language === 'de' ? 'de-DE' : language === 'en' ? 'en-US' : 'hu-HU';
-  return new Date(timestamp).toLocaleTimeString(locale, {
+function logTime(timestamp: number, language: string) {
+  return new Date(timestamp).toLocaleTimeString(localeForLanguage(language), {
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit'
@@ -155,7 +155,7 @@ export function FirmwarePage({
     directCancel
 }: FirmwarePageProps) {
   const { t, language } = useI18n();
-  const locale = language === 'de' ? 'de-DE' : language === 'en' ? 'en-US' : 'hu-HU';
+  const locale = localeForLanguage(language);
   const state =
     useV5Firmware({
       legacyFirmware,

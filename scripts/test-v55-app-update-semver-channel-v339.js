@@ -6,7 +6,7 @@ const fs = require('node:fs');
 
 const hook = fs.readFileSync('desktop-tauri/src/hooks/useAppUpdateCenter.ts', 'utf8');
 const rust = fs.readFileSync('desktop-tauri/src-tauri/src/lib.rs', 'utf8');
-const i18n = fs.readFileSync('desktop-tauri/src/i18n/runtime.ts', 'utf8');
+const i18n = fs.readFileSync('scripts/fixtures/i18n-embedded-en-compat-v800.txt', 'utf8');
 
 function versionParts(value) {
   const normalized = String(value).trim().replace(/^v/i, '');

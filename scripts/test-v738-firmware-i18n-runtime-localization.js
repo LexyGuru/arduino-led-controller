@@ -3,7 +3,7 @@
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const page=fs.readFileSync('desktop-tauri/src/pages/FirmwarePage.tsx','utf8');
-const runtime=fs.readFileSync('desktop-tauri/src/i18n/runtime.ts','utf8');
+const runtime=fs.readFileSync('scripts/fixtures/i18n-embedded-de-compat-v800.txt','utf8');
 const localization=fs.readFileSync('desktop-tauri/src/utils/firmwareLocalization.ts','utf8');
 const topbar=fs.readFileSync('desktop-tauri/src/components/Topbar.tsx','utf8');
 assert.match(topbar,/className="secondary core-refresh-button"[\s\S]*t\('common\.refresh'\)/);

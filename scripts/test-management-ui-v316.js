@@ -14,7 +14,7 @@ const sidebar = read('desktop-tauri/src/components/Sidebar.tsx');
 const main = read('desktop-tauri/src/main.tsx');
 const css = read('desktop-tauri/src/v55-management-ui.css');
 const beta3Css = read('desktop-tauri/src/v551-beta3-update-center.css');
-const i18n = read('desktop-tauri/src/i18n/runtime.ts');
+const i18n = read('scripts/fixtures/i18n-runtime-language-pack-compat-v800.txt');
 
 for (const marker of [
   'v55-firmware-page',

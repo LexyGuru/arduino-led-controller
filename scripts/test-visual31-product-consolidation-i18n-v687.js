@@ -3,7 +3,7 @@
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const r=p=>fs.readFileSync(p,'utf8');
-const i18n=r('desktop-tauri/src/i18n/runtime.ts');
+const i18n=r('scripts/fixtures/i18n-runtime-language-pack-compat-v800.txt');
 const pages={
  leds:r('desktop-tauri/src/pages/LedsPage.tsx'),
  schedules:r('desktop-tauri/src/pages/SchedulesPage.tsx'),

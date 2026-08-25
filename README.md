@@ -1,10 +1,17 @@
 # Arduino LED Controller V5.8
 
 <!-- CURRENT_VERSION_SSOT_BEGIN -->
-Current application: `5.8.0-beta.3`
+Current application: `6.0.0-beta.1`
 Current firmware: `5.1.0-beta.3`
 Current Direct API: `1.1.0`
 <!-- CURRENT_VERSION_SSOT_END -->
+
+<!-- CURRENT_RELEASE_DOCS_SSOT_BEGIN -->
+- Release notes: `docs/v5/V60_BETA1_RELEASE_NOTES.md`
+- Installation guide: `docs/v5/V60_BETA1_INSTALLATION_GUIDE.md`
+- Release checklist: `docs/v5/V60_BETA1_RELEASE_CHECKLIST.md`
+- Root release notes: `RELEASE_NOTES_6.0.0-beta.1.md`
+<!-- CURRENT_RELEASE_DOCS_SSOT_END -->
 
 ## Current Beta development — 5.8.0-beta.3
 

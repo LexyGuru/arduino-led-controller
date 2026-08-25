@@ -1,118 +1,74 @@
-import {
-  AlertTriangle,
-  CheckCircle2,
-  ShieldAlert
-} from 'lucide-react';
-
-import {
-  V5StatusBadge
-} from './V5StatusBadge';
-
-export function V5PreflightPanel({
-  preflight
-}: {
-  preflight: {
-    ready: boolean;
-    checks:
-      Array<
-        Record<string, unknown>
-      >;
-    summary: {
-      total: number;
-      passed: number;
-      blocking: number;
-      warnings: number;
+import { I18nText } from "../../i18n";
+import { AlertTriangle, CheckCircle2, ShieldAlert } from 'lucide-react';
+import { V5StatusBadge } from './V5StatusBadge';
+export function V5PreflightPanel({ preflight }: {
+    preflight: {
+        ready: boolean;
+        checks: Array<Record<string, unknown>>;
+        summary: {
+            total: number;
+            passed: number;
+            blocking: number;
+            warnings: number;
+        };
     };
-  };
 }) {
-  return (
-    <section className="panel v5-panel">
+    return (<section className="panel v5-panel">
       <div className="panel-title">
         <div>
-          <p className="eyebrow">
-            KONFIGURÁCIÓS PREFLIGHT
-          </p>
-          <h2>
-            Kiadási előellenőrzés
-          </h2>
+          <p className="eyebrow"><I18nText k="legacyUi.konfiguracios.preflight.bd311dbc"/></p>
+          <h2><I18nText k="legacyUi.kiadasi.eloellenorzes.01b009b7"/></h2>
         </div>
 
-        <V5StatusBadge
-          state={
-            preflight.ready
-              ? 'ok'
-              : 'error'
-          }
-          label={
-            preflight.ready
-              ? 'Készen áll'
-              : 'Blokkolt'
-          }
-        />
+        <V5StatusBadge state={preflight.ready
+            ? 'ok'
+            : 'error'} label={preflight.ready
+            ? 'Készen áll'
+            : 'Blokkolt'}/>
       </div>
 
       <div className="v5-summary-grid">
         <div>
           <CheckCircle2 />
-          <span>Sikeres</span>
+          <span><I18nText k="beta3.ota2.stage.success"/></span>
           <strong>
             {preflight.summary
-              .passed}
+            .passed}
           </strong>
         </div>
 
         <div>
           <AlertTriangle />
-          <span>Figyelmeztetés</span>
+          <span><I18nText k="appearance.custom.color.warning"/></span>
           <strong>
             {preflight.summary
-              .warnings}
+            .warnings}
           </strong>
         </div>
 
         <div>
           <ShieldAlert />
-          <span>Blokkoló</span>
+          <span><I18nText k="legacyUi.blokkolo.7c5a4183"/></span>
           <strong>
             {preflight.summary
-              .blocking}
+            .blocking}
           </strong>
         </div>
       </div>
 
       <div className="v5-check-list">
-        {preflight.checks.map(
-          (
-            item,
-            index
-          ) => {
-            const code =
-              item.code === null ||
-              item.code === undefined
+        {preflight.checks.map((item, index) => {
+            const code = item.code === null ||
+                item.code === undefined
                 ? null
-                : String(
-                    item.code
-                  );
-
-            return (
-              <div
-                key={
-                  String(
-                    item.name ||
-                    index
-                  )
-                }
-                className={
-                  item.ok === true
+                : String(item.code);
+            return (<div key={String(item.name ||
+                    index)} className={item.ok === true
                     ? 'ok'
-                    : (
-                        item.severity ===
-                          'warning'
-                          ? 'warning'
-                          : 'error'
-                      )
-                }
-              >
+                    : (item.severity ===
+                        'warning'
+                        ? 'warning'
+                        : 'error')}>
                 <span>
                   {item.ok ===
                     true
@@ -122,23 +78,16 @@ export function V5PreflightPanel({
 
                 <div>
                   <strong>
-                    {String(
-                      item.name ||
-                      'ellenőrzés'
-                    )}
+                    {String(item.name ||
+                    'ellenőrzés')}
                   </strong>
 
-                  {code !== null && (
-                    <small>
+                  {code !== null && (<small>
                       {code}
-                    </small>
-                  )}
+                    </small>)}
                 </div>
-              </div>
-            );
-          }
-        )}
+              </div>);
+        })}
       </div>
-    </section>
-  );
+    </section>);
 }

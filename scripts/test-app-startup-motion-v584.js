@@ -10,7 +10,7 @@ const startup=read('desktop-tauri/src/hooks/useAppStartupGate.ts');
 const screen=read('desktop-tauri/src/components/AppStartupScreen.tsx');
 const main=read('desktop-tauri/src/main.tsx');
 const css=read('desktop-tauri/src/app-startup-motion.css');
-const i18n=read('desktop-tauri/src/i18n/runtime.ts');
+const i18n=read('scripts/fixtures/i18n-runtime-language-pack-compat-v800.txt');
 const theme=read('desktop-tauri/src/design-system/theme-types.ts');
 
 assert.match(theme,/THEME_ENGINE_VERSION = '3\.0'/);

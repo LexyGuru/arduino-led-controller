@@ -12,7 +12,7 @@ const catalog=read('desktop-tauri/src/design-system/theme-catalog.ts');
 const contrast=read('desktop-tauri/src/design-system/theme-contrast.ts');
 const appearance=read('desktop-tauri/src/components/AppearanceSettings.tsx');
 const css=read('desktop-tauri/src/theme-engine-v3.css');
-const i18n=read('desktop-tauri/src/i18n/runtime.ts');
+const i18n=read('scripts/fixtures/i18n-runtime-language-pack-compat-v800.txt');
 
 assert.match(main,/theme-engine-v3\.css/);
 assert.match(types,/THEME_ENGINE_VERSION = '3\.0'/);

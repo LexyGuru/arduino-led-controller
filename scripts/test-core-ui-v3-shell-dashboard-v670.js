@@ -27,7 +27,8 @@ assert.match(app, /core-ui-v3-shell/);
 assert.match(app, /core-v3-content-shell/);
 assert.match(sidebar, /core-v3-sidebar/);
 assert.match(sidebar, />UI 3\.0</);
-assert.match(sidebar, />5\.7 Beta\.1</);
+assert.match(sidebar, /\{appVersion\}/);
+assert.doesNotMatch(sidebar, />5\.7 Beta\.1</);
 assert.doesNotMatch(sidebar, />UI 2\.0</);
 assert.doesNotMatch(sidebar, />Beta 5</);
 

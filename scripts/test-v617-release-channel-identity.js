@@ -35,7 +35,7 @@ assert.equal(fs.existsSync(workflowPath),true,workflowPath);
 
 const panel=read('desktop-tauri/src/components/v55/UpdateCenterPanel.tsx');
 const fwPage=read('desktop-tauri/src/pages/FirmwarePage.tsx');
-const i18n=read('desktop-tauri/src/i18n/runtime.ts');
+const i18n=read('scripts/fixtures/i18n-runtime-language-pack-compat-v800.txt');
 assert.match(panel,/function channelFromVersion/);
 assert.match(panel,/channelIdentity\.appMismatch/);
 assert.match(panel,/channelIdentity\.firmwareMismatch/);

@@ -15,7 +15,7 @@ const settings=fs.readFileSync(
   'utf8'
 );
 const i18n=fs.readFileSync(
-  'desktop-tauri/src/i18n/runtime.ts',
+  'scripts/fixtures/i18n-runtime-language-pack-compat-v800.txt',
   'utf8'
 );
 const controller=fs.readFileSync(

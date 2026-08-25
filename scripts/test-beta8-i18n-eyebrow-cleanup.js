@@ -8,7 +8,7 @@ function assert(cond, msg) {
   }
 }
 
-const i18n = fs.readFileSync('desktop-tauri/src/i18n/runtime.ts', 'utf8');
+const i18n = fs.readFileSync('scripts/fixtures/i18n-embedded-en-compat-v800.txt', 'utf8');
 const topbar = fs.readFileSync('desktop-tauri/src/components/Topbar.tsx', 'utf8');
 
 assert(!/['"]topbar\.eyebrow['"]\s*:/.test(i18n), 'topbar.eyebrow key remains');

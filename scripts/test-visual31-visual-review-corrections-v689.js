@@ -6,7 +6,7 @@ const r=p=>fs.readFileSync(p,'utf8');
 
 const startup=r('desktop-tauri/src/hooks/useAppStartupGate.ts');
 const startupScreen=r('desktop-tauri/src/components/AppStartupScreen.tsx');
-const i18n=r('desktop-tauri/src/i18n/runtime.ts');
+const i18n=r('scripts/fixtures/i18n-embedded-en-compat-v800.txt');
 const appearance=r('desktop-tauri/src/components/AppearanceSettings.tsx');
 const css=r('desktop-tauri/src/core-ui-v3.css');
 const themeTypes=r('desktop-tauri/src/design-system/theme-types.ts');

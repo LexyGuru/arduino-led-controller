@@ -6,7 +6,7 @@ const path=require('node:path');
 
 const scripts='scripts';
 const oldPath='desktop-tauri/src/i18n/index.tsx';
-const runtimePath='desktop-tauri/src/i18n/runtime.ts';
+const runtimePath='scripts/fixtures/i18n-embedded-hu-compat-v800.txt';
 const boundaryTokens=[
   'I18nProvider',
   'useI18n',

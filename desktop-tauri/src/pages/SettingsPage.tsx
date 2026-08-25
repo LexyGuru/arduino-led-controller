@@ -3,57 +3,115 @@ import type { AppUpdateState } from '../hooks/useAppUpdateCenter';
 import { useEffect, useState } from 'react';
 import { Clock3, DownloadCloud, FolderOpen, Globe2, Languages, PlugZap, RadioTower, Save, ShieldCheck, Wifi } from 'lucide-react';
 import { useI18n } from '../i18n';
-import { languageOptions, type AppLanguage } from '../i18n/runtime';
+import type { AppLanguage } from '../i18n/runtime';
 import { AppearanceSettings } from '../components/AppearanceSettings';
 import type { ConnectionConfig, LedTopology } from '../types';
 import { tauriApi } from '../services/tauriApi';
-const TIMEZONES=['Europe/Vienna','Europe/Budapest','Europe/Berlin','Europe/London','UTC','America/New_York','America/Los_Angeles','Asia/Tokyo','Asia/Dubai','Australia/Sydney'];
-
-function offsetMinutes(timeZone:string,at:Date){
- const parts=new Intl.DateTimeFormat('en-US',{timeZone,year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'}).formatToParts(at);
- const values=Object.fromEntries(parts.map(part=>[part.type,part.value]));
- const represented=Date.UTC(Number(values.year),Number(values.month)-1,Number(values.day),Number(values.hour),Number(values.minute),Number(values.second));
- return Math.round((represented-at.getTime())/60000);
+const TIMEZONES = ['Europe/Vienna', 'Europe/Budapest', 'Europe/Berlin', 'Europe/London', 'UTC', 'America/New_York', 'America/Los_Angeles', 'Asia/Tokyo', 'Asia/Dubai', 'Australia/Sydney'];
+function offsetMinutes(timeZone: string, at: Date) {
+    const parts = new Intl.DateTimeFormat('en-US', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' }).formatToParts(at);
+    const values = Object.fromEntries(parts.map(part => [part.type, part.value]));
+    const represented = Date.UTC(Number(values.year), Number(values.month) - 1, Number(values.day), Number(values.hour), Number(values.minute), Number(values.second));
+    return Math.round((represented - at.getTime()) / 60000);
 }
-
-function timezoneSnapshot(timeZone:string){
- const now=new Date();
- const current=offsetMinutes(timeZone,now);
- let transition=0;
- let next=current;
- for(let hour=1;hour<=24*370;hour+=6){
-  const candidate=new Date(now.getTime()+hour*3600000);
-  const value=offsetMinutes(timeZone,candidate);
-  if(value!==current){
-   let low=now.getTime()+(hour-6)*3600000;
-   let high=candidate.getTime();
-   while(high-low>60000){
-    const middle=Math.floor((low+high)/2);
-    if(offsetMinutes(timeZone,new Date(middle))===current) low=middle; else high=middle;
-   }
-   transition=Math.floor(high/1000);
-   next=value;
-   break;
-  }
- }
- return {currentUtcOffsetMinutes:current,nextTransitionEpoch:transition,nextUtcOffsetMinutes:next};
+function timezoneSnapshot(timeZone: string) {
+    const now = new Date();
+    const current = offsetMinutes(timeZone, now);
+    let transition = 0;
+    let next = current;
+    for (let hour = 1; hour <= 24 * 370; hour += 6) {
+        const candidate = new Date(now.getTime() + hour * 3600000);
+        const value = offsetMinutes(timeZone, candidate);
+        if (value !== current) {
+            let low = now.getTime() + (hour - 6) * 3600000;
+            let high = candidate.getTime();
+            while (high - low > 60000) {
+                const middle = Math.floor((low + high) / 2);
+                if (offsetMinutes(timeZone, new Date(middle)) === current)
+                    low = middle;
+                else
+                    high = middle;
+            }
+            transition = Math.floor(high / 1000);
+            next = value;
+            break;
+        }
+    }
+    return { currentUtcOffsetMinutes: current, nextTransitionEpoch: transition, nextUtcOffsetMinutes: next };
 }
-
-interface SettingsPageProps { platform:string; otaSupported:boolean; config:ConnectionConfig; busy:boolean; onChange:(config:ConnectionConfig)=>void; onPersist?:(config:ConnectionConfig)=>void; onSave:()=>void; onTest:()=>void; otaPassword:string; onOtaPasswordChange:(value:string)=>void; appUpdate:AppUpdateState; }
-const validHost=(v:string)=>{const h=v.trim();return h.length>0&&h.length<=253&&!h.includes('://')&&!h.includes('/')&&!/\s/.test(h)}; const validPort=(v:number)=>Number.isInteger(v)&&v>=1&&v<=65535; const validPath=(v:string)=>v.trim().startsWith('/')&&!/\s/.test(v.trim()); const validKey=(v:string)=>{const k=v.trim();return k.length>=24&&k.length<=64&&/^[\x21-\x7e]+$/.test(k)};
-export function SettingsPage({platform,otaSupported,config,busy,onChange,onPersist,onSave,onTest,otaPassword,onOtaPasswordChange,appUpdate}:SettingsPageProps){
- const detectedTimezone=Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC';
- const isLxc=platform==='proxmox-lxc';
- const persistentKeys=new Set<keyof ConnectionConfig>(['profileName','language','updateChannel','firmwareUpdateChannel','autoCheckUpdates','autoDownloadUpdates','firmwareUpdateChecks','timezoneId','timezoneAuto','currentUtcOffsetMinutes','nextTransitionEpoch','nextUtcOffsetMinutes']);
- const commit=(next:ConnectionConfig,persist=false)=>{onChange(next);if(isLxc&&persist)onPersist?.(next)};
- const applyTimezone=(timezoneId:string,timezoneAuto=config.timezoneAuto)=>{const snap=timezoneSnapshot(timezoneId);commit({...config,timezoneId,timezoneAuto,...snap},true);};
- const {t,language,setLanguage}=useI18n(); const [settingsView,setSettingsView]=useState<'general'|'arduino'>('general'); const [ledTopology,setLedTopology]=useState<LedTopology|null>(null); const [ledTopologyDraft,setLedTopologyDraft]=useState<number[]>([300,300,300]); const [ledTopologyBusy,setLedTopologyBusy]=useState(false); const [ledTopologyError,setLedTopologyError]=useState(''); const [ledTopologySaved,setLedTopologySaved]=useState(false); const [ledTopologyFeedback,setLedTopologyFeedback]=useState(''); const set=<K extends keyof ConnectionConfig>(key:K,value:ConnectionConfig[K])=>{const next={...config,[key]:value};commit(next,persistentKeys.has(key));};
- const changeLanguage=(value:AppLanguage)=>{setLanguage(value);set('language',value)}; const loadLedTopology=async()=>{setLedTopologyBusy(true);setLedTopologyError('');try{const value=await tauriApi.ledTopology();setLedTopology(value);setLedTopologyDraft(value.strips.map(strip=>strip.ledCount));}catch(error){setLedTopologyError(error instanceof Error?error.message:String(error))}finally{setLedTopologyBusy(false)}};
- useEffect(()=>{if(settingsView==='arduino'&&!ledTopology&&!ledTopologyBusy)void loadLedTopology();},[settingsView]);
- const saveLedTopology=async()=>{if(!ledTopology)return;const before=ledTopology.strips.map(strip=>strip.ledCount);setLedTopologyBusy(true);setLedTopologyError('');setLedTopologySaved(false);setLedTopologyFeedback('');try{const value=await tauriApi.saveLedTopology(ledTopology.revision,ledTopologyDraft);const detail=value.strips.map((strip,index)=>`${strip.id}: ${before[index]??strip.ledCount} → ${strip.ledCount} LED`).join(' · ');setLedTopology(value);setLedTopologyDraft(value.strips.map(strip=>strip.ledCount));setLedTopologyFeedback(t('settings.ledTopology.saved',{detail,revision:value.revision}));setLedTopologySaved(true);}catch(error){setLedTopologyError(error instanceof Error?error.message:String(error))}finally{setLedTopologyBusy(false)}};
-
- const isMac=platform==='macos'; const isMobile=platform==='android'||platform==='ios'; const local=validHost(config.localArduinoIp)&&validPort(config.localArduinoPort); const remote=validHost(config.arduinoIp)&&validPort(config.arduinoPort); const localApiAllowed=!isMac||config.macosLocalApiEnabled; const otaHost=config.otaUseApiHost?(config.arduinoIp||config.localArduinoIp):config.otaAddress; const canSave=((local&&localApiAllowed)||remote)&&validPath(config.arduinoApiPath)&&validKey(config.arduinoApiKey)&&(!otaSupported||(validHost(otaHost)&&validPort(config.otaPort)&&config.otaTimeoutSeconds>=30&&config.otaTimeoutSeconds<=600&&(config.otaUploadMode!=='custom'||Boolean(config.otaToolPath.trim())))); const prefix=config.arduinoApiPath.trim().replace(/\/+$/,''); const localUrl=local?`${config.localProtocol}://${config.localArduinoIp}:${config.localArduinoPort}${prefix}/api/v1/status`:''; const remoteUrl=remote?`${config.protocol}://${config.arduinoIp}:${config.arduinoPort}${prefix}/api/v1/status`:'';
- return <div className="page visual31-management-page visual31-settings-page settings-page v55-settings-hub beta4-settings-redesign core-v3-management-page core-v3-settings-page" data-settings-view={settingsView} data-core-management="settings">
+interface SettingsPageProps {
+    platform: string;
+    otaSupported: boolean;
+    config: ConnectionConfig;
+    busy: boolean;
+    onChange: (config: ConnectionConfig) => void;
+    onPersist?: (config: ConnectionConfig) => void;
+    onSave: () => void;
+    onTest: () => void;
+    otaPassword: string;
+    onOtaPasswordChange: (value: string) => void;
+    appUpdate: AppUpdateState;
+}
+const validHost = (v: string) => { const h = v.trim(); return h.length > 0 && h.length <= 253 && !h.includes('://') && !h.includes('/') && !/\s/.test(h); };
+const validPort = (v: number) => Number.isInteger(v) && v >= 1 && v <= 65535;
+const validPath = (v: string) => v.trim().startsWith('/') && !/\s/.test(v.trim());
+const validKey = (v: string) => { const k = v.trim(); return k.length >= 24 && k.length <= 64 && /^[\x21-\x7e]+$/.test(k); };
+export function SettingsPage({ platform, otaSupported, config, busy, onChange, onPersist, onSave, onTest, otaPassword, onOtaPasswordChange, appUpdate }: SettingsPageProps) {
+    const detectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+    const isLxc = platform === 'proxmox-lxc';
+    const persistentKeys = new Set<keyof ConnectionConfig>(['profileName', 'language', 'updateChannel', 'firmwareUpdateChannel', 'autoCheckUpdates', 'autoDownloadUpdates', 'firmwareUpdateChecks', 'timezoneId', 'timezoneAuto', 'currentUtcOffsetMinutes', 'nextTransitionEpoch', 'nextUtcOffsetMinutes']);
+    const commit = (next: ConnectionConfig, persist = false) => { onChange(next); if (isLxc && persist)
+        onPersist?.(next); };
+    const applyTimezone = (timezoneId: string, timezoneAuto = config.timezoneAuto) => { const snap = timezoneSnapshot(timezoneId); commit({ ...config, timezoneId, timezoneAuto, ...snap }, true); };
+    const { t, language, setLanguage, languageCatalog, installedLanguages, languagePackBusy, languagePackError, languageCatalogOnline, refreshLanguageCatalog, installLanguage, uninstallLanguage } = useI18n();
+    const [settingsView, setSettingsView] = useState<'general' | 'arduino'>('general');
+    const [ledTopology, setLedTopology] = useState<LedTopology | null>(null);
+    const [ledTopologyDraft, setLedTopologyDraft] = useState<number[]>([300, 300, 300]);
+    const [ledTopologyBusy, setLedTopologyBusy] = useState(false);
+    const [ledTopologyError, setLedTopologyError] = useState('');
+    const [ledTopologySaved, setLedTopologySaved] = useState(false);
+    const [ledTopologyFeedback, setLedTopologyFeedback] = useState('');
+    const set = <K extends keyof ConnectionConfig>(key: K, value: ConnectionConfig[K]) => { const next = { ...config, [key]: value }; commit(next, persistentKeys.has(key)); };
+    const changeLanguage = (value: AppLanguage) => { setLanguage(value); set('language', value); };
+    const loadLedTopology = async () => { setLedTopologyBusy(true); setLedTopologyError(''); try {
+        const value = await tauriApi.ledTopology();
+        setLedTopology(value);
+        setLedTopologyDraft(value.strips.map(strip => strip.ledCount));
+    }
+    catch (error) {
+        setLedTopologyError(error instanceof Error ? error.message : String(error));
+    }
+    finally {
+        setLedTopologyBusy(false);
+    } };
+    useEffect(() => { if (settingsView === 'arduino' && !ledTopology && !ledTopologyBusy)
+        void loadLedTopology(); }, [settingsView]);
+    const saveLedTopology = async () => { if (!ledTopology)
+        return; const before = ledTopology.strips.map(strip => strip.ledCount); setLedTopologyBusy(true); setLedTopologyError(''); setLedTopologySaved(false); setLedTopologyFeedback(''); try {
+        const value = await tauriApi.saveLedTopology(ledTopology.revision, ledTopologyDraft);
+        const detail = value.strips.map((strip, index) => `${strip.id}: ${before[index] ?? strip.ledCount} → ${strip.ledCount} LED`).join(' · ');
+        setLedTopology(value);
+        setLedTopologyDraft(value.strips.map(strip => strip.ledCount));
+        setLedTopologyFeedback(t('settings.ledTopology.saved', { detail, revision: value.revision }));
+        setLedTopologySaved(true);
+    }
+    catch (error) {
+        setLedTopologyError(error instanceof Error ? error.message : String(error));
+    }
+    finally {
+        setLedTopologyBusy(false);
+    } };
+    const isMac = platform === 'macos';
+    const isMobile = platform === 'android' || platform === 'ios';
+    const local = validHost(config.localArduinoIp) && validPort(config.localArduinoPort);
+    const remote = validHost(config.arduinoIp) && validPort(config.arduinoPort);
+    const localApiAllowed = !isMac || config.macosLocalApiEnabled;
+    const otaHost = config.otaUseApiHost ? (config.arduinoIp || config.localArduinoIp) : config.otaAddress;
+    const canSave = ((local && localApiAllowed) || remote) && validPath(config.arduinoApiPath) && validKey(config.arduinoApiKey) && (!otaSupported || (validHost(otaHost) && validPort(config.otaPort) && config.otaTimeoutSeconds >= 30 && config.otaTimeoutSeconds <= 600 && (config.otaUploadMode !== 'custom' || Boolean(config.otaToolPath.trim()))));
+    const prefix = config.arduinoApiPath.trim().replace(/\/+$/, '');
+    const localUrl = local ? `${config.localProtocol}://${config.localArduinoIp}:${config.localArduinoPort}${prefix}/api/v1/status` : '';
+    const remoteUrl = remote ? `${config.protocol}://${config.arduinoIp}:${config.arduinoPort}${prefix}/api/v1/status` : '';
+    return <div className="page visual31-management-page visual31-settings-page settings-page v55-settings-hub beta4-settings-redesign core-v3-management-page core-v3-settings-page" data-settings-view={settingsView} data-core-management="settings">
  <section className="visual31-management-hero visual31-settings-overview" data-visual31-management="settings">
  <div className="visual31-management-hero__copy">
   <p className="eyebrow">{t('visual31.settings.eyebrow')}</p>
@@ -66,23 +124,46 @@ export function SettingsPage({platform,otaSupported,config,busy,onChange,onPersi
   <div><span>{t('visual31.settings.remote')}</span><strong>{remote ? t('visual31.settings.ready') : t('visual31.settings.off')}</strong></div>
   <div><span>{t('visual31.settings.timezone')}</span><strong>{config.timezoneAuto ? t('visual31.settings.auto') : t('visual31.settings.manual')}</strong></div>
  </div>
-</section>
-<section className="v55-settings-hub-nav core-v3-settings-hub-nav">
+    </section>
+    <section className="v55-settings-hub-nav core-v3-settings-hub-nav">
   <div className="v55-settings-hub-copy"><strong>{t('settings-hub.title')}</strong><span>{t('settings-hub.subtitle')}</span></div>
   <div className="v55-settings-hub-tabs core-v3-settings-tabs" role="tablist" aria-label={t('settings-hub.title')}>
-   <button type="button" className={settingsView==='general'?'active':''} onClick={()=>setSettingsView('general')}>{t('settings-hub.general')}</button>
-   <button type="button" className={settingsView==='arduino'?'active':''} onClick={()=>setSettingsView('arduino')}>{t('settings-hub.arduino')}</button>
+   <button type="button" className={settingsView === 'general' ? 'active' : ''} onClick={() => setSettingsView('general')}>{t('settings-hub.general')}</button>
+   <button type="button" className={settingsView === 'arduino' ? 'active' : ''} onClick={() => setSettingsView('arduino')}>{t('settings-hub.arduino')}</button>
   </div>
  </section>
- <section className="panel settings-panel settings-general-section"><div className="panel-title"><div><p className="eyebrow">{t('settings.language.eyebrow')}</p><h2>{t('settings.language.title')}</h2></div><Languages/></div><div className="settings-grid"><label>{t('settings.language.label')}<select value={language} onChange={e=>changeLanguage(e.target.value as AppLanguage)}>{languageOptions.map(code=><option key={code} value={code}>{t(`settings.language.${code}`)}</option>)}</select></label></div><div className="notice"><Globe2 size={18}/><p>{t('settings.language.help')}</p></div></section>
+ <section className="panel settings-panel settings-general-section" data-language-pack-manager="2.0">
+ <div className="panel-title"><div><p className="eyebrow">{t('languagePack.eyebrow')}</p><h2>{t('languagePack.title')}</h2></div><Languages /></div>
+ <div className="settings-grid"><label>{t('settings.language.label')}<select value={language} onChange={e => changeLanguage(e.target.value as AppLanguage)}>
+  {installedLanguages.map(code => <option key={code} value={code}>{code === 'en' ? `English · ${t('languagePack.builtIn')}` : (languageCatalog.find(item => item.code === code)?.nativeName || code.toUpperCase())}</option>)}
+ </select></label></div>
+ <div className="notice"><Globe2 size={18}/><p>{t('languagePack.help')}</p></div>
+ <div className="language-pack-manager__toolbar"><button type="button" onClick={() => void refreshLanguageCatalog()} disabled={Boolean(languagePackBusy)}><DownloadCloud size={17}/>{t('languagePack.checkUpdates')}</button></div>
+ {!languageCatalogOnline && <div className="notice"><Globe2 size={18}/><p>{t('languagePack.offlineHelp')}</p></div>}
+ {languagePackError && <div className="notice error" role="alert"><p>{t('languagePack.error', { error: languagePackError })}</p></div>}
+ <div className="language-pack-manager__list">
+  {languageCatalog.map(item => {
+            const installed = installedLanguages.includes(item.code);
+            const available = item.status === 'available';
+            const updateAvailable = Boolean(item.updateAvailable);
+            return <div className="language-pack-manager__item" key={item.code}>
+   <div><strong>{item.nativeName}</strong><span>{item.name}{item.packVersion || item.version ? ` · ${t('languagePack.version', { version: item.packVersion || item.version || '' })}` : ''}</span></div>
+   <div>
+    {installed ? <><span>{updateAvailable ? t('languagePack.updateAvailable') : t('languagePack.current')}</span>{updateAvailable && <button type="button" onClick={() => void installLanguage(item.code)} disabled={!languageCatalogOnline || Boolean(languagePackBusy)}>{languagePackBusy === item.code ? t('languagePack.updating') : (languageCatalogOnline ? t('languagePack.update') : t('languagePack.internetRequired'))}</button>}{available && <button type="button" onClick={() => void installLanguage(item.code)} disabled={!languageCatalogOnline || Boolean(languagePackBusy)}>{languagePackBusy === item.code ? t('languagePack.updating') : (languageCatalogOnline ? t('languagePack.reinstall') : t('languagePack.internetRequired'))}</button>}<button type="button" onClick={() => uninstallLanguage(item.code)} disabled={languagePackBusy === item.code}>{t('languagePack.remove')}</button></> :
+                    <button type="button" disabled={!available || !languageCatalogOnline || Boolean(languagePackBusy)} onClick={() => void installLanguage(item.code)}>{languagePackBusy === item.code ? t('languagePack.updating') : (available ? (languageCatalogOnline ? t('languagePack.download') : t('languagePack.internetRequired')) : t('languagePack.pending'))}</button>}
+   </div>
+  </div>;
+        })}
+ </div>
+    </section>
  <div className="settings-general-wrap"><AppearanceSettings /></div>
-  <section className="panel settings-panel settings-connection-section"><div className="panel-title"><div><p className="eyebrow">{t('settings.direct.eyebrow')}</p><h2>{t('settings.direct.title')}</h2></div><ShieldCheck/></div><div className="notice"><PlugZap size={18}/><p>{t(isMac?'settings.direct.macosNotice':'settings.direct.defaultNotice')}</p></div><div className="settings-grid">
- <label>{t('settings.profileName')}<input value={config.profileName} onChange={e=>set('profileName',e.target.value)}/></label><label>{t('settings.remoteProtocol')}<select value={config.protocol} onChange={e=>set('protocol',e.target.value as 'http'|'https')}><option value="https">HTTPS</option><option value="http">HTTP</option></select></label><label>{t('settings.remoteHost')}<input value={config.arduinoIp} placeholder="beta-lexyguruhome.ddns.net" onChange={e=>set('arduinoIp',e.target.value)}/></label><label>{t('settings.remotePort')}<input type="number" value={config.arduinoPort} onChange={e=>set('arduinoPort',Number(e.target.value))}/></label><label>{t('settings.localProtocol')}<select value={config.localProtocol} onChange={e=>set('localProtocol',e.target.value as 'http'|'https')}><option value="http">HTTP</option><option value="https">HTTPS</option></select></label><label>{t('settings.localHost')}<input value={config.localArduinoIp} placeholder="10.0.0.117" onChange={e=>set('localArduinoIp',e.target.value)}/></label><label>{t('settings.localPort')}<input type="number" value={config.localArduinoPort} onChange={e=>set('localArduinoPort',Number(e.target.value))}/></label><label className="settings-span">{t('settings.privatePath')}<input value={config.arduinoApiPath} onChange={e=>set('arduinoApiPath',e.target.value)}/></label><label className="settings-span">{t('settings.deviceKey')}<input type="password" value={config.arduinoApiKey} onChange={e=>set('arduinoApiKey',e.target.value)}/></label></div>
- {isMac&&<label className="check-row"><input type="checkbox" checked={config.macosLocalApiEnabled} onChange={e=>set('macosLocalApiEnabled',e.target.checked)}/>{t('settings.macosLocalAdvanced')}</label>}<label className="check-row"><input type="checkbox" checked={config.preferLocal} disabled={isMac} onChange={e=>set('preferLocal',e.target.checked)}/>{t(isMac?'settings.macosRemotePrimary':'settings.preferLocal')}</label><div className="endpoint-preview"><Wifi size={17}/><span>{local&&localApiAllowed?localUrl:t(isMac&&!config.macosLocalApiEnabled?'settings.localDisabledMac':'settings.noValidLocal')}</span></div><div className="endpoint-preview"><Globe2 size={17}/><span>{remote?remoteUrl:t('settings.noValidRemote')}</span></div></section>
- <section className="panel settings-panel settings-general-section"><div className="panel-title"><div><p className="eyebrow">{t('settings.time.eyebrow')}</p><h2>{t('settings.time.title')}</h2></div><Clock3/></div><label className="check-row"><input type="checkbox" checked={config.timezoneAuto} onChange={e=>{const automatic=e.target.checked;applyTimezone(automatic?detectedTimezone:config.timezoneId,automatic);}}/>{t('settings.time.auto')}</label><div className="settings-grid"><label className="settings-span">{t('settings.time.zone')}<select value={config.timezoneId} disabled={config.timezoneAuto} onChange={e=>applyTimezone(e.target.value,false)}>{Array.from(new Set([config.timezoneId,detectedTimezone,...TIMEZONES])).map(zone=><option key={zone} value={zone}>{zone}</option>)}</select></label><label>{t('settings.time.offset')}<input readOnly value={`UTC${config.currentUtcOffsetMinutes>=0?'+':''}${(config.currentUtcOffsetMinutes/60).toFixed(2)}`}/></label><label>{t('settings.time.next')}<input readOnly value={config.nextTransitionEpoch?new Date(config.nextTransitionEpoch*1000).toLocaleString():t('common.none')}/></label></div><div className="notice"><Clock3 size={18}/><p>{t('settings.time.help',{zone:config.timezoneId})}</p></div></section>
- {settingsView==='arduino'&&<section className="panel settings-panel settings-arduino-section led-topology-settings" data-led-topology-settings="v1"><div className="panel-title"><div><p className="eyebrow">DYNAMIC LED TOPOLOGY</p><h2>LED hardverkonfiguráció</h2></div><PlugZap/></div><div className="notice"><RadioTower size={18}/><p>A fizikai PIN-ek firmware-szinten rögzítettek. Itt csak az egyes szalagok aktív LED-száma módosítható.</p></div>{ledTopology?<><div className="led-topology-settings__grid">{ledTopology.strips.map((strip,index)=><label key={strip.id}><span><strong>{strip.id}</strong> · PIN {strip.pin} · fix</span><input type="number" min={1} max={ledTopology.maxLedCount} value={ledTopologyDraft[index]??strip.ledCount} disabled={ledTopologyBusy} onChange={event=>{const next=[...ledTopologyDraft];next[index]=Math.max(1,Math.min(ledTopology.maxLedCount,Number(event.target.value)||1));setLedTopologyDraft(next);setLedTopologySaved(false);}}/><small>1–{ledTopology.maxLedCount} LED</small></label>)}</div><div className="led-topology-settings__summary"><span>Konfiguráció revízió: <strong>{ledTopology.revision}</strong></span><span>Összes aktív LED: <strong>{ledTopologyDraft.reduce((sum,count)=>sum+count,0)}</strong></span></div><button type="button" className="primary" disabled={ledTopologyBusy||ledTopologyDraft.length!==3} onClick={()=>void saveLedTopology()}><Save size={17}/>{ledTopologyBusy?'Mentés…':'LED konfiguráció mentése'}</button>{ledTopologySaved&&ledTopologyFeedback&&<div className="notice led-topology-settings__feedback success" role="status" aria-live="polite"><ShieldCheck size={18}/><p>{ledTopologyFeedback}</p></div>}</>:<button type="button" onClick={()=>void loadLedTopology()} disabled={ledTopologyBusy}>{ledTopologyBusy?'Betöltés…':'LED konfiguráció betöltése'}</button>}{ledTopologyError&&<div className="notice error led-topology-settings__feedback" role="alert" aria-live="assertive"><p>{ledTopologyError}</p></div>}</section>}
- {otaSupported?<section className="panel settings-panel settings-connection-section"><div className="panel-title"><div><p className="eyebrow">{t('settings.ota.eyebrow')}</p><h2>{t('settings.ota.title')}</h2></div><FolderOpen/></div>{isMac?<><label className="check-row ota-terminal-toggle"><input type="checkbox" checked={config.otaUploadMode==='system'||config.otaUploadMode==='custom'} onChange={e=>set('otaUploadMode',e.target.checked?'system':'auto')}/>{t('settings.ota.localConsole')}</label><div className="notice"><FolderOpen size={18}/><p>{t('settings.ota.localConsoleHelp')}</p></div></>:<label className="check-row"><input type="checkbox" checked={config.otaUseApiHost} onChange={e=>set('otaUseApiHost',e.target.checked)}/>{t('settings.ota.useHost')}</label>}<div className="settings-grid">{(!config.otaUseApiHost||isMac)&&<label>{t('settings.ota.host')}<input value={config.otaAddress} onChange={e=>set('otaAddress',e.target.value)}/></label>}<label>{t('settings.ota.port')}<input type="number" value={config.otaPort} onChange={e=>set('otaPort',Number(e.target.value))}/></label><label>{t('settings.ota.mode')}<select value={config.otaUploadMode} onChange={e=>set('otaUploadMode',e.target.value as ConnectionConfig['otaUploadMode'])}><option value="auto">{t('settings.ota.auto')}</option>{!isMobile&&<option value="system">{t('settings.ota.system')}</option>}<option value="bundled" disabled={isMac||isMobile}>{t('settings.ota.bundled')}</option>{!isMobile&&<option value="custom">{t('settings.ota.custom')}</option>}</select></label>{!isMobile&&<label className="settings-span">{t('settings.ota.path')}<input value={config.otaToolPath} placeholder="/usr/local/bin/arduinoOTA" onChange={e=>set('otaToolPath',e.target.value)}/></label>}<label>{t('settings.ota.timeout')}<input type="number" min={30} max={600} value={config.otaTimeoutSeconds} onChange={e=>set('otaTimeoutSeconds',Number(e.target.value))}/></label><label>{t('settings.ota.password')}<input type="password" value={otaPassword} onChange={e=>onOtaPasswordChange(e.target.value)}/></label></div><div className="endpoint-preview"><DownloadCloud size={17}/><span>{t('settings.ota.target',{host:otaHost||t('common.none'),port:config.otaPort,seconds:config.otaTimeoutSeconds})}</span></div></section>:<section className="panel settings-panel settings-connection-section"><div className="panel-title"><div><p className="eyebrow">{t('settings.mobile.eyebrow')}</p><h2>{t('settings.mobile.title')}</h2></div><FolderOpen/></div><div className="notice"><ShieldCheck size={18}/><p>{t('settings.mobile.notice')}</p></div></section>}
+  <section className="panel settings-panel settings-connection-section"><div className="panel-title"><div><p className="eyebrow">{t('settings.direct.eyebrow')}</p><h2>{t('settings.direct.title')}</h2></div><ShieldCheck /></div><div className="notice"><PlugZap size={18}/><p>{t(isMac ? 'settings.direct.macosNotice' : 'settings.direct.defaultNotice')}</p></div><div className="settings-grid">
+ <label>{t('settings.profileName')}<input value={config.profileName} onChange={e => set('profileName', e.target.value)}/></label><label>{t('settings.remoteProtocol')}<select value={config.protocol} onChange={e => set('protocol', e.target.value as 'http' | 'https')}><option value="https">HTTPS</option><option value="http">HTTP</option></select></label><label>{t('settings.remoteHost')}<input value={config.arduinoIp} placeholder="beta-lexyguruhome.ddns.net" onChange={e => set('arduinoIp', e.target.value)}/></label><label>{t('settings.remotePort')}<input type="number" value={config.arduinoPort} onChange={e => set('arduinoPort', Number(e.target.value))}/></label><label>{t('settings.localProtocol')}<select value={config.localProtocol} onChange={e => set('localProtocol', e.target.value as 'http' | 'https')}><option value="http">HTTP</option><option value="https">HTTPS</option></select></label><label>{t('settings.localHost')}<input value={config.localArduinoIp} placeholder="10.0.0.117" onChange={e => set('localArduinoIp', e.target.value)}/></label><label>{t('settings.localPort')}<input type="number" value={config.localArduinoPort} onChange={e => set('localArduinoPort', Number(e.target.value))}/></label><label className="settings-span">{t('settings.privatePath')}<input value={config.arduinoApiPath} onChange={e => set('arduinoApiPath', e.target.value)}/></label><label className="settings-span">{t('settings.deviceKey')}<input type="password" value={config.arduinoApiKey} onChange={e => set('arduinoApiKey', e.target.value)}/></label></div>
+ {isMac && <label className="check-row"><input type="checkbox" checked={config.macosLocalApiEnabled} onChange={e => set('macosLocalApiEnabled', e.target.checked)}/>{t('settings.macosLocalAdvanced')}</label>}<label className="check-row"><input type="checkbox" checked={config.preferLocal} disabled={isMac} onChange={e => set('preferLocal', e.target.checked)}/>{t(isMac ? 'settings.macosRemotePrimary' : 'settings.preferLocal')}</label><div className="endpoint-preview"><Wifi size={17}/><span>{local && localApiAllowed ? localUrl : t(isMac && !config.macosLocalApiEnabled ? 'settings.localDisabledMac' : 'settings.noValidLocal')}</span></div><div className="endpoint-preview"><Globe2 size={17}/><span>{remote ? remoteUrl : t('settings.noValidRemote')}</span></div></section>
+ <section className="panel settings-panel settings-general-section"><div className="panel-title"><div><p className="eyebrow">{t('settings.time.eyebrow')}</p><h2>{t('settings.time.title')}</h2></div><Clock3 /></div><label className="check-row"><input type="checkbox" checked={config.timezoneAuto} onChange={e => { const automatic = e.target.checked; applyTimezone(automatic ? detectedTimezone : config.timezoneId, automatic); }}/>{t('settings.time.auto')}</label><div className="settings-grid"><label className="settings-span">{t('settings.time.zone')}<select value={config.timezoneId} disabled={config.timezoneAuto} onChange={e => applyTimezone(e.target.value, false)}>{Array.from(new Set([config.timezoneId, detectedTimezone, ...TIMEZONES])).map(zone => <option key={zone} value={zone}>{zone}</option>)}</select></label><label>{t('settings.time.offset')}<input readOnly value={`UTC${config.currentUtcOffsetMinutes >= 0 ? '+' : ''}${(config.currentUtcOffsetMinutes / 60).toFixed(2)}`}/></label><label>{t('settings.time.next')}<input readOnly value={config.nextTransitionEpoch ? new Date(config.nextTransitionEpoch * 1000).toLocaleString() : t('common.none')}/></label></div><div className="notice"><Clock3 size={18}/><p>{t('settings.time.help', { zone: config.timezoneId })}</p></div></section>
+ {settingsView === 'arduino' && <section className="panel settings-panel settings-arduino-section led-topology-settings" data-led-topology-settings="v1"><div className="panel-title"><div><p className="eyebrow">{t('settings.ledTopology.eyebrow')}</p><h2>{t('settings.ledTopology.title')}</h2></div><PlugZap /></div><div className="notice"><RadioTower size={18}/><p>{t('settings.ledTopology.help')}</p></div>{ledTopology ? <><div className="led-topology-settings__grid">{ledTopology.strips.map((strip, index) => <label key={strip.id}><span><strong>{strip.id}</strong> · PIN {strip.pin} · {t('settings.ledTopology.fixed')}</span><input type="number" min={1} max={ledTopology.maxLedCount} value={ledTopologyDraft[index] ?? strip.ledCount} disabled={ledTopologyBusy} onChange={event => { const next = [...ledTopologyDraft]; next[index] = Math.max(1, Math.min(ledTopology.maxLedCount, Number(event.target.value) || 1)); setLedTopologyDraft(next); setLedTopologySaved(false); }}/><small>1–{ledTopology.maxLedCount} LED</small></label>)}</div><div className="led-topology-settings__summary"><span>{t('settings.ledTopology.revision')}: <strong>{ledTopology.revision}</strong></span><span>{t('settings.ledTopology.total')}: <strong>{ledTopologyDraft.reduce((sum, count) => sum + count, 0)}</strong></span></div><button type="button" className="primary" disabled={ledTopologyBusy || ledTopologyDraft.length !== 3} onClick={() => void saveLedTopology()}><Save size={17}/>{ledTopologyBusy ? t('settings.ledTopology.saving') : t('settings.ledTopology.save')}</button>{ledTopologySaved && ledTopologyFeedback && <div className="notice led-topology-settings__feedback success" role="status" aria-live="polite"><ShieldCheck size={18}/><p>{ledTopologyFeedback}</p></div>}</> : <button type="button" onClick={() => void loadLedTopology()} disabled={ledTopologyBusy}>{ledTopologyBusy ? t('settings.ledTopology.loading') : t('settings.ledTopology.load')}</button>}{ledTopologyError && <div className="notice error led-topology-settings__feedback" role="alert" aria-live="assertive"><p>{ledTopologyError}</p></div>}</section>}
+ {otaSupported ? <section className="panel settings-panel settings-connection-section"><div className="panel-title"><div><p className="eyebrow">{t('settings.ota.eyebrow')}</p><h2>{t('settings.ota.title')}</h2></div><FolderOpen /></div>{isMac ? <><label className="check-row ota-terminal-toggle"><input type="checkbox" checked={config.otaUploadMode === 'system' || config.otaUploadMode === 'custom'} onChange={e => set('otaUploadMode', e.target.checked ? 'system' : 'auto')}/>{t('settings.ota.localConsole')}</label><div className="notice"><FolderOpen size={18}/><p>{t('settings.ota.localConsoleHelp')}</p></div></> : <label className="check-row"><input type="checkbox" checked={config.otaUseApiHost} onChange={e => set('otaUseApiHost', e.target.checked)}/>{t('settings.ota.useHost')}</label>}<div className="settings-grid">{(!config.otaUseApiHost || isMac) && <label>{t('settings.ota.host')}<input value={config.otaAddress} onChange={e => set('otaAddress', e.target.value)}/></label>}<label>{t('settings.ota.port')}<input type="number" value={config.otaPort} onChange={e => set('otaPort', Number(e.target.value))}/></label><label>{t('settings.ota.mode')}<select value={config.otaUploadMode} onChange={e => set('otaUploadMode', e.target.value as ConnectionConfig['otaUploadMode'])}><option value="auto">{t('settings.ota.auto')}</option>{!isMobile && <option value="system">{t('settings.ota.system')}</option>}<option value="bundled" disabled={isMac || isMobile}>{t('settings.ota.bundled')}</option>{!isMobile && <option value="custom">{t('settings.ota.custom')}</option>}</select></label>{!isMobile && <label className="settings-span">{t('settings.ota.path')}<input value={config.otaToolPath} placeholder="/usr/local/bin/arduinoOTA" onChange={e => set('otaToolPath', e.target.value)}/></label>}<label>{t('settings.ota.timeout')}<input type="number" min={30} max={600} value={config.otaTimeoutSeconds} onChange={e => set('otaTimeoutSeconds', Number(e.target.value))}/></label><label>{t('settings.ota.password')}<input type="password" value={otaPassword} onChange={e => onOtaPasswordChange(e.target.value)}/></label></div><div className="endpoint-preview"><DownloadCloud size={17}/><span>{t('settings.ota.target', { host: otaHost || t('common.none'), port: config.otaPort, seconds: config.otaTimeoutSeconds })}</span></div></section> : <section className="panel settings-panel settings-connection-section"><div className="panel-title"><div><p className="eyebrow">{t('settings.mobile.eyebrow')}</p><h2>{t('settings.mobile.title')}</h2></div><FolderOpen /></div><div className="notice"><ShieldCheck size={18}/><p>{t('settings.mobile.notice')}</p></div></section>}
  {!isMobile && <AppUpdateCenter state={appUpdate}/>}
- <section className="panel settings-panel settings-general-section"><div className="panel-title"><div><p className="eyebrow">{t('settings.updates.eyebrow')}</p><h2>{t('settings.updates.title')}</h2></div><DownloadCloud/></div><div className="settings-grid"><label>{t('settings.updates.appChannel')}<select value={config.updateChannel} onChange={e=>set('updateChannel',e.target.value as 'stable'|'beta')}><option value="stable">{t('settings.updates.stableApp')}</option><option value="beta">{t('settings.updates.betaApp')}</option></select></label><label>{t('settings.updates.firmwareChannel')}<select value={config.firmwareUpdateChannel} onChange={e=>set('firmwareUpdateChannel',e.target.value as 'stable'|'beta')}><option value="stable">{t('settings.updates.stableFirmware')}</option><option value="beta">{t('settings.updates.betaFirmware')}</option></select></label></div><label className="check-row"><input type="checkbox" checked={config.autoCheckUpdates} onChange={e=>set('autoCheckUpdates',e.target.checked)}/>{t('settings.updates.autoCheck')}</label><label className="check-row"><input type="checkbox" checked={config.firmwareUpdateChecks} onChange={e=>set('firmwareUpdateChecks',e.target.checked)}/>{t('settings.updates.firmwareCheck')}</label><label className="check-row"><input type="checkbox" checked={config.autoDownloadUpdates} onChange={e=>set('autoDownloadUpdates',e.target.checked)}/>{t('settings.updates.autoDownload')}</label></section>
- <div className="settings-actions core-v3-management-actions core-v3-settings-actions"><button className="secondary-button" disabled={busy||!canSave} onClick={onTest}><PlugZap size={17}/>{t('settings.testConnection')}</button><button className="primary-button" disabled={busy||!canSave} onClick={onSave}><Save size={17}/>{t('settings.saveProfile')}</button></div></div>;
+ <section className="panel settings-panel settings-general-section"><div className="panel-title"><div><p className="eyebrow">{t('settings.updates.eyebrow')}</p><h2>{t('settings.updates.title')}</h2></div><DownloadCloud /></div><div className="settings-grid"><label>{t('settings.updates.appChannel')}<select value={config.updateChannel} onChange={e => set('updateChannel', e.target.value as 'stable' | 'beta')}><option value="stable">{t('settings.updates.stableApp')}</option><option value="beta">{t('settings.updates.betaApp')}</option></select></label><label>{t('settings.updates.firmwareChannel')}<select value={config.firmwareUpdateChannel} onChange={e => set('firmwareUpdateChannel', e.target.value as 'stable' | 'beta')}><option value="stable">{t('settings.updates.stableFirmware')}</option><option value="beta">{t('settings.updates.betaFirmware')}</option></select></label></div><label className="check-row"><input type="checkbox" checked={config.autoCheckUpdates} onChange={e => set('autoCheckUpdates', e.target.checked)}/>{t('settings.updates.autoCheck')}</label><label className="check-row"><input type="checkbox" checked={config.firmwareUpdateChecks} onChange={e => set('firmwareUpdateChecks', e.target.checked)}/>{t('settings.updates.firmwareCheck')}</label><label className="check-row"><input type="checkbox" checked={config.autoDownloadUpdates} onChange={e => set('autoDownloadUpdates', e.target.checked)}/>{t('settings.updates.autoDownload')}</label></section>
+ <div className="settings-actions core-v3-management-actions core-v3-settings-actions"><button className="secondary-button" disabled={busy || !canSave} onClick={onTest}><PlugZap size={17}/>{t('settings.testConnection')}</button><button className="primary-button" disabled={busy || !canSave} onClick={onSave}><Save size={17}/>{t('settings.saveProfile')}</button></div></div>;
 }

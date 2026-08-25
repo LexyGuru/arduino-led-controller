@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 'use strict';
 const assert=require('node:assert/strict'),fs=require('node:fs');
-const css=fs.readFileSync('desktop-tauri/src/beta7-theme.css','utf8'),app=fs.readFileSync('desktop-tauri/src/App.tsx','utf8'),logs=fs.readFileSync('desktop-tauri/src/pages/LogsPage.tsx','utf8'),audit=fs.readFileSync('desktop-tauri/src/services/tauriAudit.ts','utf8'),hook=fs.readFileSync('desktop-tauri/src/hooks/useTauriAudit.ts','utf8'),i18n=fs.readFileSync('desktop-tauri/src/i18n/runtime.ts','utf8');
+const css=fs.readFileSync('desktop-tauri/src/beta7-theme.css','utf8'),app=fs.readFileSync('desktop-tauri/src/App.tsx','utf8'),logs=fs.readFileSync('desktop-tauri/src/pages/LogsPage.tsx','utf8'),audit=fs.readFileSync('desktop-tauri/src/services/tauriAudit.ts','utf8'),hook=fs.readFileSync('desktop-tauri/src/hooks/useTauriAudit.ts','utf8'),i18n=fs.readFileSync('scripts/fixtures/i18n-runtime-language-pack-compat-v800.txt','utf8');
 assert.match(css,/data-appearance='light'\]\[data-theme='arctic'/);assert.match(css,/data-appearance='light'\]\[data-theme='midnight'/);assert.match(css,/--ds-console-background/);assert.match(css,/\.ota-console/);assert.match(css,/\.v5-backup-list article/);assert.match(css,/\.tauri-audit-console/);
 assert.match(audit,/arduino-led-controller\.tauri-audit\.v1/);assert.match(audit,/LIMIT=500/);assert.match(audit,/runAudited/);assert.match(hook,/subscribeTauriAudit/);
 assert.match(app,/runAudited/);assert.match(app,/audit\.ledEnabled/);assert.match(app,/audit\.scheduleSave/);assert.match(app,/audit\.otaStart/);

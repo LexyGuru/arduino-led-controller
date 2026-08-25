@@ -32,7 +32,7 @@ export interface ConnectionHealthState {
 
 export interface ConnectionConfig {
   profileName: string;
-  language: 'hu' | 'en' | 'de';
+  language: string;
   protocol: 'http' | 'https';
   localProtocol: 'http' | 'https';
   arduinoIp: string;

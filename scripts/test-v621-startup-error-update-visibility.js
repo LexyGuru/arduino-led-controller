@@ -8,7 +8,9 @@ const dash=read('desktop-tauri/src/pages/DashboardPage.tsx');
 const health=read('desktop-tauri/src/components/v55/DeviceHealthPanel.tsx');
 const sidebar=read('desktop-tauri/src/components/Sidebar.tsx');
 const css=read('desktop-tauri/src/v55-app-update-center.css');
-const i18n=read('desktop-tauri/src/i18n/runtime.ts');
+const embeddedEnglish=JSON.parse(read('desktop-tauri/src/i18n/locales/en.json'));
+const huPack=JSON.parse(read('scripts/fixtures/language-packs-v800/hu.locale.json'));
+const dePack=JSON.parse(read('scripts/fixtures/language-packs-v800/de.locale.json'));
 
 assert.match(app,/startupIssues=\{startup\.checks\.filter\(\(check\) => check\.state === 'warn'\)\}/);
 assert.match(app,/platform=\{controller\.capabilities\.platform\}/);
@@ -25,15 +27,10 @@ assert.match(sidebar,/latestAppVersion/);
 assert.match(css,/\.v621-sidebar-update-card\{/);
 assert.match(css,/\.v621-startup-issues\{/);
 
-const huStart=i18n.indexOf('  hu: {');
-const enStart=i18n.indexOf('  en: {');
-const deStart=i18n.indexOf('  de: {');
-const dictEnd=i18n.lastIndexOf('\n};');
-assert.ok(huStart>=0 && huStart<enStart && enStart<deStart && deStart<dictEnd);
 const languageObjects={
-  hu:i18n.slice(huStart,enStart),
-  en:i18n.slice(enStart,deStart),
-  de:i18n.slice(deStart,dictEnd)
+  hu:huPack.translations,
+  en:embeddedEnglish,
+  de:dePack.translations
 };
 for(const key of [
   'appUpdate.sidebarCta',
@@ -42,10 +39,9 @@ for(const key of [
   'startupIssues.help',
   'startupIssues.unknown'
 ]){
-  const escaped=key.replaceAll('.','\\.');
-  for(const [lang,body] of Object.entries(languageObjects)){
-    const count=(body.match(new RegExp(`['"]${escaped}['"]\\s*:`, 'g'))||[]).length;
-    assert.equal(count,1,`${key}: exactly once in ${lang}`);
+  for(const [lang,dictionary] of Object.entries(languageObjects)){
+    assert.equal(typeof dictionary[key],'string',`${key}: present in ${lang}`);
+    assert.ok(dictionary[key].length>0,`${key}: non-empty in ${lang}`);
   }
 }
 

@@ -1,3 +1,13 @@
+# 6.0.0-beta.1 — Language Pack Architecture 2.0
+
+- English is the only embedded application language and remains the permanent fallback.
+- Hungarian and German move to independently versioned downloadable language packs.
+- Installed language packs persist locally for offline use.
+- Remote language catalog is hosted independently on the `language-packs` branch.
+- Application language handling is dynamic instead of a fixed HU/EN/DE union.
+- Firmware remains `5.1.0-beta.3`; firmware source behavior is unchanged.
+- Direct API remains `1.1.0`.
+
 # 5.8.0-beta.3 — Mobile LED and Beta OTA hotfix
 
 - Mobile LED preview brightness/effect readout visibility fix.

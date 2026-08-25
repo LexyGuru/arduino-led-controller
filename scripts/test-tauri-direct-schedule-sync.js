@@ -16,7 +16,7 @@ const app = read('desktop-tauri/src/App.tsx');
 const dashboard = read('desktop-tauri/src/pages/DashboardPage.tsx');
 const types = read('desktop-tauri/src/types/index.ts');
 const docs = read('docs/architecture/TAURI_DIRECT_API_V1_SCHEDULE_SYNC.md');
-const i18n = read('desktop-tauri/src/i18n/runtime.ts');
+const i18n = read('scripts/fixtures/i18n-embedded-en-compat-v800.txt');
 
 for (const token of [
   'struct ScheduleSyncSnapshot',

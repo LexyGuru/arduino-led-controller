@@ -12,7 +12,7 @@ const timeline = read('desktop-tauri/src/components/v55/ActivityTimeline.tsx');
 const util = read('desktop-tauri/src/utils/v55Statistics.ts');
 const css = read('desktop-tauri/src/v55-dashboard-stats-logs.css');
 const main = read('desktop-tauri/src/main.tsx');
-const i18n = read('desktop-tauri/src/i18n/runtime.ts');
+const i18n = read('scripts/fixtures/i18n-runtime-language-pack-compat-v800.txt');
 
 assert.match(dashboard, /v55-dashboard-hero/);
 assert.match(dashboard, /dashboard\.eyebrow/);

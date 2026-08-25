@@ -1,17 +1,5 @@
-import {
-  Activity,
-  CheckCircle2,
-  CalendarClock,
-  Clock3,
-  Cpu,
-  Database,
-  Lightbulb,
-  MemoryStick,
-  Radio,
-  RefreshCw,
-  Wifi,
-  TriangleAlert
-} from 'lucide-react';
+import { I18nText } from "../i18n";
+import { Activity, CheckCircle2, CalendarClock, Clock3, Cpu, Database, Lightbulb, MemoryStick, Radio, RefreshCw, Wifi, TriangleAlert } from 'lucide-react';
 import { ActivityTimeline } from '../components/v55/ActivityTimeline';
 import { StatisticsPanel } from '../components/v55/StatisticsPanel';
 import { DeviceHealthPanel } from '../components/v55/DeviceHealthPanel';
@@ -21,171 +9,127 @@ import { V5DataSourceBadge } from '../components/v5/V5DataSourceBadge';
 import { useTauriAudit } from '../hooks/useTauriAudit';
 import { useV5Dashboard } from '../hooks/useV5Dashboard';
 import { useI18n } from '../i18n';
-import type {
-  ArduinoDiagnosticsResult,
-  ArduinoStatus,
-  ConnectionHealthState,
-  LedSchedule,
-  NetworkLog,
-  ScheduleSyncState
-} from '../types';
+import type { ArduinoDiagnosticsResult, ArduinoStatus, ConnectionHealthState, LedSchedule, NetworkLog, ScheduleSyncState } from '../types';
 import { buildDashboardStatistics } from '../utils/v55Statistics';
 import type { StartupCheck } from '../hooks/useAppStartupGate';
-
-const dayKeys = ['days.1','days.2','days.3','days.4','days.5','days.6','days.7'];
-const effectKeys = ['effects.0','effects.1','effects.2','effects.3','effects.4'];
+const dayKeys = ['days.1', 'days.2', 'days.3', 'days.4', 'days.5', 'days.6', 'days.7'];
+const effectKeys = ['effects.0', 'effects.1', 'effects.2', 'effects.3', 'effects.4'];
 function formatUptime(seconds: number | undefined) {
-  if (seconds == null) return '—';
-  const days = Math.floor(seconds / 86400);
-  const hours = Math.floor((seconds % 86400) / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  return `${days}d ${hours}h ${minutes}m`;
+    if (seconds == null)
+        return '—';
+    const days = Math.floor(seconds / 86400);
+    const hours = Math.floor((seconds % 86400) / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    return `${days}d ${hours}h ${minutes}m`;
 }
-
 type ArduinoClock = {
-  day: number;
-  minutes: number;
-  date: Date;
-  source: 'arduino' | 'computer';
+    day: number;
+    minutes: number;
+    date: Date;
+    source: 'arduino' | 'computer';
 };
-
 function arduinoClock(status: ArduinoStatus | null): ArduinoClock {
-  if (status?.clockEpoch != null && Number.isFinite(status.clockEpoch)) {
-    const offset = status.utcOffsetMinutes ?? 0;
-    const date = new Date((status.clockEpoch + offset * 60) * 1000);
-    const weekday = date.getUTCDay();
+    if (status?.clockEpoch != null && Number.isFinite(status.clockEpoch)) {
+        const offset = status.utcOffsetMinutes ?? 0;
+        const date = new Date((status.clockEpoch + offset * 60) * 1000);
+        const weekday = date.getUTCDay();
+        return {
+            day: weekday === 0 ? 7 : weekday,
+            minutes: date.getUTCHours() * 60 + date.getUTCMinutes(),
+            date,
+            source: 'arduino'
+        };
+    }
+    const date = new Date();
+    const weekday = date.getDay();
     return {
-      day: weekday === 0 ? 7 : weekday,
-      minutes: date.getUTCHours() * 60 + date.getUTCMinutes(),
-      date,
-      source: 'arduino'
+        day: weekday === 0 ? 7 : weekday,
+        minutes: date.getHours() * 60 + date.getMinutes(),
+        date,
+        source: 'computer'
     };
-  }
-  const date = new Date();
-  const weekday = date.getDay();
-  return {
-    day: weekday === 0 ? 7 : weekday,
-    minutes: date.getHours() * 60 + date.getMinutes(),
-    date,
-    source: 'computer'
-  };
 }
-
 function formatArduinoTime(clock: ArduinoClock, locale: string) {
-  return new Intl.DateTimeFormat(locale, {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false,
-    timeZone: clock.source === 'arduino' ? 'UTC' : undefined
-  }).format(clock.date);
+    return new Intl.DateTimeFormat(locale, {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false,
+        timeZone: clock.source === 'arduino' ? 'UTC' : undefined
+    }).format(clock.date);
 }
-
 function nextSchedule(items: LedSchedule[], clock: ArduinoClock) {
-  if (!items.length) return null;
-  return items.map((item) => {
-    const itemMinutes =
-      Number(item.time.slice(0, 2)) * 60 +
-      Number(item.time.slice(3, 5));
-    const dayDelta = (item.day - clock.day + 7) % 7;
-    let minuteDelta = dayDelta * 1440 + itemMinutes - clock.minutes;
-    if (minuteDelta < 0) minuteDelta += 7 * 1440;
-    return {
-      item,
-      minuteDelta,
-      dayOffset: Math.floor(minuteDelta / 1440)
-    };
-  }).sort((a, b) => a.minuteDelta - b.minuteDelta)[0];
+    if (!items.length)
+        return null;
+    return items.map((item) => {
+        const itemMinutes = Number(item.time.slice(0, 2)) * 60 +
+            Number(item.time.slice(3, 5));
+        const dayDelta = (item.day - clock.day + 7) % 7;
+        let minuteDelta = dayDelta * 1440 + itemMinutes - clock.minutes;
+        if (minuteDelta < 0)
+            minuteDelta += 7 * 1440;
+        return {
+            item,
+            minuteDelta,
+            dayOffset: Math.floor(minuteDelta / 1440)
+        };
+    }).sort((a, b) => a.minuteDelta - b.minuteDelta)[0];
 }
-
-export function DashboardPage({
-  status: legacyStatus,
-  schedules: legacySchedules,
-  scheduleSync,
-  connectionHealth,
-  diagnostics,
-  diagnosticsError,
-  diagnosticsPollIntervalMs,
-  networkLogs,
-  platform,
-  startupIssues,
-  busy,
-  onRefreshDiagnostics,
-  onSyncTime
-}: {
-  status: ArduinoStatus | null;
-  schedules: LedSchedule[];
-  scheduleSync: ScheduleSyncState;
-  connectionHealth: ConnectionHealthState;
-  diagnostics: ArduinoDiagnosticsResult | null;
-  diagnosticsError: string | null;
-  diagnosticsPollIntervalMs: number;
-  networkLogs: NetworkLog[];
-  platform: string;
-  startupIssues: StartupCheck[];
-  busy: boolean;
-  onRefreshDiagnostics: () => void;
-  onSyncTime: () => Promise<void>;
+export function DashboardPage({ status: legacyStatus, schedules: legacySchedules, scheduleSync, connectionHealth, diagnostics, diagnosticsError, diagnosticsPollIntervalMs, networkLogs, platform, startupIssues, busy, onRefreshDiagnostics, onSyncTime }: {
+    status: ArduinoStatus | null;
+    schedules: LedSchedule[];
+    scheduleSync: ScheduleSyncState;
+    connectionHealth: ConnectionHealthState;
+    diagnostics: ArduinoDiagnosticsResult | null;
+    diagnosticsError: string | null;
+    diagnosticsPollIntervalMs: number;
+    networkLogs: NetworkLog[];
+    platform: string;
+    startupIssues: StartupCheck[];
+    busy: boolean;
+    onRefreshDiagnostics: () => void;
+    onSyncTime: () => Promise<void>;
 }) {
-  const { t } = useI18n();
-  const dashboard = useV5Dashboard(legacyStatus, legacySchedules);
-  const audit = useTauriAudit();
-  const status = dashboard.status;
-  const schedules = dashboard.schedules;
-  const clock = arduinoClock(status);
-  const next = nextSchedule(schedules, clock);
-  const locale = document.documentElement.lang || 'hu';
-  const nextDayLabel =
-    next?.dayOffset === 0
-      ? t('dashboard.today')
-      : next?.dayOffset === 1
-        ? t('dashboard.tomorrow')
-        : t('dashboard.nextDay');
-  const recoveredMacCredentialBootstrap = (message?: string) =>
-    platform === 'macos' &&
-    connectionHealth.state === 'healthy' &&
-    Boolean(message?.includes('Az Arduino API-kulcs nem használható biztonságos HTTP-fejlécértékként.'));
-
-  const effectiveNetworkLogs = networkLogs.filter(
-    (entry) => !recoveredMacCredentialBootstrap(entry.message)
-  );
-  const stats = buildDashboardStatistics(
-    status,
-    schedules,
-    audit.entries,
-    effectiveNetworkLogs
-  );
-  const latestNetworkError =
-    effectiveNetworkLogs.find((entry) => !entry.ok) ?? null;
-
-  const healthSignals = [
-    Boolean(status?.connected),
-    Boolean(status?.timesynced),
-    Boolean(status?.firmwareVersion),
-    status?.scheduleCount != null,
-    Boolean(status?.strips?.length)
-  ];
-  const verifiedHealthSignals = healthSignals.filter(Boolean).length;
-  const systemHealthScore = Math.round(
-    (verifiedHealthSignals / healthSignals.length) * 100
-  );
-
-  const utcOffset = status?.utcOffsetMinutes;
-  const offsetLabel = utcOffset == null
-    ? '—'
-    : `UTC${utcOffset >= 0 ? '+' : '-'}${String(
-        Math.floor(Math.abs(utcOffset) / 60)
-      ).padStart(2, '0')}:${String(Math.abs(utcOffset) % 60).padStart(2, '0')}`;
-
-  return (
-    <div className="page v55-dashboard beta4-dashboard-redesign core-v3-dashboard" data-core-dashboard="3.0">
+    const { t } = useI18n();
+    const dashboard = useV5Dashboard(legacyStatus, legacySchedules);
+    const audit = useTauriAudit();
+    const status = dashboard.status;
+    const schedules = dashboard.schedules;
+    const clock = arduinoClock(status);
+    const next = nextSchedule(schedules, clock);
+    const locale = document.documentElement.lang || 'hu';
+    const nextDayLabel = next?.dayOffset === 0
+        ? t('dashboard.today')
+        : next?.dayOffset === 1
+            ? t('dashboard.tomorrow')
+            : t('dashboard.nextDay');
+    const recoveredMacCredentialBootstrap = (message?: string) => platform === 'macos' &&
+        connectionHealth.state === 'healthy' &&
+        Boolean(message?.includes('Az Arduino API-kulcs nem használható biztonságos HTTP-fejlécértékként.'));
+    const effectiveNetworkLogs = networkLogs.filter((entry) => !recoveredMacCredentialBootstrap(entry.message));
+    const stats = buildDashboardStatistics(status, schedules, audit.entries, effectiveNetworkLogs);
+    const latestNetworkError = effectiveNetworkLogs.find((entry) => !entry.ok) ?? null;
+    const healthSignals = [
+        Boolean(status?.connected),
+        Boolean(status?.timesynced),
+        Boolean(status?.firmwareVersion),
+        status?.scheduleCount != null,
+        Boolean(status?.strips?.length)
+    ];
+    const verifiedHealthSignals = healthSignals.filter(Boolean).length;
+    const systemHealthScore = Math.round((verifiedHealthSignals / healthSignals.length) * 100);
+    const utcOffset = status?.utcOffsetMinutes;
+    const offsetLabel = utcOffset == null
+        ? '—'
+        : `UTC${utcOffset >= 0 ? '+' : '-'}${String(Math.floor(Math.abs(utcOffset) / 60)).padStart(2, '0')}:${String(Math.abs(utcOffset) % 60).padStart(2, '0')}`;
+    return (<div className="page v55-dashboard beta4-dashboard-redesign core-v3-dashboard" data-core-dashboard="3.0">
       <section className="v55-dashboard-hero core-v3-command-deck">
         <div className="v55-dashboard-hero-copy">
           <div className="v55-dashboard-kicker">
-            <span className={`v55-live-dot ${status?.connected ? 'online' : 'offline'}`} />
+            <span className={`v55-live-dot ${status?.connected ? 'online' : 'offline'}`}/>
             <span>{t('dashboard.eyebrow')}</span>
             <span className="v55-dashboard-kicker-separator" aria-hidden="true">•</span>
             <span>{t('dashboard2.controlCenter')}</span>
@@ -194,13 +138,9 @@ export function DashboardPage({
           <p>{t('dashboard2.subtitle')}</p>
 
           <div className="v55-hero-actions">
-            <V5DataSourceBadge source={dashboard.source} />
-            <button
-              className="secondary"
-              disabled={dashboard.refreshing}
-              onClick={() => void dashboard.refresh()}
-            >
-              <RefreshCw size={17} className={dashboard.refreshing ? 'spin' : ''} />
+            <V5DataSourceBadge source={dashboard.source}/>
+            <button className="secondary" disabled={dashboard.refreshing} onClick={() => void dashboard.refresh()}>
+              <RefreshCw size={17} className={dashboard.refreshing ? 'spin' : ''}/>
               {t('common.refresh')}
             </button>
           </div>
@@ -208,21 +148,21 @@ export function DashboardPage({
 
         <div className="v55-system-orbit visual31-device-core">
           <div className={`v55-orbit-core ${status?.connected ? 'online' : 'offline'}`} data-device-state={status?.connected ? 'online' : 'offline'}>
-            <Radio size={30} />
+            <Radio size={30}/>
             <strong>{status?.connected ? t('common.online') : t('common.offline')}</strong>
             <small>{status?.hostname ?? status?.ipAddress ?? 'Arduino UNO R4 WiFi'}</small>
           </div>
-          <span className="v55-orbit-ring ring-a" />
-          <span className="v55-orbit-ring ring-b" />
-          <div className="visual31-health-orbit" aria-label="System health">
+          <span className="v55-orbit-ring ring-a"/>
+          <span className="v55-orbit-ring ring-b"/>
+          <div className="visual31-health-orbit" aria-label={t("legacyUi.system.health.25afa195")}>
             <strong>{systemHealthScore}%</strong>
-            <small>System Health</small>
+            <small><I18nText k="legacyUi.system.health.bd51a1b6"/></small>
             <span>{verifiedHealthSignals}/{healthSignals.length}</span>
           </div>
         </div>
       </section>
 
-      <section className="visual31-status-ribbon" aria-label="Runtime status">
+      <section className="visual31-status-ribbon" aria-label={t("legacyUi.runtime.status.e712f6e9")}>
         <div className={status?.connected ? 'is-ok' : 'is-offline'}><Wifi size={15}/><span>{status?.connected ? t('common.online') : t('common.offline')}</span></div>
         <div className={status?.timesynced ? 'is-ok' : 'is-warn'}><Clock3 size={15}/><span>{status?.timesynced ? t('dashboard.synced') : t('dashboard.notSynced')}</span></div>
         <div className={status?.firmwareVersion ? 'is-ok' : 'is-warn'}><Cpu size={15}/><span>{status?.firmwareVersion ?? '—'}</span></div>
@@ -230,21 +170,14 @@ export function DashboardPage({
         <div className={status?.strips?.length ? 'is-ok' : 'is-warn'}><CheckCircle2 size={15}/><span>{status?.strips?.length ?? 0} LED</span></div>
       </section>
 
-      {dashboard.error && (
-        <V5ConnectionWarning
-          title={t('dashboard.apiUnavailable')}
-          message={t('dashboard.fallbackError',{
-            code: dashboard.error.code,
-            message: dashboard.error.message
-          })}
-          busy={dashboard.refreshing}
-          onRetry={() => void dashboard.refresh()}
-        />
-      )}
+      {dashboard.error && (<V5ConnectionWarning title={t('dashboard.apiUnavailable')} message={t('dashboard.fallbackError', {
+                code: dashboard.error.code,
+                message: dashboard.error.message
+            })} busy={dashboard.refreshing} onRetry={() => void dashboard.refresh()}/>)}
 
       <section className="v55-primary-metrics core-v3-metric-row">
         <article className="v55-primary-card">
-          <span><Cpu size={18}/>Firmware</span>
+          <span><Cpu size={18}/><I18nText k="beta3.update.firmware"/></span>
           <strong>{status?.firmwareVersion ?? '—'}</strong>
           <small>UNO R4 WiFi</small>
         </article>
@@ -260,45 +193,28 @@ export function DashboardPage({
         </article>
       </section>
 
-      {startupIssues.length > 0 && (
-        <section className="panel v621-startup-issues" data-startup-issues={startupIssues.length}>
+      {startupIssues.length > 0 && (<section className="panel v621-startup-issues" data-startup-issues={startupIssues.length}>
           <div className="panel-title">
             <div>
               <p className="eyebrow">{t('startupIssues.eyebrow')}</p>
               <h2>{t('startupIssues.title')}</h2>
             </div>
-            <TriangleAlert className="bad" />
+            <TriangleAlert className="bad"/>
           </div>
           <p className="muted">{t('startupIssues.help')}</p>
           <div className="v621-startup-issue-list">
-            {startupIssues.map((check) => (
-              <div className="v621-startup-issue" key={check.id}>
+            {startupIssues.map((check) => (<div className="v621-startup-issue" key={check.id}>
                 <strong>{t(check.labelKey)}</strong>
                 <span>{check.detailKey ? t(check.detailKey) : t('startupIssues.unknown')}</span>
-              </div>
-            ))}
+              </div>))}
           </div>
-        </section>
-      )}
+        </section>)}
 
-      <DeviceHealthPanel
-        health={connectionHealth}
-        status={status}
-        stats={stats}
-        latestNetworkError={latestNetworkError}
-        platform={platform}
-        onRetry={() => void dashboard.refresh()}
-      />
+      <DeviceHealthPanel health={connectionHealth} status={status} stats={stats} latestNetworkError={latestNetworkError} platform={platform} onRetry={() => void dashboard.refresh()}/>
 
-      <DiagnosticsPanel
-        value={diagnostics}
-        error={diagnosticsError}
-        pollIntervalMs={diagnosticsPollIntervalMs}
-        busy={busy}
-        onRefresh={onRefreshDiagnostics}
-      />
+      <DiagnosticsPanel value={diagnostics} error={diagnosticsError} pollIntervalMs={diagnosticsPollIntervalMs} busy={busy} onRefresh={onRefreshDiagnostics}/>
 
-      <StatisticsPanel stats={stats} />
+      <StatisticsPanel stats={stats}/>
 
       <section className="v55-dashboard-middle">
         <article className="panel v55-schedule-panel">
@@ -331,8 +247,8 @@ export function DashboardPage({
               <span>{t('dashboard.arduinoTime')}</span>
               <strong>
                 {status?.clockEpoch != null
-                  ? formatArduinoTime(clock, locale)
-                  : '—'}
+            ? formatArduinoTime(clock, locale)
+            : '—'}
               </strong>
             </div>
             <div>
@@ -347,40 +263,32 @@ export function DashboardPage({
               <span>{t('dashboard.timeSync')}</span>
               <strong className={status?.timesynced ? 'ok' : 'bad'}>
                 {status?.timesynced
-                  ? t('dashboard.synced')
-                  : t('dashboard.notSynced')}
+            ? t('dashboard.synced')
+            : t('dashboard.notSynced')}
               </strong>
             </div>
           </div>
 
           <div className="page-actions dashboard-time-actions">
-            <button
-              className="secondary"
-              disabled={busy || !status?.connected}
-              onClick={() => void onSyncTime()}
-            >
-              <RefreshCw size={17} className={busy ? 'spin' : ''} />
+            <button className="secondary" disabled={busy || !status?.connected} onClick={() => void onSyncTime()}>
+              <RefreshCw size={17} className={busy ? 'spin' : ''}/>
               {t('dashboard.syncComputer')}
             </button>
           </div>
 
           {status?.scheduleCount != null &&
-            status.scheduleCount !== schedules.length && (
-            <div className="notice">
-              <CalendarClock size={18} />
-              <p>{t('dashboard.scheduleCountMismatch',{
+            status.scheduleCount !== schedules.length && (<div className="notice">
+              <CalendarClock size={18}/>
+              <p>{t('dashboard.scheduleCountMismatch', {
                 remote: status.scheduleCount,
                 local: schedules.length
-              })}</p>
-            </div>
-          )}
+            })}</p>
+            </div>)}
 
-          {scheduleSync.status === 'error' && scheduleSync.lastError && (
-            <div className="notice">
-              <CalendarClock size={18} />
-              <p>{t('dashboard.scheduleError',{error:scheduleSync.lastError})}</p>
-            </div>
-          )}
+          {scheduleSync.status === 'error' && scheduleSync.lastError && (<div className="notice">
+              <CalendarClock size={18}/>
+              <p>{t('dashboard.scheduleError', { error: scheduleSync.lastError })}</p>
+            </div>)}
         </article>
 
         <article className="panel v55-led-panel">
@@ -393,15 +301,11 @@ export function DashboardPage({
           </div>
 
           <div className="v55-led-list">
-            {(status?.strips ?? []).map((strip) => (
-              <div className="v55-led-row" key={strip.id}>
-                <span
-                  className="v55-led-color"
-                  style={{
-                    background: `rgb(${strip.color.join(',')})`,
-                    opacity: strip.enabled ? 1 : .25
-                  }}
-                />
+            {(status?.strips ?? []).map((strip) => (<div className="v55-led-row" key={strip.id}>
+                <span className="v55-led-color" style={{
+                background: `rgb(${strip.color.join(',')})`,
+                opacity: strip.enabled ? 1 : .25
+            }}/>
                 <div className="v55-led-copy">
                   <strong>LED {strip.id}</strong>
                   <small>
@@ -411,18 +315,17 @@ export function DashboardPage({
                   </small>
                 </div>
                 <div className="v55-led-brightness">
-                  <div><i style={{width:`${Math.max(0,Math.min(100,(strip.brightness/255)*100))}%`}} /></div>
+                  <div><i style={{ width: `${Math.max(0, Math.min(100, (strip.brightness / 255) * 100))}%` }}/></div>
                   <b>{strip.brightness}</b>
                 </div>
-              </div>
-            ))}
+              </div>))}
             {!status?.strips?.length && <p className="muted">{t('dashboard.noLedState')}</p>}
           </div>
         </article>
       </section>
 
       <section className="v55-dashboard-bottom">
-        <ActivityTimeline entries={audit.entries} />
+        <ActivityTimeline entries={audit.entries}/>
 
         <article className="panel v55-http-panel v568-http-context">
           <div className="panel-title">
@@ -444,6 +347,5 @@ export function DashboardPage({
           </div>
         </article>
       </section>
-    </div>
-  );
+    </div>);
 }

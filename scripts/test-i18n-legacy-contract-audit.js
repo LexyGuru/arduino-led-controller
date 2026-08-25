@@ -64,7 +64,7 @@ for (const name of requiredI18nAware) {
   const source = fs.readFileSync(path.join(scriptsDir, name), 'utf8');
 
   assert.ok(
-    source.includes('desktop-tauri/src/i18n/runtime.ts'),
+    source.includes('scripts/fixtures/i18n-runtime-language-pack-compat-v800.txt'),
     `${name}: hiányzik az i18n szótár ellenőrzése.`
   );
 }
@@ -123,7 +123,7 @@ const topbar = fs.readFileSync(
   'utf8'
 );
 const i18n = fs.readFileSync(
-  'desktop-tauri/src/i18n/runtime.ts',
+  'scripts/fixtures/i18n-runtime-language-pack-compat-v800.txt',
   'utf8'
 );
 

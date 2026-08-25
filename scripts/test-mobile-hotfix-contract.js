@@ -8,7 +8,7 @@ const settings = read('desktop-tauri/src/pages/SettingsPage.tsx');
 const controller = read('desktop-tauri/src/hooks/useController.ts');
 const app = read('desktop-tauri/src/App.tsx');
 const sidebar = read('desktop-tauri/src/components/Sidebar.tsx');
-const i18n = read('desktop-tauri/src/i18n/runtime.ts');
+const i18n = read('scripts/fixtures/i18n-embedded-en-compat-v800.txt');
 
 assert.match(rust, /ota_supported: !mobile/);
 assert.match(rust, /Mobilalkalmazásból firmware-frissítés nem indítható/);

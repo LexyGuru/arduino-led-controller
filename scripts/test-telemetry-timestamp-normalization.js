@@ -11,7 +11,7 @@ const source = fs.readFileSync(
 
 // Durable source contract: both timestamp units are normalized before age math.
 assert.match(source, /function normalizeTelemetryTimestampMs\(/);
-assert.match(source, /value < 10_000_000_000/);
+assert.match(source, /value\s*<\s*10_?000_?000_?000/);
 assert.match(source, /value \* 1000/);
 assert.match(source, /Date\.UTC\(2000, 0, 1\)/);
 assert.match(source, /maximumFutureSkew/);

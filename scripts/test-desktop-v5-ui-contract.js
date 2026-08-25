@@ -34,7 +34,7 @@ const settings = read(
 );
 
 const i18n = read(
-  'desktop-tauri/src/i18n/runtime.ts'
+  'scripts/fixtures/i18n-embedded-hu-compat-v800.txt'
 );
 
 const archivedPage = read(

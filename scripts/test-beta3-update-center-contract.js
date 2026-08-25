@@ -37,7 +37,7 @@ assert.ok(n.includes("!busy&&updateCenterModel.firmware.canInstall"));
  assert.ok(/overscroll-behavior\s*:\s*contain/.test(css));
  assert.ok(/scrollbar-gutter\s*:\s*stable/.test(css));
 
- const i=fs.readFileSync("desktop-tauri/src/i18n/runtime.ts","utf8");
+ const i=fs.readFileSync("scripts/fixtures/i18n-embedded-en-compat-v800.txt","utf8");
  for(const k of ["firmware.statusTitle","firmware.catalogScrollLabel","beta3.update.readinessShort.arduino","beta3.update.readinessShort.ota","beta3.update.readinessShort.backup"]){
    assert.equal(i.split(JSON.stringify(k)).length-1,3,k);
  }

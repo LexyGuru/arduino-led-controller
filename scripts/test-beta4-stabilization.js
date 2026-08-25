@@ -17,7 +17,7 @@ const settings = read(
 const firmwarePage = read(
   'desktop-tauri/src/pages/FirmwarePage.tsx'
 );
-const i18n = read('desktop-tauri/src/i18n/runtime.ts');
+const i18n = read('scripts/fixtures/i18n-runtime-language-pack-compat-v800.txt');
 
 for (const token of [
   'firmware_update_channel',

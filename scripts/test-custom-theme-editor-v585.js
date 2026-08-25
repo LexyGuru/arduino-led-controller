@@ -10,7 +10,7 @@ const provider = read('desktop-tauri/src/design-system/ThemeProvider.tsx');
 const types = read('desktop-tauri/src/design-system/theme-types.ts');
 const storage = read('desktop-tauri/src/design-system/theme-storage.ts');
 const css = read('desktop-tauri/src/theme-engine-v3.css');
-const i18n = read('desktop-tauri/src/i18n/runtime.ts');
+const i18n = read('scripts/fixtures/i18n-runtime-language-pack-compat-v800.txt');
 const ota = read('contracts/macos-ota-beta7-immutable.json');
 
 assert.match(ota, /MACOS_OTA_BETA7_IMMUTABLE_V1/);
