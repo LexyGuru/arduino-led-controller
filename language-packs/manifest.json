@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "catalogVersion": "1.0.0",
+  "defaultLanguage": "en",
+  "embedded": {
+    "en": {
+      "name": "English",
+      "nativeName": "English",
+      "source": "application"
+    }
+  },
+  "languages": {
+    "hu": {
+      "name": "Hungarian",
+      "nativeName": "Magyar",
+      "status": "pending"
+    },
+    "de": {
+      "name": "German",
+      "nativeName": "Deutsch",
+      "status": "pending"
+    },
+    "fr": {
+      "name": "French",
+      "nativeName": "Français",
+      "status": "pending"
+    }
+  }
+}
