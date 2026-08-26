@@ -485,6 +485,16 @@ export function isLanguagePackUpdateAvailable(
   const installed = getInstalledPack(language);
   const remoteVersion = entry.packVersion || entry.version;
   if (!installed || !remoteVersion || entry.status !== 'available') return false;
+
+  // Equal packVersion does not guarantee equal bytes. During prerelease
+  // validation the translated payload can change while the semantic version
+  // stays fixed, so a changed manifest SHA must force an update.
+  if (entry.sha256) {
+    const remoteSha = entry.sha256.toLowerCase();
+    const installedSha = installed.sha256?.toLowerCase();
+    if (!installedSha || installedSha !== remoteSha) return true;
+  }
+
   try {
     return compareSemver(remoteVersion, installed.packVersion) > 0;
   } catch {

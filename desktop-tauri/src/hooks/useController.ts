@@ -35,7 +35,7 @@ import type {
 
 const fallbackConfig:
   ConnectionConfig = {
-    profileName: 'Arduino vezérlő',
+    profileName: '',
     language: 'hu',
     protocol: 'https',
     localProtocol: 'http',
@@ -145,6 +145,20 @@ function migrateLegacyPlaceholder(
     merged.preferLocal = false;
     merged.macosLocalApiEnabled = saved.macosLocalApiEnabled === true;
     merged.otaUseApiHost = false;
+  }
+
+  // Old builds persisted the factory/default profile label itself as Hungarian
+  // user data. That makes it override i18n forever because SettingsPage prefers
+  // config.profileName over visual31.settings.defaultProfile.
+  // Migrate only known legacy factory labels; genuine custom names are kept.
+  const legacyFactoryProfileNames = new Set([
+    'Arduino vezérlő',
+    'Arduino controller',
+    'Arduino Controller',
+    'Arduino profile'
+  ]);
+  if (legacyFactoryProfileNames.has(merged.profileName.trim())) {
+    merged.profileName = '';
   }
 
   const noAuthentication =

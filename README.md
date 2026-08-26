@@ -1,16 +1,28 @@
+<!-- CURRENT_BETA_RELEASE_BEGIN -->
+## Current Beta release
+
+- Application: `6.0.0-beta.4`
+- Firmware: `5.1.0-beta.3`
+- Direct API: `1.1.0`
+- Detailed release notes: `docs/v5/V60_BETA4_RELEASE_NOTES.md`
+- Root release notes: `RELEASE_NOTES_6.0.0-beta.4.md`
+- Installation guide: `docs/v5/V60_BETA4_INSTALLATION_GUIDE.md`
+- Release checklist: `docs/v5/V60_BETA4_RELEASE_CHECKLIST.md`
+<!-- CURRENT_BETA_RELEASE_END -->
+
 # Arduino LED Controller V6
 
 <!-- CURRENT_VERSION_SSOT_BEGIN -->
-Current application: `6.0.0-beta.3`
+Current application: `6.0.0-beta.4`
 Current firmware: `5.1.0-beta.3`
 Current Direct API: `1.1.0`
 <!-- CURRENT_VERSION_SSOT_END -->
 
 <!-- CURRENT_RELEASE_DOCS_SSOT_BEGIN -->
-- Release notes: `docs/v5/V60_BETA3_RELEASE_NOTES.md`
-- Installation guide: `docs/v5/V60_BETA3_INSTALLATION_GUIDE.md`
-- Release checklist: `docs/v5/V60_BETA3_RELEASE_CHECKLIST.md`
-- Root release notes: `RELEASE_NOTES_6.0.0-beta.3.md`
+- Release notes: `docs/v5/V60_BETA4_RELEASE_NOTES.md`
+- Installation guide: `docs/v5/V60_BETA4_INSTALLATION_GUIDE.md`
+- Release checklist: `docs/v5/V60_BETA4_RELEASE_CHECKLIST.md`
+- Root release notes: `RELEASE_NOTES_6.0.0-beta.4.md`
 <!-- CURRENT_RELEASE_DOCS_SSOT_END -->
 
 <p align="center">

@@ -66,8 +66,10 @@ function buildWarnings(history: DiagnosticsTrendSample[]): DiagnosticsWarning[] 
         warnings.push({ id: 'http-server-errors', message: 'HTTP server-error counter increased' });
     if (latest.httpMaxMs != null && latest.httpMaxMs >= 500)
         warnings.push({ id: 'http-latency', message: `HTTP max latency ${latest.httpMaxMs} ms` });
-    if (latest.schedulerMaxUs != null && latest.schedulerMaxUs >= 5000)
-        warnings.push({ id: 'scheduler', message: `Scheduler peak ${latest.schedulerMaxUs} µs` });
+    // maxUs is a cumulative peak. Normal UNO R4 scheduler peaks below 20 ms
+    // stay telemetry only. 20–50 ms warns; 50 ms+ is treated as critical.
+    if (latest.schedulerMaxUs != null && latest.schedulerMaxUs >= 20000)
+        warnings.push({ id: latest.schedulerMaxUs >= 50000 ? 'scheduler-critical' : 'scheduler', message: `Scheduler peak ${latest.schedulerMaxUs} µs` });
     if (latest.renderMaxUs != null && latest.renderMaxUs >= 20000)
         warnings.push({ id: 'render', message: `Render peak ${latest.renderMaxUs} µs` });
     if (latest.statusMaxUs != null && latest.statusMaxUs >= 10000)
@@ -112,6 +114,7 @@ export function DiagnosticsPanel({ value, error, pollIntervalMs, busy, onRefresh
             case 'http-server-errors': return t('diagnostics.warning.httpServerErrors');
             case 'http-latency': return t('diagnostics.warning.httpLatency', { value: latestSample?.httpMaxMs ?? '—' });
             case 'scheduler': return t('diagnostics.warning.scheduler', { value: latestSample?.schedulerMaxUs ?? '—' });
+            case 'scheduler-critical': return t('diagnostics.warning.scheduler', { value: latestSample?.schedulerMaxUs ?? '—' });
             case 'render': return t('diagnostics.warning.render', { value: latestSample?.renderMaxUs ?? '—' });
             case 'status-build': return t('diagnostics.warning.statusBuild', { value: latestSample?.statusMaxUs ?? '—' });
             case 'eeprom': return t('diagnostics.warning.eeprom');

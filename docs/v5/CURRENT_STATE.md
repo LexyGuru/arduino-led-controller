@@ -1,7 +1,19 @@
+<!-- CURRENT_RELEASE_IDENTITY_BEGIN -->
+# Current release identity
+
+- Application: `6.0.0-beta.4`
+- Firmware: `5.1.0-beta.3`
+- Direct API: `1.1.0`
+- Channel: beta
+- Release prefix: `V60_BETA4`
+- Language Pack Architecture: `2.1`
+- Language Pack catalog: `2.1.0`
+<!-- CURRENT_RELEASE_IDENTITY_END -->
+
 # Current development state — 5.8.0-beta.3
 
 <!-- CURRENT_VERSION_SSOT_BEGIN -->
-Current application: `6.0.0-beta.3`
+Current application: `6.0.0-beta.4`
 Current firmware: `5.1.0-beta.3`
 Current Direct API: `1.1.0`
 <!-- CURRENT_VERSION_SSOT_END -->

@@ -4,7 +4,7 @@ import {
 import {
   detectLanguage, fetchLanguageManifest, getCachedLanguageManifest, getInstalledLanguages,
   getInstalledPack, installLanguagePack, isLanguagePackUpdateAvailable,
-  removeLanguagePack, setActiveLanguage, shouldRefreshLanguageManifest, translateFor,
+  removeLanguagePack, setActiveLanguage, translateFor,
   type AppLanguage, type LanguageCatalogItem, type LanguagePackManifest
 } from './runtime';
 
@@ -107,11 +107,21 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  // Keep the cached manifest as immediate offline/LKG data, but always
+  // revalidate the remote manifest once on application start so changed pack
+  // SHA metadata cannot stay hidden behind the 24-hour cache.
   useEffect(() => {
-    if (!manifest || shouldRefreshLanguageManifest()) {
-      void refreshLanguageCatalog();
-    }
-  }, [manifest, refreshLanguageCatalog]);
+    void refreshLanguageCatalog();
+  }, [refreshLanguageCatalog]);
+
+  // Automatically repair the active installed dictionary when the remote
+  // manifest reports a newer version OR different SHA for the same version.
+  useEffect(() => {
+    if (!manifest || language === 'en' || languagePackBusy) return;
+    const entry = manifest.languages?.[language];
+    if (!entry || !isLanguagePackUpdateAvailable(language, entry)) return;
+    void installLanguage(language);
+  }, [manifest, language, languagePackBusy, installLanguage]);
 
   const languageCatalog = useMemo(() => catalogItems(manifest), [manifest]);
 

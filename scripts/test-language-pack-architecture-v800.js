@@ -68,7 +68,14 @@ for(const marker of [
 ]) assert.ok(runtime.includes(marker),marker);
 assert.ok(runtime.includes('doubleKey: string | undefined'));
 assert.ok(runtime.includes('singleKey: string | undefined'));
-assert.ok(provider.includes('shouldRefreshLanguageManifest()'));
+assert.ok(!provider.includes('shouldRefreshLanguageManifest()'));
+assert.ok(provider.includes('void refreshLanguageCatalog();'));
+assert.ok(provider.includes("if (!manifest || language === 'en' || languagePackBusy) return;"));
+assert.ok(provider.includes('isLanguagePackUpdateAvailable(language, entry)'));
+assert.ok(provider.includes('void installLanguage(language);'));
+assert.ok(runtime.includes('const remoteSha = entry.sha256.toLowerCase();'));
+assert.ok(runtime.includes('const installedSha = installed.sha256?.toLowerCase();'));
+assert.ok(runtime.includes('if (!installedSha || installedSha !== remoteSha) return true;'));
 assert.ok(provider.includes('updateAvailable: isLanguagePackUpdateAvailable'));
 assert.ok(languageManager.includes("t('languagePack.updateAvailable')"));
 assert.ok(languageManager.includes("t('languagePack.update')"));
