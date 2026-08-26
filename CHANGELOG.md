@@ -1,3 +1,12 @@
+# 6.0.0-beta.2 — Language Pack CSP hotfix
+
+- Fixed desktop language-pack manifest and pack downloads by allowing the
+  canonical GitHub Raw origin in Tauri `connect-src`.
+- Manual runtime verification confirmed language download, selection, and
+  persistence after restart.
+- Firmware remains 5.1.0-beta.3.
+- Direct API remains 1.1.0.
+
 # 6.0.0-beta.1 — Language Pack Architecture 2.0
 
 - English is the only embedded application language and remains the permanent fallback.

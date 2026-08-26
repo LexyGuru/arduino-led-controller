@@ -1,17 +1,17 @@
 # Arduino LED Controller V6
 
 <!-- CURRENT_VERSION_SSOT_BEGIN -->
-Current application: `6.0.0-beta.1`
+Current application: `6.0.0-beta.2`
 Current firmware: `5.1.0-beta.3`
 Current Direct API: `1.1.0`
 <!-- CURRENT_VERSION_SSOT_END -->
 
 <!-- CURRENT_RELEASE_DOCS_SSOT_BEGIN -->
-- Release notes: `docs/v5/V60_BETA1_RELEASE_NOTES.md`
-- Installation guide: `docs/v5/V60_BETA1_INSTALLATION_GUIDE.md`
-- Release checklist: `docs/v5/V60_BETA1_RELEASE_CHECKLIST.md`
+- Release notes: `docs/v5/V60_BETA2_RELEASE_NOTES.md`
+- Installation guide: `docs/v5/V60_BETA2_INSTALLATION_GUIDE.md`
+- Release checklist: `docs/v5/V60_BETA2_RELEASE_CHECKLIST.md`
 - Language architecture: `docs/v6/LANGUAGE_PACK_ARCHITECTURE_2_0.md`
-- Root release notes: `RELEASE_NOTES_6.0.0-beta.1.md`
+- Root release notes: `RELEASE_NOTES_6.0.0-beta.2.md`
 <!-- CURRENT_RELEASE_DOCS_SSOT_END -->
 
 <p align="center">
@@ -35,7 +35,7 @@ Direct API végpont, az alkalmazás- és firmware-release folyamat egymástól k
 
 ## Aktuális Beta kiadás
 
-> **Arduino LED Controller 6.0.0-beta.1 — Language Pack Architecture 2.0**
+> **Arduino LED Controller 6.0.0-beta.2 — Language Pack Architecture 2.0**
 
 | Komponens | Aktuális Beta állapot |
 |---|---|
@@ -64,11 +64,11 @@ A letölthető nyelvi csomagok a `language-packs` ágon élnek, külön verzióz
 
 ### Aktuális kiadási dokumentumok
 
-- [V6.0 Beta.1 release notes](docs/v5/V60_BETA1_RELEASE_NOTES.md)
-- [V6.0 Beta.1 telepítési útmutató](docs/v5/V60_BETA1_INSTALLATION_GUIDE.md)
-- [V6.0 Beta.1 release checklist](docs/v5/V60_BETA1_RELEASE_CHECKLIST.md)
+- [V6.0 Beta.1 release notes](docs/v5/V60_BETA2_RELEASE_NOTES.md)
+- [V6.0 Beta.1 telepítési útmutató](docs/v5/V60_BETA2_INSTALLATION_GUIDE.md)
+- [V6.0 Beta.1 release checklist](docs/v5/V60_BETA2_RELEASE_CHECKLIST.md)
 - [Language Pack Architecture 2.0](docs/v6/LANGUAGE_PACK_ARCHITECTURE_2_0.md)
-- [Gyökér release notes](RELEASE_NOTES_6.0.0-beta.1.md)
+- [Gyökér release notes](RELEASE_NOTES_6.0.0-beta.2.md)
 
 ---
 
@@ -345,9 +345,9 @@ A Beta release **prerelease**, nem jelölhető latest stabil kiadásnak.
 
 ### Aktuális
 
-- [V6.0 Beta.1 release notes](docs/v5/V60_BETA1_RELEASE_NOTES.md)
-- [V6.0 Beta.1 telepítési útmutató](docs/v5/V60_BETA1_INSTALLATION_GUIDE.md)
-- [V6.0 Beta.1 release checklist](docs/v5/V60_BETA1_RELEASE_CHECKLIST.md)
+- [V6.0 Beta.1 release notes](docs/v5/V60_BETA2_RELEASE_NOTES.md)
+- [V6.0 Beta.1 telepítési útmutató](docs/v5/V60_BETA2_INSTALLATION_GUIDE.md)
+- [V6.0 Beta.1 release checklist](docs/v5/V60_BETA2_RELEASE_CHECKLIST.md)
 - [Language Pack Architecture 2.0](docs/v6/LANGUAGE_PACK_ARCHITECTURE_2_0.md)
 - [Rust LXC architektúra](docs/v5/RUST_LXC_ARCHITECTURE.md)
 - [Rust LXC üzemeltetés](docs/v5/RUST_LXC_OPERATIONS.md)
