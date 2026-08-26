@@ -6,12 +6,14 @@ const read=p=>fs.readFileSync(path.join(root,p),'utf8');
 const runtime=read('desktop-tauri/src/i18n/runtime.ts');
 const provider=read('desktop-tauri/src/i18n/index.tsx');
 const settings=read('desktop-tauri/src/pages/SettingsPage.tsx');
+const languageManager=read('desktop-tauri/src/components/LanguagePackManager.tsx');
 const types=read('desktop-tauri/src/types/index.ts');
 const firmwarePage=read('desktop-tauri/src/pages/FirmwarePage.tsx');
 const themeEngineTest=read('scripts/test-theme-engine-v3.js');
 const en=JSON.parse(read('desktop-tauri/src/i18n/locales/en.json'));
 const release=JSON.parse(read('release-versions.json'));
 const version=read('VERSION').trim();
+const languagePackArchitecture=release.languagePackRelease.architectureVersion;
 const betaVersion=version.match(/^(\d+)\.(\d+)\.(\d+)-beta\.(\d+)$/);
 const releaseCandidate=betaVersion?`beta.${betaVersion[4]}-gate`:'stable-gate';
 const stagingEnv=read('deploy/staging.env.example');
@@ -68,8 +70,8 @@ assert.ok(runtime.includes('doubleKey: string | undefined'));
 assert.ok(runtime.includes('singleKey: string | undefined'));
 assert.ok(provider.includes('shouldRefreshLanguageManifest()'));
 assert.ok(provider.includes('updateAvailable: isLanguagePackUpdateAvailable'));
-assert.ok(settings.includes("t('languagePack.updateAvailable')"));
-assert.ok(settings.includes("t('languagePack.update')"));
+assert.ok(languageManager.includes("t('languagePack.updateAvailable')"));
+assert.ok(languageManager.includes("t('languagePack.update')"));
 
 assert.ok(types.includes('language: string;'));
 assert.ok(
@@ -82,7 +84,8 @@ assert.ok(firmwarePage.includes('const locale = localeForLanguage(language);'));
 assert.ok(!firmwarePage.includes("language: 'hu' | 'en' | 'de'"));
 assert.ok(themeEngineTest.includes('scripts/fixtures/i18n-runtime-language-pack-compat-v800.txt'));
 assert.ok(!themeEngineTest.includes('desktop-tauri/src/i18n/runtime.ts'));
-assert.ok(settings.includes('data-language-pack-manager="2.0"'));
+assert.ok(languageManager.includes(`data-language-pack-manager="${languagePackArchitecture}"`));
+assert.ok(settings.includes("import { LanguagePackManager } from '../components/LanguagePackManager';"));
 assert.ok(settings.includes("t('settings.ledTopology.title')"));
 assert.ok(settings.includes("t('settings.ledTopology.help')"));
 

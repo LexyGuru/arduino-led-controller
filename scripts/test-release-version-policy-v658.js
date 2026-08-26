@@ -63,13 +63,30 @@ for (const text of [read(notes), read(rootNotes)]) {
   assert.ok(text.includes(version));
   assert.ok(text.includes(release.firmware));
   assert.ok(text.includes(release.directApi));
-  assert.ok(text.includes('Language Pack Architecture 2.0'));
-  assert.match(text,/Hungarian[\s\S]*1\.0\.0/);
-  assert.match(text,/German[\s\S]*1\.0\.0/);
-  assert.match(text,/French[\s\S]*pending/i);
 }
-assert.match(read(rootNotes),/Hungarian[\s\S]*published/i);
-assert.match(read(rootNotes),/German[\s\S]*published/i);
+const notesText=read(notes);
+const rootNotesText=read(rootNotes);
+const lp=release.languagePackRelease;
+assert.ok(lp);
+assert.equal(lp.architectureVersion,'2.1');
+assert.equal(lp.catalogVersion,'2.1.0');
+assert.equal(lp.totalLanguages,15);
+assert.equal(lp.downloadableLanguages,14);
+const languagePackDocs=[
+ ['Hungarian','hu'],['German','de'],['French','fr'],['Spanish','es'],
+ ['Italian','it'],['Portuguese','pt'],['Ukrainian','uk'],['Polish','pl'],
+ ['Russian','ru'],['Czech','cs'],['Romanian','ro'],
+ ['Simplified Chinese','zh-CN'],['Japanese','ja'],['Korean','ko']
+];
+for(const text of [notesText,rootNotesText]){
+ assert.ok(text.includes(`Language Pack Architecture ${lp.architectureVersion}`));
+ for(const [name,code] of languagePackDocs){
+  assert.ok(text.includes(name),name);
+  const escaped=lp.packs[code].version.replace(/\./g,'\\.');
+  assert.match(text,new RegExp(name+'[\\s\\S]*'+escaped));
+ }
+ assert.ok(!/French[\s\S]*pending/i.test(text));
+}
 
 const readme=read('README.md');
 assert.ok(readme.includes(version));

@@ -1,3 +1,11 @@
+# 6.0.0-beta.3 — Language Pack 2.1
+
+- Expanded the target language catalog to 15 languages.
+- Added searchable regional language-pack cards.
+- Added BCP-47 `zh-CN` support and exact-region browser detection.
+- Published full downloadable locale packs with SHA-256 and parity gates.
+- Firmware remains 5.1.0-beta.3; Direct API remains 1.1.0.
+
 # 6.0.0-beta.2 — Language Pack CSP hotfix
 
 - Fixed desktop language-pack manifest and pack downloads by allowing the
@@ -7,7 +15,7 @@
 - Firmware remains 5.1.0-beta.3.
 - Direct API remains 1.1.0.
 
-# 6.0.0-beta.1 — Language Pack Architecture 2.0
+# 6.0.0-beta.1 — Language Pack Architecture 2.1
 
 - English is the only embedded application language and remains the permanent fallback.
 - Hungarian and German move to independently versioned downloadable language packs.

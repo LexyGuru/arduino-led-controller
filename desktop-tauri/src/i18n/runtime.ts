@@ -51,6 +51,11 @@ const MANIFEST_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const MAX_PACK_BYTES = 1024 * 1024;
 const APP_VERSION = String(packageJson.version || '0.0.0');
 
+export function isSupportedLanguageCode(language: string): boolean {
+  return /^[a-z]{2}(?:-[A-Z]{2})?$/.test(language);
+}
+
+
 interface CachedLanguageManifest {
   fetchedAt: number;
   manifest: LanguagePackManifest;
@@ -224,10 +229,14 @@ export function detectLanguage(): AppLanguage {
   const store = storage();
   const saved = store?.getItem(LANGUAGE_STORAGE_KEY)?.trim();
   if (saved && (saved === 'en' || getInstalledPack(saved))) return saved;
-  const detected = typeof navigator !== 'undefined'
-    ? String(navigator.language || '').slice(0, 2).toLowerCase()
-    : '';
-  if (detected === 'en' || (detected && getInstalledPack(detected))) return detected;
+  const browserLanguage = typeof navigator !== 'undefined' ? String(navigator.language || '').trim().replace(/_/g, '-') : '';
+  const parts = browserLanguage.split('-').filter(Boolean);
+  const exact = parts.length >= 2 ? `${parts[0].toLowerCase()}-${parts[1].toUpperCase()}` : parts[0]?.toLowerCase() || '';
+  const base = parts[0]?.toLowerCase() || '';
+  for (const candidate of [exact, base]) {
+    if (!candidate) continue;
+    if (candidate === 'en' || getInstalledPack(candidate)) return candidate;
+  }
   return 'en';
 }
 
@@ -255,7 +264,7 @@ function validateManifest(value: unknown): LanguagePackManifest {
     throw new Error('Language-pack manifest does not contain languages.');
   }
   for (const [code, entry] of Object.entries(manifest.languages)) {
-    if (!/^[a-z]{2}$/.test(code)) throw new Error(`Invalid language code: ${code}`);
+    if (!isSupportedLanguageCode(code)) throw new Error(`Invalid language code: ${code}`);
     if (!entry?.name || !entry.nativeName) throw new Error(`Language metadata missing: ${code}`);
     if (entry.status !== 'available' && entry.status !== 'pending') {
       throw new Error(`Invalid language status: ${code}`);
@@ -385,7 +394,7 @@ export async function installLanguagePack(
   entry: LanguageCatalogEntry
 ): Promise<StoredLanguagePack> {
   if (language === 'en') throw new Error('English is built into the application.');
-  if (!/^[a-z]{2}$/.test(language)) throw new Error('Invalid language code.');
+  if (!isSupportedLanguageCode(language)) throw new Error('Invalid language code.');
   if (entry.status !== 'available' || !entry.file) throw new Error('Language pack is not available yet.');
   if (!appVersionCompatible(entry.minAppVersion, entry.maxAppVersion)) {
     throw new Error('Language pack is not compatible with this application version.');

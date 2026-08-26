@@ -1,11 +1,11 @@
 {
   "schemaVersion": 2,
-  "application": "6.0.0-beta.2",
+  "application": "6.0.0-beta.3",
   "firmware": "5.1.0-beta.3",
   "directApi": "1.1.0",
   "channel": "beta",
   "applicationRelease": {
-    "version": "6.0.0-beta.2",
+    "version": "6.0.0-beta.3",
     "channel": "beta",
     "branch": "next/v5-rearchitecture",
     "updaterAlias": "updater-beta",
@@ -28,5 +28,71 @@
     "firmwareStable500": "5.0.0",
     "firmwareBeta500Beta10": "5.0.0-beta.10",
     "directApiV1": "1.0.0"
+  },
+  "languagePackRelease": {
+    "architectureVersion": "2.1",
+    "catalogVersion": "2.1.0",
+    "branch": "language-packs",
+    "embeddedLanguage": "en",
+    "totalLanguages": 15,
+    "downloadableLanguages": 14,
+    "packs": {
+      "hu": {
+        "version": "1.1.0",
+        "status": "available"
+      },
+      "de": {
+        "version": "1.1.0",
+        "status": "available"
+      },
+      "fr": {
+        "version": "1.0.0",
+        "status": "available"
+      },
+      "es": {
+        "version": "1.0.0",
+        "status": "available"
+      },
+      "it": {
+        "version": "1.0.0",
+        "status": "available"
+      },
+      "pt": {
+        "version": "1.0.0",
+        "status": "available"
+      },
+      "uk": {
+        "version": "1.0.0",
+        "status": "available"
+      },
+      "pl": {
+        "version": "1.0.0",
+        "status": "available"
+      },
+      "ru": {
+        "version": "1.0.0",
+        "status": "available"
+      },
+      "cs": {
+        "version": "1.0.0",
+        "status": "available"
+      },
+      "ro": {
+        "version": "1.0.0",
+        "status": "available"
+      },
+      "zh-CN": {
+        "version": "1.0.0",
+        "status": "available"
+      },
+      "ja": {
+        "version": "1.0.0",
+        "status": "available"
+      },
+      "ko": {
+        "version": "1.0.0",
+        "status": "available"
+      }
+    }
   }
 }

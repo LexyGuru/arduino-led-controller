@@ -100,7 +100,7 @@ for (const marker of [
   versions.application,
   versions.firmware,
   versions.directApi,
-  'Language Pack Architecture 2.0',
+  'Language Pack Architecture 2.1',
   'next/v5-rearchitecture',
   '| Ág | `main` |',
   'language-packs',

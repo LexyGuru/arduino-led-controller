@@ -1,10 +1,11 @@
 import { AppUpdateCenter } from '../components/v55/AppUpdateCenter';
 import type { AppUpdateState } from '../hooks/useAppUpdateCenter';
 import { useEffect, useState } from 'react';
-import { Clock3, DownloadCloud, FolderOpen, Globe2, Languages, PlugZap, RadioTower, Save, ShieldCheck, Wifi } from 'lucide-react';
+import { Clock3, DownloadCloud, FolderOpen, Globe2, PlugZap, RadioTower, Save, ShieldCheck, Wifi } from 'lucide-react';
 import { useI18n } from '../i18n';
 import type { AppLanguage } from '../i18n/runtime';
 import { AppearanceSettings } from '../components/AppearanceSettings';
+import { LanguagePackManager } from '../components/LanguagePackManager';
 import type { ConnectionConfig, LedTopology } from '../types';
 import { tauriApi } from '../services/tauriApi';
 const TIMEZONES = ['Europe/Vienna', 'Europe/Budapest', 'Europe/Berlin', 'Europe/London', 'UTC', 'America/New_York', 'America/Los_Angeles', 'Asia/Tokyo', 'Asia/Dubai', 'Australia/Sydney'];
@@ -63,7 +64,7 @@ export function SettingsPage({ platform, otaSupported, config, busy, onChange, o
     const commit = (next: ConnectionConfig, persist = false) => { onChange(next); if (isLxc && persist)
         onPersist?.(next); };
     const applyTimezone = (timezoneId: string, timezoneAuto = config.timezoneAuto) => { const snap = timezoneSnapshot(timezoneId); commit({ ...config, timezoneId, timezoneAuto, ...snap }, true); };
-    const { t, language, setLanguage, languageCatalog, installedLanguages, languagePackBusy, languagePackError, languageCatalogOnline, refreshLanguageCatalog, installLanguage, uninstallLanguage } = useI18n();
+    const { t, language, setLanguage } = useI18n();
     const [settingsView, setSettingsView] = useState<'general' | 'arduino'>('general');
     const [ledTopology, setLedTopology] = useState<LedTopology | null>(null);
     const [ledTopologyDraft, setLedTopologyDraft] = useState<number[]>([300, 300, 300]);
@@ -132,30 +133,7 @@ export function SettingsPage({ platform, otaSupported, config, busy, onChange, o
    <button type="button" className={settingsView === 'arduino' ? 'active' : ''} onClick={() => setSettingsView('arduino')}>{t('settings-hub.arduino')}</button>
   </div>
  </section>
- <section className="panel settings-panel settings-general-section" data-language-pack-manager="2.0">
- <div className="panel-title"><div><p className="eyebrow">{t('languagePack.eyebrow')}</p><h2>{t('languagePack.title')}</h2></div><Languages /></div>
- <div className="settings-grid"><label>{t('settings.language.label')}<select value={language} onChange={e => changeLanguage(e.target.value as AppLanguage)}>
-  {installedLanguages.map(code => <option key={code} value={code}>{code === 'en' ? `English · ${t('languagePack.builtIn')}` : (languageCatalog.find(item => item.code === code)?.nativeName || code.toUpperCase())}</option>)}
- </select></label></div>
- <div className="notice"><Globe2 size={18}/><p>{t('languagePack.help')}</p></div>
- <div className="language-pack-manager__toolbar"><button type="button" onClick={() => void refreshLanguageCatalog()} disabled={Boolean(languagePackBusy)}><DownloadCloud size={17}/>{t('languagePack.checkUpdates')}</button></div>
- {!languageCatalogOnline && <div className="notice"><Globe2 size={18}/><p>{t('languagePack.offlineHelp')}</p></div>}
- {languagePackError && <div className="notice error" role="alert"><p>{t('languagePack.error', { error: languagePackError })}</p></div>}
- <div className="language-pack-manager__list">
-  {languageCatalog.map(item => {
-            const installed = installedLanguages.includes(item.code);
-            const available = item.status === 'available';
-            const updateAvailable = Boolean(item.updateAvailable);
-            return <div className="language-pack-manager__item" key={item.code}>
-   <div><strong>{item.nativeName}</strong><span>{item.name}{item.packVersion || item.version ? ` · ${t('languagePack.version', { version: item.packVersion || item.version || '' })}` : ''}</span></div>
-   <div>
-    {installed ? <><span>{updateAvailable ? t('languagePack.updateAvailable') : t('languagePack.current')}</span>{updateAvailable && <button type="button" onClick={() => void installLanguage(item.code)} disabled={!languageCatalogOnline || Boolean(languagePackBusy)}>{languagePackBusy === item.code ? t('languagePack.updating') : (languageCatalogOnline ? t('languagePack.update') : t('languagePack.internetRequired'))}</button>}{available && <button type="button" onClick={() => void installLanguage(item.code)} disabled={!languageCatalogOnline || Boolean(languagePackBusy)}>{languagePackBusy === item.code ? t('languagePack.updating') : (languageCatalogOnline ? t('languagePack.reinstall') : t('languagePack.internetRequired'))}</button>}<button type="button" onClick={() => uninstallLanguage(item.code)} disabled={languagePackBusy === item.code}>{t('languagePack.remove')}</button></> :
-                    <button type="button" disabled={!available || !languageCatalogOnline || Boolean(languagePackBusy)} onClick={() => void installLanguage(item.code)}>{languagePackBusy === item.code ? t('languagePack.updating') : (available ? (languageCatalogOnline ? t('languagePack.download') : t('languagePack.internetRequired')) : t('languagePack.pending'))}</button>}
-   </div>
-  </div>;
-        })}
- </div>
-    </section>
+ <LanguagePackManager selectedLanguage={language} onLanguageChange={changeLanguage} />
  <div className="settings-general-wrap"><AppearanceSettings /></div>
   <section className="panel settings-panel settings-connection-section"><div className="panel-title"><div><p className="eyebrow">{t('settings.direct.eyebrow')}</p><h2>{t('settings.direct.title')}</h2></div><ShieldCheck /></div><div className="notice"><PlugZap size={18}/><p>{t(isMac ? 'settings.direct.macosNotice' : 'settings.direct.defaultNotice')}</p></div><div className="settings-grid">
  <label>{t('settings.profileName')}<input value={config.profileName} onChange={e => set('profileName', e.target.value)}/></label><label>{t('settings.remoteProtocol')}<select value={config.protocol} onChange={e => set('protocol', e.target.value as 'http' | 'https')}><option value="https">HTTPS</option><option value="http">HTTP</option></select></label><label>{t('settings.remoteHost')}<input value={config.arduinoIp} placeholder="beta-lexyguruhome.ddns.net" onChange={e => set('arduinoIp', e.target.value)}/></label><label>{t('settings.remotePort')}<input type="number" value={config.arduinoPort} onChange={e => set('arduinoPort', Number(e.target.value))}/></label><label>{t('settings.localProtocol')}<select value={config.localProtocol} onChange={e => set('localProtocol', e.target.value as 'http' | 'https')}><option value="http">HTTP</option><option value="https">HTTPS</option></select></label><label>{t('settings.localHost')}<input value={config.localArduinoIp} placeholder="10.0.0.117" onChange={e => set('localArduinoIp', e.target.value)}/></label><label>{t('settings.localPort')}<input type="number" value={config.localArduinoPort} onChange={e => set('localArduinoPort', Number(e.target.value))}/></label><label className="settings-span">{t('settings.privatePath')}<input value={config.arduinoApiPath} onChange={e => set('arduinoApiPath', e.target.value)}/></label><label className="settings-span">{t('settings.deviceKey')}<input type="password" value={config.arduinoApiKey} onChange={e => set('arduinoApiKey', e.target.value)}/></label></div>

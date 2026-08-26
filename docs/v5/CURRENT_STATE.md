@@ -1,7 +1,7 @@
 # Current development state — 5.8.0-beta.3
 
 <!-- CURRENT_VERSION_SSOT_BEGIN -->
-Current application: `6.0.0-beta.2`
+Current application: `6.0.0-beta.3`
 Current firmware: `5.1.0-beta.3`
 Current Direct API: `1.1.0`
 <!-- CURRENT_VERSION_SSOT_END -->

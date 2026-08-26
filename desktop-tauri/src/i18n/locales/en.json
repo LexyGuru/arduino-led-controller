@@ -1059,5 +1059,11 @@
   "visual31.settings.remote": "REMOTE",
   "visual31.settings.summary": "{{platform}} · {{app}} app · {{firmware}} firmware",
   "visual31.settings.timezone": "TIMEZONE",
-  "visual31.settings.valid": "VALID"
+  "visual31.settings.valid": "VALID",
+  "languagePack.search": "Search languages",
+  "languagePack.filter.all": "All",
+  "languagePack.region.western": "Western Europe",
+  "languagePack.region.centralEastern": "Central & Eastern Europe",
+  "languagePack.region.asia": "Asia",
+  "languagePack.showing": "{count} languages"
 }

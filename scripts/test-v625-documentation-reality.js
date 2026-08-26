@@ -34,17 +34,29 @@ for(const text of [notes,rootNotes,guide,checklist]){
 // V6 documentation is semantically aligned, not byte-identical.
 // Root release notes are the concise publication summary; docs/v5 release
 // notes are the detailed technical release document.
+
+// Language Pack release truth comes from release-versions.json only.
+const lp=release.languagePackRelease;
+assert.ok(lp);
+assert.equal(lp.architectureVersion,'2.1');
+assert.equal(lp.catalogVersion,'2.1.0');
+assert.equal(lp.totalLanguages,15);
+assert.equal(lp.downloadableLanguages,14);
+const languagePackDocs=[
+ ['Hungarian','hu'],['German','de'],['French','fr'],['Spanish','es'],
+ ['Italian','it'],['Portuguese','pt'],['Ukrainian','uk'],['Polish','pl'],
+ ['Russian','ru'],['Czech','cs'],['Romanian','ro'],
+ ['Simplified Chinese','zh-CN'],['Japanese','ja'],['Korean','ko']
+];
 for(const text of [notes,rootNotes]){
- assert.ok(text.includes('Language Pack Architecture 2.0'));
- assert.ok(text.includes('Hungarian'));
- assert.ok(text.includes('German'));
- assert.ok(text.includes('French'));
- assert.match(text,/Hungarian[\s\S]*1\.0\.0/);
- assert.match(text,/German[\s\S]*1\.0\.0/);
- assert.match(text,/French[\s\S]*pending/i);
+ assert.ok(text.includes(`Language Pack Architecture ${lp.architectureVersion}`));
+ for(const [name,code] of languagePackDocs){
+  assert.ok(text.includes(name),name);
+  const escaped=lp.packs[code].version.replace(/\./g,'\\.');
+  assert.match(text,new RegExp(name+'[\\s\\S]*'+escaped));
+ }
+ assert.ok(!/French[\s\S]*pending/i.test(text));
 }
-assert.match(rootNotes,/Hungarian[\s\S]*published/i);
-assert.match(rootNotes,/German[\s\S]*published/i);
 
 assert.ok(currentState.includes(version));
 assert.ok(currentState.includes(release.firmware));
