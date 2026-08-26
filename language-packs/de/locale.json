@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "language": "de",
-  "packVersion": "1.0.0",
-  "minAppVersion": "6.0.0-beta.1",
+  "packVersion": "1.1.0",
+  "minAppVersion": "6.0.0-beta.3",
   "maxAppVersion": "6.999.999",
   "translations": {
     "activity.empty": "Noch keine Anwendungsereignisse vorhanden.",
@@ -1065,6 +1065,12 @@
     "visual31.settings.remote": "REMOTE",
     "visual31.settings.summary": "{{platform}} · {{app}} App · {{firmware}} Firmware",
     "visual31.settings.timezone": "ZEITZONE",
-    "visual31.settings.valid": "GÜLTIG"
+    "visual31.settings.valid": "GÜLTIG",
+    "languagePack.search": "Sprachen suchen",
+    "languagePack.filter.all": "Alle",
+    "languagePack.region.western": "Westeuropa",
+    "languagePack.region.centralEastern": "Mittel- und Osteuropa",
+    "languagePack.region.asia": "Asien",
+    "languagePack.showing": "{count} Sprachen"
   }
 }

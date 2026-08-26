@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "catalogVersion": "2.0.0",
+  "catalogVersion": "2.1.0",
   "defaultLanguage": "en",
   "embedded": {
     "en": {
@@ -14,28 +14,155 @@
       "name": "Hungarian",
       "nativeName": "Magyar",
       "status": "available",
-      "packVersion": "1.0.0",
-      "version": "1.0.0",
-      "minAppVersion": "6.0.0-beta.1",
+      "packVersion": "1.1.0",
+      "version": "1.1.0",
+      "minAppVersion": "6.0.0-beta.3",
       "maxAppVersion": "6.999.999",
       "file": "hu/locale.json",
-      "sha256": "6293d6260d6a412900002297b7b3ae99442026b79d4cfdc1dc56881959b032c3"
+      "sha256": "88184a8ee4818ce79e8f4a94fd58a986ed88db009c83345e6ef0ae8d7aaa8d52"
     },
     "de": {
       "name": "German",
       "nativeName": "Deutsch",
       "status": "available",
-      "packVersion": "1.0.0",
-      "version": "1.0.0",
-      "minAppVersion": "6.0.0-beta.1",
+      "packVersion": "1.1.0",
+      "version": "1.1.0",
+      "minAppVersion": "6.0.0-beta.3",
       "maxAppVersion": "6.999.999",
       "file": "de/locale.json",
-      "sha256": "3e1c53650263b40858f1887ec15d5e23593caedffdf7a99cb717e83cc970ecff"
+      "sha256": "dacab45f1719a13024ca9dcc8de50e12a7e7dd122cc6d5ff58535d09d83d1db1"
     },
     "fr": {
       "name": "French",
       "nativeName": "Français",
-      "status": "pending"
+      "status": "available",
+      "packVersion": "1.0.0",
+      "version": "1.0.0",
+      "minAppVersion": "6.0.0-beta.3",
+      "maxAppVersion": "6.999.999",
+      "file": "fr/locale.json",
+      "sha256": "225e75fe320f75da5fcd66deda1b40be0ed1f4af4a84c2e84a00a987397a5a46"
+    },
+    "es": {
+      "name": "Spanish",
+      "nativeName": "Español",
+      "status": "available",
+      "packVersion": "1.0.0",
+      "version": "1.0.0",
+      "minAppVersion": "6.0.0-beta.3",
+      "maxAppVersion": "6.999.999",
+      "file": "es/locale.json",
+      "sha256": "b82358c51017aa3658732533dc32fe1b7f4debc8343325bd000a27937f5b1aa3"
+    },
+    "it": {
+      "name": "Italian",
+      "nativeName": "Italiano",
+      "status": "available",
+      "packVersion": "1.0.0",
+      "version": "1.0.0",
+      "minAppVersion": "6.0.0-beta.3",
+      "maxAppVersion": "6.999.999",
+      "file": "it/locale.json",
+      "sha256": "a9d9f0f29b60091bc0e586f2af4dde480993534203885fe08163243c1891e764"
+    },
+    "pt": {
+      "name": "Portuguese",
+      "nativeName": "Português",
+      "status": "available",
+      "packVersion": "1.0.0",
+      "version": "1.0.0",
+      "minAppVersion": "6.0.0-beta.3",
+      "maxAppVersion": "6.999.999",
+      "file": "pt/locale.json",
+      "sha256": "e5eeccd75906de1665537354e4912ef81240debdea26e534bebaa3de1cb999fc"
+    },
+    "uk": {
+      "name": "Ukrainian",
+      "nativeName": "Українська",
+      "status": "available",
+      "packVersion": "1.0.0",
+      "version": "1.0.0",
+      "minAppVersion": "6.0.0-beta.3",
+      "maxAppVersion": "6.999.999",
+      "file": "uk/locale.json",
+      "sha256": "9554b6a2b31369968920b2fe1d29fae35d5eb45187fee3081698983cdad1c0bb"
+    },
+    "pl": {
+      "name": "Polish",
+      "nativeName": "Polski",
+      "status": "available",
+      "packVersion": "1.0.0",
+      "version": "1.0.0",
+      "minAppVersion": "6.0.0-beta.3",
+      "maxAppVersion": "6.999.999",
+      "file": "pl/locale.json",
+      "sha256": "773d898128dae2cb45d5fa2baba48fef3e5f4800162453b9edf5b84e9867dc9c"
+    },
+    "ru": {
+      "name": "Russian",
+      "nativeName": "Русский",
+      "status": "available",
+      "packVersion": "1.0.0",
+      "version": "1.0.0",
+      "minAppVersion": "6.0.0-beta.3",
+      "maxAppVersion": "6.999.999",
+      "file": "ru/locale.json",
+      "sha256": "02796398f9cec55e39746a6239f9bf8d913a845111d0b86c4fdf58015ae2fbad"
+    },
+    "cs": {
+      "name": "Czech",
+      "nativeName": "Čeština",
+      "status": "available",
+      "packVersion": "1.0.0",
+      "version": "1.0.0",
+      "minAppVersion": "6.0.0-beta.3",
+      "maxAppVersion": "6.999.999",
+      "file": "cs/locale.json",
+      "sha256": "55431f9b723bca8671b4f537c8278d3fac2788e72ae4dc17583ff238ee69dc66"
+    },
+    "ro": {
+      "name": "Romanian",
+      "nativeName": "Română",
+      "status": "available",
+      "packVersion": "1.0.0",
+      "version": "1.0.0",
+      "minAppVersion": "6.0.0-beta.3",
+      "maxAppVersion": "6.999.999",
+      "file": "ro/locale.json",
+      "sha256": "462116e81b3d77abbd86614f1503a12fe94c06671dfeca6dbe849bb10abdc832"
+    },
+    "zh-CN": {
+      "name": "Simplified Chinese",
+      "nativeName": "简体中文",
+      "status": "available",
+      "packVersion": "1.0.0",
+      "version": "1.0.0",
+      "minAppVersion": "6.0.0-beta.3",
+      "maxAppVersion": "6.999.999",
+      "file": "zh-CN/locale.json",
+      "sha256": "4f09b85960e3b288d04040b5223b3ac41b16b59825936cdda199200117445caa"
+    },
+    "ja": {
+      "name": "Japanese",
+      "nativeName": "日本語",
+      "status": "available",
+      "packVersion": "1.0.0",
+      "version": "1.0.0",
+      "minAppVersion": "6.0.0-beta.3",
+      "maxAppVersion": "6.999.999",
+      "file": "ja/locale.json",
+      "sha256": "885e3f73301c65b2fd883fefd4439b8299d7b3d0fdb4d438d23dc0e31ce7ba4d"
+    },
+    "ko": {
+      "name": "Korean",
+      "nativeName": "한국어",
+      "status": "available",
+      "packVersion": "1.0.0",
+      "version": "1.0.0",
+      "minAppVersion": "6.0.0-beta.3",
+      "maxAppVersion": "6.999.999",
+      "file": "ko/locale.json",
+      "sha256": "76fd59d24a13a9de486f07de793adc86f21321a2214c5ba75376a7c98b85dbda"
     }
   }
 }

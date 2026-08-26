@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "language": "hu",
-  "packVersion": "1.0.0",
-  "minAppVersion": "6.0.0-beta.1",
+  "packVersion": "1.1.0",
+  "minAppVersion": "6.0.0-beta.3",
   "maxAppVersion": "6.999.999",
   "translations": {
     "activity.empty": "Még nincs megjeleníthető alkalmazásesemény.",
@@ -1065,6 +1065,12 @@
     "visual31.settings.remote": "TÁVOLI",
     "visual31.settings.summary": "{{platform}} · {{app}} alkalmazás · {{firmware}} firmware",
     "visual31.settings.timezone": "IDŐZÓNA",
-    "visual31.settings.valid": "ÉRVÉNYES"
+    "visual31.settings.valid": "ÉRVÉNYES",
+    "languagePack.search": "Nyelvek keresése",
+    "languagePack.filter.all": "Mind",
+    "languagePack.region.western": "Nyugat-Európa",
+    "languagePack.region.centralEastern": "Közép- és Kelet-Európa",
+    "languagePack.region.asia": "Ázsia",
+    "languagePack.showing": "{count} nyelv"
   }
 }
