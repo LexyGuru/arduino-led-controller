@@ -13,13 +13,25 @@ const huPack=JSON.parse(read('scripts/fixtures/language-packs-v800/hu.locale.jso
 const dePack=JSON.parse(read('scripts/fixtures/language-packs-v800/de.locale.json'));
 
 assert.match(app,/startupIssues=\{startup\.checks\.filter\(\(check\) => check\.state === 'warn'\)\}/);
-assert.match(app,/platform=\{controller\.capabilities\.platform\}/);
+const dashboardStart=app.indexOf('<DashboardPage');
+const dashboardEnd=dashboardStart>=0?app.indexOf('/>',dashboardStart):-1;
+const settingsStart=app.indexOf('<SettingsPage');
+const settingsEnd=settingsStart>=0?app.indexOf('/>',settingsStart):-1;
+assert.ok(dashboardStart>=0&&dashboardEnd>dashboardStart,'DashboardPage JSX block missing');
+assert.ok(settingsStart>=0&&settingsEnd>settingsStart,'SettingsPage JSX block missing');
+const dashboardBlock=app.slice(dashboardStart,dashboardEnd);
+const settingsBlock=app.slice(settingsStart,settingsEnd);
+assert.doesNotMatch(dashboardBlock,/platform=\{controller\.capabilities\.platform\}/);
+assert.match(settingsBlock,/platform=\{controller\.capabilities\.platform\}/);
 assert.match(dash,/data-startup-issues=\{startupIssues\.length\}/);
 assert.match(dash,/startupIssues\.map/);
-assert.match(dash,/recoveredMacCredentialBootstrap/);
-assert.match(dash,/platform === 'macos'/);
+assert.match(dash,/recoveredCredentialBootstrap/);
+assert.doesNotMatch(dash,/recoveredMacCredentialBootstrap/);
+assert.doesNotMatch(dash,/platform === 'macos'/);
 assert.match(dash,/connectionHealth\.state === 'healthy'/);
-assert.match(health,/recoveredMacCredentialBootstrap/);
+assert.match(health,/recoveredCredentialBootstrap/);
+assert.doesNotMatch(health,/recoveredMacCredentialBootstrap/);
+assert.doesNotMatch(health,/platform === 'macos'/);
 assert.match(health,/health\.state === 'healthy'/);
 assert.match(sidebar,/v621-sidebar-update-card/);
 assert.match(sidebar,/onChange\('settings'\s*,\s*'updates'\)/);
@@ -46,6 +58,8 @@ for(const key of [
 }
 
 console.log('V621_STARTUP_WARNING_RETENTION=PASSED');
-console.log('V621_MACOS_RECOVERED_KEYCHAIN_NOISE_CLASSIFICATION=PASSED');
-console.log('V621_NON_MAC_AND_PERSISTENT_ERRORS_NOT_GLOBALLY_SUPPRESSED=PASSED');
+console.log('V621_RECOVERED_CREDENTIAL_BOOTSTRAP_CLASSIFICATION=PASSED');
+console.log('V621_CROSS_PLATFORM_RECOVERED_ERROR_POLICY=PASSED');
+console.log('V621_PERSISTENT_RUNTIME_ERRORS_REMAIN_VISIBLE=PASSED');
+console.log('V621_SCOPED_PLATFORM_PROP_CONTRACT=PASSED');
 console.log('V621_GLOBAL_APP_UPDATE_VISIBILITY=PASSED');

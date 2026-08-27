@@ -194,7 +194,6 @@ export default function App() {
               networkLogs={
                 controller.networkLogs
               }
-              platform={controller.capabilities.platform}
               startupIssues={startup.checks.filter((check) => check.state === 'warn')}
               busy={
                 controller.busy

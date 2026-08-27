@@ -1,11 +1,11 @@
 <!-- CURRENT_BETA_RELEASE_BEGIN -->
 ## Current Beta release
 
-- Application: `6.0.0-beta.5`
+- Application: `6.0.0-beta.6`
 - Firmware: `5.1.0-beta.3`
 - Direct API: `1.1.0`
 - Detailed release notes: `docs/v5/V60_BETA5_RELEASE_NOTES.md`
-- Root release notes: `RELEASE_NOTES_6.0.0-beta.5.md`
+- Root release notes: `RELEASE_NOTES_6.0.0-beta.6.md`
 - Installation guide: `docs/v5/V60_BETA4_INSTALLATION_GUIDE.md`
 - Release checklist: `docs/v5/V60_BETA4_RELEASE_CHECKLIST.md`
 <!-- CURRENT_BETA_RELEASE_END -->
@@ -13,7 +13,7 @@
 # Arduino LED Controller V6
 
 <!-- CURRENT_VERSION_SSOT_BEGIN -->
-Current application: `6.0.0-beta.5`
+Current application: `6.0.0-beta.6`
 Current firmware: `5.1.0-beta.3`
 Current Direct API: `1.1.0`
 <!-- CURRENT_VERSION_SSOT_END -->
@@ -22,7 +22,7 @@ Current Direct API: `1.1.0`
 - Release notes: `docs/v5/V60_BETA5_RELEASE_NOTES.md`
 - Installation guide: `docs/v5/V60_BETA5_INSTALLATION_GUIDE.md`
 - Release checklist: `docs/v5/V60_BETA5_RELEASE_CHECKLIST.md`
-- Root release notes: `RELEASE_NOTES_6.0.0-beta.5.md`
+- Root release notes: `RELEASE_NOTES_6.0.0-beta.6.md`
 <!-- CURRENT_RELEASE_DOCS_SSOT_END -->
 
 <p align="center">
@@ -392,7 +392,7 @@ váltható. Mobilon és más desktop platformokon a generált platformikonok has
 A repository licencfeltételeit a projekt tulajdonosa határozza meg. Külső
 terjesztés előtt külön `LICENSE` fájl szükséges.
 
-## 6.0.0-beta.5 — Settings & startup experience
+## 6.0.0-beta.6 — Settings & startup experience
 
 Beta.5 finalizes the cross-platform Settings information architecture and the Visual 3.1 startup experience.
 
@@ -403,6 +403,18 @@ Beta.5 finalizes the cross-platform Settings information architecture and the Vi
 - **Firmware:** remains `5.1.0-beta.3`
 - **Direct API:** remains `1.1.0`
 
-Release notes: [`RELEASE_NOTES_6.0.0-beta.5.md`](RELEASE_NOTES_6.0.0-beta.5.md)  
-Detailed technical notes: [`docs/v5/V60_BETA5_RELEASE_NOTES.md`](docs/v5/V60_BETA5_RELEASE_NOTES.md)  
+Release notes: [`RELEASE_NOTES_6.0.0-beta.6.md`](RELEASE_NOTES_6.0.0-beta.6.md)
+Detailed technical notes: [`docs/v5/V60_BETA5_RELEASE_NOTES.md`](docs/v5/V60_BETA5_RELEASE_NOTES.md)
 Installation guide: [`docs/v5/V60_BETA5_INSTALLATION_GUIDE.md`](docs/v5/V60_BETA5_INSTALLATION_GUIDE.md)
+
+
+## 6.0.0-beta.6 hotfix candidate
+
+Visual 3.1 health-orbit text containment and recovered mobile startup-error suppression. Firmware remains `5.1.0-beta.3`.
+
+## 6.0.0-beta.6 documentation
+
+- [Release notes](docs/v5/V60_BETA6_RELEASE_NOTES.md)
+- [Installation guide](docs/v5/V60_BETA6_INSTALLATION_GUIDE.md)
+- [Release checklist](docs/v5/V60_BETA6_RELEASE_CHECKLIST.md)
+- [Root release notes](RELEASE_NOTES_6.0.0-beta.6.md)

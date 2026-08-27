@@ -78,7 +78,7 @@ function nextSchedule(items: LedSchedule[], clock: ArduinoClock) {
         };
     }).sort((a, b) => a.minuteDelta - b.minuteDelta)[0];
 }
-export function DashboardPage({ status: legacyStatus, schedules: legacySchedules, scheduleSync, connectionHealth, diagnostics, diagnosticsError, diagnosticsPollIntervalMs, networkLogs, platform, startupIssues, busy, onRefreshDiagnostics, onSyncTime }: {
+export function DashboardPage({ status: legacyStatus, schedules: legacySchedules, scheduleSync, connectionHealth, diagnostics, diagnosticsError, diagnosticsPollIntervalMs, networkLogs, startupIssues, busy, onRefreshDiagnostics, onSyncTime }: {
     status: ArduinoStatus | null;
     schedules: LedSchedule[];
     scheduleSync: ScheduleSyncState;
@@ -87,7 +87,6 @@ export function DashboardPage({ status: legacyStatus, schedules: legacySchedules
     diagnosticsError: string | null;
     diagnosticsPollIntervalMs: number;
     networkLogs: NetworkLog[];
-    platform: string;
     startupIssues: StartupCheck[];
     busy: boolean;
     onRefreshDiagnostics: () => void;
@@ -106,10 +105,10 @@ export function DashboardPage({ status: legacyStatus, schedules: legacySchedules
         : next?.dayOffset === 1
             ? t('dashboard.tomorrow')
             : t('dashboard.nextDay');
-    const recoveredMacCredentialBootstrap = (message?: string) => platform === 'macos' &&
+    const recoveredCredentialBootstrap = (message?: string) =>
         connectionHealth.state === 'healthy' &&
         Boolean(message?.includes('Az Arduino API-kulcs nem használható biztonságos HTTP-fejlécértékként.'));
-    const effectiveNetworkLogs = networkLogs.filter((entry) => !recoveredMacCredentialBootstrap(entry.message));
+    const effectiveNetworkLogs = networkLogs.filter((entry) => !recoveredCredentialBootstrap(entry.message));
     const stats = buildDashboardStatistics(status, schedules, audit.entries, effectiveNetworkLogs);
     const latestNetworkError = effectiveNetworkLogs.find((entry) => !entry.ok) ?? null;
     const healthSignals = [
@@ -210,7 +209,7 @@ export function DashboardPage({ status: legacyStatus, schedules: legacySchedules
           </div>
         </section>)}
 
-      <DeviceHealthPanel health={connectionHealth} status={status} stats={stats} latestNetworkError={latestNetworkError} platform={platform} onRetry={() => void dashboard.refresh()}/>
+      <DeviceHealthPanel health={connectionHealth} status={status} stats={stats} latestNetworkError={latestNetworkError} onRetry={() => void dashboard.refresh()}/>
 
       <DiagnosticsPanel value={diagnostics} error={diagnosticsError} pollIntervalMs={diagnosticsPollIntervalMs} busy={busy} onRefresh={onRefreshDiagnostics}/>
 

@@ -44,12 +44,11 @@ function countdownLabel(target: number | null, now: number) {
         return '—';
     return `${Math.max(0, Math.ceil((target - now) / 1000))}s`;
 }
-export function DeviceHealthPanel({ health, status, stats, latestNetworkError, platform, onRetry }: {
+export function DeviceHealthPanel({ health, status, stats, latestNetworkError, onRetry }: {
     health: ConnectionHealthState;
     status: ArduinoStatus | null;
     stats: DashboardStatistics;
     latestNetworkError: NetworkLog | null;
-    platform: string;
     onRetry: () => void;
 }) {
     const { t } = useI18n();
@@ -62,11 +61,11 @@ export function DeviceHealthPanel({ health, status, stats, latestNetworkError, p
     }, []);
     const stateLabel = t(`beta2.health.state.${health.state}`);
     const stateMessage = t(`beta2.health.message.${health.state}`);
-    const recoveredMacCredentialBootstrap = (message?: string | null) => platform === 'macos' &&
+    const recoveredCredentialBootstrap = (message?: string | null) =>
         health.state === 'healthy' &&
         Boolean(message?.includes('Az Arduino API-kulcs nem használható biztonságos HTTP-fejlécértékként.'));
-    const effectiveHealthError = recoveredMacCredentialBootstrap(health.lastError) ? null : health.lastError;
-    const effectiveNetworkError = latestNetworkError && recoveredMacCredentialBootstrap(latestNetworkError.message)
+    const effectiveHealthError = recoveredCredentialBootstrap(health.lastError) ? null : health.lastError;
+    const effectiveNetworkError = latestNetworkError && recoveredCredentialBootstrap(latestNetworkError.message)
         ? null
         : latestNetworkError;
     const lastFailureAt = effectiveHealthError || effectiveNetworkError

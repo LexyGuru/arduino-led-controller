@@ -1,6 +1,6 @@
 {
   "name": "arduino-led-controller",
-  "version": "6.0.0-beta.5",
+  "version": "6.0.0-beta.6",
   "private": true,
   "description": "Arduino UNO R4 WiFi LED controller and weekly scheduler",
   "main": "server2_final.js",
@@ -326,7 +326,8 @@
     "test:language-catalog-v828": "node scripts/test-language-catalog-v828.js",
     "test:v854-settings-information-architecture": "node scripts/test-beta5-settings-information-architecture-v854.js",
     "test:v854k-startup-long-language-layout": "node scripts/test-beta5-startup-long-language-layout-v854k.js",
-    "test:v854l-startup-complete-redesign": "node scripts/test-beta5-startup-complete-redesign-v854l.js"
+    "test:v854l-startup-complete-redesign": "node scripts/test-beta5-startup-complete-redesign-v854l.js",
+    "test:v856-beta6-hotfix": "node scripts/test-beta6-lxc-orbit-mobile-startup-error-hotfix-v856.js"
   },
   "engines": {
     "node": ">=20"

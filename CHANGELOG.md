@@ -1,3 +1,10 @@
+# 6.0.0-beta.6 — LXC / mobile startup hotfix
+
+- Visual 3.1 health-orbit label is constrained inside the health ring on narrow layouts.
+- Recovered Arduino API header/bootstrap errors no longer remain visible as the latest error after startup.
+- Real active runtime errors remain visible.
+- Firmware remains 5.1.0-beta.3; Direct API remains 1.1.0.
+
 # 6.0.0-beta.5 — Settings information architecture / cross-platform UX
 
 ## Final Settings / i18n / startup scope

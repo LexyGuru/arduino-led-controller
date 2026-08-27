@@ -12,8 +12,9 @@ const nav=read('desktop-tauri/src/settings-navigation.ts');
 const css=read('desktop-tauri/src/settings-beta5.css');
 const main=read('desktop-tauri/src/main.tsx');
 
-assert.equal(release.application,'6.0.0-beta.5');
-assert.equal(release.applicationRelease.version,'6.0.0-beta.5');
+const currentVersion=read('VERSION').trim();
+assert.equal(release.application,currentVersion);
+assert.equal(release.applicationRelease.version,currentVersion);
 assert.equal(release.firmware,'5.1.0-beta.3');
 assert.equal(release.directApi,'1.1.0');
 
