@@ -726,7 +726,7 @@ jobs:
               "productionDeploymentIncluded": False,
               "compatibility": {
                   "board": "arduino-uno-r4-wifi",
-                  "directApiVersion": "1.0.0",
+                  "directApiVersion": versions["directApi"],
                   "applicationVersion": version,
               },
               "files": files,
@@ -750,7 +750,7 @@ jobs:
               "publishedAt": os.environ.get("GITHUB_RUN_ID", "github-actions"),
               "app": {
                   "version": version,
-                  "directApiVersion": "1.0.0",
+                  "directApiVersion": versions["directApi"],
                   "releaseUrl": f"https://github.com/LexyGuru/arduino-led-controller/releases/tag/{tag}",
                   "artifacts": {key: {"name": name, "url": f"{base_url}/{name}"} for key, name in app_assets.items()},
               },

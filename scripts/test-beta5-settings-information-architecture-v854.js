@@ -15,8 +15,8 @@ const main=read('desktop-tauri/src/main.tsx');
 const currentVersion=read('VERSION').trim();
 assert.equal(release.application,currentVersion);
 assert.equal(release.applicationRelease.version,currentVersion);
-assert.equal(release.firmware,'5.1.0-beta.3');
-assert.equal(release.directApi,'1.1.0');
+assert.equal(release.firmware,release.firmwareRelease.recommendedVersion);
+assert.equal(release.directApi,release.directApiRelease.version);
 
 for(const target of ['general','connection','updates','hardware']) assert.ok(nav.includes(`'${target}'`),target);
 assert.ok(app.includes("useState<SettingsTarget>('general')"));

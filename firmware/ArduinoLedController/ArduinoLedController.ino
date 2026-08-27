@@ -14,10 +14,10 @@
 #include <stdarg.h>
 #include "secrets.h"
 
-#define FIRMWARE_VERSION "5.1.0-beta.3"
+#define FIRMWARE_VERSION "5.1.0-beta.4"
 #define FIRMWARE_FEATURE "f14-direct-api-v1-only-storage-udp-ntp-dst-ota-exclusive-v191-matrix-neopixel-ota-led-feedback-bootgen-sizeopt-schedule-progress-diag"
 #define OTA_MAINTENANCE_MODE_V1 1
-#define DIRECT_API_VERSION "1.1.0"
+#define DIRECT_API_VERSION "1.2.0"
 #define DEVICE_NAME "arduino-led-controller"
 #define API_DEVICE_KEY_HEADER "X-Device-Key"
 
@@ -91,8 +91,8 @@ constexpr uint16_t NTP_REMOTE_PORT = 123;
 constexpr uint32_t NTP_UNIX_OFFSET = 2208988800UL;
 constexpr unsigned long NTP_VALID_EPOCH_MIN = 1700000000UL;
 constexpr uint8_t HTTP_CLIENTS_PER_LOOP = 1;
-constexpr uint8_t LOG_CAPACITY = 12;
-constexpr uint8_t CONSOLE_LOGS_PER_RESPONSE = 8;
+constexpr uint8_t LOG_CAPACITY = 16;
+constexpr uint8_t CONSOLE_LOGS_PER_RESPONSE = 10;
 constexpr size_t HTTP_BODY_BUFFER_SIZE = 3072;
 constexpr size_t HTTP_RESPONSE_HEADER_SIZE = 192;
 constexpr size_t HTTP_WRITE_CHUNK_SIZE = 512;
@@ -110,6 +110,7 @@ constexpr unsigned long HTTP_READ_TIMEOUT = 350UL;
 constexpr unsigned long HTTP_RESPONSE_SETTLE_DELAY_MS = 8UL;
 constexpr unsigned long HTTP_POLLING_SUMMARY_INTERVAL = 30000UL;
 constexpr unsigned long HTTP_TRACE_MAX_TIME = 600000UL;
+constexpr unsigned long HTTP_SLOW_REQUEST_THRESHOLD_MS = 250UL;
 constexpr unsigned long WIFI_LINK_PROBE_INTERVAL_MS = 15000UL;
 constexpr unsigned long WIFI_RSSI_REFRESH_INTERVAL_MS = 30000UL;
 constexpr unsigned long NTP_UNSYNCED_RETRY_INTERVAL_MS = NTP_INITIAL_RETRY_INTERVAL_MS;
@@ -134,8 +135,10 @@ struct Led {
 struct Log {
   uint32_t id;
   unsigned long timestamp;
-  char type[12];
-  char message[80];
+  char level[10];
+  char code[24];
+  char subsystem[16];
+  char message[96];
 };
 struct NetworkSettings {
   uint32_t magic;
@@ -279,12 +282,15 @@ bool networkSettingsStored = false, apiSettingsStored = false;
 bool schedulesStored = false, otaReady = false, otaTransferActive = false, otaExclusiveMode = false;
 bool otaErrorVisualShown = false, otaClearSuccessMarkerRequested = false;
 bool timeSynced = false, wifiReported = false, cachedWifiConnected = false;
+unsigned long wifiDisconnectCount = 0, wifiReconnectCount = 0;
+unsigned long wifiLastDisconnectAt = 0, wifiLastReconnectAt = 0;
 bool scheduleReconcileRequested = true;
 bool pirRaw[STRIP_COUNT] = {}, pirActive[STRIP_COUNT] = {};
 bool manualOverride[STRIP_COUNT] = {}, httpTraceEnabled = false;
 IPAddress cachedWifiIp(0,0,0,0);
 long cachedWifiRssi = 0;
 uint8_t logStart = 0, logSize = 0, scheduleCount = 0, httpMaxBatch = 0;
+unsigned long logDroppedCount = 0;
 uint32_t nextLogId = 1, nextHttpRequestId = 1, bootId = 0;
 uint32_t bootSequence = 0, bootGeneration = 0;
 uint8_t activeBootGenerationSlot = 0;
@@ -309,6 +315,8 @@ unsigned long perfRenderTotalUs = 0, perfRenderMaxUs = 0;
 unsigned long perfEepromWriteCalls = 0, perfEepromChangedBytes = 0;
 unsigned long perfEepromWriteTotalUs = 0, perfEepromWriteMaxUs = 0;
 unsigned long perfHttpMaxDurationMs = 0;
+unsigned long perfHttpTotalDurationMs = 0, perfHttpLastDurationMs = 0;
+unsigned long perfHttpSlowRequests = 0;
 // V785 subsystem timing / dedup baseline.
 unsigned long perfStatusBuilds = 0, perfStatusBuildTotalUs = 0, perfStatusBuildMaxUs = 0;
 unsigned long perfLedJsonApplies = 0, perfLedJsonParseTotalUs = 0, perfLedJsonParseMaxUs = 0;
@@ -434,39 +442,73 @@ bool appendJsonEscaped(FixedBuffer& b, const char* source) {
   return true;
 }
 
-void storeConsoleLine(const char* type, const char* message, bool prefix) {
+const char* normalizeLogLevel(const char* type) {
+  if (!type) return "INFO";
+  if (!strcmp(type, "error")) return "ERROR";
+  if (!strcmp(type, "critical")) return "CRITICAL";
+  if (!strcmp(type, "warn") || !strcmp(type, "warning")) return "WARNING";
+  if (!strcmp(type, "debug") || !strcmp(type, "perf") || !strcmp(type, "http")) return "DEBUG";
+  if (!strcmp(type, "trace")) return "TRACE";
+  if (!strcmp(type, "notice") || !strcmp(type, "success")) return "NOTICE";
+  return "INFO";
+}
+const char* defaultSubsystemForType(const char* type) {
+  if (!type) return "system";
+  if (!strcmp(type, "perf")) return "performance";
+  if (!strcmp(type, "http")) return "http";
+  if (!strcmp(type, "cmd")) return "command";
+  return "firmware";
+}
+const char* eventFamilyForLevel(const char* level) {
+  if (!strcmp(level, "ERROR") || !strcmp(level, "CRITICAL")) return "XE";
+  if (!strcmp(level, "WARNING")) return "XW";
+  if (!strcmp(level, "DEBUG") || !strcmp(level, "TRACE")) return "XP";
+  return "XI";
+}
+void storeStructuredLog(const char* level, const char* code, const char* subsystem,
+    const char* message, bool prefix) {
   uint8_t position = (logStart + logSize) % LOG_CAPACITY;
-  if (logSize == LOG_CAPACITY) logStart = (logStart + 1) % LOG_CAPACITY;
+  if (logSize == LOG_CAPACITY) { logStart = (logStart + 1) % LOG_CAPACITY; logDroppedCount++; }
   else logSize++;
   logs[position].id = nextLogId++;
   logs[position].timestamp = millis() / 1000UL;
-  copyText(logs[position].type, sizeof(logs[position].type), type);
-  copyText(logs[position].message, sizeof(logs[position].message), message);
-  if (prefix) { Serial.print('['); Serial.print(type); Serial.print("] "); }
-  Serial.println(message);
+  copyText(logs[position].level, sizeof(logs[position].level), level ? level : "INFO");
+  copyText(logs[position].code, sizeof(logs[position].code), code ? code : "XI-GENERAL");
+  copyText(logs[position].subsystem, sizeof(logs[position].subsystem), subsystem ? subsystem : "firmware");
+  copyText(logs[position].message, sizeof(logs[position].message), message ? message : "");
+  if (prefix) {
+    Serial.print('['); Serial.print(logs[position].level); Serial.print("] [");
+    Serial.print(logs[position].code); Serial.print("] [");
+    Serial.print(logs[position].subsystem); Serial.print("] ");
+  }
+  Serial.println(logs[position].message);
+}
+void logStructured(const char* level, const char* code, const char* subsystem, const char* message) {
+  if (otaExclusiveMode) return;
+  storeStructuredLog(level, code, subsystem, message, true);
 }
 void logEvent(const char* type, const char* message) {
   if (otaExclusiveMode) return;
-  storeConsoleLine(type, message, true);
+  const char* level = normalizeLogLevel(type);
+  char code[24];
+  snprintf(code, sizeof(code), "%s-%s", eventFamilyForLevel(level),
+    !strcmp(type ? type : "", "perf") ? "PERF" :
+    !strcmp(type ? type : "", "http") ? "HTTP" : "EVENT");
+  storeStructuredLog(level, code, defaultSubsystemForType(type), message, true);
 }
-void logCode(const char* type, const char* code) {
-  logEvent(type, code);
+void logCode(const char* type, const char* legacyCode) {
+  const char* level = normalizeLogLevel(type);
+  char code[24];
+  snprintf(code, sizeof(code), "%s-%s", eventFamilyForLevel(level), legacyCode ? legacyCode : "LEGACY");
+  logStructured(level, code, defaultSubsystemForType(type), legacyCode ? legacyCode : "");
 }
-void logCodef(const char* type, const char* code, const char* format, ...) {
-  char message[80];
-  int prefix = snprintf(message, sizeof(message), "%s", code);
-  if (prefix < 0 || static_cast<size_t>(prefix) >= sizeof(message)) return;
-  if (format && format[0]) {
-    size_t used = static_cast<size_t>(prefix);
-    if (used + 1 >= sizeof(message)) return;
-    message[used++] = ':';
-    message[used] = 0;
-    va_list args;
-    va_start(args, format);
-    vsnprintf(message + used, sizeof(message) - used, format, args);
-    va_end(args);
-  }
-  logEvent(type, message);
+void logCodef(const char* type, const char* legacyCode, const char* format, ...) {
+  char detail[96] = {};
+  if (format && format[0]) { va_list args; va_start(args, format); vsnprintf(detail, sizeof(detail), format, args); va_end(args); }
+  const char* level = normalizeLogLevel(type);
+  char code[24];
+  snprintf(code, sizeof(code), "%s-%s", eventFamilyForLevel(level), legacyCode ? legacyCode : "LEGACY");
+  logStructured(level, code, defaultSubsystemForType(type), detail[0] ? detail : (legacyCode ? legacyCode : ""));
 }
 void consoleLine(const char* message) {
   Serial.println(message);
@@ -1436,8 +1478,16 @@ void refreshWifiTelemetry(bool force) {
   if (force || !lastWifiLinkProbe ||
       now - lastWifiLinkProbe >= WIFI_LINK_PROBE_INTERVAL_MS) {
     lastWifiLinkProbe = now;
+    const bool previousConnected = cachedWifiConnected;
     cachedWifiConnected = WiFi.status() == WL_CONNECTED;
     cachedWifiIp = cachedWifiConnected ? WiFi.localIP() : IPAddress(0,0,0,0);
+    if (previousConnected && !cachedWifiConnected) {
+      wifiDisconnectCount++; wifiLastDisconnectAt = now;
+      logStructured("WARNING", "XW-WIFI-DISCONNECT", "wifi", "WiFi link lost");
+    } else if (!previousConnected && cachedWifiConnected) {
+      wifiReconnectCount++; wifiLastReconnectAt = now;
+      logStructured("NOTICE", "XI-WIFI-CONNECT", "wifi", "WiFi link connected");
+    }
   }
   if (cachedWifiConnected && (force || !lastWifiRssiRefresh ||
       now - lastWifiRssiRefresh >= WIFI_RSSI_REFRESH_INTERVAL_MS)) {
@@ -1965,7 +2015,17 @@ void finalizeHttpAudit(HttpRequestContext& r) {
   copyText(lastHttpAuth, sizeof(lastHttpAuth), authResultText(r.authResult));
   lastHttpResponseCode = r.responseCode;
   lastHttpDurationMs = duration;
+  perfHttpLastDurationMs = duration;
+  perfHttpTotalDurationMs += duration;
   if (duration > perfHttpMaxDurationMs) perfHttpMaxDurationMs = duration;
+  if (duration >= HTTP_SLOW_REQUEST_THRESHOLD_MS) {
+    perfHttpSlowRequests++;
+    if (!pollingPath(r.path) || duration >= HTTP_SLOW_REQUEST_THRESHOLD_MS * 2UL) {
+      char slowMessage[96];
+      snprintf(slowMessage, sizeof(slowMessage), "%s %s %lums code=%d", r.method, r.path, duration, r.responseCode);
+      logStructured("WARNING", "XP-HTTP-SLOW", "http", slowMessage);
+    }
+  }
   lastHttpClientAt = millis();
   if (r.responseCode < 400) httpSuccessResponses++;
   else if (r.responseCode < 500) httpClientErrorResponses++;
@@ -2218,32 +2278,23 @@ void sendCapabilitiesJson(WiFiClient& c, uint32_t requestId) {
 void sendLogsJson(WiFiClient& c, uint32_t afterId, uint32_t requestId) {
   uint8_t selected[CONSOLE_LOGS_PER_RESPONSE] = {}, count = 0;
   uint32_t lastId = afterId;
-  for (uint8_t offset = 0; offset < logSize && count < CONSOLE_LOGS_PER_RESPONSE;
-      offset++) {
+  for (uint8_t offset = 0; offset < logSize && count < CONSOLE_LOGS_PER_RESPONSE; offset++) {
     uint8_t position = (logStart + offset) % LOG_CAPACITY;
-    if (logs[position].id > afterId) {
-      selected[count++] = position;
-      lastId = logs[position].id;
-    }
+    if (logs[position].id > afterId) { selected[count++] = position; lastId = logs[position].id; }
   }
-  FixedBuffer b;
-  resetBuffer(b, httpBodyBuffer, sizeof(httpBodyBuffer));
-  appendFormat(b,
-    "{\"success\":true,\"requestId\":%lu,\"lastId\":%lu,\"logs\":[",
-    static_cast<unsigned long>(requestId), static_cast<unsigned long>(lastId));
+  FixedBuffer b; resetBuffer(b, httpBodyBuffer, sizeof(httpBodyBuffer));
+  appendFormat(b, "{\"success\":true,\"requestId\":%lu,\"schemaVersion\":2,\"lastId\":%lu,\"dropped\":%lu,\"logs\":[",
+    static_cast<unsigned long>(requestId), static_cast<unsigned long>(lastId), logDroppedCount);
   for (uint8_t i = 0; i < count; i++) {
-    Log& entry = logs[selected[i]];
-    if (i) appendChar(b, ',');
-    appendFormat(b, "{\"id\":%lu,\"timestamp\":\"%lus\",\"type\":\"",
-      static_cast<unsigned long>(entry.id), entry.timestamp);
-    appendJsonEscaped(b, entry.type);
-    appendRaw(b, "\",\"message\":\"");
-    appendJsonEscaped(b, entry.message);
-    appendRaw(b, "\"}");
+    Log& entry = logs[selected[i]]; if (i) appendChar(b, ',');
+    appendFormat(b, "{\"id\":%lu,\"timestamp\":\"%lus\",\"type\":\"", static_cast<unsigned long>(entry.id), entry.timestamp);
+    appendJsonEscaped(b, entry.level); appendRaw(b, "\",\"level\":\""); appendJsonEscaped(b, entry.level);
+    appendRaw(b, "\",\"code\":\""); appendJsonEscaped(b, entry.code);
+    appendRaw(b, "\",\"source\":\"firmware\",\"subsystem\":\""); appendJsonEscaped(b, entry.subsystem);
+    appendRaw(b, "\",\"message\":\""); appendJsonEscaped(b, entry.message); appendRaw(b, "\"}");
   }
   appendRaw(b, "]}");
-  if (!b.valid) sendErrorJson(c, 503, "RESPONSE_BUFFER_EXHAUSTED",
-    "A log valasz nem fert el.", requestId);
+  if (!b.valid) sendErrorJson(c, 503, "RESPONSE_BUFFER_EXHAUSTED", "A log valasz nem fert el.", requestId);
   else sendJsonBuffer(c, b.data, b.length, 200, requestId);
 }
 void sendOtaStatusJson(WiFiClient& c, uint32_t requestId) {
@@ -2712,89 +2763,44 @@ void sendLedTopologyJson(WiFiClient& c, uint32_t requestId) {
 }
 
 void sendDiagnosticsJson(WiFiClient& c, uint32_t requestId) {
-  FixedBuffer b;
-  resetBuffer(b, httpBodyBuffer, sizeof(httpBodyBuffer));
-
+  FixedBuffer b; resetBuffer(b, httpBodyBuffer, sizeof(httpBodyBuffer));
   const unsigned long uptimeMs = millis();
   const bool wifiConnected = cachedWifiConnected || WiFi.status() == WL_CONNECTED;
-  const unsigned long renderAvgUs =
-    perfRenderPasses == 0 ? 0 : perfRenderTotalUs / perfRenderPasses;
-  const unsigned long statusAvgUs =
-    perfStatusBuilds == 0 ? 0 : perfStatusBuildTotalUs / perfStatusBuilds;
-  const unsigned long ledJsonAvgUs =
-    perfLedJsonApplies == 0 ? 0 : perfLedJsonParseTotalUs / perfLedJsonApplies;
-  const unsigned long scheduleAvgUs =
-    perfScheduleRuns == 0 ? 0 : perfScheduleTotalUs / perfScheduleRuns;
-
+  const unsigned long renderAvgUs = perfRenderPasses ? perfRenderTotalUs / perfRenderPasses : 0;
+  const unsigned long statusAvgUs = perfStatusBuilds ? perfStatusBuildTotalUs / perfStatusBuilds : 0;
+  const unsigned long ledJsonAvgUs = perfLedJsonApplies ? perfLedJsonParseTotalUs / perfLedJsonApplies : 0;
+  const unsigned long scheduleAvgUs = perfScheduleRuns ? perfScheduleTotalUs / perfScheduleRuns : 0;
+  const unsigned long httpAvgMs = httpRequests ? perfHttpTotalDurationMs / httpRequests : 0;
   appendFormat(b,
-    "{\"success\":true,\"requestId\":%lu,\"schemaVersion\":1,"
-    "\"apiVersion\":\"%s\",\"firmwareVersion\":\"%s\","
-    "\"runtime\":{\"uptimeMs\":%lu,\"bootId\":%lu,\"bootGeneration\":%lu},"
-    "\"wifi\":{\"connected\":%s,\"rssi\":%ld},"
-    "\"time\":{\"synced\":%s},"
-    "\"scheduler\":{\"count\":%u,\"revision\":%lu,\"runs\":%lu,\"avgUs\":%lu,\"maxUs\":%lu},"
-    "\"storage\":{\"configGeneration\":%lu,\"scheduleGeneration\":%lu,"
-    "\"eepromWriteCalls\":%lu,\"eepromChangedBytes\":%lu,"
-    "\"directPutCalls\":%lu,\"directPutChangedBytes\":%lu},",
-    static_cast<unsigned long>(requestId),
-    DIRECT_API_VERSION,
-    FIRMWARE_VERSION,
-    uptimeMs,
-    static_cast<unsigned long>(bootId),
-    static_cast<unsigned long>(bootGeneration),
-    wifiConnected ? "true" : "false",
-    cachedWifiRssi,
-    timeSynced ? "true" : "false",
-    static_cast<unsigned int>(scheduleCount),
-    static_cast<unsigned long>(scheduleRevision),
-    perfScheduleRuns,
-    scheduleAvgUs,
-    perfScheduleMaxUs,
-    static_cast<unsigned long>(configGeneration),
-    static_cast<unsigned long>(scheduleTransactionGeneration),
-    perfEepromWriteCalls,
-    perfEepromChangedBytes,
-    perfDirectEepromPutCalls,
-    perfDirectEepromPutChangedBytes);
-
+    "{\"success\":true,\"requestId\":%lu,\"schemaVersion\":2,\"apiVersion\":\"%s\",\"firmwareVersion\":\"%s\","
+    "\"health\":\"%s\",\"runtime\":{\"uptimeMs\":%lu,\"bootId\":%lu,\"bootGeneration\":%lu},"
+    "\"wifi\":{\"connected\":%s,\"rssi\":%ld,\"disconnects\":%lu,\"reconnects\":%lu,\"lastDisconnectAgeMs\":%lu,\"lastReconnectAgeMs\":%lu},"
+    "\"time\":{\"synced\":%s,\"ntpAttempts\":%lu,\"ntpFailures\":%lu,\"ntpSuccess\":%lu},"
+    "\"scheduler\":{\"count\":%u,\"revision\":%lu,\"runs\":%lu,\"avgUs\":%lu,\"maxUs\":%lu},",
+    static_cast<unsigned long>(requestId), DIRECT_API_VERSION, FIRMWARE_VERSION,
+    (!wifiConnected || httpServerErrorResponses || otaLastErrorCode) ? "degraded" : "healthy",
+    uptimeMs, static_cast<unsigned long>(bootId), static_cast<unsigned long>(bootGeneration),
+    wifiConnected ? "true" : "false", cachedWifiRssi, wifiDisconnectCount, wifiReconnectCount,
+    wifiLastDisconnectAt ? uptimeMs - wifiLastDisconnectAt : 0UL, wifiLastReconnectAt ? uptimeMs - wifiLastReconnectAt : 0UL,
+    timeSynced ? "true" : "false", ntpAttemptCount, ntpFailureCount, ntpSuccessCount,
+    static_cast<unsigned int>(scheduleCount), static_cast<unsigned long>(scheduleRevision), perfScheduleRuns, scheduleAvgUs, perfScheduleMaxUs);
   appendFormat(b,
-    "\"http\":{\"requests\":%lu,\"timeouts\":%lu,\"rejected\":%lu,"
-    "\"success\":%lu,\"clientErrors\":%lu,\"serverErrors\":%lu,\"maxMs\":%lu},"
-    "\"performance\":{\"render\":{\"passes\":%lu,\"strips\":%lu,\"avgUs\":%lu,\"maxUs\":%lu},"
-    "\"status\":{\"builds\":%lu,\"avgUs\":%lu,\"maxUs\":%lu},"
-    "\"ledJson\":{\"applies\":%lu,\"noops\":%lu,\"avgUs\":%lu,\"maxUs\":%lu},"
-    "\"dirtyFlushNoops\":%lu},"
+    "\"storage\":{\"configGeneration\":%lu,\"scheduleGeneration\":%lu,\"eepromWriteCalls\":%lu,\"eepromChangedBytes\":%lu,\"directPutCalls\":%lu,\"directPutChangedBytes\":%lu},"
+    "\"http\":{\"requests\":%lu,\"timeouts\":%lu,\"rejected\":%lu,\"success\":%lu,\"clientErrors\":%lu,\"serverErrors\":%lu,\"lastMs\":%lu,\"avgMs\":%lu,\"maxMs\":%lu,\"slowRequests\":%lu,\"slowThresholdMs\":%lu},",
+    static_cast<unsigned long>(configGeneration), static_cast<unsigned long>(scheduleTransactionGeneration), perfEepromWriteCalls, perfEepromChangedBytes,
+    perfDirectEepromPutCalls, perfDirectEepromPutChangedBytes, httpRequests, httpTimeouts, httpRejected, httpSuccessResponses,
+    httpClientErrorResponses, httpServerErrorResponses, perfHttpLastDurationMs, httpAvgMs, perfHttpMaxDurationMs, perfHttpSlowRequests, HTTP_SLOW_REQUEST_THRESHOLD_MS);
+  appendFormat(b,
+    "\"performance\":{\"render\":{\"passes\":%lu,\"strips\":%lu,\"avgUs\":%lu,\"maxUs\":%lu},\"status\":{\"builds\":%lu,\"avgUs\":%lu,\"maxUs\":%lu},"
+    "\"ledJson\":{\"applies\":%lu,\"noops\":%lu,\"avgUs\":%lu,\"maxUs\":%lu},\"scheduler\":{\"runs\":%lu,\"avgUs\":%lu,\"maxUs\":%lu},\"dirtyFlushNoops\":%lu},"
+    "\"logging\":{\"schemaVersion\":2,\"capacity\":%u,\"responseLimit\":%u,\"dropped\":%lu,\"levels\":[\"TRACE\",\"DEBUG\",\"INFO\",\"NOTICE\",\"WARNING\",\"ERROR\",\"CRITICAL\"],"
+    "\"families\":[\"LX\",\"XE\",\"XW\",\"XI\",\"XP\",\"XN\",\"XO\",\"XS\"]},"
     "\"ota\":{\"ready\":%s,\"transferActive\":%s,\"restartCount\":%lu,\"lastErrorCode\":%d}}",
-    httpRequests,
-    httpTimeouts,
-    httpRejected,
-    httpSuccessResponses,
-    httpClientErrorResponses,
-    httpServerErrorResponses,
-    perfHttpMaxDurationMs,
-    perfRenderPasses,
-    perfRenderedStrips,
-    renderAvgUs,
-    perfRenderMaxUs,
-    perfStatusBuilds,
-    statusAvgUs,
-    perfStatusBuildMaxUs,
-    perfLedJsonApplies,
-    perfLedNoopUpdates,
-    ledJsonAvgUs,
-    perfLedJsonParseMaxUs,
-    perfDirtyFlushNoops,
-    otaReady ? "true" : "false",
-    otaTransferActive ? "true" : "false",
-    otaRestartCount,
-    otaLastErrorCode);
-
-  if (!b.valid) {
-    sendErrorJson(c, 500, "diagnostics_too_large",
-      "A diagnostics valasz nem fert el.", requestId);
-    return;
-  }
-
+    perfRenderPasses, perfRenderedStrips, renderAvgUs, perfRenderMaxUs, perfStatusBuilds, statusAvgUs, perfStatusBuildMaxUs,
+    perfLedJsonApplies, perfLedNoopUpdates, ledJsonAvgUs, perfLedJsonParseMaxUs, perfScheduleRuns, scheduleAvgUs, perfScheduleMaxUs,
+    perfDirtyFlushNoops, static_cast<unsigned int>(LOG_CAPACITY), static_cast<unsigned int>(CONSOLE_LOGS_PER_RESPONSE), logDroppedCount,
+    otaReady ? "true" : "false", otaTransferActive ? "true" : "false", otaRestartCount, otaLastErrorCode);
+  if (!b.valid) { sendErrorJson(c, 500, "diagnostics_too_large", "A diagnostics valasz nem fert el.", requestId); return; }
   sendJsonBuffer(c, b.data, b.length, 200, requestId);
 }
 
@@ -3420,7 +3426,7 @@ void printRamLogs() {
     uint8_t p = (logStart + offset) % LOG_CAPACITY;
     Serial.print('#'); Serial.print(logs[p].id); Serial.print(' ');
     Serial.print(logs[p].timestamp); Serial.print("s [");
-    Serial.print(logs[p].type); Serial.print("] ");
+    Serial.print(logs[p].level); Serial.print("] ");
     Serial.println(logs[p].message);
   }
 }

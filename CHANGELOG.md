@@ -1,3 +1,9 @@
+# 6.0.0-beta.7 — Performance + Observability Foundation
+
+- Structured logging and diagnostics schema v2.
+- HTTP latency telemetry and slow-request detection.
+- Wi-Fi transition counters.
+
 # 6.0.0-beta.6 — LXC / mobile startup hotfix
 
 - Visual 3.1 health-orbit label is constrained inside the health ring on narrow layouts.

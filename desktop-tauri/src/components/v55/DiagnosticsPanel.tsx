@@ -12,6 +12,11 @@ type DiagnosticsTrendSample = {
     httpRejected: number | null;
     httpServerErrors: number | null;
     httpMaxMs: number | null;
+    httpAvgMs: number | null;
+    httpLastMs: number | null;
+    httpSlowRequests: number | null;
+    wifiDisconnects: number | null;
+    wifiReconnects: number | null;
     schedulerMaxUs: number | null;
     renderMaxUs: number | null;
     statusMaxUs: number | null;
@@ -47,7 +52,7 @@ function sampleFromDiagnostics(value: ArduinoDiagnosticsResult | null): Diagnost
     const root = record(value.diagnostics), runtime = record(root.runtime), wifi = record(root.wifi), http = record(root.http), scheduler = record(root.scheduler), performance = record(root.performance), render = record(performance.render), status = record(performance.status), storage = record(root.storage);
     const rawBootId = runtime.bootId, rawBootGeneration = runtime.bootGeneration;
     const bootEpoch = typeof rawBootId === 'string' || typeof rawBootId === 'number' ? String(rawBootId) : typeof rawBootGeneration === 'string' || typeof rawBootGeneration === 'number' ? `generation:${rawBootGeneration}` : null;
-    return { capturedAt: Date.now(), bootEpoch, rssi: numberValue(wifi, 'rssi'), httpTimeouts: numberValue(http, 'timeouts'), httpRejected: numberValue(http, 'rejected'), httpServerErrors: numberValue(http, 'serverErrors'), httpMaxMs: numberValue(http, 'maxMs'), schedulerMaxUs: numberValue(scheduler, 'maxUs'), renderMaxUs: numberValue(render, 'maxUs'), statusMaxUs: numberValue(status, 'maxUs'), eepromChangedBytes: numberValue(storage, 'eepromChangedBytes') };
+    return { capturedAt: Date.now(), bootEpoch, rssi: numberValue(wifi, 'rssi'), httpTimeouts: numberValue(http, 'timeouts'), httpRejected: numberValue(http, 'rejected'), httpServerErrors: numberValue(http, 'serverErrors'), httpMaxMs: numberValue(http, 'maxMs'), httpAvgMs: numberValue(http, 'avgMs'), httpLastMs: numberValue(http, 'lastMs'), httpSlowRequests: numberValue(http, 'slowRequests'), wifiDisconnects: numberValue(wifi, 'disconnects'), wifiReconnects: numberValue(wifi, 'reconnects'), schedulerMaxUs: numberValue(scheduler, 'maxUs'), renderMaxUs: numberValue(render, 'maxUs'), statusMaxUs: numberValue(status, 'maxUs'), eepromChangedBytes: numberValue(storage, 'eepromChangedBytes') };
 }
 function deltaLabel(previous: number | null, latest: number | null, suffix = '') { if (previous == null || latest == null)
     return '—'; const delta = latest - previous; return `${delta > 0 ? '+' : ''}${delta}${suffix}`; }
@@ -204,6 +209,16 @@ export function DiagnosticsPanel({ value, error, pollIntervalMs, busy, onRefresh
           <span><Clock3 size={15}/>{t("diagnostics.metric.httpMax")}</span>
           <strong>{metric(numberValue(http, 'maxMs'), ' ms')}</strong>
           <small>{t("diagnostics.metric.rejected")}: {metric(rejectedCount)}</small>
+        </div>
+        <div data-v858-http-average>
+          <span><Clock3 size={15}/>HTTP AVG / LAST</span>
+          <strong>{metric(numberValue(http, 'avgMs'), ' ms')}</strong>
+          <small>last: {metric(numberValue(http, 'lastMs'), ' ms')} · slow: {metric(numberValue(http, 'slowRequests'))}</small>
+        </div>
+        <div data-v858-wifi-transitions>
+          <span><Wifi size={15}/>WI-FI EVENTS</span>
+          <strong>{metric(numberValue(wifi, 'reconnects'))}</strong>
+          <small>disconnects: {metric(numberValue(wifi, 'disconnects'))}</small>
         </div>
         <div>
           <span><Clock3 size={15}/>{t("diagnostics.metric.schedulerMax")}</span>

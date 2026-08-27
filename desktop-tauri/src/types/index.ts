@@ -137,10 +137,16 @@ export interface ArduinoDiagnosticsResult {
   diagnostics?: Record<string, unknown>;
 }
 
+export type DiagnosticLogLevel = 'TRACE' | 'DEBUG' | 'INFO' | 'NOTICE' | 'WARNING' | 'ERROR' | 'CRITICAL';
+
 export interface ArduinoLog {
   id: number;
   timestamp: string;
   type: string;
+  level?: DiagnosticLogLevel | string;
+  code?: string;
+  source?: string;
+  subsystem?: string;
   message: string;
 }
 

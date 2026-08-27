@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
-  "firmwareVersion": "5.1.0-beta.3",
+  "firmwareVersion": "5.1.0-beta.4",
   "channel": "beta",
   "board": "arduino:renesas_uno:unor4wifi",
-  "directApiVersion": "1.1.0",
+  "directApiVersion": "1.2.0",
   "otaPort": 65280,
   "binary": "Arduino_LED_Controller_Firmware_5.1.0-beta.2_UNO_R4_WiFi.bin",
   "checksum": "Arduino_LED_Controller_Firmware_5.1.0-beta.2_UNO_R4_WiFi.bin.sha256"

@@ -1,37 +1,29 @@
-## Aktuális Beta.7 integrációs cél
-
-- Alkalmazás: `5.0.0-beta.7`
-- Firmware: `5.0.0-beta.1`
-- Direct API: `1.0.0`
-- Integrációs ág: `feature/beta7-ui-overhaul`
-- A `main` és `next/v5-rearchitecture` ág közvetlen módosítása ebben a lépésben tilos.
-- Commit előtt kötelező a repository-validáció, a teljes Node-regresszió és az UNO R4 firmware-fordítás.
-
 # Közreműködés
 
-## Beta.7 UI-fejlesztési szabályok
+## Aktuális Beta integrációs cél
 
-- A Beta.7 UI munkaága: `feature/beta7-ui-overhaul`.
-- A `next/v5-rearchitecture` csak sikeres teljes regresszió után frissíthető.
-- A `main` ág Beta-fejlesztés közben nem módosítható.
-- Új UI-szöveg csak a HU/EN/DE központi i18n szótárba kerülhet.
-- A Theme Engine tokenjeit kell használni; új fix világos/sötét szín csak indokolt kivételként adható hozzá.
-- A Direct Arduino UI-ban a régi Event Bus és szerveroldali auditpanel nem állítható vissza.
-- Új alkalmazásműveletnél meg kell vizsgálni, szükséges-e helyi `runAudited` naplózás.
-- Contractot az aktuális UI-modellhez kell írni, nem régi JSX-formázáshoz.
-- Törékeny, teljes JSX-részletre épülő patch helyett teljes fájl vagy stabil szerkezeti marker használata szükséges.
+- Alkalmazás: `6.0.0-beta.7`
+- Firmware: `5.1.0-beta.4`
+- Direct API: `1.2.0`
+- Language Pack Architecture: `2.1`
+- Beta/integrációs ág: `next/v5-rearchitecture`
+- Stable ág: `main`
+- Nyelvi katalógus és packok: `language-packs`
+
+A `main` ág Beta-fejlesztés közben nem módosítható. Új javítás előtt a távoli `next/v5-rearchitecture`, `main` és `language-packs` állapotát frissen ellenőrizni kell.
 
 ## Ágmodell
 
-- `main`: stabil, produkciós alap. Közvetlen beta fejlesztés, reset vagy force push tilos.
-- `next/v5-rearchitecture`: beta és integrációs fejlesztési ág.
-- Minden változtatás a célzott fejlesztési ágból induljon, és normál pull request vagy ellenőrzött commit/push folyamaton menjen át.
+- `next/v5-rearchitecture`: aktuális Beta fejlesztési és integrációs ág.
+- `main`: stabil produkciós ág.
+- `language-packs`: alkalmazástól független Language Pack Architecture 2.1 katalógus és letölthető csomagok.
+- Force push és destruktív reset release-folyamatban tilos.
 
 ## Fejlesztési környezet
 
 Ajánlott eszközök:
 
-- Node.js 20 vagy újabb támogatott verzió;
+- Node.js a repository workflow által támogatott verzióban;
 - npm;
 - Rust stable toolchain;
 - Tauri v2 függőségek;
@@ -39,88 +31,58 @@ Ajánlott eszközök:
 
 ## Lokalizáció
 
-Új felhasználói felületi, runtime-, státusz-, hiba- vagy sikerüzenet nem kerülhet közvetlen literal szövegként a komponensekbe vagy hookokba.
+Az angol a beépített canonical fallback. A további 14 nyelv letölthető packként él a `language-packs` ágon.
 
-- React komponensben: `useI18n()`.
-- Reacten kívül és hook műveleti üzenetekhez: `translate()`.
-- Központi szótár: `desktop-tauri/src/i18n/index.tsx`.
-- Minden új kulcshoz kötelező magyar, angol és német fordítás.
-- A HU/EN/DE kulcskészletnek azonosnak kell lennie.
-- A contractok a kulcshasználatot és külön a szótárértékeket ellenőrizzék.
-- A regexek legyenek idézőjel- és whitespace-függetlenek.
+- Language Pack Architecture: `2.1`.
+- Catalog: `2.1.0`.
+- Új UI-kulcsot a canonical angol kulcskészlethez kell hozzáadni.
+- A packok schema-, language-code-, app-kompatibilitási, placeholder- és SHA-256 ellenőrzésen mennek át.
+- A letölthető dictionary kulcskészlete pontosan egyezzen a canonical angollal.
 
 ## Kötelező ellenőrzések
 
 ```bash
 npm ci
 npm test
-npm run validate
+bash scripts/validate-repository.sh
 
 cd desktop-tauri
 npm ci
+npx tsc --noEmit
 npm run build
 cd ..
 
-cargo fmt --manifest-path desktop-tauri/src-tauri/Cargo.toml -- --check
 cargo check --locked --manifest-path desktop-tauri/src-tauri/Cargo.toml
 cargo test --locked --manifest-path desktop-tauri/src-tauri/Cargo.toml
+cargo test --locked --manifest-path rust/Cargo.toml
 ```
 
-Firmware-változásnál ezen felül:
+Firmware-változásnál ezen felül kötelező az UNO R4 WiFi fordítás és a verzió/Direct API SSOT ellenőrzés. Release előtt valós hardverteszt szükséges.
 
-- publikus és privát UNO R4 WiFi fordítás;
-- firmware-verzió és `firmware-release.json` egyezés;
-- valós hardverteszt;
-- OTA, reboot és schedule persistence ellenőrzés.
+## SSOT és verziók
+
+A `release-versions.json` a release identity központi forrása. A `scripts/check-versions.py` ellenőrzi az application, firmware, Direct API és staging runtime felületeket.
+
+Aktuális Beta identity:
+
+```text
+Application  6.0.0-beta.7
+Firmware     5.1.0-beta.4
+Direct API   1.2.0
+```
+
+Új verzióemelésnél minden derivált metadata és release workflow ugyanebből az SSOT-ból dolgozzon; új hardcoded release-verzió nem vezethető be.
 
 ## Bash kompatibilitás
 
 A projekt release- és telepítőscriptjeinek macOS Bash 3.2 alatt is működniük kell.
 
-Tilos:
+Tilos többek között: `readarray`, `mapfile`, `git reset --hard`, ellenőrizetlen `git clean -fd`, force push, illetve release-csomagban `git add .`, `git add -A` vagy `git add --all`.
 
-- `readarray`;
-- `mapfile`;
-- destruktív `git reset --hard`;
-- ellenőrizetlen `git clean -fd`;
-- force push;
-- globális `git add .` release-csomagban.
+## Titkok és artifactok
 
-## Fájlkezelés
-
-Ne commitolj:
-
-- `.env`, `.env.*`;
-- `secrets.h`;
-- credential- vagy private-key fájlokat;
-- `.pem`, `.p12`, `.mobileprovision`;
-- `node_modules`, `target`, `dist`;
-- `.ipa`, `.apk`, `.aab`, `.dmg`, `.msi`, `.AppImage`;
-- `.deb`, `.rpm`, `.bin`, `.elf`, `.hex`, `.map`;
-- valódi API-kulcsot, OTA-jelszót vagy Wi-Fi-jelszót.
-
-## Verziók
-
-Az alkalmazásverzió aktív forrásai közé tartozik:
-
-- `VERSION`;
-- `release-versions.json`;
-- gyökér `package.json` és lock fájl;
-- `desktop-tauri/package.json` és lock fájl;
-- `desktop-tauri/src-tauri/Cargo.toml` és `Cargo.lock`;
-- `desktop-tauri/src-tauri/tauri.conf.json`;
-- beta release workflow és aktív release-contractok.
-
-A firmware-verziót csak firmware-kód változásakor emeld.
+Ne commitolj `.env`/credential/private-key fájlokat, `firmware/ArduinoLedController/secrets.h`-t, valódi Device Key/OTA/Wi-Fi titkot, build outputot vagy lokális credential-adatbázist.
 
 ## Commitok
 
-Használj rövid, célzott Conventional Commit üzenetet:
-
-```text
-feat(i18n): add translated runtime messages
-chore(release): prepare 5.0.0-beta.6
-docs: update documentation for 5.0.0-beta.6
-```
-
-A funkció-, release- és dokumentációs változásokat lehetőleg külön commitold.
+Rövid, célzott Conventional Commit üzenet ajánlott. Commit/push előtt a teljes kapcsolódó contract- és regression-láncnak zöldnek kell lennie.

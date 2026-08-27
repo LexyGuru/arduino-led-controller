@@ -5,9 +5,9 @@ const fs=require('node:fs');
 const read=p=>fs.readFileSync(p,'utf8');
 
 const release=JSON.parse(read('release-versions.json'));
-assert.equal(release.application,'6.0.0-beta.6');
-assert.equal(release.firmware,'5.1.0-beta.3');
-assert.equal(release.directApi,'1.1.0');
+assert.equal(release.application,read('VERSION').trim());
+assert.equal(release.firmware,release.firmwareRelease.recommendedVersion);
+assert.equal(release.directApi,release.directApiRelease.version);
 
 const css=read('desktop-tauri/src/core-ui-v3.css');
 assert.match(css,/V856 - Beta\.6 health orbit text containment hotfix/);

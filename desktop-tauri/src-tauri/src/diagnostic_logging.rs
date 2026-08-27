@@ -15,6 +15,15 @@ static LOG_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
 
 fn lock() -> &'static Mutex<()> { LOG_LOCK.get_or_init(|| Mutex::new(())) }
 fn unix_millis() -> u128 { SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_millis() }
+fn normalize_level(level: &str) -> &'static str {
+    match level.trim().to_ascii_lowercase().as_str() {
+        "trace" => "TRACE", "debug" => "DEBUG", "notice" | "success" => "NOTICE",
+        "warning" | "warn" => "WARNING", "error" => "ERROR", "critical" => "CRITICAL", _ => "INFO",
+    }
+}
+fn severity_rank(level: &str) -> u8 {
+    match level { "TRACE" => 10, "DEBUG" => 20, "INFO" => 30, "NOTICE" => 35, "WARNING" => 40, "ERROR" => 50, "CRITICAL" => 60, _ => 30 }
+}
 fn platform_name() -> &'static str {
     if cfg!(target_os = "ios") { "ios-ipados" }
     else if cfg!(target_os = "android") { "android" }
@@ -73,12 +82,15 @@ fn append_jsonl(path: &Path, record: &Value) -> Result<(), String> {
 }
 pub fn log_event(app: &AppHandle, level: &str, category: &str, event: &str, message: &str, fields: Option<Value>) {
     let Ok(_guard) = lock().lock() else { return; };
+    let normalized_level = normalize_level(level);
+    let normalized_category = category.trim().to_ascii_lowercase();
     let record = json!({
-        "timestampUnixMs": unix_millis(), "level": level, "category": category, "event": event,
-        "message": sanitize_string(message), "platform": platform_name(), "appVersion": env!("CARGO_PKG_VERSION"),
+        "timestampUnixMs": unix_millis(), "level": normalized_level, "severity": severity_rank(normalized_level),
+        "code": event, "source": "application", "subsystem": normalized_category,
+        "category": category, "event": event, "message": sanitize_string(message),
+        "platform": platform_name(), "appVersion": env!("CARGO_PKG_VERSION"),
         "fields": sanitize_value(fields.unwrap_or(Value::Null)),
     });
-    let normalized_category = category.trim().to_ascii_lowercase();
 
     // Category stream: exactly one write.
     if let Ok(dir) = category_dir(app, &normalized_category) {
@@ -91,7 +103,7 @@ pub fn log_event(app: &AppHandle, level: &str, category: &str, event: &str, mess
         if normalized_category != "app" {
             let _ = append_jsonl(&root.join("app").join("current.jsonl"), &record);
         }
-        if level.eq_ignore_ascii_case("error") && normalized_category != "errors" {
+        if matches!(normalized_level, "ERROR" | "CRITICAL") && normalized_category != "errors" {
             let _ = append_jsonl(&root.join("errors").join("current.jsonl"), &record);
         }
     }

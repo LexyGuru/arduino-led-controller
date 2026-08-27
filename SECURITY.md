@@ -2,18 +2,20 @@
 
 ## Támogatott verziók
 
-| Verzió | Támogatás |
+| Vonal | Támogatás |
 |---|---|
-| `5.0.0-beta.6` | aktívan támogatott beta |
-| `5.0.0-beta.4` | átmenetileg támogatott |
-| régebbi beta | nem támogatott |
-| `4.x` stable | csak kritikus biztonsági javítások |
+| `6.0.0-beta.7` | aktívan támogatott Beta |
+| `6.0.0-beta.6` | előző Beta, átmeneti visszaállítási referencia |
+| `5.8.0` stable | támogatott stabil alkalmazásvonal |
+| régebbi kiadások | csak külön döntés alapján |
+
+A Beta.7 firmware identity: `5.1.0-beta.4`, Direct API: `1.2.0`.
 
 ## Direct API hitelesítés
 
 - Hitelesítési fejléc: `X-Device-Key`.
 - Query-string kulcsfallback: tiltott.
-- Direct módban nincs felhasználónév/jelszó alapú belépés.
+- Direct módban nincs felhasználónév/jelszó alapú Arduino-belépés.
 - A privát API-útvonal és az eszközkulcs nem kerülhet URL-paraméterbe vagy naplóba.
 - A kliens csak a konfigurált Arduino-eszközhöz használhatja a kulcsot.
 
@@ -28,61 +30,45 @@
 
 - Az OTA-jelszó nem kerülhet forráskódba vagy `.env` fájlba.
 - macOS-on Keychain, Windowson Credential Manager, Linuxon Secret Service használata ajánlott.
-- Egy alkalmazás-munkamenetben ugyanazt a Keychain hozzáférést ne kérje többször.
 - A firmware SHA-256 ellenőrzése feltöltés előtt kötelező.
 
 ## Érzékeny fájlok
 
-A következő fájlok nem kerülhetnek Gitbe vagy release-csomagba:
-
-- `firmware/ArduinoLedController/secrets.h`;
-- `.env` és `.env.*`;
-- API-eszközkulcs, OTA-jelszó, Wi-Fi-jelszó;
-- privát API-útvonalat és titkot együtt tartalmazó profil;
-- `.pem`, `.p12`, private key vagy provisioning profile;
-- build artifact és lokális credential-adatbázis.
+Nem kerülhet Gitbe vagy release-csomagba többek között: `firmware/ArduinoLedController/secrets.h`, `.env`/credential/private-key fájl, Device Key, OTA-jelszó, Wi-Fi-jelszó, provisioning profile vagy lokális credential-adatbázis.
 
 ## TLS, reverse proxy és DDNS
 
-- Az Arduino API-t és OTA-portot ne tedd közvetlenül elérhetővé a nyilvános internetről.
-- Távoli eléréshez HTTPS reverse proxy ajánlott.
-- Production környezetben érvényes, ellenőrizhető TLS chain szükséges.
-- Self-signed tanúsítvány csak elkülönített fejlesztői tesztre használható.
-- DDNS célpontnál ellenőrizd, hogy a proxy kizárólag a szükséges HTTP API-t továbbítja.
-- Az OTA UDP/TCP portot csak megbízható hálózaton engedélyezd.
+- Az Arduino publikus internetes elérését reverse proxy/TLS és a projekt privát API-path modellje védje.
+- Production környezetben érvényes TLS chain szükséges.
+- A privát API-prefixet és Device Key-t titokként kell kezelni.
+- Az OTA port csak a szándékosan konfigurált, megbízható útvonalon legyen elérhető.
+- DDNS/proxy hibánál a valódi HTTP status és a strukturált Direct API hibakód alapján kell diagnosztizálni.
+
+## Structured logging és diagnosztika
+
+A Beta.7 bővített diagnostics/logging mezői nem tehetnek közzé credentialt, privát API-prefixet, OTA-jelszót vagy Wi-Fi-jelszót. Új event code/subsystem mező bevezetésekor secret-redaction contract szükséges.
 
 ## Mobilplatformok
 
-A mobil kliens nem végez natív OTA feltöltést. Mobilon az OTA állapot- és kapcsolatellenőrzés letiltott, így nem szabad olyan UI-t vagy háttérfolyamatot hozzáadni, amely ezt megkerüli.
+Mobilon a platform capability szerint kell OTA-funkciót engedélyezni; a UI nem kerülheti meg a natív/runtime capability gate-eket.
 
 ## Sérülékenység bejelentése
 
-Biztonsági hibát ne nyilvános issue-ban közölj. A repository tulajdonosával privát csatornán egyeztess.
-
-A bejelentés tartalmazza:
-
-- érintett alkalmazás- és firmware-verzió;
-- reprodukciós lépések titkok nélkül;
-- várható és tényleges viselkedés;
-- lehetséges hatás;
-- javasolt javítás, ha rendelkezésre áll.
-
-Ne mellékelj valódi kulcsot, jelszót, személyes hálózati címet vagy privát tanúsítványt.
+Biztonsági hibát ne nyilvános issue-ban közölj. A repository tulajdonosával privát csatornán egyeztess. A reprodukció ne tartalmazzon valódi kulcsot, jelszót, privát hálózati címet vagy tanúsítványt.
 
 ## Biztonsági válaszfolyamat
 
-1. A bejelentés visszaigazolása.
+1. Bejelentés visszaigazolása.
 2. Hatás és reprodukálhatóság vizsgálata.
-3. Javítás elkülönített ágon.
-4. Regressziós és secret-scan kapuk.
+3. Javítás elkülönített/testelt candidate-ben.
+4. Regressziós, SSOT- és secret-scan kapuk.
 5. Támogatott verzió kiadása.
-6. Szükség esetén kulcs- vagy jelszócsere előírása.
+6. Szükség esetén credential-rotáció.
 
 ## Nem támogatott konfigurációk
 
-- közvetlen nyilvános Arduino API;
-- nyilvános OTA-port;
 - query-stringben továbbított kulcs;
 - forráskódba írt titok;
-- TLS-ellenőrzés tartós kikapcsolása;
-- stable és beta firmware-csatorna összekeverése.
+- tartósan kikapcsolt TLS-ellenőrzés;
+- ellenőrizetlen stable/beta firmware-keverés;
+- publikus logban vagy diagnostics payloadban megjelenő credential.

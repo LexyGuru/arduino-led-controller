@@ -1,9 +1,9 @@
 <!-- CURRENT_RELEASE_IDENTITY_BEGIN -->
 # Current release identity
 
-- Application: `6.0.0-beta.6`
-- Firmware: `5.1.0-beta.3`
-- Direct API: `1.1.0`
+- Application: `6.0.0-beta.7`
+- Firmware: `5.1.0-beta.4`
+- Direct API: `1.2.0`
 - Channel: beta
 - Release prefix: `V60_BETA4`
 - Language Pack Architecture: `2.1`
@@ -13,16 +13,16 @@
 # Current development state — 5.8.0-beta.3
 
 <!-- CURRENT_VERSION_SSOT_BEGIN -->
-Current application: `6.0.0-beta.6`
-Current firmware: `5.1.0-beta.3`
-Current Direct API: `1.1.0`
+Current application: `6.0.0-beta.7`
+Current firmware: `5.1.0-beta.4`
+Current Direct API: `1.2.0`
 <!-- CURRENT_VERSION_SSOT_END -->
 
 - Application: `5.8.0-beta.3` Beta
 - Theme Engine: `2.0`
 - Core UI: `3.0`
 - Firmware: `5.1.0-beta.2` Beta
-- Direct API: `1.1.0`
+- Direct API: `1.2.0`
 - Base: final Stable 5.6.1 main
 
 # Arduino LED Controller – Current Stable State
@@ -54,16 +54,16 @@ V5 architecture/release stabilization cycle is complete. UI/UX work can then sta
 from this Stable baseline.
 
 
-## 6.0.0-beta.6 candidate
+## 6.0.0-beta.7 candidate
 Settings information architecture and cross-platform update deep-link candidate (V854).
 
-## Current Beta candidate — 6.0.0-beta.6
+## Current Beta candidate — 6.0.0-beta.7
 
 The current Beta candidate contains the finalized Settings information architecture, semantic update deep-linking, existing Language Pack 2.1 runtime compatibility, and the redesigned long-language-safe Visual 3.1 startup screen.
 
-- Application: `6.0.0-beta.6`
-- Firmware: `5.1.0-beta.3`
-- Direct API: `1.1.0`
+- Application: `6.0.0-beta.7`
+- Firmware: `5.1.0-beta.4`
+- Direct API: `1.2.0`
 - Language Pack Architecture: `2.1`
 - Total languages: `15`
 - Downloadable packs: `14`
@@ -71,6 +71,10 @@ The current Beta candidate contains the finalized Settings information architect
 - Release type: prerelease
 
 
-## 6.0.0-beta.6 hotfix candidate
+## 6.0.0-beta.7 hotfix candidate
 
-LXC/Visual 3.1 health-orbit containment + mobile recovered startup error cleanup. Firmware `5.1.0-beta.3`, Direct API `1.1.0`.
+LXC/Visual 3.1 health-orbit containment + mobile recovered startup error cleanup. Firmware `5.1.0-beta.4`, Direct API `1.2.0`.
+
+## 6.0.0-beta.7 Performance + Observability candidate
+
+Structured diagnostics/logging foundation. Firmware `5.1.0-beta.4`, Direct API `1.2.0`.
