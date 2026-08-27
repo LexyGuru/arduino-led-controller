@@ -1,0 +1,114 @@
+/* V854 / 6.0.0-beta.5 — shared Settings information architecture.
+   One state model across macOS/Windows/Linux/Android/iOS/iPadOS.
+   Breakpoints alter presentation only. */
+.beta5-settings-redesign .core-v3-settings-hub-nav {
+  position: sticky;
+  top: 0;
+  z-index: 12;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.beta5-settings-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  width: 100%;
+}
+
+.beta5-settings-tabs > button {
+  min-height: 44px;
+  min-width: 0;
+  padding: 10px 12px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.beta5-update-tab {
+  position: relative;
+}
+
+.beta5-tab-badge,
+.beta5-settings-update-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-inline-start: 7px;
+  font-size: 10px;
+  line-height: 1;
+}
+
+.mobile-more-grid > button {
+  position: relative;
+  min-height: 52px;
+}
+
+.mobile-more-grid .beta5-settings-update-dot {
+  position: absolute;
+  inset-inline-end: 12px;
+  top: 12px;
+}
+
+.beta5-settings-redesign input,
+.beta5-settings-redesign select,
+.beta5-settings-redesign button {
+  max-width: 100%;
+}
+
+@media (max-width: 1024px) {
+  .beta5-settings-redesign .core-v3-settings-hub-nav {
+    top: env(safe-area-inset-top, 0px);
+  }
+
+  .beta5-settings-tabs {
+    display: flex;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x proximity;
+    scrollbar-width: thin;
+    padding-bottom: 4px;
+  }
+
+  .beta5-settings-tabs > button {
+    flex: 0 0 auto;
+    min-width: max(132px, 24vw);
+    scroll-snap-align: start;
+  }
+}
+
+@media (max-width: 720px) {
+  .beta5-settings-redesign {
+    min-width: 0;
+    overflow-x: clip;
+    padding-bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .beta5-settings-redesign .visual31-management-kpis,
+  .beta5-settings-redesign .settings-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .beta5-settings-tabs > button {
+    min-width: 148px;
+    min-height: 48px;
+  }
+
+  .beta5-settings-redesign .panel,
+  .beta5-settings-redesign .settings-general-wrap {
+    min-width: 0;
+  }
+
+  .beta5-settings-redesign .endpoint-preview {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+}
+
+@media (pointer: coarse) {
+  .beta5-settings-redesign button,
+  .beta5-settings-redesign input,
+  .beta5-settings-redesign select,
+  .mobile-more-grid > button {
+    min-height: 44px;
+  }
+}

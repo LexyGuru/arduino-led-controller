@@ -22,7 +22,7 @@ assert.match(dash,/connectionHealth\.state === 'healthy'/);
 assert.match(health,/recoveredMacCredentialBootstrap/);
 assert.match(health,/health\.state === 'healthy'/);
 assert.match(sidebar,/v621-sidebar-update-card/);
-assert.match(sidebar,/onChange\('settings'\)/);
+assert.match(sidebar,/onChange\('settings'\s*,\s*'updates'\)/);
 assert.match(sidebar,/latestAppVersion/);
 assert.match(css,/\.v621-sidebar-update-card\{/);
 assert.match(css,/\.v621-startup-issues\{/);

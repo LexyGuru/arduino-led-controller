@@ -851,7 +851,7 @@
     "schedules.writeDisabled": "A mentés és a törlés le van tiltva, amíg az Arduino teljes schedule-listája nem töltődött le sikeresen, azonos counttal, revisionnel és checksummal. A helyi cache önmagában nem írható vissza az Arduino-ra.",
     "settings-hub.arduino": "Arduino kapcsolat",
     "settings-hub.general": "Általános",
-    "settings-hub.subtitle": "Alkalmazásbeállítások és Arduino-kapcsolat külön nézetben.",
+    "settings-hub.subtitle": "Alkalmazásbeállítások és Arduino-kapcsolat külön nézetekben.",
     "settings-hub.title": "Beállítások",
     "settings.deviceKey": "X-Device-Key",
     "settings.direct.defaultNotice": "A távoli és helyi végpont protokollja külön állítható.",

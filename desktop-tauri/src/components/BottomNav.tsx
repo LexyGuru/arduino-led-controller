@@ -11,6 +11,7 @@ import {
 import { useState } from 'react';
 import { useI18n } from '../i18n';
 import type { PageId } from '../types';
+import type { SettingsTarget } from '../settings-navigation';
 
 const primaryItems: Array<{
   id: PageId;
@@ -34,17 +35,19 @@ const moreItems: Array<{
 
 export function BottomNav({
   page,
-  onChange
+  onChange,
+  updateAvailable = false
 }: {
   page: PageId;
-  onChange: (page: PageId) => void;
+  onChange: (page: PageId, settingsTarget?: SettingsTarget) => void;
+  updateAvailable?: boolean;
 }) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const moreActive = moreItems.some((item) => item.id === page);
 
-  const choose = (id: PageId) => {
-    onChange(id);
+  const choose = (id: PageId, target?: SettingsTarget) => {
+    onChange(id, target);
     setOpen(false);
   };
 
@@ -74,10 +77,13 @@ export function BottomNav({
                   type="button"
                   key={id}
                   className={page === id ? 'active' : ''}
-                  onClick={() => choose(id)}
+                  onClick={() => choose(id, id === 'settings' && updateAvailable ? 'updates' : undefined)}
                 >
                   <span className="mobile-more-icon"><Icon size={21} /></span>
                   <span>{t(key)}</span>
+                  {id === 'settings' && updateAvailable && (
+                    <i className="beta5-settings-update-dot" aria-label={t('appUpdate.available')} />
+                  )}
                 </button>
               ))}
             </div>

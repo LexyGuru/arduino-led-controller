@@ -1,6 +1,7 @@
 import { CalendarClock, Cpu, Gauge, Lightbulb, ScrollText, Settings, DownloadCloud } from 'lucide-react';
 import { useI18n } from '../i18n';
 import type { PageId } from '../types';
+import type { SettingsTarget } from '../settings-navigation';
 import { V5BetaBadge } from './v5/V5BetaBadge';
 const items: Array<{
     id: PageId;
@@ -16,7 +17,7 @@ const items: Array<{
 ];
 interface SidebarProps {
     page: PageId;
-    onChange: (page: PageId) => void;
+    onChange: (page: PageId, settingsTarget?: SettingsTarget) => void;
     appVersion: string;
     firmwareVersion?: string;
     otaSupported: boolean;
@@ -48,7 +49,7 @@ export function Sidebar({ page, onChange, appVersion, firmwareVersion, updateAva
           </button>))}
       </nav>
 
-      {updateAvailable && (<button type="button" className="v621-sidebar-update-card" onClick={() => onChange('settings')} aria-label={t('appUpdate.sidebarCta', {
+      {updateAvailable && (<button type="button" className="v621-sidebar-update-card" onClick={() => onChange('settings', 'updates')} aria-label={t('appUpdate.sidebarCta', {
                 version: latestAppVersion ?? t('common.unknown')
             })}>
           <DownloadCloud size={17}/>

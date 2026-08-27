@@ -166,3 +166,352 @@ html[data-motion='reduced'] .page-transition-stage{animation-duration:110ms;anim
     padding-top:6px;
   }
 }
+
+/* V854K - Beta.5 startup long-language layout hardening
+   Keeps the no-scroll startup contract while allowing translated check labels
+   and details to wrap without overlapping adjacent blocks. */
+.visual31-startup .app-startup-check {
+  align-items: flex-start;
+  height: auto;
+  min-width: 0;
+}
+
+.visual31-startup .app-startup-check__icon {
+  flex: 0 0 24px;
+  margin-top: 1px;
+}
+
+.visual31-startup .app-startup-check__copy {
+  min-width: 0;
+  width: 100%;
+  overflow: visible;
+}
+
+.visual31-startup .app-startup-check__copy strong,
+.visual31-startup .app-startup-check__copy small {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: normal;
+  text-overflow: clip;
+}
+
+.visual31-startup .app-startup-check__copy strong {
+  line-height: 1.28;
+}
+
+.visual31-startup .app-startup-check__copy small {
+  margin-top: 2px;
+  line-height: 1.3;
+}
+
+.visual31-startup .app-startup-brand > div,
+.visual31-startup .app-startup-brand h1,
+.visual31-startup .app-startup-brand p {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.visual31-startup .app-startup-footer {
+  min-width: 0;
+  align-items: flex-start;
+}
+
+.visual31-startup .app-startup-footer span {
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.3;
+}
+
+@media (max-height: 760px) {
+  .visual31-startup .app-startup-check {
+    min-height: 42px;
+    padding-block: 6px;
+  }
+
+  .visual31-startup .app-startup-check__copy strong {
+    font-size: 12px;
+    line-height: 1.2;
+  }
+
+  .visual31-startup .app-startup-check__copy small {
+    font-size: 10px;
+    line-height: 1.2;
+  }
+}
+
+@media (max-width: 820px) {
+  .visual31-startup .app-startup-check__copy strong {
+    font-size: 12px;
+  }
+
+  .visual31-startup .app-startup-check__copy small {
+    font-size: 10.5px;
+  }
+}
+
+
+/* V854L - Beta.5 complete startup screen redesign
+   One coherent command-card layout, built for long translations. */
+.visual31-startup {
+  padding: clamp(14px, 2vw, 28px);
+}
+
+.visual31-startup .app-startup-card {
+  width: min(980px, 100%);
+  max-height: calc(100dvh - clamp(28px, 4vw, 56px));
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: auto auto auto auto;
+  gap: 16px;
+  padding: clamp(20px, 2.5vw, 30px);
+  overflow: hidden;
+  border-radius: 24px;
+}
+
+.visual31-startup .app-startup-brand {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+}
+
+.visual31-startup .app-startup-logo {
+  width: 72px;
+  height: 72px;
+  border-radius: 20px;
+}
+
+.visual31-startup .app-startup-brand > div {
+  min-width: 0;
+}
+
+.visual31-startup .app-startup-brand .eyebrow {
+  margin: 0 0 3px;
+  font-size: 10px;
+  letter-spacing: .14em;
+}
+
+.visual31-startup .app-startup-brand h1 {
+  max-width: none;
+  margin: 0;
+  font-size: clamp(24px, 3.2vw, 36px);
+  line-height: 1.05;
+  letter-spacing: -.035em;
+}
+
+.visual31-startup .app-startup-brand p:not(.eyebrow) {
+  max-width: 64ch;
+  margin: 6px 0 0;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.visual31-startup .app-startup-version {
+  align-self: start;
+  justify-self: end;
+  margin: 0;
+  white-space: nowrap;
+}
+
+.visual31-startup .app-startup-truth-rail {
+  grid-column: 1;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.visual31-startup .app-startup-truth-stat {
+  min-height: 58px;
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+  gap: 9px;
+  padding: 10px 12px;
+}
+
+.visual31-startup .app-startup-truth-stat > span {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  overflow-wrap: anywhere;
+  line-height: 1.25;
+}
+
+.visual31-startup .app-startup-checks {
+  grid-column: 1;
+  grid-row: auto;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-content: start;
+  gap: 9px;
+  min-width: 0;
+  margin: 0;
+}
+
+.visual31-startup .app-startup-check {
+  min-width: 0;
+  min-height: 58px;
+  height: auto;
+  align-items: flex-start;
+  padding: 10px 12px;
+}
+
+.visual31-startup .app-startup-check__icon {
+  flex: 0 0 24px;
+  margin-top: 1px;
+}
+
+.visual31-startup .app-startup-check__copy {
+  min-width: 0;
+  width: 100%;
+  overflow: visible;
+}
+
+.visual31-startup .app-startup-check__copy strong,
+.visual31-startup .app-startup-check__copy small {
+  display: block;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: normal;
+  text-overflow: clip;
+}
+
+.visual31-startup .app-startup-check__copy strong {
+  font-size: 12.5px;
+  line-height: 1.24;
+}
+
+.visual31-startup .app-startup-check__copy small {
+  margin-top: 3px;
+  font-size: 10.5px;
+  line-height: 1.25;
+}
+
+.visual31-startup .app-startup-footer {
+  grid-column: 1;
+  display: flex;
+  align-items: flex-start;
+  min-width: 0;
+  margin: 0;
+  padding: 12px 2px 0;
+}
+
+.visual31-startup .app-startup-footer span {
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.3;
+}
+
+@media (max-width: 820px) {
+  .visual31-startup .app-startup-card {
+    width: min(680px, 100%);
+    max-height: calc(100dvh - 24px);
+    display: grid;
+    gap: 12px;
+    padding: 18px;
+  }
+
+  .visual31-startup .app-startup-brand {
+    grid-template-columns: 58px minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .visual31-startup .app-startup-logo {
+    width: 58px;
+    height: 58px;
+    border-radius: 17px;
+  }
+
+  .visual31-startup .app-startup-version {
+    grid-column: 2;
+    justify-self: start;
+    margin-top: 4px;
+  }
+
+  .visual31-startup .app-startup-truth-rail {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .visual31-startup .app-startup-truth-stat {
+    min-height: 42px;
+  }
+
+  .visual31-startup .app-startup-checks {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .visual31-startup .app-startup-check {
+    min-height: 46px;
+    padding: 8px 10px;
+  }
+}
+
+@media (min-width: 821px) and (max-height: 760px) {
+  .visual31-startup {
+    padding: 10px;
+  }
+
+  .visual31-startup .app-startup-card {
+    width: min(940px, 100%);
+    max-height: calc(100dvh - 20px);
+    gap: 10px;
+    padding: 14px 18px;
+  }
+
+  .visual31-startup .app-startup-brand {
+    grid-template-columns: 52px minmax(0, 1fr) auto;
+    gap: 10px;
+  }
+
+  .visual31-startup .app-startup-logo {
+    width: 52px;
+    height: 52px;
+    border-radius: 15px;
+  }
+
+  .visual31-startup .app-startup-brand h1 {
+    font-size: clamp(20px, 2.6vw, 28px);
+  }
+
+  .visual31-startup .app-startup-brand p:not(.eyebrow) {
+    margin-top: 3px;
+    font-size: 11px;
+    line-height: 1.2;
+  }
+
+  .visual31-startup .app-startup-truth-stat {
+    min-height: 40px;
+    padding: 6px 9px;
+  }
+
+  .visual31-startup .app-startup-check {
+    min-height: 42px;
+    padding: 6px 9px;
+  }
+
+  .visual31-startup .app-startup-check__copy strong {
+    font-size: 11.5px;
+    line-height: 1.17;
+  }
+
+  .visual31-startup .app-startup-check__copy small {
+    margin-top: 1px;
+    font-size: 9.5px;
+    line-height: 1.15;
+  }
+
+  .visual31-startup .app-startup-footer {
+    padding-top: 7px;
+    font-size: 10.5px;
+  }
+}
+

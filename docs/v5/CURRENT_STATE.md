@@ -1,7 +1,7 @@
 <!-- CURRENT_RELEASE_IDENTITY_BEGIN -->
 # Current release identity
 
-- Application: `6.0.0-beta.4`
+- Application: `6.0.0-beta.5`
 - Firmware: `5.1.0-beta.3`
 - Direct API: `1.1.0`
 - Channel: beta
@@ -13,7 +13,7 @@
 # Current development state — 5.8.0-beta.3
 
 <!-- CURRENT_VERSION_SSOT_BEGIN -->
-Current application: `6.0.0-beta.4`
+Current application: `6.0.0-beta.5`
 Current firmware: `5.1.0-beta.3`
 Current Direct API: `1.1.0`
 <!-- CURRENT_VERSION_SSOT_END -->
@@ -52,3 +52,20 @@ Current Direct API: `1.1.0`
 After both Stable workflows pass and runtime installation is verified, the current
 V5 architecture/release stabilization cycle is complete. UI/UX work can then start
 from this Stable baseline.
+
+
+## 6.0.0-beta.5 candidate
+Settings information architecture and cross-platform update deep-link candidate (V854).
+
+## Current Beta candidate — 6.0.0-beta.5
+
+The current Beta candidate contains the finalized Settings information architecture, semantic update deep-linking, existing Language Pack 2.1 runtime compatibility, and the redesigned long-language-safe Visual 3.1 startup screen.
+
+- Application: `6.0.0-beta.5`
+- Firmware: `5.1.0-beta.3`
+- Direct API: `1.1.0`
+- Language Pack Architecture: `2.1`
+- Total languages: `15`
+- Downloadable packs: `14`
+- Release branch: `next/v5-rearchitecture`
+- Release type: prerelease

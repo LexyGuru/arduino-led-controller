@@ -1,3 +1,4 @@
+import './settings-beta5.css';
 import {
   invoke
 } from '@tauri-apps/api/core';

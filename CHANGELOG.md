@@ -1,3 +1,19 @@
+# 6.0.0-beta.5 — Settings information architecture / cross-platform UX
+
+## Final Settings / i18n / startup scope
+
+- Reorganized Settings into General, Connection and authentication, Updates, and Arduino/LED hardware.
+- Added semantic update deep-link navigation.
+- Kept Language Pack Architecture 2.1 and all 15 catalog languages compatible by reusing already-published translation keys.
+- Redesigned the Visual 3.1 startup screen for long translated strings and responsive layouts.
+- Preserved firmware `5.1.0-beta.3` and Direct API `1.1.0` without firmware-source changes.
+
+- Settings split into General, Connection, Updates and Arduino/Hardware categories.
+- Sidebar update notification deep-links directly to Updates.
+- Mobile/iPad Settings navigation uses the same semantic Updates target.
+- Added responsive desktop/tablet/mobile compatibility layer.
+- Firmware remains 5.1.0-beta.3; Direct API remains 1.1.0.
+
 # 6.0.0-beta.4 — Language + Diagnostics Stabilization
 
 - Fixed the factory profile title so the visible Arduino profile follows the active UI language.
@@ -6,9 +22,9 @@
 - Firmware remains 5.1.0-beta.3; Direct API remains 1.1.0.
 
 <!-- CURRENT_CHANGELOG_SSOT_BEGIN -->
-# 6.0.0-beta.4 — Current release
+# 6.0.0-beta.5 — Current release
 
-- Application: `6.0.0-beta.4`
+- Application: `6.0.0-beta.5`
 - Firmware: `5.1.0-beta.3`
 - Direct API: `1.1.0`
 <!-- CURRENT_CHANGELOG_SSOT_END -->

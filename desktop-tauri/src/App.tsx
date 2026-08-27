@@ -54,6 +54,7 @@ import { tauriApi } from './services/tauriApi';
 import type {
   PageId
 } from './types';
+import type { SettingsTarget } from './settings-navigation';
 
 export default function App() {
   const { t } = useI18n();
@@ -64,6 +65,13 @@ export default function App() {
     useState<PageId>(
       'dashboard'
     );
+
+  const [settingsTarget, setSettingsTarget] = useState<SettingsTarget>('general');
+
+  const navigate = (nextPage: PageId, target?: SettingsTarget) => {
+    if (target) setSettingsTarget(target);
+    setPage(nextPage);
+  };
 
   const [
     appVersion,
@@ -114,7 +122,7 @@ export default function App() {
       <div className={`app-shell core-ui-v3 core-ui-v20 core-ui-v3-shell beta4-ui-baseline${startup.blocking ? ' app-shell--booting' : ''}`}>
       <Sidebar
         page={page}
-        onChange={setPage}
+        onChange={navigate}
         appVersion={
           appVersion
         }
@@ -375,12 +383,14 @@ export default function App() {
                   .setOtaPassword
               }
               appUpdate={appUpdate}
+              target={settingsTarget}
+              onTargetChange={setSettingsTarget}
             />
           )}
           </div>
         </main>
       </div>
-      <BottomNav page={page} onChange={setPage} />
+      <BottomNav page={page} onChange={navigate} updateAvailable={appUpdate.updateAvailable} />
       </div>
 
       {startup.visible && (

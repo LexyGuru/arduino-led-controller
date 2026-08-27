@@ -1,11 +1,11 @@
 <!-- CURRENT_BETA_RELEASE_BEGIN -->
 ## Current Beta release
 
-- Application: `6.0.0-beta.4`
+- Application: `6.0.0-beta.5`
 - Firmware: `5.1.0-beta.3`
 - Direct API: `1.1.0`
-- Detailed release notes: `docs/v5/V60_BETA4_RELEASE_NOTES.md`
-- Root release notes: `RELEASE_NOTES_6.0.0-beta.4.md`
+- Detailed release notes: `docs/v5/V60_BETA5_RELEASE_NOTES.md`
+- Root release notes: `RELEASE_NOTES_6.0.0-beta.5.md`
 - Installation guide: `docs/v5/V60_BETA4_INSTALLATION_GUIDE.md`
 - Release checklist: `docs/v5/V60_BETA4_RELEASE_CHECKLIST.md`
 <!-- CURRENT_BETA_RELEASE_END -->
@@ -13,16 +13,16 @@
 # Arduino LED Controller V6
 
 <!-- CURRENT_VERSION_SSOT_BEGIN -->
-Current application: `6.0.0-beta.4`
+Current application: `6.0.0-beta.5`
 Current firmware: `5.1.0-beta.3`
 Current Direct API: `1.1.0`
 <!-- CURRENT_VERSION_SSOT_END -->
 
 <!-- CURRENT_RELEASE_DOCS_SSOT_BEGIN -->
-- Release notes: `docs/v5/V60_BETA4_RELEASE_NOTES.md`
-- Installation guide: `docs/v5/V60_BETA4_INSTALLATION_GUIDE.md`
-- Release checklist: `docs/v5/V60_BETA4_RELEASE_CHECKLIST.md`
-- Root release notes: `RELEASE_NOTES_6.0.0-beta.4.md`
+- Release notes: `docs/v5/V60_BETA5_RELEASE_NOTES.md`
+- Installation guide: `docs/v5/V60_BETA5_INSTALLATION_GUIDE.md`
+- Release checklist: `docs/v5/V60_BETA5_RELEASE_CHECKLIST.md`
+- Root release notes: `RELEASE_NOTES_6.0.0-beta.5.md`
 <!-- CURRENT_RELEASE_DOCS_SSOT_END -->
 
 <p align="center">
@@ -391,3 +391,18 @@ váltható. Mobilon és más desktop platformokon a generált platformikonok has
 
 A repository licencfeltételeit a projekt tulajdonosa határozza meg. Külső
 terjesztés előtt külön `LICENSE` fájl szükséges.
+
+## 6.0.0-beta.5 — Settings & startup experience
+
+Beta.5 finalizes the cross-platform Settings information architecture and the Visual 3.1 startup experience.
+
+- **Settings:** General · Connection and authentication · Updates · Arduino and LED hardware
+- **Update navigation:** update indicators deep-link directly to Updates
+- **Languages:** Language Pack Architecture 2.1, 15 total languages, existing 14 downloadable packs remain compatible
+- **Startup:** redesigned responsive command-card layout with long-language-safe wrapping
+- **Firmware:** remains `5.1.0-beta.3`
+- **Direct API:** remains `1.1.0`
+
+Release notes: [`RELEASE_NOTES_6.0.0-beta.5.md`](RELEASE_NOTES_6.0.0-beta.5.md)  
+Detailed technical notes: [`docs/v5/V60_BETA5_RELEASE_NOTES.md`](docs/v5/V60_BETA5_RELEASE_NOTES.md)  
+Installation guide: [`docs/v5/V60_BETA5_INSTALLATION_GUIDE.md`](docs/v5/V60_BETA5_INSTALLATION_GUIDE.md)

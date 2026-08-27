@@ -851,7 +851,7 @@
     "schedules.writeDisabled": "Saving and deletion are disabled until the complete Arduino schedule list has been downloaded with matching count, revision and checksum. The local cache alone cannot be written back to Arduino.",
     "settings-hub.arduino": "Arduino-Verbindung",
     "settings-hub.general": "Allgemein",
-    "settings-hub.subtitle": "App-Einstellungen und Arduino-Verbindung in getrennten Ansichten.",
+    "settings-hub.subtitle": "Anwendungseinstellungen und Arduino-Verbindung in getrennten Ansichten.",
     "settings-hub.title": "Einstellungen",
     "settings.deviceKey": "X-Device-Key",
     "settings.direct.defaultNotice": "Die Protokolle für entfernte und lokale Endpunkte können getrennt eingestellt werden.",

@@ -98,7 +98,7 @@ dependencies = [
 
 [[package]]
 name = "arduino-led-controller"
-version = "6.0.0-beta.4"
+version = "6.0.0-beta.5"
 dependencies = [
  "android-native-keyring-store",
  "apple-native-keyring-store",
