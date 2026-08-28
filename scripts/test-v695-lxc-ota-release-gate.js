@@ -36,8 +36,10 @@ assert.match(api,/const channel=config\(\)\.firmwareUpdateChannel;const list=awa
 assert.match(api,/return install\(list\[0\]\.firmwareVersion\?\?list\[0\]\.tag,channel\)/);
 assert.match(api,/saveOtaPassword:.*LXC-ben az OTA-jelszó szerveroldali titok/);
 
-assert.match(rust,/let artifact = if let Some\(version\) = requested_tag[\s\S]*github_releases\(\)[\s\S]*firmware_artifacts_from_release_channel\(release, normalized_channel\)/);
-assert.match(v615,/github_releases\\\(\\\)/);
+assert.match(rust,/let artifact = if let Some\(version\) = requested_tag[\s\S]*firmware_releases_for_channel\(normalized_channel\)[\s\S]*firmware_artifacts_from_release_channel\(release, normalized_channel\)/);
+assert.doesNotMatch(rust,/let artifact = if let Some\(version\) = requested_tag[\s\S]*github_releases\(\)[\s\S]*let available = artifact/);
+assert.match(v615,/firmware_releases_for_channel\\\(normalized_channel\\\)/);
+assert.match(v615,/doesNotMatch\(rust,\/let artifact = if let Some\\\(version\\\) = requested_tag/);
 assert.match(v615,/firmware_artifacts_from_release_channel/);
 assert.doesNotMatch(v615,/requested_tag\[\\s\\S\]\*firmware_beta_release/);
 

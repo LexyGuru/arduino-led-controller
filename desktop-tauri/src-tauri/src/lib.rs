@@ -3213,7 +3213,7 @@ async fn firmware_update_inner(
         });
     let artifact = if let Some(version) = requested_tag {
         let requested = normalize_version(version);
-        github_releases()
+        firmware_releases_for_channel(normalized_channel)
             .await?
             .iter()
             .flat_map(|release| {

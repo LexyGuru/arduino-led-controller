@@ -332,7 +332,8 @@
     "test:v858e-complete-version-ssot": "node scripts/test-complete-version-ssot-v858e.js",
     "test:v858g-staging-canonical": "node scripts/test-staging-canonical-normalization-v858g.js",
     "test:v860-final-reality": "node scripts/test-beta7-final-reality-v860.js",
-    "test:v861-firmware-publication": "node scripts/test-beta7-firmware-publication-contract-v861.js"
+    "test:v861-firmware-publication": "node scripts/test-beta7-firmware-publication-contract-v861.js",
+    "test:v862-exact-firmware-lookup": "node scripts/test-beta7-exact-firmware-dedicated-lookup-v862.js"
   },
   "engines": {
     "node": ">=20"
