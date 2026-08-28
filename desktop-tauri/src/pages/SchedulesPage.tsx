@@ -550,7 +550,7 @@ export function SchedulesPage({ schedules: legacySchedules, scheduleSync, busy: 
                   </div>
                 </button>
                 <div className="schedule-mobile-event-actions">
-                  <button type="button" aria-label={t('common.edit')} disabled={!state.canWrite} onClick={() => {
+                  <button type="button" aria-label={t('schedules.edit')} disabled={!state.canWrite} onClick={() => {
                 edit(schedule);
                 setScheduleModalOpen(true);
             }}>

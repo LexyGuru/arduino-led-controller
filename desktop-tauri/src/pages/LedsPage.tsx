@@ -478,7 +478,7 @@ function LedCard({
       </label>
 
       <fieldset className="core-control-field visual31-effect-field">
-        <legend className="core-control-label">{t('leds.effect')}</legend>
+        <legend className="core-control-label">{t('schedules.effect')}</legend>
         <div className="visual31-effect-grid">
           {EFFECT_VISUAL_KEYS.map((effect) => {
             const Icon = effect.icon;

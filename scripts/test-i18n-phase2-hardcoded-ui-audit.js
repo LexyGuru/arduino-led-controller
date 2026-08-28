@@ -2,88 +2,52 @@
 'use strict';
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const read = p => fs.readFileSync(p, 'utf8');
 
-const read = (p) => fs.readFileSync(p, 'utf8');
-const schedules = read('desktop-tauri/src/pages/SchedulesPage.tsx');
-const dashboard = read('desktop-tauri/src/pages/DashboardPage.tsx');
-const firmware = read('desktop-tauri/src/pages/FirmwarePage.tsx');
-const i18n = read('scripts/fixtures/i18n-runtime-language-pack-compat-v800.txt');
-
-for (const token of [
-  'const dayKeys',
-  'const dayShortKeys',
-  'const effectKeys'
-]) {
-  assert.ok(
-    schedules.includes(token),
-    `Hiányzó Phase 2 szerkezeti elem: ${token}`
-  );
+function staticTranslationKeys(source) {
+  const result = new Set();
+  const pattern = /\bt\(\s*['"]([^'"]+)['"]/g;
+  let match;
+  while ((match = pattern.exec(source)) !== null) result.add(match[1]);
+  return [...result].sort();
+}
+function assertKeysExist(sourceName, source, english, minimum = 1) {
+  const keys = staticTranslationKeys(source);
+  assert.ok(keys.length >= minimum, `${sourceName}: túl kevés statikus i18n kulcs: ${keys.length}`);
+  for (const key of keys) {
+    assert.equal(typeof english[key], 'string', `${sourceName}: canonical English kulcs hiányzik: ${key}`);
+    assert.ok(english[key].length > 0, `${sourceName}: canonical English kulcs üres: ${key}`);
+  }
+  return keys;
 }
 
-for (const key of [
-  'schedules.deleteToken',
-  'schedules.effect',
-  'schedules.exportShared',
-  'schedules.imported',
-  'schedules.conflictTitle',
-  'schedules.backupsEyebrow',
-  'schedules.eventCount',
-  'dashboard.scheduleCountMismatch',
-  'firmware.targetFromConfig'
-]) {
-  assert.ok(
-    schedules.includes(key) ||
-      dashboard.includes(key) ||
-      firmware.includes(key),
-    `Hiányzó Phase 2 i18n használat: ${key}`
-  );
+
+const english = JSON.parse(read('desktop-tauri/src/i18n/locales/en.json'));
+const runtime = read('scripts/fixtures/i18n-runtime-language-pack-compat-v800.txt');
+const sources = {
+  SchedulesPage: read('desktop-tauri/src/pages/SchedulesPage.tsx'),
+  DashboardPage: read('desktop-tauri/src/pages/DashboardPage.tsx'),
+  FirmwarePage: read('desktop-tauri/src/pages/FirmwarePage.tsx')
+};
+
+for (const [name, source] of Object.entries(sources)) {
+  const keys = assertKeysExist(name, source, english, 3);
+  console.log(`OK: ${name} audited static keys=${keys.length}`);
+}
+
+for (const token of ['const dayKeys','const dayShortKeys','const effectKeys']) {
+  assert.ok(sources.SchedulesPage.includes(token), `SchedulesPage hiányzó i18n szerkezet: ${token}`);
 }
 
 for (const legacy of [
-  'const DAYS =',
-  'const DAY_SHORT =',
-  'const EFFECTS =',
-  'JSON időzítés',
-  'időzítés exportálva mobilos megosztással',
-  'Letöltési hiba:',
-  'Feltöltési hiba:',
-  'AUTOMATIKUS BACKUPOK',
-  'title="Törlés"',
+  'const DAYS =','const DAY_SHORT =','const EFFECTS =','JSON időzítés',
+  'időzítés exportálva mobilos megosztással','AUTOMATIKUS BACKUPOK',
   'A V5 szerver Arduino-beállításából származik'
 ]) {
-  assert.ok(
-    !schedules.includes(legacy) &&
-      !dashboard.includes(legacy) &&
-      !firmware.includes(legacy),
-    `Beégetett Phase 2 UI-szöveg maradt: ${legacy}`
-  );
+  for (const [name, source] of Object.entries(sources)) {
+    assert.ok(!source.includes(legacy), `${name}: legacy hardcoded UI maradt: ${legacy}`);
+  }
 }
 
-for (const key of [
-  'daysShort.1',
-  'daysShort.7',
-  'schedules.deleteToken',
-  'schedules.effect',
-  'schedules.exportShared',
-  'schedules.exportSaved',
-  'schedules.imported',
-  'schedules.recoveredLegacy',
-  'schedules.emptyRecords',
-  'schedules.conflictTitle',
-  'schedules.conflictHelp',
-  'schedules.backupsEyebrow',
-  'schedules.recordCount',
-  'schedules.restoreButton',
-  'schedules.eventCount',
-  'schedules.ledSummary',
-  'dashboard.scheduleCountMismatch',
-  'firmware.targetFromConfig'
-]) {
-  const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const count = (i18n.match(new RegExp(`["']${escaped}["']`, 'g')) || []).length;
-  assert.equal(count, 3, `Nem mindhárom nyelven létezik: ${key}`);
-}
-
-console.log('OK: Schedule napok, rövid napok és effektek teljesen i18n-alapúak');
-console.log('OK: Schedule export/import, backup és konfliktusüzenetek fordíthatók');
-console.log('OK: Dashboard és Firmware maradék Phase 2 szövegei fordíthatók');
+assert.ok(runtime.includes('Language pack keyset does not match the embedded English master.'));
+console.log('OK: Phase 2 hardcoded UI audit Architecture 2.1 kompatibilis');

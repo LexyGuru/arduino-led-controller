@@ -1,0 +1,24 @@
+#!/usr/bin/env node
+'use strict';
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const release=JSON.parse(fs.readFileSync('release-versions.json','utf8'));
+const meta=JSON.parse(fs.readFileSync('firmware/firmware-release.json','utf8'));
+const workflow=fs.readFileSync('.github/workflows/firmware-beta-release.yml','utf8');
+assert.equal(release.application,'6.0.0-beta.7');
+assert.equal(release.firmware,'5.1.0-beta.4');
+assert.equal(release.directApi,'1.2.0');
+assert.equal(meta.firmwareVersion,release.firmware);
+assert.equal(meta.directApiVersion,release.directApi);
+assert.equal(meta.binary,`Arduino_LED_Controller_Firmware_${release.firmware}_UNO_R4_WiFi.bin`);
+assert.equal(meta.checksum,`${meta.binary}.sha256`);
+assert.ok(workflow.includes('direct_api_version: ${{ steps.versions.outputs.direct_api_version }}'));
+assert.ok(workflow.includes('echo "direct_api_version=${API_VERSION}" >> "${GITHUB_OUTPUT}"'));
+assert.ok(workflow.includes('API_VERSION: ${{ needs.validate.outputs.direct_api_version }}'));
+assert.ok(workflow.includes("current_api=os.environ['API_VERSION']"));
+assert.ok(workflow.includes("api_version=current_api if version==current_fw else previous.get(version,'1.0.0')"));
+assert.doesNotMatch(workflow,/entries\.append\(\{[^\n]*'directApiVersion':'1\.0\.0'/);
+console.log('V861A_FIRMWARE_ARTIFACT_METADATA=PASSED');
+console.log('V861A_CURRENT_FIRMWARE_DIRECT_API_SSOT=PASSED');
+console.log('V861A_HISTORICAL_CATALOG_METADATA_PRESERVED=PASSED');
+console.log('V861A_FIRMWARE_PUBLICATION_CONTRACT=PASSED');

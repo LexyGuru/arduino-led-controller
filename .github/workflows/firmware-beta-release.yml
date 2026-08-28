@@ -38,6 +38,7 @@ jobs:
     outputs:
       firmware_version: ${{ steps.versions.outputs.firmware_version }}
       application_version: ${{ steps.versions.outputs.application_version }}
+      direct_api_version: ${{ steps.versions.outputs.direct_api_version }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -71,6 +72,7 @@ jobs:
           test "${EXPECTED_BINARY}" = "Arduino_LED_Controller_Firmware_${FW_VERSION}_UNO_R4_WiFi.bin"
           echo "firmware_version=${FW_VERSION}" >> "${GITHUB_OUTPUT}"
           echo "application_version=${APP_VERSION}" >> "${GITHUB_OUTPUT}"
+          echo "direct_api_version=${API_VERSION}" >> "${GITHUB_OUTPUT}"
           npm ci --no-audit --no-fund
           npm run test:firmware-beta-release
           npm run test:firmware-catalog-dedup
@@ -189,24 +191,42 @@ jobs:
       - name: Generate authoritative firmware catalog
         env:
           GH_TOKEN: ${{ github.token }}
+          FW_VERSION: ${{ needs.validate.outputs.firmware_version }}
+          API_VERSION: ${{ needs.validate.outputs.direct_api_version }}
         run: |
           set -euo pipefail
           gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${FIRMWARE_RELEASE_TAG}" > firmware-release-api.json
+          rm -rf previous-catalog previous-firmware-catalog.json
+          if gh release view "${FIRMWARE_RELEASE_TAG}" --json assets --jq '.assets[].name' | grep -Fxq firmware-catalog.json; then
+            mkdir -p previous-catalog
+            gh release download "${FIRMWARE_RELEASE_TAG}" --pattern firmware-catalog.json --dir previous-catalog
+            cp previous-catalog/firmware-catalog.json previous-firmware-catalog.json
+          fi
           python3 - <<'PY'
           import json,re,os
           from pathlib import Path
           r=json.loads(Path('firmware-release-api.json').read_text())
           assets={a['name']:a for a in r['assets']}
           pat=re.compile(r'^Arduino_LED_Controller_Firmware_(\d+\.\d+\.\d+-beta\.\d+)_UNO_R4_WiFi\.bin$')
+          previous={}
+          previous_path=Path('previous-firmware-catalog.json')
+          if previous_path.exists():
+            old_catalog=json.loads(previous_path.read_text())
+            previous={str(e.get('version')):str(e.get('directApiVersion') or '1.0.0') for e in old_catalog.get('firmwares',[])}
+
+          current_fw=os.environ['FW_VERSION']
+          current_api=os.environ['API_VERSION']
           entries=[]
           for name,a in assets.items():
             m=pat.match(name)
             if not m: continue
+            version=m.group(1)
             checksum=name+'.sha256'
             if checksum not in assets: raise SystemExit(f'Hiányzó checksum asset: {checksum}')
             digest=a.get('digest') or ''
             if not digest.startswith('sha256:'): raise SystemExit(f'Hiányzó GitHub SHA-256 digest: {name}')
-            entries.append({'version':m.group(1),'channel':'beta','board':'arduino-uno-r4-wifi','directApiVersion':'1.0.0','file':name,'checksumFile':checksum,'sha256':digest[7:],'bytes':a['size'],'publishedAt':a.get('updated_at'),'url':a['browser_download_url'],'checksumUrl':assets[checksum]['browser_download_url']})
+            api_version=current_api if version==current_fw else previous.get(version,'1.0.0')
+            entries.append({'version':version,'channel':'beta','board':'arduino-uno-r4-wifi','directApiVersion':api_version,'file':name,'checksumFile':checksum,'sha256':digest[7:],'bytes':a['size'],'publishedAt':a.get('updated_at'),'url':a['browser_download_url'],'checksumUrl':assets[checksum]['browser_download_url']})
           def key(e):
             x=re.match(r'(\d+)\.(\d+)\.(\d+)-beta\.(\d+)',e['version']); return tuple(map(int,x.groups()))
           entries.sort(key=key,reverse=True)

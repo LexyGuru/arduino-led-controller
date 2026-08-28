@@ -2,6 +2,7 @@
   "schemaVersion": 2,
   "description": "Version-independent active test architecture. Historical release snapshots are preserved but excluded from default npm test.",
   "current": [
+    "test:v861-firmware-publication",
     "test:v860-final-reality",
     "test:v858g-staging-canonical",
     "test:v858e-complete-version-ssot",
