@@ -1,28 +1,28 @@
 <!-- CURRENT_BETA_RELEASE_BEGIN -->
 ## Current Beta release
 
-- Application: `6.0.0-beta.7`
+- Application: `6.0.0-beta.8`
 - Firmware: `5.1.0-beta.4`
 - Direct API: `1.2.0`
-- Detailed release notes: `docs/v5/V60_BETA7_RELEASE_NOTES.md`
-- Root release notes: `RELEASE_NOTES_6.0.0-beta.7.md`
-- Installation guide: `docs/v5/V60_BETA7_INSTALLATION_GUIDE.md`
-- Release checklist: `docs/v5/V60_BETA7_RELEASE_CHECKLIST.md`
+- Detailed release notes: `docs/v5/V60_BETA8_RELEASE_NOTES.md`
+- Root release notes: `RELEASE_NOTES_6.0.0-beta.8.md`
+- Installation guide: `docs/v5/V60_BETA8_INSTALLATION_GUIDE.md`
+- Release checklist: `docs/v5/V60_BETA8_RELEASE_CHECKLIST.md`
 <!-- CURRENT_BETA_RELEASE_END -->
 
 # Arduino LED Controller V6
 
 <!-- CURRENT_VERSION_SSOT_BEGIN -->
-Current application: `6.0.0-beta.7`
+Current application: `6.0.0-beta.8`
 Current firmware: `5.1.0-beta.4`
 Current Direct API: `1.2.0`
 <!-- CURRENT_VERSION_SSOT_END -->
 
 <!-- CURRENT_RELEASE_DOCS_SSOT_BEGIN -->
-- Release notes: `docs/v5/V60_BETA7_RELEASE_NOTES.md`
-- Installation guide: `docs/v5/V60_BETA7_INSTALLATION_GUIDE.md`
-- Release checklist: `docs/v5/V60_BETA7_RELEASE_CHECKLIST.md`
-- Root release notes: `RELEASE_NOTES_6.0.0-beta.7.md`
+- Release notes: `docs/v5/V60_BETA8_RELEASE_NOTES.md`
+- Installation guide: `docs/v5/V60_BETA8_INSTALLATION_GUIDE.md`
+- Release checklist: `docs/v5/V60_BETA8_RELEASE_CHECKLIST.md`
+- Root release notes: `RELEASE_NOTES_6.0.0-beta.8.md`
 <!-- CURRENT_RELEASE_DOCS_SSOT_END -->
 
 <p align="center">
@@ -46,11 +46,11 @@ Direct API végpont, az alkalmazás- és firmware-release folyamat egymástól k
 
 ## Aktuális Beta kiadás
 
-> **Arduino LED Controller 6.0.0-beta.7 — Performance & Observability**
+> **Arduino LED Controller 6.0.0-beta.8 — OTA Exact-Version Hotfix**
 
 | Komponens | Aktuális Beta állapot |
 |---|---|
-| Alkalmazás | **`6.0.0-beta.7`** |
+| Alkalmazás | **`6.0.0-beta.8`** |
 | Firmware | **`5.1.0-beta.4`** |
 | Direct API | **`1.2.0`** |
 | Language Pack Architecture | **`2.1`** |
@@ -86,10 +86,10 @@ Direct API végpont, az alkalmazás- és firmware-release folyamat egymástól k
 
 ### Aktuális
 
-- [V6.0 Beta.7 release notes](docs/v5/V60_BETA7_RELEASE_NOTES.md)
-- [V6.0 Beta.7 telepítési útmutató](docs/v5/V60_BETA7_INSTALLATION_GUIDE.md)
-- [V6.0 Beta.7 release checklist](docs/v5/V60_BETA7_RELEASE_CHECKLIST.md)
-- [Gyökér Beta.7 release notes](RELEASE_NOTES_6.0.0-beta.7.md)
+- [V6.0 Beta.8 release notes](docs/v5/V60_BETA8_RELEASE_NOTES.md)
+- [V6.0 Beta.8 telepítési útmutató](docs/v5/V60_BETA8_INSTALLATION_GUIDE.md)
+- [V6.0 Beta.8 release checklist](docs/v5/V60_BETA8_RELEASE_CHECKLIST.md)
+- [Gyökér Beta.8 release notes](RELEASE_NOTES_6.0.0-beta.8.md)
 - [Language Pack Architecture 2.1](docs/v6/LANGUAGE_PACK_ARCHITECTURE_2_0.md)
 - [Rust LXC architektúra](docs/v5/RUST_LXC_ARCHITECTURE.md)
 - [Rust LXC üzemeltetés](docs/v5/RUST_LXC_OPERATIONS.md)
@@ -153,7 +153,7 @@ Az alkalmazás- és firmware-release egymástól független.
 ### Jelenlegi Beta release sorrend
 
 ```text
-next/v5-rearchitecture / 6.0.0-beta.7
+next/v5-rearchitecture / 6.0.0-beta.8
         ↓
 teljes regresszió + manuális QA
         ↓
@@ -191,7 +191,7 @@ váltható. Mobilon és más desktop platformokon a generált platformikonok has
 A repository licencfeltételeit a projekt tulajdonosa határozza meg. Külső
 terjesztés előtt külön `LICENSE` fájl szükséges.
 
-## 6.0.0-beta.7 — Settings & startup experience
+## 6.0.0-beta.8 — Settings & startup experience
 
 Beta.5 finalizes the cross-platform Settings information architecture and the Visual 3.1 startup experience.
 
@@ -202,23 +202,23 @@ Beta.5 finalizes the cross-platform Settings information architecture and the Vi
 - **Firmware:** remains `5.1.0-beta.4`
 - **Direct API:** remains `1.2.0`
 
-Release notes: [`RELEASE_NOTES_6.0.0-beta.7.md`](RELEASE_NOTES_6.0.0-beta.7.md)
-Detailed technical notes: [`docs/v5/V60_BETA7_RELEASE_NOTES.md`](docs/v5/V60_BETA7_RELEASE_NOTES.md)
-Installation guide: [`docs/v5/V60_BETA7_INSTALLATION_GUIDE.md`](docs/v5/V60_BETA7_INSTALLATION_GUIDE.md)
+Release notes: [`RELEASE_NOTES_6.0.0-beta.8.md`](RELEASE_NOTES_6.0.0-beta.8.md)
+Detailed technical notes: [`docs/v5/V60_BETA8_RELEASE_NOTES.md`](docs/v5/V60_BETA8_RELEASE_NOTES.md)
+Installation guide: [`docs/v5/V60_BETA8_INSTALLATION_GUIDE.md`](docs/v5/V60_BETA8_INSTALLATION_GUIDE.md)
 
 
-## 6.0.0-beta.7 hotfix candidate
+## 6.0.0-beta.8 hotfix candidate
 
 Visual 3.1 health-orbit text containment and recovered mobile startup-error suppression. Firmware remains `5.1.0-beta.4`.
 
 
-## 6.0.0-beta.7 Performance + Observability candidate
+## 6.0.0-beta.8 Performance + Observability candidate
 
 Structured diagnostics/logging foundation. Firmware `5.1.0-beta.4`, Direct API `1.2.0`.
 
 ### Beta.7 canonical documentation
 
-- Detailed release notes: [`docs/v5/V60_BETA7_RELEASE_NOTES.md`](docs/v5/V60_BETA7_RELEASE_NOTES.md)
-- Installation guide: [`docs/v5/V60_BETA7_INSTALLATION_GUIDE.md`](docs/v5/V60_BETA7_INSTALLATION_GUIDE.md)
-- Release checklist: [`docs/v5/V60_BETA7_RELEASE_CHECKLIST.md`](docs/v5/V60_BETA7_RELEASE_CHECKLIST.md)
-- Publication summary: [`RELEASE_NOTES_6.0.0-beta.7.md`](RELEASE_NOTES_6.0.0-beta.7.md)
+- Detailed release notes: [`docs/v5/V60_BETA8_RELEASE_NOTES.md`](docs/v5/V60_BETA8_RELEASE_NOTES.md)
+- Installation guide: [`docs/v5/V60_BETA8_INSTALLATION_GUIDE.md`](docs/v5/V60_BETA8_INSTALLATION_GUIDE.md)
+- Release checklist: [`docs/v5/V60_BETA8_RELEASE_CHECKLIST.md`](docs/v5/V60_BETA8_RELEASE_CHECKLIST.md)
+- Publication summary: [`RELEASE_NOTES_6.0.0-beta.8.md`](RELEASE_NOTES_6.0.0-beta.8.md)

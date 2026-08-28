@@ -4,12 +4,12 @@
 
 | Vonal | Támogatás |
 |---|---|
-| `6.0.0-beta.7` | aktívan támogatott Beta |
-| `6.0.0-beta.6` | előző Beta, átmeneti visszaállítási referencia |
+| `6.0.0-beta.8` | aktívan támogatott Beta |
+| `6.0.0-beta.7` | előző Beta, átmeneti visszaállítási referencia |
 | `5.8.0` stable | támogatott stabil alkalmazásvonal |
 | régebbi kiadások | csak külön döntés alapján |
 
-A Beta.7 firmware identity: `5.1.0-beta.4`, Direct API: `1.2.0`.
+A Beta.8 firmware identity: `5.1.0-beta.4`, Direct API: `1.2.0`.
 
 ## Direct API hitelesítés
 
@@ -46,7 +46,7 @@ Nem kerülhet Gitbe vagy release-csomagba többek között: `firmware/ArduinoLed
 
 ## Structured logging és diagnosztika
 
-A Beta.7 bővített diagnostics/logging mezői nem tehetnek közzé credentialt, privát API-prefixet, OTA-jelszót vagy Wi-Fi-jelszót. Új event code/subsystem mező bevezetésekor secret-redaction contract szükséges.
+A Beta.8 által örökölt bővített diagnostics/logging mezők nem tehetnek közzé credentialt, privát API-prefixet, OTA-jelszót vagy Wi-Fi-jelszót. Új event code/subsystem mező bevezetésekor secret-redaction contract szükséges.
 
 ## Mobilplatformok
 

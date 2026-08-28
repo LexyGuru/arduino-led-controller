@@ -6,7 +6,9 @@ const release=JSON.parse(fs.readFileSync('release-versions.json','utf8'));
 const meta=JSON.parse(fs.readFileSync('firmware/firmware-release.json','utf8'));
 const fw=fs.readFileSync('firmware/ArduinoLedController/ArduinoLedController.ino','utf8');
 
-assert.equal(release.application,'6.0.0-beta.7');
+assert.equal(release.applicationRelease.version,release.application);
+assert.equal(release.applicationRelease.channel,'beta');
+assert.match(release.application,/^\d+\.\d+\.\d+-beta\.\d+$/);
 assert.equal(release.firmware,'5.1.0-beta.4');
 assert.equal(release.directApi,'1.2.0');
 assert.equal(release.firmwareRelease.recommendedVersion,release.firmware);

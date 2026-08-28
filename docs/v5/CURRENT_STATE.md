@@ -1,11 +1,11 @@
 <!-- CURRENT_RELEASE_IDENTITY_BEGIN -->
 # Current release identity
 
-- Application: `6.0.0-beta.7`
+- Application: `6.0.0-beta.8`
 - Firmware: `5.1.0-beta.4`
 - Direct API: `1.2.0`
 - Channel: beta
-- Release prefix: `V60_BETA4`
+- Release prefix: `V60_BETA8`
 - Language Pack Architecture: `2.1`
 - Language Pack catalog: `2.1.0`
 <!-- CURRENT_RELEASE_IDENTITY_END -->
@@ -13,7 +13,7 @@
 # Current development state — 5.8.0-beta.3
 
 <!-- CURRENT_VERSION_SSOT_BEGIN -->
-Current application: `6.0.0-beta.7`
+Current application: `6.0.0-beta.8`
 Current firmware: `5.1.0-beta.4`
 Current Direct API: `1.2.0`
 <!-- CURRENT_VERSION_SSOT_END -->
@@ -78,3 +78,19 @@ LXC/Visual 3.1 health-orbit containment + mobile recovered startup error cleanup
 ## 6.0.0-beta.7 Performance + Observability candidate
 
 Structured diagnostics/logging foundation. Firmware `5.1.0-beta.4`, Direct API `1.2.0`.
+
+## Current Beta candidate — 6.0.0-beta.8
+
+Application-only OTA exact-version lookup hotfix.
+
+- Application: `6.0.0-beta.8`
+- Firmware: `5.1.0-beta.4`
+- Direct API: `1.2.0`
+- Language Pack Architecture: `2.1`
+- Language Pack catalog: `2.1.0`
+- Total languages: `15`
+- Downloadable packs: `14`
+- Release branch: `next/v5-rearchitecture`
+- Release type: prerelease
+- Exact requested Beta firmware lookup uses the dedicated channel-aware firmware release.
+- Firmware source is unchanged.

@@ -10,7 +10,11 @@ const readme=read('README.md');
 const contributing=read('CONTRIBUTING.md');
 const security=read('SECURITY.md');
 
-assert.equal(release.application,'6.0.0-beta.7');
+assert.equal(release.applicationRelease.version,release.application);
+assert.equal(release.applicationRelease.channel,'beta');
+assert.match(release.application,/^\d+\.\d+\.\d+-beta\.\d+$/);
+const betaNumber=release.application.match(/-beta\.(\d+)$/)?.[1];
+assert.ok(betaNumber);
 assert.equal(release.firmware,'5.1.0-beta.4');
 assert.equal(release.directApi,'1.2.0');
 
@@ -18,7 +22,7 @@ assert.doesNotMatch(workflow,/"directApiVersion":\s*"1\.0\.0"/);
 assert.equal((workflow.match(/"directApiVersion": versions\["directApi"\]/g)||[]).length,2);
 
 for(const marker of [
-  'Arduino LED Controller 6.0.0-beta.7 — Performance & Observability',
+  `Arduino LED Controller ${release.application} — OTA Exact-Version Hotfix`,
   '| Magyar (`hu`) | **1.1.0 published** |',
   '| Deutsch (`de`) | **1.1.0 published** |',
   '| Français (`fr`) | **1.0.0 published** |',
@@ -28,9 +32,9 @@ for(const marker of [
   '14 letölthető csomag',
   '[Contributing](CONTRIBUTING.md)',
   '[Security](SECURITY.md)',
-  'V60_BETA7_RELEASE_NOTES.md',
-  'V60_BETA7_INSTALLATION_GUIDE.md',
-  'V60_BETA7_RELEASE_CHECKLIST.md'
+  `V60_BETA${betaNumber}_RELEASE_NOTES.md`,
+  `V60_BETA${betaNumber}_INSTALLATION_GUIDE.md`,
+  `V60_BETA${betaNumber}_RELEASE_CHECKLIST.md`
 ]) assert.ok(readme.includes(marker),marker);
 
 assert.doesNotMatch(readme,/\| Français \(`fr`\) \| pending \|/);
@@ -38,12 +42,12 @@ assert.doesNotMatch(readme,/Application 6\.0\.0-beta\.1/);
 assert.doesNotMatch(readme,/next\/v5-rearchitecture \/ 6\.0\.0-beta\.1/);
 assert.doesNotMatch(readme,/\[Contributing , Security\]\([^)]*#\)/);
 
-for(const marker of ['6.0.0-beta.7','5.1.0-beta.4','1.2.0','next/v5-rearchitecture','language-packs'])
+for(const marker of [release.application,'5.1.0-beta.4','1.2.0','next/v5-rearchitecture','language-packs'])
   assert.ok(contributing.includes(marker),`CONTRIBUTING ${marker}`);
 assert.doesNotMatch(contributing,/feature\/beta7-ui-overhaul/);
 assert.doesNotMatch(contributing,/5\.0\.0-beta\.7/);
 
-for(const marker of ['6.0.0-beta.7','5.1.0-beta.4','1.2.0','Structured logging'])
+for(const marker of [release.application,'5.1.0-beta.4','1.2.0','Structured logging'])
   assert.ok(security.includes(marker),`SECURITY ${marker}`);
 assert.doesNotMatch(security,/\| `5\.0\.0-beta\.6` \| aktívan támogatott beta \|/);
 

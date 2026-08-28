@@ -2,7 +2,7 @@
 'use strict';
 const assert=require('node:assert/strict'),fs=require('node:fs');
 const read=p=>fs.readFileSync(p,'utf8'); const release=JSON.parse(read('release-versions.json'));
-assert.equal(read('VERSION').trim(),'6.0.0-beta.7'); assert.equal(release.firmware,'5.1.0-beta.4'); assert.equal(release.directApi,'1.2.0');
+assert.equal(read('VERSION').trim(),release.application); assert.match(release.application,/^\d+\.\d+\.\d+-beta\.\d+$/); assert.equal(release.firmware,'5.1.0-beta.4'); assert.equal(release.directApi,'1.2.0');
 const fw=read('firmware/ArduinoLedController/ArduinoLedController.ino');
 for(const m of ['HTTP_SLOW_REQUEST_THRESHOLD_MS = 250UL','perfHttpTotalDurationMs','perfHttpSlowRequests','wifiDisconnectCount','wifiReconnectCount','logDroppedCount','storeStructuredLog','logStructured','XP-HTTP-SLOW','XW-WIFI-DISCONNECT','XI-WIFI-CONNECT']) assert.ok(fw.includes(m),m);
 assert.match(fw,/schemaVersion\\\":2/); assert.match(fw,/slowRequests\\\":%lu/); assert.match(fw,/levels\\\":\[\\\"TRACE/);

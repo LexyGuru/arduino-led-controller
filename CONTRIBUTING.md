@@ -2,7 +2,7 @@
 
 ## Aktuális Beta integrációs cél
 
-- Alkalmazás: `6.0.0-beta.7`
+- Alkalmazás: `6.0.0-beta.8`
 - Firmware: `5.1.0-beta.4`
 - Direct API: `1.2.0`
 - Language Pack Architecture: `2.1`
@@ -66,7 +66,7 @@ A `release-versions.json` a release identity központi forrása. A `scripts/chec
 Aktuális Beta identity:
 
 ```text
-Application  6.0.0-beta.7
+Application  6.0.0-beta.8
 Firmware     5.1.0-beta.4
 Direct API   1.2.0
 ```

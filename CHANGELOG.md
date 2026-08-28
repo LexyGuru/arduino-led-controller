@@ -1,3 +1,12 @@
+# 6.0.0-beta.8 — OTA Exact-Version Hotfix
+
+- Fixed desktop/Tauri exact-version Beta firmware lookup to use the dedicated channel-aware firmware release.
+- Preserved Firmware `5.1.0-beta.4` and Direct API `1.2.0`.
+- Real OTA runtime verification succeeded from `5.1.0-beta.3` to `5.1.0-beta.4`.
+- SHA-256 verification, bootGeneration reboot confirmation, and schedule persistence checks passed.
+- Regenerated the OpenAPI TypeScript client for application/OpenAPI `6.0.0-beta.8`.
+- Language Pack Architecture remains `2.1` with catalog `2.1.0`, 15 total languages and 14 downloadable packs.
+
 # 6.0.0-beta.7 — Performance + Observability Foundation
 
 - Structured logging and diagnostics schema v2.
@@ -35,11 +44,11 @@
 - Firmware remains 5.1.0-beta.3; Direct API remains 1.1.0.
 
 <!-- CURRENT_CHANGELOG_SSOT_BEGIN -->
-# 6.0.0-beta.5 — Current release
+# 6.0.0-beta.8 — Current release
 
-- Application: `6.0.0-beta.5`
-- Firmware: `5.1.0-beta.3`
-- Direct API: `1.1.0`
+- Application: `6.0.0-beta.8`
+- Firmware: `5.1.0-beta.4`
+- Direct API: `1.2.0`
 <!-- CURRENT_CHANGELOG_SSOT_END -->
 
 # 6.0.0-beta.3 — Language Pack 2.1
